@@ -67,11 +67,14 @@ func add_bonded_creature(creature_data: Dictionary) -> Dictionary:
 
 
 func absorb_creature_type(creature_data: Dictionary) -> Dictionary:
-	# Prototype reward effect:
-	# eating the creature grants a simple +1 damage bonus tied to its primary type.
+	# Eat reward effect: damage bonus is now read from eat_effect.value in creature data.
+	# Falls back to 1.0 so creatures without eat_effect still work during transition.
+	var eat_effect: Dictionary = creature_data.get("eat_effect", {})
+	var bonus: float = float(eat_effect.get("value", 1.0))
+
 	var entry: Dictionary = {
 		"type": String(creature_data.get("primary_type", "unknown")),
-		"damage_bonus": 1.0,
+		"damage_bonus": bonus,
 		"source_species_id": String(creature_data.get("species_id", "unknown"))
 	}
 
@@ -81,5 +84,7 @@ func absorb_creature_type(creature_data: Dictionary) -> Dictionary:
 
 func reset_run_state() -> void:
 	# Keeps persistent prototype progression small and explicit.
+	# Roster clears on full run restart — bonded creatures are per-run, not permanent.
 	player_hp = player_max_hp
 	absorbed_types.clear()
+	roster.clear()

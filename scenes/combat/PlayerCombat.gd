@@ -28,6 +28,9 @@ const ULTIMATE_RECOVERY: float = 0.45
 const CHAIN_BYPASS_WINDOW: float = 0.60
 
 # Neutral stance rules.
+# NEUTRAL_LANE is a core design rule: the player always returns here after every action.
+# All action tweens return to this lane's Y position via _play_world_motion.
+# Do not remove the return-to-center snap without updating every action state function.
 const NEUTRAL_LANE: int = 1
 const NEUTRAL_WORLD_X_OFFSET: float = -36.0
 const ATTACK_WORLD_X_OFFSET: float = 2.0
@@ -412,6 +415,7 @@ func _fire_parry_followup(combo_mult: float) -> void:
 func _take_damage(amount: float, source_lane: int) -> void:
 	_play_hit_state(source_lane)
 
+	amount = amount * (1.0 - _get_damage_reduction())
 	GameState.player_hp = max(GameState.player_hp - amount, 0.0)
 	EventBus.emit_signal("player_took_damage", amount, source_lane)
 	EventBus.emit_signal("screen_shake", 5.0, 0.12)
@@ -423,13 +427,25 @@ func _take_damage(amount: float, source_lane: int) -> void:
 
 
 func _get_creature_bonus() -> float:
-	var best_bond_level: int = 0
-
+	# Sums the value of every bonded creature whose passive is "damage_on_ultimate".
+	# Bond level scaling is the obvious next step once bond progression matters more.
+	var total: float = 0.0
 	for creature in GameState.roster:
-		if creature.has("bond_level"):
-			best_bond_level = max(best_bond_level, int(creature["bond_level"]))
+		var passive: Dictionary = creature.get("bond_passive", {})
+		if passive.get("type", "") == "damage_on_ultimate":
+			total += float(passive.get("value", 0.0))
+	return total
 
-	return float(best_bond_level) * 0.2
+
+func _get_damage_reduction() -> float:
+	# Sums the damage_reduction_pct passive from all bonded creatures.
+	# Capped at 50% to prevent stacking from becoming degenerate.
+	var total: float = 0.0
+	for creature in GameState.roster:
+		var passive: Dictionary = creature.get("bond_passive", {})
+		if passive.get("type", "") == "damage_reduction_pct":
+			total += float(passive.get("value", 0.0))
+	return min(total, 0.50)
 
 
 func _neutral_world_position() -> Vector2:
@@ -520,6 +536,11 @@ func _play_world_motion(action_position: Vector2, return_position: Vector2, push
 	if _world_motion_tween != null:
 		_world_motion_tween.kill()
 
+	# Capture the lane this action is being performed from. The callback uses this
+	# to guard against snapping current_lane to neutral if a chain-bypass action has
+	# already moved the player to a different lane while this tween was in flight.
+	var acting_lane: int = current_lane
+
 	_world_motion_tween = create_tween()
 	if push_time > 0.0:
 		_world_motion_tween.tween_property(self, "position", action_position, push_time)
@@ -528,10 +549,11 @@ func _play_world_motion(action_position: Vector2, return_position: Vector2, push
 
 	_world_motion_tween.tween_property(self, "position", return_position, return_time)
 	_world_motion_tween.tween_callback(func() -> void:
-		var previous_lane: int = current_lane
+		if current_lane != acting_lane:
+			return
 		current_lane = NEUTRAL_LANE
-		if previous_lane != current_lane:
-			EventBus.emit_signal("player_teleported", previous_lane, current_lane)
+		if acting_lane != NEUTRAL_LANE:
+			EventBus.emit_signal("player_teleported", acting_lane, NEUTRAL_LANE)
 	)
 
 

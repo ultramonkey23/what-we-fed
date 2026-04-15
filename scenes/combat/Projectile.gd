@@ -5,19 +5,32 @@ signal player_contact(projectile)
 signal enemy_contact(projectile)
 signal resolved(projectile, result: String)
 
-# Attack timing bands: generous and readable.
-const ATTACK_GOOD_MIN: float = 0.60
-const ATTACK_PERFECT_MIN: float = 0.78
-const ATTACK_PERFECT_MAX: float = 0.92
-const ATTACK_GOOD_MAX: float = 1.02
-const ATTACK_LATE_MAX: float = 1.10
+# Set to true to show live progress and zone labels on each projectile while testing.
+# Disable before shipping — leaving this false has zero runtime cost.
+const DEBUG_TIMING: bool = false
 
-# Parry timing bands: tighter than attack.
-const PARRY_GOOD_MIN: float = 0.74
-const PARRY_PERFECT_MIN: float = 0.84
-const PARRY_PERFECT_MAX: float = 0.90
-const PARRY_GOOD_MAX: float = 0.97
-const PARRY_LATE_MAX: float = 1.02
+# Timing is based on projectile progress: a float from 0.0 (just fired at enemy_x)
+# to 1.0 (reached hit_zone_x). Progress continues past 1.0 as the projectile travels
+# toward the player. All timing windows are thresholds against this progress value.
+# "early" = before GOOD_MIN  |  "good" = GOOD_MIN..PERFECT_MIN or PERFECT_MAX..GOOD_MAX
+# "perfect" = PERFECT_MIN..PERFECT_MAX  |  "miss" = beyond
+#
+# Timing Truth Bundle:
+# - outer ring = success boundary (0.96..1.04)
+# - inner ring = perfect boundary (0.98..1.02)
+# - beat mark at progress 1.0 = center of perfect truth
+# There is no hidden late grace zone outside the visible ring truth.
+const ATTACK_GOOD_MIN: float = 0.96
+const ATTACK_PERFECT_MIN: float = 0.98
+const ATTACK_PERFECT_MAX: float = 1.02
+const ATTACK_GOOD_MAX: float = 1.04
+
+# Parry timing bands: ring-exact. Good = inside the outer ring. Perfect = inner ring only.
+# Outside all rings = failed parry. No hidden timing beyond what the circles show.
+const PARRY_GOOD_MIN: float = 0.96
+const PARRY_PERFECT_MIN: float = 0.98
+const PARRY_PERFECT_MAX: float = 1.02
+const PARRY_GOOD_MAX: float = 1.04
 
 # Reflected projectiles travel back a little faster to feel punchy.
 const REFLECT_SPEED_MULT: float = 1.25
@@ -50,6 +63,13 @@ func _ready() -> void:
 	_body.position = Vector2(-13.0, -7.0)
 	_body.color = Color(0.95, 0.58, 0.22, 1.0)
 	add_child(_body)
+
+	if DEBUG_TIMING:
+		var debug_label := Label.new()
+		debug_label.name = "DebugLabel"
+		debug_label.position = Vector2(-22.0, -52.0)
+		debug_label.add_theme_font_size_override("font_size", 10)
+		add_child(debug_label)
 
 
 func _process(delta: float) -> void:
@@ -120,8 +140,6 @@ func evaluate_attack_timing() -> String:
 		return "perfect"
 	elif progress <= ATTACK_GOOD_MAX:
 		return "good"
-	elif progress <= ATTACK_LATE_MAX:
-		return "late"
 
 	return "miss"
 
@@ -138,8 +156,6 @@ func evaluate_parry_timing() -> String:
 		return "perfect"
 	elif progress <= PARRY_GOOD_MAX:
 		return "good"
-	elif progress <= PARRY_LATE_MAX:
-		return "late"
 
 	return "miss"
 
@@ -188,6 +204,16 @@ func _process_incoming(delta: float) -> void:
 	if not _reported_player_contact and position.x <= player_x:
 		_reported_player_contact = true
 		player_contact.emit(self)
+
+	if DEBUG_TIMING:
+		var _dbg: Label = get_node_or_null("DebugLabel") as Label
+		if _dbg != null:
+			_dbg.text = "%.3f\nA:%s\nP:%s\nHZ:%+.3f" % [
+				progress,
+				evaluate_attack_timing(),
+				evaluate_parry_timing(),
+				progress - 1.0
+			]
 
 
 func _process_reflected(delta: float) -> void:

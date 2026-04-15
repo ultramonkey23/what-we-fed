@@ -26,6 +26,9 @@ var _projectile_slots: Array = [null, null, null]
 var _enemies: Array[Dictionary] = []
 
 var _combat_running: bool = false
+# _cycle_task_id is incremented every time start_combat() or stop() is called.
+# _run_fire_cycle() captures the ID at launch and bails out if it no longer matches,
+# preventing ghost fire cycles from continuing after combat has been stopped or restarted.
 var _cycle_task_id: int = 0
 
 

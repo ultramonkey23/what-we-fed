@@ -31,12 +31,32 @@ const BIOME_FEEDING_HOLLOW := {
 
 const CREATURE_ASHCLAW := {
 	"species_id": "ashclaw",
+	"display_name": "Ashclaw",
 	"primary_type": "predator",
 	"secondary_type": "grit",
 	"archetypes": ["guardian", "berserker"],
 	"capture_threshold": 0.30,
 	"bond_level": 1,
+	"description": "Something that learned to cut before it learned to stop.",
+	"eat_effect": {"type": "damage_flat", "value": 2.0},
+	"bond_passive": {"type": "damage_on_ultimate", "value": 5.0},
+	"quig_offer_text": "Quig watches the claws, not you.",
 	"wrong_detail": "claws worn completely flat but still cutting"
+}
+
+const CREATURE_BOND_REMNANT := {
+	"species_id": "bond_remnant",
+	"display_name": "Bond Remnant",
+	"primary_type": "bond",
+	"secondary_type": "hollow",
+	"archetypes": ["phantom", "anchor"],
+	"capture_threshold": 0.25,
+	"bond_level": 1,
+	"description": "It holds the shape of something that survived its own end.",
+	"eat_effect": {"type": "damage_flat", "value": 1.0},
+	"bond_passive": {"type": "damage_reduction_pct", "value": 0.08},
+	"quig_offer_text": "Quig does not look at it directly.",
+	"wrong_detail": "teeth set in a jaw that never learned to close"
 }
 
 const ENCOUNTER_FEEDING_HOLLOW_01 := {
@@ -66,6 +86,7 @@ const ENCOUNTER_FEEDING_HOLLOW_02 := {
 	"id": "feeding_hollow_02",
 	"title": "Second Mouth",
 	"biome": BIOME_FEEDING_HOLLOW,
+	"reward_creature": CREATURE_BOND_REMNANT,
 	"phase_intro_texts": [
 		"It no longer waits for you.",
 		"The flanks open.",
@@ -91,6 +112,12 @@ const RING_PERFECT_RADIUS: float = 15.0
 const RING_POINT_COUNT: int = 32
 
 var _base_time_scale: float = 1.0
+# Incremented each time _on_slow_motion fires. Each restore timer checks its
+# captured generation against this; only the latest timer restores time_scale.
+var _slow_motion_gen: int = 0
+# Per-lane suppression timer (seconds). While > 0, _update_timing_ring_proximity
+# skips that lane so a freshly-triggered flash isn't immediately overwritten.
+var _ring_highlight_timers: Array[float] = [0.0, 0.0, 0.0]
 var _feedback_label: Label = null
 var _title_card: Label = null
 var _subtitle_card: Label = null
@@ -143,6 +170,80 @@ func _ready() -> void:
 	_setup_lane_manager()
 	_setup_player_combat()
 	_start_mini_run()
+
+
+func _process(delta: float) -> void:
+	for i in range(3):
+		if _ring_highlight_timers[i] > 0.0:
+			_ring_highlight_timers[i] = max(_ring_highlight_timers[i] - delta, 0.0)
+	if _timing_circle_container != null:
+		_update_timing_ring_proximity()
+
+
+func _update_timing_ring_proximity() -> void:
+	var biome: Dictionary = _active_encounter.get("biome", {})
+	var active_color: Color = biome.get("ring_active_color", Color(1.0, 0.95, 0.55, 1.0))
+	var inactive_color: Color = biome.get("ring_inactive_color", Color(0.7, 0.7, 0.8, 0.45))
+
+	var intercept_dist: float = lane_manager.get_enemy_x() - lane_manager.get_hit_zone_x()
+	if intercept_dist <= 0.0:
+		return
+
+	var outer_entry: float = 1.0 - RING_OUTER_RADIUS / intercept_dist
+	var outer_exit: float = 1.0 + RING_OUTER_RADIUS / intercept_dist
+	var perfect_entry: float = 1.0 - RING_PERFECT_RADIUS / intercept_dist
+	var perfect_exit: float = 1.0 + RING_PERFECT_RADIUS / intercept_dist
+	var approach_start: float = outer_entry - 0.08
+
+	for lane in range(3):
+		if _ring_highlight_timers[lane] > 0.0:
+			continue
+
+		var group: Node2D = _timing_circle_container.get_node_or_null("TimingRing_%d" % lane)
+		if group == null:
+			continue
+
+		var outer_ring: Line2D = group.get_node_or_null("Outer") as Line2D
+		var good_ring: Line2D = group.get_node_or_null("Good") as Line2D
+		var perfect_ring: Line2D = group.get_node_or_null("Perfect") as Line2D
+		if outer_ring == null or good_ring == null or perfect_ring == null:
+			continue
+
+		var base_color: Color = active_color if lane == player_combat.current_lane else inactive_color
+
+		var outer_color: Color = base_color.darkened(0.05)
+		var good_color: Color = Color(base_color.r, base_color.g, base_color.b, base_color.a * 0.18)
+		var perfect_color: Color = base_color.lightened(0.15)
+		var outer_width: float = 2.2
+		var good_width: float = 1.0
+		var perfect_width: float = 2.2
+
+		var proj = lane_manager.get_projectile(lane)
+		if proj != null and not proj.is_resolved and not proj.is_reflected:
+			var p: float = proj.progress
+
+			if p >= approach_start and p < outer_entry:
+				# Projectile is approaching — fade the outer ring in gradually.
+				var t: float = (p - approach_start) / (outer_entry - approach_start)
+				outer_color = outer_color.lerp(active_color, t)
+
+			elif p >= outer_entry and p <= outer_exit:
+				# Projectile is inside the outer ring — full outer glow.
+				outer_color = active_color.lightened(0.10)
+				good_color = Color(active_color.r, active_color.g, active_color.b, 0.16)
+
+				if p >= perfect_entry and p <= perfect_exit:
+					# Projectile is inside the perfect ring — brighten inner rings.
+					good_color = Color(active_color.r, active_color.g, active_color.b, 0.22)
+					perfect_color = active_color.lightened(0.45)
+					perfect_width = 3.2
+
+		outer_ring.default_color = outer_color
+		outer_ring.width = outer_width
+		good_ring.default_color = good_color
+		good_ring.width = good_width
+		perfect_ring.default_color = perfect_color
+		perfect_ring.width = perfect_width
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -469,18 +570,32 @@ func _draw_timing_circles() -> void:
 		var is_active_lane: bool = lane == player_combat.current_lane
 		var base_color: Color = active_color if is_active_lane else inactive_color
 
-		var outer_ring := _make_ring_line(RING_OUTER_RADIUS, base_color.darkened(0.25), 1.5)
+		var outer_ring := _make_ring_line(RING_OUTER_RADIUS, base_color.darkened(0.05), 2.2)
 		outer_ring.name = "Outer"
 
-		var good_ring := _make_ring_line(RING_GOOD_RADIUS, base_color, 2.5)
+		var good_ring := _make_ring_line(
+			RING_GOOD_RADIUS,
+			Color(base_color.r, base_color.g, base_color.b, base_color.a * 0.18),
+			1.0
+		)
 		good_ring.name = "Good"
 
-		var perfect_ring := _make_ring_line(RING_PERFECT_RADIUS, base_color.lightened(0.15), 2.0)
+		var perfect_ring := _make_ring_line(RING_PERFECT_RADIUS, base_color.lightened(0.15), 2.2)
 		perfect_ring.name = "Perfect"
+
+		# Vertical beat mark at the circle center — the projectile crosses this line
+		# at progress = 1.0, which is the center of the perfect parry window.
+		var beat_mark := Line2D.new()
+		beat_mark.name = "BeatMark"
+		beat_mark.default_color = base_color.darkened(0.10)
+		beat_mark.width = 1.5
+		beat_mark.add_point(Vector2(0.0, -RING_OUTER_RADIUS))
+		beat_mark.add_point(Vector2(0.0, RING_OUTER_RADIUS))
 
 		lane_group.add_child(outer_ring)
 		lane_group.add_child(good_ring)
 		lane_group.add_child(perfect_ring)
+		lane_group.add_child(beat_mark)
 		_timing_circle_container.add_child(lane_group)
 
 
@@ -697,12 +812,36 @@ func _offer_victory_reward(creature_data: Dictionary) -> void:
 	EventBus.emit_signal("capture_offered", _pending_reward_creature)
 	_reward_overlay.visible = true
 
-	_reward_title_label.text = "Ashclaw waits."
-	_reward_body_label.text = "Bond or eat?\n\n[B] Bond  — keep Ashclaw in roster\n[E] Eat   — absorb predator damage"
-	_reward_quig_label.text = "Quig watches the claws, not you."
+	var _offer_creature_name: String = String(_pending_reward_creature.get("display_name", "creature"))
+	var _offer_description: String = String(_pending_reward_creature.get("description", ""))
+	_reward_title_label.text = "%s waits." % _offer_creature_name
+	_reward_body_label.text = "%s\n\n[B] Bond  — %s\n[E] Eat   — %s" % [
+		_offer_description,
+		_format_bond_passive(_pending_reward_creature.get("bond_passive", {})),
+		_format_eat_effect(_pending_reward_creature.get("eat_effect", {}))
+	]
+	_reward_quig_label.text = String(_pending_reward_creature.get("quig_offer_text", ""))
 	_reward_hint_label.text = "Choose: B or E"
 
 	controls_label.text = "Reward choice  |  Press B to Bond  |  Press E to Eat"
+
+
+func _format_eat_effect(effect: Dictionary) -> String:
+	match effect.get("type", ""):
+		"damage_flat":
+			return "+%.0f permanent attack damage" % float(effect.get("value", 0.0))
+		_:
+			return "absorb its essence"
+
+
+func _format_bond_passive(passive: Dictionary) -> String:
+	match passive.get("type", ""):
+		"damage_on_ultimate":
+			return "+%.0f damage added to your ultimate" % float(passive.get("value", 0.0))
+		"damage_reduction_pct":
+			return "%.0f%% damage reduction while bonded" % (float(passive.get("value", 0.0)) * 100.0)
+		_:
+			return "keep in roster"
 
 
 func _show_continue_after_reward() -> void:
@@ -752,8 +891,13 @@ func _choose_bond() -> void:
 	_reward_choice_made = true
 	_awaiting_reward_choice = false
 
-	_reward_title_label.text = "Ashclaw bonded."
-	_reward_body_label.text = "Ashclaw enters your roster at bond level %d." % int(updated_creature.get("bond_level", 1))
+	var _bond_creature_name: String = String(_pending_reward_creature.get("display_name", "creature"))
+	_reward_title_label.text = "%s bonded." % _bond_creature_name
+	_reward_body_label.text = "%s enters your roster at bond level %d.\n%s" % [
+		_bond_creature_name,
+		int(updated_creature.get("bond_level", 1)),
+		_format_bond_passive(_pending_reward_creature.get("bond_passive", {}))
+	]
 	_reward_quig_label.text = "Quig: \"Good. Watch — they're already positioning.\""
 
 	if _has_next_encounter():
@@ -774,7 +918,8 @@ func _choose_eat() -> void:
 	_reward_choice_made = true
 	_awaiting_reward_choice = false
 
-	_reward_title_label.text = "Ashclaw consumed."
+	var _eat_creature_name: String = String(_pending_reward_creature.get("display_name", "creature"))
+	_reward_title_label.text = "%s consumed." % _eat_creature_name
 	_reward_body_label.text = "Absorbed type: %s  (+%.1f damage)" % [
 		String(absorbed_entry.get("type", "unknown")).capitalize(),
 		float(absorbed_entry.get("damage_bonus", 0.0))
@@ -871,10 +1016,13 @@ func _on_screen_shake(intensity: float, duration: float) -> void:
 
 
 func _on_slow_motion(scale: float, duration: float) -> void:
+	_slow_motion_gen += 1
+	var gen: int = _slow_motion_gen
 	Engine.time_scale = scale
 	var timer := get_tree().create_timer(duration, true, false, true)
 	timer.timeout.connect(func() -> void:
-		Engine.time_scale = _base_time_scale
+		if _slow_motion_gen == gen:
+			Engine.time_scale = _base_time_scale
 	)
 
 
@@ -927,17 +1075,15 @@ func _highlight_timing_ring(lane: int, color: Color, width: float = 4.0) -> void
 	if group == null:
 		return
 
+	_ring_highlight_timers[lane] = 0.20
+
 	for child in group.get_children():
 		if child is Line2D:
 			var ring := child as Line2D
+			if ring.name == "BeatMark":
+				continue
 			ring.default_color = color
 			ring.width = width if ring.name == "Good" else max(width - 1.0, 1.5)
-
-	var tween := create_tween()
-	tween.tween_interval(0.18)
-	tween.tween_callback(func() -> void:
-		_draw_timing_circles()
-	)
 
 
 func _animate_timing_ring_press(lane: int) -> void:

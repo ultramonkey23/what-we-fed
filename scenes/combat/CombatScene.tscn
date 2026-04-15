@@ -1,0 +1,97 @@
+[gd_scene format=3 uid="uid://dv216ab7uisc5"]
+
+[ext_resource type="Script" uid="uid://cpll1f0dilx6c" path="res://scenes/combat/CombatScene.gd" id="1_0x2iq"]
+[ext_resource type="Script" uid="uid://dm76d0byq67bk" path="res://scenes/combat/LaneManager.gd" id="1_7pc1q"]
+[ext_resource type="Script" uid="uid://b3wshmxt15h7w" path="res://scenes/combat/PlayerCombat.gd" id="2_2ussv"]
+[ext_resource type="Script" uid="uid://wox10yekwlop" path="res://systems/CombatMeter.gd" id="3_2ussv"]
+
+[node name="CombatScene" type="Node2D" unique_id=1693404259]
+script = ExtResource("1_0x2iq")
+
+[node name="Background" type="ColorRect" parent="." unique_id=634140344]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.13049185, 0.29163104, 0.31003615, 1)
+
+[node name="FlashOverlay" type="ColorRect" parent="." unique_id=1260763640]
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="LaneManager" type="Node2D" parent="." unique_id=1794296682]
+script = ExtResource("1_7pc1q")
+
+[node name="Enemies" type="Node2D" parent="." unique_id=1524850244]
+
+[node name="PlayerCombat" type="Node2D" parent="." unique_id=581195394]
+script = ExtResource("2_2ussv")
+
+[node name="Sprite" type="ColorRect" parent="PlayerCombat" unique_id=1755163422]
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="CombatMeter" type="Node2D" parent="." unique_id=2053564551]
+script = ExtResource("3_2ussv")
+
+[node name="Camera2D" type="Camera2D" parent="." unique_id=1275031785]
+anchor_mode = 0
+
+[node name="UI" type="CanvasLayer" parent="." unique_id=1391267970]
+
+[node name="ComboLabel" type="Label" parent="UI" unique_id=1732307942]
+offset_left = 105.0
+offset_top = 3.0
+offset_right = 199.0
+offset_bottom = 37.0
+text = "Combo: 0"
+
+[node name="StyleLabel" type="Label" parent="UI" unique_id=911528956]
+offset_left = 493.0
+offset_top = 6.0
+offset_right = 572.0
+offset_bottom = 29.0
+text = "Style: Raw"
+
+[node name="StaminaBar" type="ProgressBar" parent="UI" unique_id=215821771]
+offset_left = 731.0
+offset_top = 27.0
+offset_right = 1228.0
+offset_bottom = 54.0
+value = 100.0
+
+[node name="HPBar" type="ProgressBar" parent="UI" unique_id=315643937]
+offset_left = 1.0
+offset_top = 26.0
+offset_right = 501.0
+offset_bottom = 53.0
+value = 100.0
+
+[node name="UltimateLabel" type="Label" parent="UI" unique_id=1692980448]
+offset_left = 983.0
+offset_top = 3.0
+offset_right = 1082.0
+offset_bottom = 26.0
+text = "Ultimate: 0%"
+
+[node name="ResultLabel" type="Label" parent="UI" unique_id=1625099451]
+offset_left = 417.0
+offset_top = 281.0
+offset_right = 828.0
+offset_bottom = 495.0
+
+[node name="ControlsLabel" type="Label" parent="UI" unique_id=280500784]
+anchors_preset = -1
+anchor_left = 0.001
+anchor_right = 0.001
+offset_left = 19.72
+offset_top = 602.0
+offset_right = 98.72
+offset_bottom = 703.0
+text = "A: Attack 
+S: Parry 
+D: Dodge 
+Q/E: Move"
+horizontal_alignment = 1
+vertical_alignment = 1

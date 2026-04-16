@@ -94,6 +94,8 @@ func _on_combat_started(_enemy_data: Array) -> void:
 func _on_enemy_defeated(_enemy_id: int) -> void:
 	_grant_exp(GROWTH_CONTENT.EXP_KILL)
 	_gain_support_charge(GROWTH_CONTENT.CHARGE_ENEMY_DEFEAT)
+	_trigger_active_support_for_event("enemy_defeated", 1)
+	_apply_hp_on_kill_passive()
 
 
 func _on_timed_attack_resolved(lane: int, quality: String, _damage: float) -> void:
@@ -245,11 +247,21 @@ func _pick_weighted_upgrade(candidates: Array[Dictionary]) -> Dictionary:
 	var weighted: Array[Dictionary] = []
 	for upgrade in candidates:
 		var category: String = String(upgrade.get("category", ""))
+		var upgrade_id: String = String(upgrade.get("id", ""))
 		var weight: float = 1.0
 		if category == "Bond" and not GameState.roster.is_empty():
 			weight += 0.35
 		if category == "Flesh" and not GameState.absorbed_types.is_empty():
 			weight += 0.35
+		# Creature-synergy boosts: surface the upgrade most relevant to the active bond.
+		var active: Dictionary = GameState.get_active_bonded_creature()
+		var active_id: String = String(active.get("species_id", ""))
+		if upgrade_id == "flesh_devour_warmth" and active_id == "gruvek":
+			weight += 0.40
+		if upgrade_id == "flesh_ravage" and active_id == "thornback":
+			weight += 0.40
+		if upgrade_id == "cadence_knife_between_beats" and active_id == "veilskin":
+			weight += 0.40
 
 		total_weight += weight
 		weighted.append({"upgrade": upgrade, "weight": weight})
@@ -303,6 +315,18 @@ func _apply_upgrade_effect_on_event(event_id: String) -> bool:
 			return true
 		_:
 			return false
+
+
+func _apply_hp_on_kill_passive() -> void:
+	var creature: Dictionary = GameState.get_active_bonded_creature()
+	if creature.is_empty():
+		return
+	var passive: Dictionary = creature.get("bond_passive", {})
+	if passive.get("type", "") != "hp_on_kill":
+		return
+	var healed: float = GameState.heal_player(float(passive.get("value", 0.0)))
+	if healed > 0.0:
+		EventBus.emit_signal("player_healed", healed)
 
 
 func _emit_growth_state() -> void:

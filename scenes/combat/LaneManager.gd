@@ -303,11 +303,9 @@ func _get_enemy_projectile_speed(enemy_type: String) -> float:
 	match enemy_type:
 		"dreg":
 			return 265.0
-		"pack_dreg":
-			return 315.0
 		"bond_reaper":
 			return 430.0
-		"render":
-			return 355.0
+		"sovereign":
+			return 310.0
 		_:
 			return 265.0

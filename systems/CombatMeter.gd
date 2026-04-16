@@ -142,6 +142,10 @@ func reset() -> void:
 	_emit_meter_state()
 
 
+func restore_stamina(amount: float) -> void:
+	_gain_stamina(amount)
+
+
 func _gain_stamina(amount: float) -> void:
 	stamina = min(stamina + amount, stamina_max)
 	EventBus.emit_signal("stamina_changed", stamina, stamina_max)

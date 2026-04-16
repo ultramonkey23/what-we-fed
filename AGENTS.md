@@ -40,3 +40,6 @@ See:
 - docs/PROMPT_TEMPLATES.md
 Primary scope canon: docs/WHAT_WE_FED_FINAL_GAME_SCOPE_CANON_FLAGSHIP.md
 Future kaiju/world-state canon: docs/THE_HOLLOW_EGG_KAIJU_ASCENSION_CANON.md
+Current prove-it ladder: docs/DEMO_MILESTONE_LADDER.md
+Core fantasy law: docs/GAME_SOUL_AND_CORE_FANTASY.md
+Song-level structure: docs/SONG_LEVEL_STRUCTURE.md

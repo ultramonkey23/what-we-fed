@@ -267,7 +267,7 @@ func _try_parry() -> void:
 		reflect_mult = PERFECT_PARRY_REFLECT_MULT
 		recovery = PERFECT_PARRY_RECOVERY
 
-	var reflect_damage: float = float(projectile.damage) * reflect_mult * combo_mult
+	var reflect_damage: float = float(projectile.damage) * reflect_mult * combo_mult * (1.0 + _get_parry_reflect_bonus())
 
 	projectile.reflect_to_enemy(reflect_damage)
 	lane_manager.clear_slot(current_lane)
@@ -355,7 +355,7 @@ func _idle_attack(combo_mult: float) -> void:
 
 
 func _resolve_timed_attack(projectile, combo_mult: float, quality: String) -> void:
-	var timed_damage: float = (float(projectile.damage) * TIMED_ATTACK_DAMAGE_RATIO) * combo_mult
+	var timed_damage: float = (float(projectile.damage) * TIMED_ATTACK_DAMAGE_RATIO) * combo_mult + _get_timed_damage_bonus()
 	var recovery: float = TIMED_ATTACK_RECOVERY
 
 	projectile.resolve("attack_%s" % quality)
@@ -447,6 +447,26 @@ func _get_damage_reduction() -> float:
 		if passive.get("type", "") == "damage_reduction_pct":
 			total += float(passive.get("value", 0.0))
 	return min(total, 0.50)
+
+
+func _get_parry_reflect_bonus() -> float:
+	# Sums parry_reflect_mult from all bonded creatures (e.g. Veilskin +0.40).
+	var total: float = 0.0
+	for creature in GameState.roster:
+		var passive: Dictionary = creature.get("bond_passive", {})
+		if passive.get("type", "") == "parry_reflect_mult":
+			total += float(passive.get("value", 0.0))
+	return total
+
+
+func _get_timed_damage_bonus() -> float:
+	# Sums timed_damage_flat from all bonded creatures (e.g. Thornback +3).
+	var total: float = 0.0
+	for creature in GameState.roster:
+		var passive: Dictionary = creature.get("bond_passive", {})
+		if passive.get("type", "") == "timed_damage_flat":
+			total += float(passive.get("value", 0.0))
+	return total
 
 
 func _neutral_world_position() -> Vector2:

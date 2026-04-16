@@ -90,14 +90,17 @@ var _growth_option_labels: Array[Label] = []
 
 var _combat_finished: bool = false
 var _phase_transitioning: bool = false
-var _last_combat_victory: bool = false
 
 var _awaiting_reward_choice: bool = false
 var _reward_choice_made: bool = false
 var _awaiting_continue: bool = false
 var _run_finished: bool = false
-var _run_victory: bool = false
 var _pending_reward_creature: Dictionary = {}
+
+# Incremented each time _load_current_queued_encounter is called. The function
+# captures this at entry and bails after the boss-intro await if a newer load
+# has superseded it — mirrors the _cycle_task_id pattern in LaneManager.
+var _encounter_load_gen: int = 0
 
 var _active_encounter: Dictionary = {}
 var _current_phase_index: int = 0
@@ -995,11 +998,11 @@ func _build_mini_run_queue() -> Array:
 
 func _start_mini_run() -> void:
 	# Starts a fresh run from the beginning of the encounter queue.
+	GameState.run_number += 1
+
 	_encounter_queue = _build_mini_run_queue()
 	_current_encounter_queue_index = 0
 	_run_finished = false
-	_run_victory = false
-	_last_combat_victory = false
 	_is_boss_encounter = false
 	_boss_total_hp = 0.0
 	_boss_current_hp = 0.0
@@ -1016,6 +1019,9 @@ func _start_mini_run() -> void:
 
 
 func _load_current_queued_encounter(reset_hp: bool) -> void:
+	_encounter_load_gen += 1
+	var load_gen: int = _encounter_load_gen
+
 	if _current_encounter_queue_index < 0 or _current_encounter_queue_index >= _encounter_queue.size():
 		_finish_run(true)
 		return
@@ -1024,7 +1030,6 @@ func _load_current_queued_encounter(reset_hp: bool) -> void:
 	_current_phase_index = 0
 	_combat_finished = false
 	_phase_transitioning = false
-	_last_combat_victory = false
 
 	_is_boss_encounter = bool(_active_encounter.get("is_boss", false))
 
@@ -1037,6 +1042,9 @@ func _load_current_queued_encounter(reset_hp: bool) -> void:
 	if _is_boss_encounter:
 		_setup_boss_hp_bar()
 		await _show_boss_intro(String(_active_encounter.get("boss_name", "BOSS")))
+		# If R was pressed during the intro a newer load has already started — bail out.
+		if load_gen != _encounter_load_gen:
+			return
 	else:
 		_hide_boss_bar()
 		_show_title_card(
@@ -1359,7 +1367,6 @@ func _complete_current_encounter() -> void:
 
 	_combat_finished = true
 	_phase_transitioning = false
-	_last_combat_victory = true
 
 	if lane_manager != null and lane_manager.has_method("stop"):
 		lane_manager.stop()
@@ -1380,6 +1387,10 @@ func _complete_current_encounter() -> void:
 		EventBus.emit_signal("screen_flash", Color(0.55, 1.0, 0.75, 0.10), 0.14)
 
 	var reward_creature: Dictionary = _active_encounter.get("reward_creature", {})
+	if reward_creature.is_empty():
+		var pool: Array = _active_encounter.get("reward_creature_pool", [])
+		if not pool.is_empty():
+			reward_creature = pool[randi() % pool.size()]
 	if not reward_creature.is_empty():
 		_offer_victory_reward(reward_creature)
 		return
@@ -1395,10 +1406,8 @@ func _complete_current_encounter() -> void:
 func _finish_run(victory: bool) -> void:
 	# Final state for the whole run.
 	_run_finished = true
-	_run_victory = victory
 	_combat_finished = true
 	_phase_transitioning = false
-	_last_combat_victory = victory
 
 	_hide_boss_bar()
 
@@ -1581,6 +1590,8 @@ func _format_eat_effect(effect: Dictionary) -> String:
 	match effect.get("type", ""):
 		"damage_flat":
 			return "+%.0f permanent attack damage" % float(effect.get("value", 0.0))
+		"hp_restore":
+			return "restores %.0f HP immediately — no permanent bonus" % float(effect.get("value", 0.0))
 		_:
 			return "absorb its essence"
 
@@ -1591,6 +1602,12 @@ func _format_bond_passive(passive: Dictionary) -> String:
 			return "+%.0f damage added to your ultimate" % float(passive.get("value", 0.0))
 		"damage_reduction_pct":
 			return "%.0f%% damage reduction while bonded" % (float(passive.get("value", 0.0)) * 100.0)
+		"hp_on_kill":
+			return "+%.0f HP restored on every enemy kill" % float(passive.get("value", 0.0))
+		"parry_reflect_mult":
+			return "+%.0f%% parry reflect damage while bonded" % (float(passive.get("value", 0.0)) * 100.0)
+		"timed_damage_flat":
+			return "+%.0f flat damage added to every timed attack" % float(passive.get("value", 0.0))
 		_:
 			return "keep in roster"
 
@@ -1602,6 +1619,12 @@ func _format_bond_passive_short(passive: Dictionary) -> String:
 			return "+%.0f ult dmg" % float(passive.get("value", 0.0))
 		"damage_reduction_pct":
 			return "%.0f%% def" % (float(passive.get("value", 0.0)) * 100.0)
+		"hp_on_kill":
+			return "+%.0f hp/kill" % float(passive.get("value", 0.0))
+		"parry_reflect_mult":
+			return "+%.0f%% parry" % (float(passive.get("value", 0.0)) * 100.0)
+		"timed_damage_flat":
+			return "+%.0f timed" % float(passive.get("value", 0.0))
 		_:
 			return "--"
 
@@ -1613,6 +1636,12 @@ func _format_trigger_hint(effect_id: String) -> String:
 			return "strikes on perfect timing"
 		"bond_remnant_mend":
 			return "mends on hit when ready"
+		"gruvek_gorge":
+			return "gorges all lanes on kill"
+		"veilskin_phase":
+			return "phases on perfect parry"
+		"thornback_rend":
+			return "rends on perfect timing"
 		_:
 			return ""
 
@@ -1702,8 +1731,13 @@ func _format_absorbed_bonus_summary() -> String:
 			creature_name = String(creature.get("display_name", species_id))
 
 		var short_name: String = _compact_token(creature_name, 4)
-		var damage_bonus: int = int(round(float(entry.get("damage_bonus", 0.0))))
-		chips.append("[%s+%d]" % [short_name, damage_bonus])
+		var eat_type: String = String(entry.get("eat_type", "damage_flat"))
+		if eat_type == "hp_restore":
+			var heal_applied: int = int(round(float(entry.get("heal_applied", 0.0))))
+			chips.append("[%s~%d]" % [short_name, heal_applied])
+		else:
+			var damage_bonus: int = int(round(float(entry.get("damage_bonus", 0.0))))
+			chips.append("[%s+%d]" % [short_name, damage_bonus])
 
 	var hidden_count: int = GameState.absorbed_types.size() - visible_count
 	if hidden_count > 0:
@@ -1867,6 +1901,10 @@ func _choose_eat() -> void:
 		return
 
 	var absorbed_entry: Dictionary = GameState.absorb_creature_type(_pending_reward_creature)
+	if String(absorbed_entry.get("eat_type", "")) == "hp_restore":
+		var healed: float = float(absorbed_entry.get("heal_applied", 0.0))
+		if healed > 0.0:
+			EventBus.emit_signal("player_healed", healed)
 	EventBus.emit_signal("creature_eaten", _pending_reward_creature)
 
 	_reward_choice_made = true
@@ -1879,10 +1917,17 @@ func _choose_eat() -> void:
 	_reward_bond_label.text = ""
 	_reward_bond_effect_label.text = ""
 	_reward_eat_label.text = "ABSORBED"
-	_reward_eat_effect_label.text = "Type: %s\n\n+%.1f permanent attack damage" % [
-		String(absorbed_entry.get("type", "unknown")).capitalize(),
-		float(absorbed_entry.get("damage_bonus", 0.0))
-	]
+	var _eat_type_str: String = String(absorbed_entry.get("eat_type", "damage_flat"))
+	if _eat_type_str == "hp_restore":
+		_reward_eat_effect_label.text = "Type: %s\n\n+%.0f HP restored.\nNo permanent bonus." % [
+			String(absorbed_entry.get("type", "unknown")).capitalize(),
+			float(absorbed_entry.get("heal_applied", 0.0))
+		]
+	else:
+		_reward_eat_effect_label.text = "Type: %s\n\n+%.1f permanent attack damage" % [
+			String(absorbed_entry.get("type", "unknown")).capitalize(),
+			float(absorbed_entry.get("damage_bonus", 0.0))
+		]
 	_reward_quig_label.text = "Quig is silent."
 	_reward_hint_label.text = "..."
 
@@ -2138,9 +2183,10 @@ func _on_support_charge_changed(current: float, maximum: float, active_species_i
 
 func _on_bonded_support_triggered(_species_id: String, lane: int, effect_id: String) -> void:
 	var support_role: Dictionary = _get_support_role_for_effect(effect_id)
+	var combo_mult: float = combat_meter.damage_multiplier()
 	match effect_id:
 		"ashclaw_strike":
-			var strike_damage: float = float(support_role.get("effect_value", 10.0))
+			var strike_damage: float = float(support_role.get("effect_value", 10.0)) * combo_mult
 			lane_manager.damage_enemy(lane, strike_damage)
 			_show_feedback(String(support_role.get("feedback_text", "ASHCLAW")), Color(0.95, 0.60, 0.42, 1.0), 0.28)
 			_highlight_timing_ring(lane, Color(0.92, 0.56, 0.38, 1.0), 5.4)
@@ -2153,6 +2199,28 @@ func _on_bonded_support_triggered(_species_id: String, lane: int, effect_id: Str
 			_show_feedback(String(support_role.get("feedback_text", "REMNANT")), Color(0.72, 0.96, 0.88, 1.0), 0.28)
 			_highlight_timing_ring(lane, Color(0.68, 0.94, 0.84, 1.0), 4.8)
 			_flash_meter_shell(Color(0.12, 0.22, 0.18, 0.92), 0.10)
+		"gruvek_gorge":
+			var gorge_damage: float = float(support_role.get("effect_value", 10.0)) * combo_mult
+			for check_lane in range(3):
+				lane_manager.damage_enemy(check_lane, gorge_damage)
+			_show_feedback(String(support_role.get("feedback_text", "GORGE")), Color(0.90, 0.52, 0.22, 1.0), 0.30)
+			for check_lane in range(3):
+				_highlight_timing_ring(check_lane, Color(0.88, 0.50, 0.20, 1.0), 5.0)
+			_flash_meter_shell(Color(0.28, 0.14, 0.08, 0.92), 0.12)
+		"veilskin_phase":
+			var phase_damage: float = float(support_role.get("effect_value", 12.0))
+			lane_manager.damage_enemy(lane, phase_damage)
+			combat_meter.restore_stamina(25.0)
+			_show_feedback(String(support_role.get("feedback_text", "PHASE")), Color(0.78, 0.92, 1.0, 1.0), 0.28)
+			_highlight_timing_ring(lane, Color(0.72, 0.88, 1.0, 1.0), 4.8)
+			_flash_meter_shell(Color(0.10, 0.18, 0.26, 0.92), 0.10)
+		"thornback_rend":
+			var rend_damage: float = float(support_role.get("effect_value", 20.0)) * combo_mult
+			lane_manager.damage_enemy(lane, rend_damage)
+			_show_feedback(String(support_role.get("feedback_text", "REND")), Color(0.96, 0.75, 0.38, 1.0), 0.28)
+			_highlight_timing_ring(lane, Color(0.94, 0.72, 0.34, 1.0), 6.0)
+			_spawn_attack_silhouette_to_lane(lane, Color(0.96, 0.75, 0.38, 0.60), 12.0, 0.14, 1.10)
+			_flash_meter_shell(Color(0.28, 0.16, 0.08, 0.92), 0.10)
 		_:
 			return
 
@@ -2174,6 +2242,7 @@ func _on_run_upgrade_taken(upgrade_id: String) -> void:
 		_:
 			pass
 	_refresh_run_build_readout()
+
 
 
 func _get_upgrade_effect(effect_type: String) -> Dictionary:

@@ -68,6 +68,69 @@ const CREATURES := {
 		},
 		"quig_offer_text": "Quig does not look at it directly.",
 		"wrong_detail": "teeth set in a jaw that never learned to close"
+	},
+	"gruvek": {
+		"species_id": "gruvek",
+		"display_name": "Gruvek",
+		"primary_type": "predator",
+		"secondary_type": "gorge",
+		"archetypes": ["carrion", "glutton"],
+		"capture_threshold": 0.30,
+		"bond_level": 1,
+		"description": "It does not wait to be full. It eats until the hunger is someone else's problem.",
+		"eat_effect": {"type": "hp_restore", "value": 18.0},
+		"bond_passive": {"type": "hp_on_kill", "value": 3.0},
+		"support_role": {
+			"readout_name": "Gruvek",
+			"effect_id": "gruvek_gorge",
+			"trigger_on": ["enemy_defeated"],
+			"effect_value": 10.0,
+			"feedback_text": "GORGE"
+		},
+		"quig_offer_text": "Quig smells it before he sees it.",
+		"wrong_detail": "jaw unhinged past any angle that should work"
+	},
+	"veilskin": {
+		"species_id": "veilskin",
+		"display_name": "Veilskin",
+		"primary_type": "predator",
+		"secondary_type": "reflex",
+		"archetypes": ["phantom", "counter"],
+		"capture_threshold": 0.20,
+		"bond_level": 1,
+		"description": "It only moves when you give it a reason. The reason never survives.",
+		"eat_effect": {"type": "damage_flat", "value": 1.0},
+		"bond_passive": {"type": "parry_reflect_mult", "value": 0.40},
+		"support_role": {
+			"readout_name": "Veilskin",
+			"effect_id": "veilskin_phase",
+			"trigger_on": ["perfect_parry"],
+			"effect_value": 12.0,
+			"feedback_text": "PHASE"
+		},
+		"quig_offer_text": "Quig says nothing. It is already watching him.",
+		"wrong_detail": "no visible eyes but something tracks every movement"
+	},
+	"thornback": {
+		"species_id": "thornback",
+		"display_name": "Thornback",
+		"primary_type": "predator",
+		"secondary_type": "grit",
+		"archetypes": ["berserker", "ravager"],
+		"capture_threshold": 0.35,
+		"bond_level": 1,
+		"description": "Every hit it lands opens something that does not close cleanly.",
+		"eat_effect": {"type": "damage_flat", "value": 3.0},
+		"bond_passive": {"type": "timed_damage_flat", "value": 3.0},
+		"support_role": {
+			"readout_name": "Thornback",
+			"effect_id": "thornback_rend",
+			"trigger_on": ["perfect_timed_attack"],
+			"effect_value": 20.0,
+			"feedback_text": "REND"
+		},
+		"quig_offer_text": "Quig keeps his hands where it can see them.",
+		"wrong_detail": "spines still growing — some through the wrong layers"
 	}
 }
 
@@ -76,7 +139,7 @@ const ENCOUNTERS := {
 		"id": "feeding_hollow_01",
 		"title": "First Hunger",
 		"biome": BIOME_FEEDING_HOLLOW,
-		"reward_creature": CREATURES["ashclaw"],
+		"reward_creature_pool": [CREATURES["ashclaw"], CREATURES["gruvek"]],
 		"phase_intro_texts": [
 			"Something stirs above.",
 			"It learns your rhythm.",
@@ -98,7 +161,7 @@ const ENCOUNTERS := {
 		"id": "feeding_hollow_02",
 		"title": "Second Mouth",
 		"biome": BIOME_FEEDING_HOLLOW,
-		"reward_creature": CREATURES["bond_remnant"],
+		"reward_creature_pool": [CREATURES["bond_remnant"], CREATURES["veilskin"]],
 		"phase_intro_texts": [
 			"It no longer waits for you.",
 			"The flanks open.",
@@ -121,6 +184,7 @@ const ENCOUNTERS := {
 		"id": "feeding_hollow_03",
 		"title": "Aftertaste",
 		"biome": BIOME_FEEDING_HOLLOW,
+		"reward_creature_pool": [CREATURES["thornback"]],
 		"phase_intro_texts": [
 			"It follows what you kept.",
 			"The hollow presses the wound.",

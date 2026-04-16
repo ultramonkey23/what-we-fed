@@ -4,7 +4,6 @@ extends Node
 # It supports current combat plus the first post-fight reward choice.
 
 var run_number: int = 1
-var rebirth_count: int = 0
 
 var player_hp: float = 100.0
 var player_max_hp: float = 100.0
@@ -12,7 +11,8 @@ var player_base_damage: float = 15.0
 var taken_upgrades: Array[String] = []
 
 # Each absorbed type is stored as:
-# { "type": String, "damage_bonus": float, "source_species_id": String }
+# { "type": String, "eat_type": String, "source_species_id": String,
+#   "damage_bonus": float }  -- or "heal_applied": float for hp_restore eat types
 var absorbed_types: Array[Dictionary] = []
 
 # Each roster creature is stored as:
@@ -25,7 +25,6 @@ var absorbed_types: Array[Dictionary] = []
 # }
 var roster: Array[Dictionary] = []
 
-var current_map_seed: int = 0
 var _bond_order_counter: int = 0
 
 
@@ -72,16 +71,25 @@ func add_bonded_creature(creature_data: Dictionary) -> Dictionary:
 
 
 func absorb_creature_type(creature_data: Dictionary) -> Dictionary:
-	# Eat reward effect: damage bonus is now read from eat_effect.value in creature data.
-	# Falls back to 1.0 so creatures without eat_effect still work during transition.
+	# Eat reward effect: branches on eat_effect.type.
+	# hp_restore: heals immediately, stores heal_applied (no permanent damage bonus).
+	# damage_flat: grants permanent attack damage as before.
 	var eat_effect: Dictionary = creature_data.get("eat_effect", {})
-	var bonus: float = float(eat_effect.get("value", 1.0))
+	var eat_type: String = String(eat_effect.get("type", "damage_flat"))
+	var value: float = float(eat_effect.get("value", 1.0))
 
 	var entry: Dictionary = {
 		"type": String(creature_data.get("primary_type", "unknown")),
-		"damage_bonus": bonus,
+		"eat_type": eat_type,
 		"source_species_id": String(creature_data.get("species_id", "unknown"))
 	}
+
+	if eat_type == "hp_restore":
+		var healed: float = heal_player(value)
+		entry["heal_applied"] = healed
+		entry["damage_bonus"] = 0.0
+	else:
+		entry["damage_bonus"] = value
 
 	absorbed_types.append(entry)
 	return entry

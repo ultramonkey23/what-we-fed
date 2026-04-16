@@ -38,12 +38,9 @@ signal ultimate_fired(power: float)
 signal capture_offered(creature_data: Dictionary)
 signal creature_eaten(creature_data: Dictionary)
 signal creature_bonded(creature_data: Dictionary)
-signal creature_ultimate_strike(damage: float)
 
-# Run / rebirth
+# Run
 signal run_started(run_number: int)
-signal rebirth_triggered()
-signal rebirth_complete(rebirth_count: int)
 signal run_growth_changed(level: int, exp: float, exp_to_next: float)
 signal support_charge_changed(current: float, maximum: float, active_species_id: String)
 signal bonded_support_triggered(species_id: String, lane: int, effect_id: String)

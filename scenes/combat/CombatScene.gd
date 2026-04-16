@@ -18,6 +18,7 @@ extends Node2D
 
 const COMBAT_CONTENT = preload("res://data/CombatContent.gd")
 const GROWTH_CONTENT = preload("res://data/RunGrowthContent.gd")
+const SONG_CONTENT = preload("res://data/SongContent.gd")
 const RING_OUTER_RADIUS: float = 30.0
 const RING_GOOD_RADIUS: float = 24.0
 const RING_PERFECT_RADIUS: float = 15.0
@@ -91,6 +92,10 @@ var _growth_option_labels: Array[Label] = []
 var _combat_finished: bool = false
 var _phase_transitioning: bool = false
 
+# enemy_id -> Color — active status color override for enemy markers.
+# Cleared when the status expires or the enemy is defeated.
+var _status_marker_overrides: Dictionary = {}
+
 var _awaiting_reward_choice: bool = false
 var _reward_choice_made: bool = false
 var _awaiting_continue: bool = false
@@ -129,6 +134,20 @@ var _enemy_phase_by_id: Dictionary = {}
 var _lane_strips: Dictionary = {}
 var _lane_hit_focus: Dictionary = {}
 
+# Song-mode state (used when _song_mode == true).
+var _song_mode: bool = false
+var _song_elapsed: float = 0.0
+var _song_paused: bool = false
+var _song_phase_index: int = -1
+var _song_boss_triggered: bool = false
+var _next_song_enemy_id: int = 100
+var _song_reward_pending: bool = false
+# Maps dynamically spawned song enemy_id → lane (so we know where to respawn on death).
+var _song_enemy_lanes: Dictionary = {}
+var _song_timer_label: Label = null
+var _song_phase_label: Label = null
+var _song_rng: RandomNumberGenerator = RandomNumberGenerator.new()
+
 
 func _ready() -> void:
 	_setup_visuals()
@@ -155,6 +174,13 @@ func _process(delta: float) -> void:
 	if _lane_marker_container != null:
 		_update_lane_visual_states()
 	_maybe_present_growth_offer()
+
+	if _song_mode and not _song_paused and not _run_finished:
+		_song_elapsed += delta
+		_tick_song_phase()
+		_update_song_hud()
+		if not _song_boss_triggered and _song_elapsed >= SONG_CONTENT.SONG_DURATION:
+			_trigger_boss_final_movement()
 
 
 func _update_timing_ring_proximity() -> void:
@@ -348,6 +374,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		if key_event.keycode == KEY_R:
 			_start_mini_run()
 			return
+		if key_event.keycode == KEY_T:
+			get_tree().change_scene_to_file("res://scenes/ui/LairScene.tscn")
+			return
 
 
 func _setup_visuals() -> void:
@@ -460,6 +489,7 @@ func _setup_ui() -> void:
 	_style_progress_bar(hp_bar, Color(0.18, 0.06, 0.08, 0.88), Color(0.73, 0.24, 0.26, 1.0), 6)
 	_style_progress_bar(stamina_bar, Color(0.08, 0.09, 0.10, 0.82), Color(0.44, 0.66, 0.58, 1.0), 5)
 	_build_quig_anchor()
+	_build_song_hud()
 	_refresh_hud_snapshot(0, 0.0, "stirring")
 
 
@@ -719,6 +749,32 @@ func _style_progress_bar(bar: ProgressBar, under_color: Color, fill_color: Color
 	bar.add_theme_stylebox_override("fill", fill)
 
 
+func _build_song_hud() -> void:
+	# Song phase label — top-center, dim.
+	_song_phase_label = Label.new()
+	_song_phase_label.name = "SongPhaseLabel"
+	_song_phase_label.text = ""
+	_song_phase_label.add_theme_font_size_override("font_size", 13)
+	_song_phase_label.add_theme_color_override("font_color", Color(0.55, 0.48, 0.40, 0.70))
+	_song_phase_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_song_phase_label.size = Vector2(400.0, 20.0)
+	_song_phase_label.position = Vector2(440.0, 10.0)
+	_song_phase_label.visible = false
+	ui_layer.add_child(_song_phase_label)
+
+	# Song timer label — top-right corner, shows seconds remaining.
+	_song_timer_label = Label.new()
+	_song_timer_label.name = "SongTimerLabel"
+	_song_timer_label.text = ""
+	_song_timer_label.add_theme_font_size_override("font_size", 15)
+	_song_timer_label.add_theme_color_override("font_color", Color(0.60, 0.52, 0.44, 0.65))
+	_song_timer_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_song_timer_label.size = Vector2(80.0, 22.0)
+	_song_timer_label.position = Vector2(1180.0, 10.0)
+	_song_timer_label.visible = false
+	ui_layer.add_child(_song_timer_label)
+
+
 func _build_quig_anchor() -> void:
 	_quig_anchor_label = Label.new()
 	_quig_anchor_label.name = "QuigAnchor"
@@ -975,6 +1031,8 @@ func _connect_eventbus() -> void:
 	EventBus.support_charge_changed.connect(_on_support_charge_changed)
 	EventBus.bonded_support_triggered.connect(_on_bonded_support_triggered)
 	EventBus.run_upgrade_taken.connect(_on_run_upgrade_taken)
+	EventBus.enemy_status_applied.connect(_on_enemy_status_applied)
+	EventBus.enemy_status_cleared.connect(_on_enemy_status_cleared)
 
 
 func _setup_lane_manager() -> void:
@@ -992,22 +1050,223 @@ func _setup_player_combat() -> void:
 		player_combat.setup(lane_manager, combat_meter)
 
 
+func _start_song_run() -> void:
+	_song_mode = true
+	_song_elapsed = 0.0
+	_song_paused = false
+	_song_phase_index = -1
+	_song_boss_triggered = false
+	_next_song_enemy_id = 100
+	_song_reward_pending = false
+	_song_enemy_lanes.clear()
+	_song_rng.randomize()
+
+	# Use the Feeding Hollow biome for the song run presentation.
+	_active_encounter = {
+		"biome": COMBAT_CONTENT.BIOME_FEEDING_HOLLOW,
+		"phases": [],
+		"phase_intro_texts": []
+	}
+	_current_phase_index = 0
+	_combat_finished = false
+	_phase_transitioning = false
+	_encounter_queue = []
+	_current_encounter_queue_index = 0
+
+	_rebuild_enemy_lookup_tables()
+	_apply_encounter_presentation()
+	_build_arena_visuals()
+	_draw_timing_circles()
+	_prepare_for_encounter(true)
+
+	lane_manager._song_mode = true
+
+	if _song_timer_label != null:
+		_song_timer_label.visible = true
+		_song_timer_label.text = "%d" % int(SONG_CONTENT.SONG_DURATION)
+	if _song_phase_label != null:
+		_song_phase_label.visible = true
+
+	_set_song_controls_text()
+
+	# Enter phase 0 — this starts the fire cycle with initial enemies.
+	_enter_song_phase(0)
+
+
+func _tick_song_phase() -> void:
+	# Check if it is time to advance to the next phase.
+	var next_idx: int = _song_phase_index + 1
+	if next_idx >= SONG_CONTENT.SONG_PHASES.size():
+		return
+	var next_phase: Dictionary = SONG_CONTENT.SONG_PHASES[next_idx]
+	if _song_elapsed >= float(next_phase.get("start_time", 9999.0)):
+		_enter_song_phase(next_idx)
+
+
+func _enter_song_phase(new_idx: int) -> void:
+	var old_idx: int = _song_phase_index
+	_song_phase_index = new_idx
+	var new_phase: Dictionary = SONG_CONTENT.SONG_PHASES[new_idx]
+
+	lane_manager.set_cycle_interval(float(new_phase.get("cycle_interval", 2.2)))
+
+	var intro_text: String = String(new_phase.get("intro_text", ""))
+	if not intro_text.is_empty():
+		_show_feedback(intro_text, Color(0.92, 0.88, 0.74, 1.0), 0.55)
+
+	if _song_phase_label != null:
+		_song_phase_label.text = String(new_phase.get("label", ""))
+
+	# If the previous phase had a reward pool, pause and offer it now.
+	if old_idx >= 0:
+		var old_phase: Dictionary = SONG_CONTENT.SONG_PHASES[old_idx]
+		var reward_pool: Array = old_phase.get("reward_pool", [])
+		if not reward_pool.is_empty():
+			_offer_song_phase_reward(reward_pool)
+			return
+
+	# No reward — seed new enemies immediately.
+	_seed_song_enemies_for_phase(new_phase)
+
+
+func _seed_song_enemies_for_phase(phase: Dictionary) -> void:
+	var max_threats: int = int(phase.get("max_active_threats", 2))
+	var current_alive: int = lane_manager.alive_count()
+	var lanes_to_fill: int = min(max_threats - current_alive, lane_manager.LANE_COUNT)
+	if lanes_to_fill <= 0:
+		return
+
+	# Prefer lanes without an active enemy; fall back to any lane.
+	var empty_lanes: Array = []
+	for lane in range(lane_manager.LANE_COUNT):
+		if lane_manager.get_enemy(lane).is_empty() or float(lane_manager.get_enemy(lane).get("hp", 0.0)) <= 0.0:
+			empty_lanes.append(lane)
+
+	# Shuffle and fill up to lanes_to_fill.
+	var filled: int = 0
+	for i in range(empty_lanes.size()):
+		if filled >= lanes_to_fill:
+			break
+		_place_song_enemy(empty_lanes[i])
+		filled += 1
+
+	# If the fire cycle hasn't started yet (phase 0 entry), kick it off.
+	if not lane_manager._combat_running:
+		lane_manager.start_song_cycle()
+
+
+func _place_song_enemy(lane: int) -> void:
+	var phase: Dictionary = SONG_CONTENT.SONG_PHASES[_song_phase_index]
+	var enemy: Dictionary = _pick_weighted_song_enemy(phase)
+	if enemy.is_empty():
+		return
+	enemy["id"] = _next_song_enemy_id
+	enemy["lane"] = lane
+	_song_enemy_lanes[_next_song_enemy_id] = lane
+	_next_song_enemy_id += 1
+	lane_manager.set_enemy(lane, enemy)
+
+
+func _pick_weighted_song_enemy(phase: Dictionary) -> Dictionary:
+	var pool: Array = phase.get("enemy_pool", [])
+	if pool.is_empty():
+		return {}
+	var total_weight: float = 0.0
+	for entry in pool:
+		total_weight += float(entry.get("weight", 1.0))
+	var roll: float = _song_rng.randf_range(0.0, total_weight)
+	var cursor: float = 0.0
+	for entry in pool:
+		cursor += float(entry.get("weight", 1.0))
+		if roll <= cursor:
+			return entry.duplicate(true)
+	return pool.back().duplicate(true)
+
+
+func _offer_song_phase_reward(reward_pool: Array) -> void:
+	# Pause the song and show a creature reward choice.
+	_song_paused = true
+	_song_reward_pending = true
+	lane_manager.stop()
+	lane_manager._song_mode = true  # Preserve flag after stop().
+
+	var creature_id: String = reward_pool[randi() % reward_pool.size()]
+	var creature: Dictionary = COMBAT_CONTENT.get_creature(creature_id)
+	if creature.is_empty():
+		_resume_song_after_reward()
+		return
+
+	_offer_victory_reward(creature)
+
+
+func _resume_song_after_reward() -> void:
+	_song_reward_pending = false
+	_song_paused = false
+	_hide_reward_overlay()
+	_set_song_controls_text()
+
+	# Re-establish LaneManager song mode (stop() cleared it).
+	lane_manager._song_mode = true
+
+	if player_combat != null and player_combat.has_method("set_combat_enabled"):
+		player_combat.set_combat_enabled(true)
+
+	# Seed enemies and restart the fire cycle.
+	# _seed_song_enemies_for_phase starts the cycle when _combat_running is false (post-stop).
+	var phase: Dictionary = SONG_CONTENT.SONG_PHASES[_song_phase_index]
+	_seed_song_enemies_for_phase(phase)
+
+
+func _trigger_boss_final_movement() -> void:
+	_song_boss_triggered = true
+	_song_paused = true
+	_song_mode = false
+	lane_manager.stop()
+	lane_manager._song_mode = false
+
+	# Build the boss encounter with thornback as the post-boss reward.
+	var boss_encounter: Dictionary = COMBAT_CONTENT.get_encounter("feeding_hollow_boss")
+	boss_encounter["reward_creature_pool"] = [COMBAT_CONTENT.get_creature("thornback")]
+
+	_encounter_queue = [boss_encounter]
+	_current_encounter_queue_index = 0
+	_run_finished = false
+	_is_boss_encounter = false
+
+	_hide_song_hud()
+	_load_current_queued_encounter(false)
+
+
+func _update_song_hud() -> void:
+	if _song_timer_label == null:
+		return
+	var remaining: float = max(SONG_CONTENT.SONG_DURATION - _song_elapsed, 0.0)
+	_song_timer_label.text = "%d" % int(ceil(remaining))
+
+
+func _set_song_controls_text() -> void:
+	controls_label.text = "A/S/D lane  |  Left parry  |  Right dodge  |  R ultimate"
+
+
+func _hide_song_hud() -> void:
+	if _song_timer_label != null:
+		_song_timer_label.visible = false
+	if _song_phase_label != null:
+		_song_phase_label.visible = false
+
+
 func _build_mini_run_queue() -> Array:
 	return COMBAT_CONTENT.build_mini_run_queue()
 
 
 func _start_mini_run() -> void:
-	# Starts a fresh run from the beginning of the encounter queue.
+	# Resets shared run state then launches in song mode.
 	GameState.run_number += 1
-
-	_encounter_queue = _build_mini_run_queue()
-	_current_encounter_queue_index = 0
 	_run_finished = false
 	_is_boss_encounter = false
 	_boss_total_hp = 0.0
 	_boss_current_hp = 0.0
 	_hide_boss_bar()
-
 	_hide_reward_overlay()
 
 	if GameState.has_method("reset_run_state"):
@@ -1015,7 +1274,7 @@ func _start_mini_run() -> void:
 
 	EventBus.emit_signal("run_started", int(GameState.run_number))
 	_refresh_run_build_readout()
-	_load_current_queued_encounter(true)
+	_start_song_run()
 
 
 func _load_current_queued_encounter(reset_hp: bool) -> void:
@@ -1189,6 +1448,10 @@ func _refresh_enemy_marker_states() -> void:
 		else:
 			marker.color = inactive_color
 
+		# Apply active status color override on top of biome color.
+		if _status_marker_overrides.has(enemy_id):
+			marker.color = _status_marker_overrides[enemy_id]
+
 
 func _draw_timing_circles() -> void:
 	for child in _timing_circle_container.get_children():
@@ -1296,6 +1559,9 @@ func _prepare_for_encounter(reset_hp: bool) -> void:
 
 
 func _set_combat_controls_text() -> void:
+	if _song_mode:
+		_set_song_controls_text()
+		return
 	var encounter_count: int = _encounter_queue.size()
 	var encounter_number: int = _current_encounter_queue_index + 1
 	controls_label.text = "Encounter %d/%d  |  A/S/D lane  |  Left parry  |  Right dodge  |  R ultimate" % [
@@ -1421,12 +1687,12 @@ func _finish_run(victory: bool) -> void:
 		result_label.text = "RUN COMPLETE"
 		result_label.visible = true
 		_show_feedback("THE HOLLOW REMEMBERS YOU", Color(0.85, 1.0, 0.75, 1.0), 0.70)
-		controls_label.text = "Run complete  |  Press R to restart run"
+		controls_label.text = "Run complete  |  R restart  |  T title"
 	else:
 		result_label.text = "RUN FAILED"
 		result_label.visible = true
 		_show_feedback("RUN FAILED", Color(1.0, 0.45, 0.45, 1.0), 0.65)
-		controls_label.text = "Run failed  |  Press R to restart run"
+		controls_label.text = "Run failed  |  R restart  |  T title"
 
 	_hide_reward_overlay()
 
@@ -1596,35 +1862,38 @@ func _format_eat_effect(effect: Dictionary) -> String:
 			return "absorb its essence"
 
 
-func _format_bond_passive(passive: Dictionary) -> String:
+func _format_bond_passive(passive: Dictionary, bond_level: int = 1) -> String:
+	var mult: float = GameState.get_bond_level_mult(bond_level)
 	match passive.get("type", ""):
 		"damage_on_ultimate":
-			return "+%.0f damage added to your ultimate" % float(passive.get("value", 0.0))
+			return "+%.0f damage added to your ultimate" % (float(passive.get("value", 0.0)) * mult)
 		"damage_reduction_pct":
-			return "%.0f%% damage reduction while bonded" % (float(passive.get("value", 0.0)) * 100.0)
+			return "%.0f%% damage reduction while bonded" % (float(passive.get("value", 0.0)) * mult * 100.0)
 		"hp_on_kill":
-			return "+%.0f HP restored on every enemy kill" % float(passive.get("value", 0.0))
+			return "+%.1f HP restored on every enemy kill" % (float(passive.get("value", 0.0)) * mult)
 		"parry_reflect_mult":
-			return "+%.0f%% parry reflect damage while bonded" % (float(passive.get("value", 0.0)) * 100.0)
+			return "+%.0f%% parry reflect damage while bonded" % (float(passive.get("value", 0.0)) * mult * 100.0)
 		"timed_damage_flat":
-			return "+%.0f flat damage added to every timed attack" % float(passive.get("value", 0.0))
+			return "+%.1f flat damage added to every timed attack" % (float(passive.get("value", 0.0)) * mult)
 		_:
 			return "keep in roster"
 
 
-func _format_bond_passive_short(passive: Dictionary) -> String:
+func _format_bond_passive_short(passive: Dictionary, bond_level: int = 1) -> String:
 	# Compact version for the in-combat BOND row of the run build shell.
+	# bond_level scales displayed values to reflect current progression.
+	var mult: float = GameState.get_bond_level_mult(bond_level)
 	match passive.get("type", ""):
 		"damage_on_ultimate":
-			return "+%.0f ult dmg" % float(passive.get("value", 0.0))
+			return "+%.0f ult dmg" % (float(passive.get("value", 0.0)) * mult)
 		"damage_reduction_pct":
-			return "%.0f%% def" % (float(passive.get("value", 0.0)) * 100.0)
+			return "%.0f%% def" % (float(passive.get("value", 0.0)) * mult * 100.0)
 		"hp_on_kill":
-			return "+%.0f hp/kill" % float(passive.get("value", 0.0))
+			return "+%.1f hp/kill" % (float(passive.get("value", 0.0)) * mult)
 		"parry_reflect_mult":
-			return "+%.0f%% parry" % (float(passive.get("value", 0.0)) * 100.0)
+			return "+%.0f%% parry" % (float(passive.get("value", 0.0)) * mult * 100.0)
 		"timed_damage_flat":
-			return "+%.0f timed" % float(passive.get("value", 0.0))
+			return "+%.1f timed" % (float(passive.get("value", 0.0)) * mult)
 		_:
 			return "--"
 
@@ -1706,7 +1975,11 @@ func _refresh_run_build_readout() -> void:
 
 	if _bond_value_label != null:
 		var active: Dictionary = GameState.get_active_bonded_creature()
-		_bond_value_label.text = _format_bond_passive_short(active.get("bond_passive", {})) if not active.is_empty() else "--"
+		if not active.is_empty():
+			var active_bond_level: int = int(active.get("bond_level", 1))
+			_bond_value_label.text = _format_bond_passive_short(active.get("bond_passive", {}), active_bond_level)
+		else:
+			_bond_value_label.text = "--"
 
 	if _atk_value_label != null:
 		_atk_value_label.text = "%.0f" % GameState.get_attack_damage()
@@ -1888,7 +2161,9 @@ func _choose_bond() -> void:
 	_reward_eat_effect_label.text = ""
 	_reward_quig_label.text = "Quig: \"Good. Watch — they're already positioning.\""
 
-	if _has_next_encounter():
+	if _song_reward_pending:
+		_resume_song_after_reward()
+	elif _has_next_encounter():
 		_show_continue_after_reward()
 	else:
 		_reward_hint_label.text = "Press R to restart run"
@@ -1905,6 +2180,14 @@ func _choose_eat() -> void:
 		var healed: float = float(absorbed_entry.get("heal_applied", 0.0))
 		if healed > 0.0:
 			EventBus.emit_signal("player_healed", healed)
+
+	# Hollow Feed upgrade: extra heal on any eat.
+	var hollow_feed_effect: Dictionary = _get_upgrade_effect("eat_hp_restore")
+	if not hollow_feed_effect.is_empty():
+		var feed_healed: float = GameState.heal_player(float(hollow_feed_effect.get("value", 0.0)))
+		if feed_healed > 0.0:
+			EventBus.emit_signal("player_healed", feed_healed)
+
 	EventBus.emit_signal("creature_eaten", _pending_reward_creature)
 
 	_reward_choice_made = true
@@ -1941,7 +2224,9 @@ func _choose_eat() -> void:
 
 	_reward_quig_label.text = "Quig: \"There will be others.\""
 
-	if _has_next_encounter():
+	if _song_reward_pending:
+		_resume_song_after_reward()
+	elif _has_next_encounter():
 		_show_continue_after_reward()
 	else:
 		_reward_hint_label.text = "Press R to restart run"
@@ -2054,6 +2339,20 @@ func _on_enemy_defeated(enemy_id: int) -> void:
 			EventBus.emit_signal("player_healed", healed)
 	_remove_enemy_marker(enemy_id)
 
+	if _song_mode and not _song_paused and not _song_boss_triggered:
+		var dead_lane: int = _song_enemy_lanes.get(enemy_id, -1)
+		if dead_lane >= 0:
+			_song_enemy_lanes.erase(enemy_id)
+			# Schedule a respawn in the same lane if the phase still has room.
+			var respawn_lane: int = dead_lane
+			get_tree().create_timer(0.40).timeout.connect(func() -> void:
+				if _song_mode and not _song_paused and not _song_boss_triggered:
+					var phase: Dictionary = SONG_CONTENT.SONG_PHASES[_song_phase_index]
+					var max_threats: int = int(phase.get("max_active_threats", 2))
+					if lane_manager.alive_count() < max_threats:
+						_place_song_enemy(respawn_lane)
+			, CONNECT_ONE_SHOT)
+
 
 func _on_screen_flash(color: Color, duration: float) -> void:
 	flash_overlay.color = color
@@ -2104,14 +2403,18 @@ func _on_player_attacked(lane: int, _damage: float, was_timed: bool) -> void:
 		_flash_meter_shell(Color(0.16, 0.16, 0.17, 0.94), 0.08)
 
 
-func _on_timed_attack_resolved(lane: int, _quality: String, damage: float) -> void:
+func _on_timed_attack_resolved(lane: int, quality: String, damage: float) -> void:
 	var ravage_effect: Dictionary = _get_upgrade_effect("timed_attack_bonus_damage")
-	if ravage_effect.is_empty():
-		return
+	if not ravage_effect.is_empty():
+		var rip_damage: float = damage * float(ravage_effect.get("value", 0.0))
+		lane_manager.damage_enemy(lane, rip_damage)
+		_spawn_attack_silhouette_to_lane(lane, Color(0.95, 0.48, 0.36, 0.34), 8.0, 0.08, 0.92)
 
-	var rip_damage: float = damage * float(ravage_effect.get("value", 0.0))
-	lane_manager.damage_enemy(lane, rip_damage)
-	_spawn_attack_silhouette_to_lane(lane, Color(0.95, 0.48, 0.36, 0.34), 8.0, 0.08, 0.92)
+	if quality == "good":
+		var flow_effect: Dictionary = _get_upgrade_effect("good_timed_bonus_damage")
+		if not flow_effect.is_empty():
+			var flow_damage: float = damage * float(flow_effect.get("value", 0.0))
+			lane_manager.damage_enemy(lane, flow_damage)
 
 
 func _on_player_parried(lane: int, quality: String, _reflect_damage: float) -> void:
@@ -2184,45 +2487,72 @@ func _on_support_charge_changed(current: float, maximum: float, active_species_i
 func _on_bonded_support_triggered(_species_id: String, lane: int, effect_id: String) -> void:
 	var support_role: Dictionary = _get_support_role_for_effect(effect_id)
 	var combo_mult: float = combat_meter.damage_multiplier()
+	var active_creature: Dictionary = GameState.get_active_bonded_creature()
+	var bond_mult: float = GameState.get_bond_level_mult(int(active_creature.get("bond_level", 1)))
+
+	# HOLLOW amplifier: when Bond Remnant is the active creature, REND gets one extra charge
+	# and EXPOSE lasts 0.5 s longer. This is structurally correct now and matures once
+	# status-applying upgrades or multi-support systems are added.
+	var is_hollow_active: bool = String(active_creature.get("species_id", "")) == "bond_remnant"
+	var rend_charges: int = 4 if is_hollow_active else 3
+	var expose_duration: float = 3.0 if is_hollow_active else 2.5
+
 	match effect_id:
 		"ashclaw_strike":
-			var strike_damage: float = float(support_role.get("effect_value", 10.0)) * combo_mult
+			var strike_damage: float = float(support_role.get("effect_value", 10.0)) * combo_mult * bond_mult
 			lane_manager.damage_enemy(lane, strike_damage)
+			lane_manager.apply_status(lane, "expose", {"duration": expose_duration})
 			_show_feedback(String(support_role.get("feedback_text", "ASHCLAW")), Color(0.95, 0.60, 0.42, 1.0), 0.28)
 			_highlight_timing_ring(lane, Color(0.92, 0.56, 0.38, 1.0), 5.4)
 			_spawn_attack_silhouette_to_lane(lane, Color(0.95, 0.60, 0.42, 0.52), 9.0, 0.12, 1.02)
 			_flash_meter_shell(Color(0.25, 0.12, 0.10, 0.92), 0.10)
 		"bond_remnant_mend":
-			var healed: float = GameState.heal_player(float(support_role.get("effect_value", 6.0)))
+			var healed: float = GameState.heal_player(float(support_role.get("effect_value", 6.0)) * bond_mult)
 			if healed > 0.0:
 				EventBus.emit_signal("player_healed", healed)
+			# Bond Remnant does not apply a status directly. Its HOLLOW amplifier
+			# extends REND/EXPOSE durations applied by other creatures when it is active.
 			_show_feedback(String(support_role.get("feedback_text", "REMNANT")), Color(0.72, 0.96, 0.88, 1.0), 0.28)
 			_highlight_timing_ring(lane, Color(0.68, 0.94, 0.84, 1.0), 4.8)
 			_flash_meter_shell(Color(0.12, 0.22, 0.18, 0.92), 0.10)
 		"gruvek_gorge":
-			var gorge_damage: float = float(support_role.get("effect_value", 10.0)) * combo_mult
+			var gorge_damage: float = float(support_role.get("effect_value", 10.0)) * combo_mult * bond_mult
 			for check_lane in range(3):
 				lane_manager.damage_enemy(check_lane, gorge_damage)
+			# Apply GORGE-MARK to surviving enemies after gorge damage resolves.
+			for check_lane in range(3):
+				var surviving: Dictionary = lane_manager.get_enemy(check_lane)
+				if surviving.has("hp") and float(surviving["hp"]) > 0.0:
+					lane_manager.apply_status(check_lane, "gorge_mark", {})
 			_show_feedback(String(support_role.get("feedback_text", "GORGE")), Color(0.90, 0.52, 0.22, 1.0), 0.30)
 			for check_lane in range(3):
 				_highlight_timing_ring(check_lane, Color(0.88, 0.50, 0.20, 1.0), 5.0)
 			_flash_meter_shell(Color(0.28, 0.14, 0.08, 0.92), 0.12)
 		"veilskin_phase":
-			var phase_damage: float = float(support_role.get("effect_value", 12.0))
+			var phase_damage: float = float(support_role.get("effect_value", 12.0)) * bond_mult
 			lane_manager.damage_enemy(lane, phase_damage)
+			lane_manager.apply_status(lane, "pale", {})
 			combat_meter.restore_stamina(25.0)
 			_show_feedback(String(support_role.get("feedback_text", "PHASE")), Color(0.78, 0.92, 1.0, 1.0), 0.28)
 			_highlight_timing_ring(lane, Color(0.72, 0.88, 1.0, 1.0), 4.8)
 			_flash_meter_shell(Color(0.10, 0.18, 0.26, 0.92), 0.10)
 		"thornback_rend":
-			var rend_damage: float = float(support_role.get("effect_value", 20.0)) * combo_mult
+			var rend_damage: float = float(support_role.get("effect_value", 20.0)) * combo_mult * bond_mult
 			lane_manager.damage_enemy(lane, rend_damage)
+			lane_manager.apply_status(lane, "rend", {"charges": rend_charges})
 			_show_feedback(String(support_role.get("feedback_text", "REND")), Color(0.96, 0.75, 0.38, 1.0), 0.28)
 			_highlight_timing_ring(lane, Color(0.94, 0.72, 0.34, 1.0), 6.0)
 			_spawn_attack_silhouette_to_lane(lane, Color(0.96, 0.75, 0.38, 0.60), 12.0, 0.14, 1.10)
 			_flash_meter_shell(Color(0.28, 0.16, 0.08, 0.92), 0.10)
 		_:
 			return
+
+	# Pack Signal upgrade: heal on every support trigger.
+	var pack_heal_effect: Dictionary = _get_upgrade_effect("support_trigger_heal")
+	if not pack_heal_effect.is_empty():
+		var pack_healed: float = GameState.heal_player(float(pack_heal_effect.get("value", 0.0)))
+		if pack_healed > 0.0:
+			EventBus.emit_signal("player_healed", pack_healed)
 
 
 func _on_run_upgrade_taken(upgrade_id: String) -> void:
@@ -2239,10 +2569,80 @@ func _on_run_upgrade_taken(upgrade_id: String) -> void:
 			_flash_meter_shell(Color(0.24, 0.22, 0.10, 0.92), 0.10)
 		"survival_hollow_shelter":
 			_flash_meter_shell(Color(0.12, 0.20, 0.18, 0.92), 0.10)
+		"flesh_bloodrite":
+			_flash_meter_shell(Color(0.30, 0.12, 0.12, 0.92), 0.10)
+		"flesh_hollow_feed":
+			_flash_meter_shell(Color(0.28, 0.14, 0.08, 0.92), 0.10)
+		"bond_pack_signal":
+			_flash_meter_shell(Color(0.12, 0.22, 0.18, 0.92), 0.10)
+		"bond_depth_pulse":
+			_flash_meter_shell(Color(0.10, 0.20, 0.22, 0.92), 0.10)
+		"cadence_flow_state":
+			_flash_meter_shell(Color(0.24, 0.22, 0.10, 0.92), 0.10)
+		"survival_pressure_mend":
+			_flash_meter_shell(Color(0.12, 0.18, 0.20, 0.92), 0.10)
 		_:
 			pass
 	_refresh_run_build_readout()
 
+
+
+func _get_enemy_id_for_lane(lane: int) -> int:
+	var enemy: Dictionary = lane_manager.get_enemy(lane)
+	if enemy.is_empty():
+		return -1
+	return int(enemy.get("id", -1))
+
+
+func _on_enemy_status_applied(lane: int, status_id: String) -> void:
+	# Updates the enemy marker color to reflect the new status.
+	# "gorge_mark_triggered" fires when a marked enemy dies — show FEAST feedback.
+	if status_id == "gorge_mark_triggered":
+		_show_feedback("FEAST", Color(0.92, 0.60, 0.20, 1.0), 0.36)
+		return
+
+	var enemy_id: int = _get_enemy_id_for_lane(lane)
+	if enemy_id < 0:
+		return
+	var marker: ColorRect = _enemy_markers_by_id.get(enemy_id, null)
+	if marker == null or not is_instance_valid(marker):
+		return
+
+	match status_id:
+		"rend":
+			_status_marker_overrides[enemy_id] = Color(0.80, 0.22, 0.10, 0.92)
+			_show_feedback("REND", Color(0.94, 0.40, 0.24, 1.0), 0.30)
+		"pale":
+			_status_marker_overrides[enemy_id] = Color(0.40, 0.42, 0.58, 0.70)
+			_show_feedback("PALE", Color(0.74, 0.78, 0.96, 1.0), 0.28)
+		"gorge_mark":
+			_status_marker_overrides[enemy_id] = Color(0.72, 0.50, 0.10, 0.88)
+			# No feedback — gorge already showed "GORGE".
+		"expose":
+			_status_marker_overrides[enemy_id] = Color(0.84, 0.70, 0.12, 0.92)
+			_show_feedback("EXPOSED", Color(0.96, 0.88, 0.44, 1.0), 0.32)
+		_:
+			return
+
+	marker.color = _status_marker_overrides[enemy_id]
+
+
+func _on_enemy_status_cleared(lane: int) -> void:
+	# Resets the enemy marker color to its biome-based color when a status expires or is consumed.
+	var enemy_id: int = _get_enemy_id_for_lane(lane)
+	if enemy_id < 0:
+		return
+	_status_marker_overrides.erase(enemy_id)
+
+	var marker: ColorRect = _enemy_markers_by_id.get(enemy_id, null)
+	if marker == null or not is_instance_valid(marker):
+		return
+
+	var biome: Dictionary = _active_encounter.get("biome", {})
+	var active_color: Color = biome.get("enemy_active_color", Color(0.76, 0.21, 0.21, 1.0))
+	var inactive_color: Color = biome.get("enemy_inactive_color", Color(0.38, 0.18, 0.18, 0.55))
+	var phase: int = int(_enemy_phase_by_id.get(enemy_id, -1))
+	marker.color = active_color if phase == _current_phase_index else inactive_color
 
 
 func _get_upgrade_effect(effect_type: String) -> Dictionary:
@@ -2378,6 +2778,7 @@ func _animate_enemy_damage(enemy_id: int) -> void:
 
 
 func _remove_enemy_marker(enemy_id: int) -> void:
+	_status_marker_overrides.erase(enemy_id)
 	if not _enemy_markers_by_id.has(enemy_id):
 		return
 

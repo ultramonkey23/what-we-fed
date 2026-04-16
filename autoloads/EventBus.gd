@@ -24,6 +24,8 @@ signal player_no_stamina()
 # Enemy state
 signal enemy_damaged(enemy_id: int, damage: float)
 signal enemy_defeated(enemy_id: int)
+signal enemy_status_applied(lane: int, status_id: String)
+signal enemy_status_cleared(lane: int)
 
 # Combat meter
 signal combo_changed(count: int, tier: String)

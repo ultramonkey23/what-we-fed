@@ -13,6 +13,7 @@ const CHARGE_TIMED_ATTACK: float = 14.0
 const CHARGE_GOOD_PARRY: float = 12.0
 const CHARGE_PERFECT_PARRY: float = 24.0
 const CHARGE_ENEMY_DEFEAT: float = 10.0
+const GORGE_MARK_BONUS_CHARGE: float = 5.0  # Extra charge granted when a GORGE-MARK enemy is defeated
 const CHARGE_ULTIMATE_SHARED_SURGE: float = 45.0
 const CHARGE_CADENCE_BONUS: float = 15.0
 const CHARGE_SURVIVAL_RECOVERY: float = 20.0
@@ -69,5 +70,47 @@ const UPGRADE_POOL: Array[Dictionary] = [
 			"heal_value": 6.0,
 			"charge_value": 20.0
 		}
+	},
+	{
+		"id": "flesh_bloodrite",
+		"title": "Bloodrite",
+		"category": "Flesh",
+		"summary": "Perfect timed attacks draw a fragment of life from the struck lane.",
+		"effect": {"type": "hp_on_perfect_timed", "value": 2.0}
+	},
+	{
+		"id": "flesh_hollow_feed",
+		"title": "Hollow Feed",
+		"category": "Flesh",
+		"summary": "Consuming a creature feeds back into the flesh, restoring lost ground.",
+		"effect": {"type": "eat_hp_restore", "value": 8.0}
+	},
+	{
+		"id": "bond_pack_signal",
+		"title": "Pack Signal",
+		"category": "Bond",
+		"summary": "Every bonded support activation restores a fragment of health.",
+		"effect": {"type": "support_trigger_heal", "value": 10.0}
+	},
+	{
+		"id": "bond_depth_pulse",
+		"title": "Depth Pulse",
+		"category": "Bond",
+		"summary": "The bond runs deeper. Every mastery action sends a stronger signal.",
+		"effect": {"type": "support_charge_flat_bonus", "value": 6.0}
+	},
+	{
+		"id": "cadence_flow_state",
+		"title": "Flow State",
+		"category": "Cadence",
+		"summary": "Consistent timing builds momentum. Good hits grow sharper.",
+		"effect": {"type": "good_timed_bonus_damage", "value": 0.15}
+	},
+	{
+		"id": "survival_pressure_mend",
+		"title": "Pressure Mend",
+		"category": "Survival",
+		"summary": "The first wound taken while broken triggers a brief mending surge.",
+		"effect": {"type": "low_hp_first_damage_heal", "value": 5.0}
 	}
 ]

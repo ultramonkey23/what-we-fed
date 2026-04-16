@@ -428,44 +428,47 @@ func _take_damage(amount: float, source_lane: int) -> void:
 
 
 func _get_creature_bonus() -> float:
-	# Sums the value of every bonded creature whose passive is "damage_on_ultimate".
-	# Bond level scaling is the obvious next step once bond progression matters more.
+	# Sums damage_on_ultimate from all bonded creatures, scaled by bond level.
 	var total: float = 0.0
 	for creature in GameState.roster:
 		var passive: Dictionary = creature.get("bond_passive", {})
 		if passive.get("type", "") == "damage_on_ultimate":
-			total += float(passive.get("value", 0.0))
+			var mult: float = GameState.get_bond_level_mult(int(creature.get("bond_level", 1)))
+			total += float(passive.get("value", 0.0)) * mult
 	return total
 
 
 func _get_damage_reduction() -> float:
-	# Sums the damage_reduction_pct passive from all bonded creatures.
+	# Sums damage_reduction_pct from all bonded creatures, scaled by bond level.
 	# Capped at 50% to prevent stacking from becoming degenerate.
 	var total: float = 0.0
 	for creature in GameState.roster:
 		var passive: Dictionary = creature.get("bond_passive", {})
 		if passive.get("type", "") == "damage_reduction_pct":
-			total += float(passive.get("value", 0.0))
+			var mult: float = GameState.get_bond_level_mult(int(creature.get("bond_level", 1)))
+			total += float(passive.get("value", 0.0)) * mult
 	return min(total, 0.50)
 
 
 func _get_parry_reflect_bonus() -> float:
-	# Sums parry_reflect_mult from all bonded creatures (e.g. Veilskin +0.40).
+	# Sums parry_reflect_mult from all bonded creatures (e.g. Veilskin +0.40), scaled by bond level.
 	var total: float = 0.0
 	for creature in GameState.roster:
 		var passive: Dictionary = creature.get("bond_passive", {})
 		if passive.get("type", "") == "parry_reflect_mult":
-			total += float(passive.get("value", 0.0))
+			var mult: float = GameState.get_bond_level_mult(int(creature.get("bond_level", 1)))
+			total += float(passive.get("value", 0.0)) * mult
 	return total
 
 
 func _get_timed_damage_bonus() -> float:
-	# Sums timed_damage_flat from all bonded creatures (e.g. Thornback +3).
+	# Sums timed_damage_flat from all bonded creatures (e.g. Thornback +3), scaled by bond level.
 	var total: float = 0.0
 	for creature in GameState.roster:
 		var passive: Dictionary = creature.get("bond_passive", {})
 		if passive.get("type", "") == "timed_damage_flat":
-			total += float(passive.get("value", 0.0))
+			var mult: float = GameState.get_bond_level_mult(int(creature.get("bond_level", 1)))
+			total += float(passive.get("value", 0.0)) * mult
 	return total
 
 

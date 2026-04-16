@@ -11,6 +11,7 @@ var support_charge: float = 0.0
 var _pending_upgrade_offers: Array = []
 var _encounter_style_tiers_awarded: Dictionary = {}
 var _encounter_survival_spent: bool = false
+var _encounter_pressure_mend_spent: bool = false
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
 
@@ -36,6 +37,8 @@ func _ready() -> void:
 		EventBus.creature_bonded.connect(_on_creature_changed)
 	if not EventBus.creature_eaten.is_connected(_on_creature_changed):
 		EventBus.creature_eaten.connect(_on_creature_changed)
+	if not EventBus.enemy_status_applied.is_connected(_on_enemy_status_applied):
+		EventBus.enemy_status_applied.connect(_on_enemy_status_applied)
 	_emit_growth_state()
 	_emit_support_state()
 
@@ -79,9 +82,14 @@ func _on_run_started(_run_number: int) -> void:
 	exp = 0.0
 	exp_to_next = GROWTH_CONTENT.LEVEL_THRESHOLDS[0]
 	support_charge = 0.0
+	# Apply starting_support_charge region modifier if the Drowned Cut is active.
+	var region_mod: Dictionary = GameState.active_region.get("modifier", {})
+	if region_mod.get("type", "") == "starting_support_charge":
+		support_charge = clamp(float(region_mod.get("value", 0.0)), 0.0, GROWTH_CONTENT.SUPPORT_MAX)
 	_pending_upgrade_offers.clear()
 	_encounter_style_tiers_awarded.clear()
 	_encounter_survival_spent = false
+	_encounter_pressure_mend_spent = false
 	_emit_growth_state()
 	_emit_support_state()
 
@@ -89,6 +97,7 @@ func _on_run_started(_run_number: int) -> void:
 func _on_combat_started(_enemy_data: Array) -> void:
 	_encounter_style_tiers_awarded.clear()
 	_encounter_survival_spent = false
+	_encounter_pressure_mend_spent = false
 
 
 func _on_enemy_defeated(_enemy_id: int) -> void:
@@ -104,6 +113,7 @@ func _on_timed_attack_resolved(lane: int, quality: String, _damage: float) -> vo
 
 	if quality == "perfect":
 		_apply_upgrade_effect_on_event("perfect_timing")
+		_apply_upgrade_effect_on_event("perfect_timed_heal")
 		_trigger_active_support_for_event("perfect_timed_attack", lane)
 
 
@@ -138,11 +148,22 @@ func _on_player_took_damage(_amount: float, source_lane: int) -> void:
 	if not _encounter_survival_spent and _apply_upgrade_effect_on_event("first_damage_taken"):
 		_encounter_survival_spent = true
 
+	if not _encounter_pressure_mend_spent and GameState.get_hp_percent() < 0.50:
+		if _apply_upgrade_effect_on_event("low_hp_first_hit"):
+			_encounter_pressure_mend_spent = true
+
 	_trigger_active_support_for_event("damage_taken_when_ready", source_lane)
 
 
 func _on_creature_changed(_creature_data: Dictionary) -> void:
 	_emit_support_state()
+
+
+func _on_enemy_status_applied(_lane: int, status_id: String) -> void:
+	# GORGE-MARK triggered: a marked enemy was defeated. Grant bonus support charge
+	# (on top of the base CHARGE_ENEMY_DEFEAT already granted via enemy_defeated).
+	if status_id == "gorge_mark_triggered":
+		_gain_support_charge(GROWTH_CONTENT.GORGE_MARK_BONUS_CHARGE)
 
 
 func _grant_exp(amount: float) -> void:
@@ -175,7 +196,12 @@ func _gain_support_charge(amount: float) -> void:
 	if not gain_effect.is_empty():
 		gain_mult = float(gain_effect.get("value", 1.0))
 
-	support_charge = clamp(support_charge + amount * gain_mult, 0.0, GROWTH_CONTENT.SUPPORT_MAX)
+	var flat_bonus: float = 0.0
+	var depth_effect: Dictionary = _get_upgrade_effect("support_charge_flat_bonus")
+	if not depth_effect.is_empty():
+		flat_bonus = float(depth_effect.get("value", 0.0))
+
+	support_charge = clamp(support_charge + (amount + flat_bonus) * gain_mult, 0.0, GROWTH_CONTENT.SUPPORT_MAX)
 	_emit_support_state()
 
 
@@ -262,6 +288,14 @@ func _pick_weighted_upgrade(candidates: Array[Dictionary]) -> Dictionary:
 			weight += 0.40
 		if upgrade_id == "cadence_knife_between_beats" and active_id == "veilskin":
 			weight += 0.40
+		if upgrade_id == "flesh_bloodrite" and active_id == "thornback":
+			weight += 0.40
+		if upgrade_id == "flesh_hollow_feed" and active_id == "gruvek":
+			weight += 0.40
+		if upgrade_id == "bond_pack_signal" and (active_id == "veilskin" or active_id == "ashclaw"):
+			weight += 0.40
+		if upgrade_id == "bond_depth_pulse" and active_id == "bond_remnant":
+			weight += 0.40
 
 		total_weight += weight
 		weighted.append({"upgrade": upgrade, "weight": weight})
@@ -313,6 +347,22 @@ func _apply_upgrade_effect_on_event(event_id: String) -> bool:
 				EventBus.emit_signal("player_healed", healed)
 			_gain_support_charge(float(survival_effect.get("charge_value", 0.0)))
 			return true
+		"perfect_timed_heal":
+			var bloodrite_effect: Dictionary = _get_upgrade_effect("hp_on_perfect_timed")
+			if bloodrite_effect.is_empty():
+				return false
+			var healed: float = GameState.heal_player(float(bloodrite_effect.get("value", 0.0)))
+			if healed > 0.0:
+				EventBus.emit_signal("player_healed", healed)
+			return true
+		"low_hp_first_hit":
+			var mend_effect: Dictionary = _get_upgrade_effect("low_hp_first_damage_heal")
+			if mend_effect.is_empty():
+				return false
+			var healed: float = GameState.heal_player(float(mend_effect.get("value", 0.0)))
+			if healed > 0.0:
+				EventBus.emit_signal("player_healed", healed)
+			return true
 		_:
 			return false
 
@@ -324,7 +374,8 @@ func _apply_hp_on_kill_passive() -> void:
 	var passive: Dictionary = creature.get("bond_passive", {})
 	if passive.get("type", "") != "hp_on_kill":
 		return
-	var healed: float = GameState.heal_player(float(passive.get("value", 0.0)))
+	var bond_mult: float = GameState.get_bond_level_mult(int(creature.get("bond_level", 1)))
+	var healed: float = GameState.heal_player(float(passive.get("value", 0.0)) * bond_mult)
 	if healed > 0.0:
 		EventBus.emit_signal("player_healed", healed)
 

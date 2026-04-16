@@ -2,7 +2,7 @@ extends Node
 
 const LANE_COUNT: int = 3
 const FIRE_OFFSET: float = 0.45
-const CYCLE_INTERVAL: float = 2.2
+var cycle_interval: float = 2.2
 
 const TOP_Y_RATIO: float = 0.18
 const BOTTOM_Y_RATIO: float = 0.68
@@ -12,6 +12,21 @@ const HIT_ZONE_X_RATIO: float = 0.22
 
 const PROJECTILE_SCENE_PATH: String = "res://scenes/combat/Projectile.tscn"
 const MIN_IMPACT_SEPARATION: float = 0.40
+
+# Status effect constants.
+const REND_DAMAGE_MULT: float = 1.30        # +30% damage to the enemy while REND is active
+const REND_BASE_CHARGES: int = 3            # REND consumes on hit; expires after 3 hits
+const PALE_DAMAGE_MULT: float = 0.50        # PALE halves the enemy's next fired projectile damage
+const EXPOSE_DAMAGE_MULT: float = 1.25      # +25% damage to the enemy while EXPOSE is active
+const EXPOSE_BASE_DURATION: float = 2.5     # EXPOSE expires after 2.5 seconds
+const GORGE_MARK_BONUS_CHARGE: float = 5.0  # Extra support charge when a GORGE-MARK enemy is defeated
+
+# Per-enemy-type status flags. bond_reaper: EXPOSE windows are shorter (harder to exploit).
+# sovereign: REND can only be applied once (resilient apex predator).
+const ENEMY_STATUS_FLAGS: Dictionary = {
+	"bond_reaper": {"expose_duration_mult": 0.5},
+	"sovereign": {"rend_max_charges": 1}
+}
 
 var combat_scene: Node = null
 
@@ -26,6 +41,12 @@ var _projectile_slots: Array = [null, null, null]
 var _enemies: Array[Dictionary] = []
 
 var _combat_running: bool = false
+var _song_mode: bool = false
+var _cycle_stalled: bool = false
+# Per-lane active status. Only one status per lane at a time; new application overwrites.
+# Structure: { "id": String, "hits_remaining": int, "duration": float, "fire_pending": bool }
+var _enemy_statuses: Dictionary = {}
+
 # _cycle_task_id is incremented every time start_combat() or stop() is called.
 # _run_fire_cycle() captures the ID at launch and bails out if it no longer matches,
 # preventing ghost fire cycles from continuing after combat has been stopped or restarted.
@@ -130,8 +151,32 @@ func get_hit_zone_x() -> float:
 	return _hit_zone_x
 
 
+func set_cycle_interval(interval: float) -> void:
+	cycle_interval = max(0.3, interval)
+
+
+func start_song_cycle() -> void:
+	# Starts (or restarts) the fire cycle for song mode without resetting enemy data.
+	_combat_running = true
+	_cycle_stalled = false
+	_cycle_task_id += 1
+	_run_fire_cycle(_cycle_task_id)
+
+
+func set_enemy(lane: int, enemy_data: Dictionary) -> void:
+	# Places a new enemy in a lane during song mode. Restarts the fire cycle
+	# if it stalled because all enemies were defeated.
+	if lane < 0 or lane >= LANE_COUNT:
+		return
+	_enemies[lane] = enemy_data.duplicate(true)
+	if _song_mode and _combat_running and _cycle_stalled:
+		_cycle_stalled = false
+		_run_fire_cycle(_cycle_task_id)
+
+
 func damage_enemy(lane: int, amount: float) -> void:
 	# Applies damage to a lane's active enemy and handles defeat.
+	# Status multipliers (REND, EXPOSE) are applied before dealing damage.
 	if lane < 0 or lane >= _enemies.size():
 		return
 
@@ -143,12 +188,30 @@ func damage_enemy(lane: int, amount: float) -> void:
 	if float(enemy["hp"]) <= 0.0:
 		return
 
-	enemy["hp"] = max(float(enemy["hp"]) - amount, 0.0)
+	var actual_amount: float = amount * _get_status_damage_mult(lane)
+	enemy["hp"] = max(float(enemy["hp"]) - actual_amount, 0.0)
 	_enemies[lane] = enemy
 
-	EventBus.emit_signal("enemy_damaged", int(enemy.get("id", lane)), amount)
+	EventBus.emit_signal("enemy_damaged", int(enemy.get("id", lane)), actual_amount)
+
+	# Consume one REND charge per hit.
+	if _enemy_statuses.has(lane) and _enemy_statuses[lane].get("id", "") == "rend":
+		var rend: Dictionary = _enemy_statuses[lane]
+		rend["hits_remaining"] = rend.get("hits_remaining", 0) - 1
+		if rend["hits_remaining"] <= 0:
+			_enemy_statuses.erase(lane)
+			EventBus.emit_signal("enemy_status_cleared", lane)
 
 	if float(enemy["hp"]) <= 0.0:
+		# GORGE-MARK: emit triggered event for bonus charge before clearing.
+		if _enemy_statuses.has(lane) and _enemy_statuses[lane].get("id", "") == "gorge_mark":
+			_enemy_statuses.erase(lane)
+			EventBus.emit_signal("enemy_status_applied", lane, "gorge_mark_triggered")
+			EventBus.emit_signal("enemy_status_cleared", lane)
+		elif _enemy_statuses.has(lane):
+			_enemy_statuses.erase(lane)
+			EventBus.emit_signal("enemy_status_cleared", lane)
+
 		EventBus.emit_signal("enemy_defeated", int(enemy.get("id", lane)))
 
 		var projectile = get_projectile(lane)
@@ -157,8 +220,11 @@ func damage_enemy(lane: int, amount: float) -> void:
 			clear_slot(lane)
 
 		if alive_count() <= 0:
-			_combat_running = false
-			EventBus.emit_signal("combat_ended", true)
+			if _song_mode:
+				pass  # Song continues; CombatScene will respawn enemies.
+			else:
+				_combat_running = false
+				EventBus.emit_signal("combat_ended", true)
 
 
 func get_enemy(lane: int) -> Dictionary:
@@ -176,15 +242,85 @@ func alive_count() -> int:
 
 
 func stop() -> void:
-	# Clears active projectile state and stops future fire cycles.
+	# Clears active projectile state, statuses, and stops future fire cycles.
 	_combat_running = false
 	_cycle_task_id += 1
+	_cycle_stalled = false
+	_enemy_statuses.clear()
 
 	for lane in range(LANE_COUNT):
 		var projectile = get_projectile(lane)
 		if projectile != null:
 			projectile.queue_free()
 		_projectile_slots[lane] = null
+
+
+func _process(delta: float) -> void:
+	# Tick EXPOSE duration; clear when expired.
+	var expired: Array = []
+	for lane in _enemy_statuses:
+		var status: Dictionary = _enemy_statuses[lane]
+		if status.get("duration", -1.0) > 0.0:
+			status["duration"] -= delta
+			if status["duration"] <= 0.0:
+				expired.append(lane)
+	for lane in expired:
+		_enemy_statuses.erase(lane)
+		EventBus.emit_signal("enemy_status_cleared", lane)
+
+
+func apply_status(lane: int, status_id: String, params: Dictionary = {}) -> void:
+	# Applies a combat status to the enemy in the given lane.
+	# One status per lane — new application always overwrites the previous one.
+	if lane < 0 or lane >= LANE_COUNT:
+		return
+	var enemy: Dictionary = get_enemy(lane)
+	if enemy.is_empty() or float(enemy.get("hp", 0.0)) <= 0.0:
+		return
+
+	var enemy_type: String = String(enemy.get("type", "dreg"))
+	var flags: Dictionary = ENEMY_STATUS_FLAGS.get(enemy_type, {})
+	var status: Dictionary = {"id": status_id, "hits_remaining": 0, "duration": -1.0, "fire_pending": false}
+
+	match status_id:
+		"rend":
+			var base_charges: int = int(params.get("charges", REND_BASE_CHARGES))
+			var max_charges: int = int(flags.get("rend_max_charges", REND_BASE_CHARGES))
+			status["hits_remaining"] = min(base_charges, max_charges)
+		"pale":
+			status["fire_pending"] = true
+		"gorge_mark":
+			pass  # Persists until the enemy is defeated; no other expiry.
+		"expose":
+			var base_dur: float = float(params.get("duration", EXPOSE_BASE_DURATION))
+			var dur_mult: float = float(flags.get("expose_duration_mult", 1.0))
+			status["duration"] = base_dur * dur_mult
+		_:
+			return  # Unknown status — do nothing.
+
+	_enemy_statuses[lane] = status
+	EventBus.emit_signal("enemy_status_applied", lane, status_id)
+
+
+func get_status_id(lane: int) -> String:
+	# Returns the active status id for the given lane, or "" if none.
+	if not _enemy_statuses.has(lane):
+		return ""
+	return String(_enemy_statuses[lane].get("id", ""))
+
+
+func _get_status_damage_mult(lane: int) -> float:
+	# Returns the incoming-damage multiplier for the current status on this lane.
+	# REND (+30%) and EXPOSE (+25%) amplify damage. Others have no effect.
+	if not _enemy_statuses.has(lane):
+		return 1.0
+	match _enemy_statuses[lane].get("id", ""):
+		"rend":
+			return REND_DAMAGE_MULT
+		"expose":
+			return EXPOSE_DAMAGE_MULT
+		_:
+			return 1.0
 
 
 func _run_fire_cycle(task_id: int) -> void:
@@ -203,10 +339,14 @@ func _run_fire_cycle(task_id: int) -> void:
 			var offset_timer: SceneTreeTimer = get_tree().create_timer(FIRE_OFFSET)
 			await offset_timer.timeout
 
-	if not _combat_running or task_id != _cycle_task_id or alive_count() <= 0:
+	if not _combat_running or task_id != _cycle_task_id:
+		return
+	if alive_count() <= 0:
+		if _song_mode:
+			_cycle_stalled = true
 		return
 
-	var cycle_timer: SceneTreeTimer = get_tree().create_timer(CYCLE_INTERVAL)
+	var cycle_timer: SceneTreeTimer = get_tree().create_timer(cycle_interval)
 	await cycle_timer.timeout
 
 	if _combat_running and task_id == _cycle_task_id:
@@ -232,6 +372,13 @@ func _fire_lane(lane: int) -> void:
 		return
 
 	var projectile_damage: float = float(enemy.get("damage", 8.0))
+
+	# PALE: halve the damage of the next fired projectile, then consume the status.
+	if _enemy_statuses.has(lane) and _enemy_statuses[lane].get("fire_pending", false):
+		projectile_damage *= PALE_DAMAGE_MULT
+		_enemy_statuses.erase(lane)
+		EventBus.emit_signal("enemy_status_cleared", lane)
+
 	var enemy_id: int = int(enemy.get("id", lane))
 
 	combat_scene.add_child(projectile)

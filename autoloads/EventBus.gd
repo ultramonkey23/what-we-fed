@@ -11,6 +11,7 @@ signal projectile_missed(lane: int, damage: float)
 # Player actions
 signal player_teleported(from_lane: int, to_lane: int)
 signal player_attacked(lane: int, damage: float, was_timed: bool)
+signal timed_attack_resolved(lane: int, quality: String, damage: float)
 signal player_parried(lane: int, quality: String, reflect_damage: float)
 signal player_dodged(from_lane: int, to_lane: int)
 
@@ -43,6 +44,10 @@ signal creature_ultimate_strike(damage: float)
 signal run_started(run_number: int)
 signal rebirth_triggered()
 signal rebirth_complete(rebirth_count: int)
+signal run_growth_changed(level: int, exp: float, exp_to_next: float)
+signal support_charge_changed(current: float, maximum: float, active_species_id: String)
+signal bonded_support_triggered(species_id: String, lane: int, effect_id: String)
+signal run_upgrade_taken(upgrade_id: String)
 
 # Presentation
 signal screen_shake(intensity: float, duration: float)

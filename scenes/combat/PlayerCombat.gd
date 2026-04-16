@@ -364,6 +364,7 @@ func _resolve_timed_attack(projectile, combo_mult: float, quality: String) -> vo
 	combat_meter.record_timed_attack()
 
 	EventBus.emit_signal("player_attacked", current_lane, timed_damage, true)
+	EventBus.emit_signal("timed_attack_resolved", current_lane, quality, timed_damage)
 	EventBus.emit_signal("screen_flash", Color(1.0, 0.95, 0.55, 0.12), 0.07)
 
 	if quality == "perfect":

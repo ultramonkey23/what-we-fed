@@ -38,3 +38,5 @@ See:
 - docs/CLAUDE_APPROVAL_WORKFLOW.md
 - docs/PATCH_QUEUE.md
 - docs/PROMPT_TEMPLATES.md
+Primary scope canon: docs/WHAT_WE_FED_FINAL_GAME_SCOPE_CANON_FLAGSHIP.md
+Future kaiju/world-state canon: docs/THE_HOLLOW_EGG_KAIJU_ASCENSION_CANON.md

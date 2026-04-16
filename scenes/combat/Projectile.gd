@@ -53,16 +53,47 @@ var _reported_hit_zone: bool = false
 var _reported_player_contact: bool = false
 var _reported_enemy_contact: bool = false
 var _body: ColorRect
+var _core: ColorRect
+var _trail: Line2D
+var _glow: Polygon2D
 
 
 func _ready() -> void:
 	# Placeholder visual built in code so Projectile.tscn stays root-only.
+	_glow = Polygon2D.new()
+	_glow.name = "Glow"
+	_glow.color = Color(0.95, 0.58, 0.22, 0.12)
+	_glow.polygon = PackedVector2Array([
+		Vector2(-18.0, 0.0),
+		Vector2(-8.0, -10.0),
+		Vector2(12.0, -10.0),
+		Vector2(20.0, 0.0),
+		Vector2(12.0, 10.0),
+		Vector2(-8.0, 10.0)
+	])
+	add_child(_glow)
+
+	_trail = Line2D.new()
+	_trail.name = "Trail"
+	_trail.default_color = Color(0.95, 0.58, 0.22, 0.22)
+	_trail.width = 5.0
+	_trail.add_point(Vector2(-30.0, 0.0))
+	_trail.add_point(Vector2(10.0, 0.0))
+	add_child(_trail)
+
 	_body = ColorRect.new()
 	_body.name = "Body"
-	_body.size = Vector2(26.0, 14.0)
-	_body.position = Vector2(-13.0, -7.0)
+	_body.size = Vector2(24.0, 12.0)
+	_body.position = Vector2(-12.0, -6.0)
 	_body.color = Color(0.95, 0.58, 0.22, 1.0)
 	add_child(_body)
+
+	_core = ColorRect.new()
+	_core.name = "Core"
+	_core.size = Vector2(10.0, 6.0)
+	_core.position = Vector2(-5.0, -3.0)
+	_core.color = Color(1.0, 0.84, 0.58, 0.95)
+	add_child(_core)
 
 	if DEBUG_TIMING:
 		var debug_label := Label.new()
@@ -110,7 +141,7 @@ func setup(
 	_reported_enemy_contact = false
 
 	if _body != null:
-		_body.color = Color(0.95, 0.58, 0.22, 1.0)
+		_apply_projectile_palette(Color(0.95, 0.58, 0.22, 1.0), false)
 
 
 func reflect_to_enemy(return_damage: float) -> void:
@@ -125,7 +156,7 @@ func reflect_to_enemy(return_damage: float) -> void:
 	_reported_enemy_contact = false
 
 	if _body != null:
-		_body.color = Color(0.55, 1.0, 0.78, 1.0)
+		_apply_projectile_palette(Color(0.55, 1.0, 0.78, 1.0), true)
 
 
 func evaluate_attack_timing() -> String:
@@ -205,6 +236,8 @@ func _process_incoming(delta: float) -> void:
 		_reported_player_contact = true
 		player_contact.emit(self)
 
+	_update_visual_state(false)
+
 	if DEBUG_TIMING:
 		var _dbg: Label = get_node_or_null("DebugLabel") as Label
 		if _dbg != null:
@@ -218,7 +251,51 @@ func _process_incoming(delta: float) -> void:
 
 func _process_reflected(delta: float) -> void:
 	position.x += speed * REFLECT_SPEED_MULT * delta
+	_update_visual_state(true)
 
 	if not _reported_enemy_contact and position.x >= enemy_x:
 		_reported_enemy_contact = true
 		enemy_contact.emit(self)
+
+
+func _apply_projectile_palette(body_color: Color, reflected: bool) -> void:
+	var trail_alpha: float = 0.24
+	var glow_alpha: float = 0.12
+	if reflected:
+		trail_alpha = 0.30
+		glow_alpha = 0.16
+
+	if _body != null:
+		_body.color = body_color
+	if _core != null:
+		_core.color = body_color.lightened(0.36)
+	if _trail != null:
+		_trail.default_color = Color(body_color.r, body_color.g, body_color.b, trail_alpha)
+	if _glow != null:
+		_glow.color = Color(body_color.r, body_color.g, body_color.b, glow_alpha)
+
+
+func _update_visual_state(reflected: bool) -> void:
+	var base_color: Color = Color(0.95, 0.58, 0.22, 1.0)
+	if reflected:
+		base_color = Color(0.55, 1.0, 0.78, 1.0)
+
+	var pressure: float = 0.85 if reflected else clamp((progress - 0.72) / 0.32, 0.0, 1.0)
+	var body_scale: Vector2 = Vector2(1.0 + pressure * 0.12, 1.0 + pressure * 0.08)
+	var trail_alpha: float = 0.20 + pressure * 0.22
+	var glow_alpha: float = 0.10 + pressure * 0.18
+
+	if _body != null:
+		_body.scale = body_scale
+		_body.color = base_color.lightened(pressure * 0.06)
+	if _core != null:
+		_core.scale = Vector2(1.0 + pressure * 0.20, 1.0 + pressure * 0.10)
+		_core.color = base_color.lightened(0.34 + pressure * 0.12)
+	if _trail != null:
+		_trail.width = 5.0 + pressure * 2.0
+		_trail.default_color = Color(base_color.r, base_color.g, base_color.b, trail_alpha)
+		_trail.set_point_position(0, Vector2(-34.0 - pressure * 18.0, 0.0))
+		_trail.set_point_position(1, Vector2(8.0 + pressure * 5.0, 0.0))
+	if _glow != null:
+		_glow.scale = Vector2(1.0 + pressure * 0.16, 1.0 + pressure * 0.08)
+		_glow.color = Color(base_color.r, base_color.g, base_color.b, glow_alpha)

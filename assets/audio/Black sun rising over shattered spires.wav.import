@@ -1,0 +1,24 @@
+[remap]
+
+importer="wav"
+type="AudioStreamWAV"
+uid="uid://dgu2e65jfj5wn"
+path="res://.godot/imported/Black sun rising over shattered spires.wav-ec9854ffc35d230de595226ed0e85ebf.sample"
+
+[deps]
+
+source_file="res://assets/audio/Black sun rising over shattered spires.wav"
+dest_files=["res://.godot/imported/Black sun rising over shattered spires.wav-ec9854ffc35d230de595226ed0e85ebf.sample"]
+
+[params]
+
+force/8_bit=false
+force/mono=false
+force/max_rate=false
+force/max_rate_hz=44100
+edit/trim=false
+edit/normalize=false
+edit/loop_mode=0
+edit/loop_begin=0
+edit/loop_end=-1
+compress/mode=2

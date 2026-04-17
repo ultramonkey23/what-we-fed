@@ -103,6 +103,10 @@ func _on_combat_started(_enemy_data: Array) -> void:
 func _on_enemy_defeated(_enemy_id: int) -> void:
 	_grant_exp(GROWTH_CONTENT.EXP_KILL)
 	_gain_support_charge(GROWTH_CONTENT.CHARGE_ENEMY_DEFEAT)
+	# Drowned Cut: resonant volume identity — each kill charges the bond layer faster.
+	# +75% of the base kill charge, so ~6 kills to fill instead of ~10.
+	if GameState.active_region.get("id", "") == "drowned_cut":
+		_gain_support_charge(GROWTH_CONTENT.CHARGE_ENEMY_DEFEAT * 0.75)
 	_trigger_active_support_for_event("enemy_defeated", 1)
 	_apply_hp_on_kill_passive()
 

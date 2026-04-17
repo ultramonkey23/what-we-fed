@@ -27,32 +27,47 @@ const ULTIMATE_RECOVERY: float = 0.45
 
 const CHAIN_BYPASS_WINDOW: float = 0.60
 
+# Player sprite images.
+const PLAYER_IDLE_PATH: String = "res://assets/characters/player/combat/player_idle.png"
+const PLAYER_ATTACK_PATH: String = "res://assets/characters/player/combat/player_attack.png"
+const PLAYER_PARRY_PATH: String = "res://assets/characters/player/combat/player_parry.png"
+const PLAYER_HURT_PATH: String = "res://assets/characters/player/combat/player_hurt.png"
+# Base display scale for the Sprite2D. Tune this so the character fits cleanly
+# in the lane area at your target resolution. At 0.18 a 512px image ≈ 92px tall.
+const PLAYER_SPRITE_SCALE_BASE: float = 0.128
+# How long each temporary image holds before returning to idle (seconds).
+const ATTACK_IMAGE_DURATION: float = 0.14
+const PARRY_IMAGE_DURATION: float = 0.22
+const HURT_IMAGE_DURATION: float = 0.30
+
 # Neutral stance rules.
 # NEUTRAL_LANE is a core design rule: the player always returns here after every action.
 # All action tweens return to this lane's Y position via _play_world_motion.
 # Do not remove the return-to-center snap without updating every action state function.
 const NEUTRAL_LANE: int = 1
 const NEUTRAL_WORLD_X_OFFSET: float = -36.0
-const ATTACK_WORLD_X_OFFSET: float = 2.0
+const ATTACK_WORLD_X_OFFSET: float = 8.0
 const PARRY_WORLD_X_OFFSET: float = -8.0
 const DODGE_WORLD_X_OFFSET: float = -18.0
 const HIT_WORLD_X_OFFSET: float = -26.0
 
 # Sprite-local pose offsets.
-const NEUTRAL_SPRITE_POSITION := Vector2(-46.0, -55.0)
-const ATTACK_SPRITE_POSITION := Vector2(-8.0, -55.0)
-const PARRY_SPRITE_POSITION := Vector2(-18.0, -55.0)
-const DODGE_SPRITE_POSITION := Vector2(-54.0, -55.0)
-const HIT_SPRITE_POSITION := Vector2(-58.0, -55.0)
+const NEUTRAL_SPRITE_POSITION := Vector2(-42.0, -46.0)
+const ATTACK_SPRITE_POSITION := Vector2(-12.0, -46.0)
+const PARRY_SPRITE_POSITION := Vector2(-20.0, -46.0)
+const DODGE_SPRITE_POSITION := Vector2(-48.0, -46.0)
+const HIT_SPRITE_POSITION := Vector2(-52.0, -46.0)
 
 const NEUTRAL_SPRITE_SCALE := Vector2(1.0, 1.0)
-const ATTACK_SPRITE_SCALE := Vector2(1.16, 0.92)
-const PARRY_SPRITE_SCALE := Vector2(1.08, 1.04)
-const DODGE_SPRITE_SCALE := Vector2(0.92, 1.04)
-const HIT_SPRITE_SCALE := Vector2(0.96, 1.0)
+const ATTACK_SPRITE_SCALE := Vector2(1.14, 0.90)
+const PARRY_SPRITE_SCALE := Vector2(1.02, 1.10)
+const DODGE_SPRITE_SCALE := Vector2(0.88, 1.12)
+const HIT_SPRITE_SCALE := Vector2(0.94, 1.0)
 
 var lane_manager: Node = null
 var combat_meter: Node = null
+var _song_conductor: Node = null
+var _sprite_color_tween: Tween = null
 
 var current_lane: int = NEUTRAL_LANE
 var parry_followup_active: bool = false
@@ -69,11 +84,17 @@ var combat_enabled: bool = true
 var _sprite_pose_tween: Tween = null
 var _world_motion_tween: Tween = null
 
+var _player_sprite: Sprite2D = null
+var _idle_tex: Texture2D = null
+var _attack_tex: Texture2D = null
+var _parry_tex: Texture2D = null
+var _hurt_tex: Texture2D = null
+var _image_restore_tween: Tween = null
+
 
 func _ready() -> void:
-	# Placeholder body styling.
-	sprite.size = Vector2(38.0, 55.0)
-	sprite.color = Color(0.25, 0.55, 0.95, 1.0)
+	sprite.visible = false  # hide placeholder ColorRect; Sprite2D takes over
+	_setup_player_sprite()
 	_return_to_neutral_state(true)
 
 
@@ -153,6 +174,77 @@ func set_combat_enabled(enabled: bool) -> void:
 		parry_followup_timer = 0.0
 		parry_followup_damage = 0.0
 		_return_to_neutral_state(true)
+
+
+func set_song_conductor(conductor: Node) -> void:
+	_song_conductor = conductor
+
+
+func _get_beat_quality() -> String:
+	if _song_conductor == null or not _song_conductor.has_method("get_beat_quality"):
+		return "off"
+	return String(_song_conductor.get_beat_quality())
+
+
+func _get_phrase_window() -> String:
+	if combat_meter == null:
+		return ""
+	var count: int = int(combat_meter.phrase_count)
+	if count >= 8:
+		return "flow_state"
+	if count >= 5:
+		return "in_pocket"
+	if count >= 3:
+		return "phrase"
+	return ""
+
+
+func _get_cadence_window() -> String:
+	if _song_conductor == null or not is_instance_valid(_song_conductor):
+		return ""
+	var section_id: String = String(_song_conductor.get("current_section_id"))
+	var intensity: float = float(_song_conductor.get("current_intensity"))
+	if section_id == "final" or intensity >= 0.85:
+		return "surge"
+	if section_id == "chorus" or intensity >= 0.62:
+		return "drive"
+	return ""
+
+
+func _emit_mastery_context(event_id: String, lane: int, action_quality: String, beat_quality: String) -> void:
+	EventBus.emit_signal("mastery_context_updated", {
+		"event_id": event_id,
+		"lane": lane,
+		"action_quality": action_quality,
+		"beat_quality": beat_quality,
+		"phrase_window": _get_phrase_window(),
+		"cadence_window": _get_cadence_window(),
+		"timestamp": Time.get_ticks_msec() / 1000.0
+	})
+
+
+func _clear_mastery_context(event_id: String, lane: int) -> void:
+	EventBus.emit_signal("mastery_context_updated", {
+		"event_id": event_id,
+		"lane": lane,
+		"action_quality": "",
+		"beat_quality": "off",
+		"phrase_window": "",
+		"cadence_window": "",
+		"timestamp": Time.get_ticks_msec() / 1000.0
+	})
+
+
+func _flash_sprite_color(tint: Color, duration: float) -> void:
+	if _sprite_color_tween != null:
+		_sprite_color_tween.kill()
+	# Sprite2D uses modulate (not color). Base is Color.WHITE = no tint.
+	var vis_node = _player_sprite if _player_sprite != null else sprite
+	var prop: String = "modulate" if _player_sprite != null else "color"
+	var base: Color = Color.WHITE if _player_sprite != null else Color(0.25, 0.55, 0.95, 1.0)
+	_sprite_color_tween = create_tween()
+	_sprite_color_tween.tween_property(vis_node, prop, tint, 0.03)
+	_sprite_color_tween.tween_property(vis_node, prop, base, duration)
 
 
 func _can_accept_action() -> bool:
@@ -255,34 +347,52 @@ func _try_parry() -> void:
 
 	if quality != "good" and quality != "perfect":
 		combat_meter.record_bad_timing()
+		_clear_mastery_context("failed_parry", current_lane)
 		EventBus.emit_signal("screen_flash", Color(1.0, 0.2, 0.2, 0.08), 0.05)
 		_lock_action(FAILED_PARRY_RECOVERY, "failed_parry")
 		return
 
+	var beat: String = _get_beat_quality()
 	var combo_mult: float = combat_meter.damage_multiplier()
 	var reflect_mult: float = GOOD_PARRY_REFLECT_MULT
 	var recovery: float = GOOD_PARRY_RECOVERY
+	var followup_window: float = FOLLOW_UP_WINDOW
 
 	if quality == "perfect":
 		reflect_mult = PERFECT_PARRY_REFLECT_MULT
 		recovery = PERFECT_PARRY_RECOVERY
+
+	# On-beat perfect: bonus reflect and extended counter window.
+	if quality == "perfect" and (beat == "perfect" or beat == "good"):
+		reflect_mult *= 1.25
+		followup_window = 0.85
 
 	var reflect_damage: float = float(projectile.damage) * reflect_mult * combo_mult * (1.0 + _get_parry_reflect_bonus())
 
 	projectile.reflect_to_enemy(reflect_damage)
 	lane_manager.clear_slot(current_lane)
 	combat_meter.record_parry(quality)
+	combat_meter.record_phrase_action(quality)
+	_show_parry_image()
+	_emit_mastery_context("parry", current_lane, quality, beat)
 
 	parry_followup_active = true
-	parry_followup_timer = FOLLOW_UP_WINDOW
+	parry_followup_timer = followup_window
 	parry_followup_damage = reflect_damage
 
 	EventBus.emit_signal("player_parried", current_lane, quality, reflect_damage)
 
 	if quality == "perfect":
+		_flash_sprite_color(Color(0.55, 1.0, 0.72, 1.0), 0.14)
 		EventBus.emit_signal("screen_flash", Color(0.45, 1.0, 0.75, 0.16), 0.08)
-		EventBus.emit_signal("slow_motion", 0.76, 0.08)
+		if beat == "perfect":
+			EventBus.emit_signal("slow_motion", 0.52, 0.10)
+		elif beat == "good":
+			EventBus.emit_signal("slow_motion", 0.64, 0.08)
+		else:
+			EventBus.emit_signal("slow_motion", 0.76, 0.08)
 	else:
+		_flash_sprite_color(Color(0.45, 0.88, 0.62, 1.0), 0.10)
 		EventBus.emit_signal("screen_flash", Color(0.45, 1.0, 0.75, 0.10), 0.06)
 
 	_lock_action(recovery, "parry")
@@ -313,11 +423,19 @@ func _try_dodge() -> void:
 		destination_projectile.resolve("dodged_through")
 		lane_manager.clear_slot(to_lane)
 
+	var beat: String = _get_beat_quality()
 	combat_meter.record_dodge()
+	combat_meter.record_phrase_action("good")
+	_emit_mastery_context("dodge", to_lane, "good", beat)
 	EventBus.emit_signal("player_dodged", from_lane, to_lane)
-	EventBus.emit_signal("screen_flash", Color(0.65, 0.85, 1.0, 0.06), 0.05)
 
-	_lock_action(DODGE_RECOVERY, "dodge")
+	if beat == "perfect" or beat == "good":
+		_flash_sprite_color(Color(0.55, 0.82, 1.0, 1.0), 0.10)
+		EventBus.emit_signal("screen_flash", Color(0.55, 0.75, 1.0, 0.10), 0.06)
+		_lock_action(0.12, "dodge")
+	else:
+		EventBus.emit_signal("screen_flash", Color(0.65, 0.85, 1.0, 0.06), 0.05)
+		_lock_action(DODGE_RECOVERY, "dodge")
 
 
 func _try_ultimate() -> void:
@@ -326,18 +444,32 @@ func _try_ultimate() -> void:
 	if not combat_meter.is_ultimate_available():
 		return
 
+	var beat: String = _get_beat_quality()
 	var multiplier: float = combat_meter.consume_ultimate()
 	if multiplier <= 0.0:
 		return
 
-	var total_damage: float = GameState.get_attack_damage() * multiplier
+	# Beat bonus: on-beat perfect adds +20% damage to the ultimate.
+	var beat_mult: float = 1.0
+	if beat == "perfect":
+		beat_mult = 1.20
+	elif beat == "good":
+		beat_mult = 1.10
+
+	var total_damage: float = GameState.get_attack_damage() * multiplier * beat_mult
 	total_damage += _get_creature_bonus()
 
 	for lane in range(3):
 		lane_manager.damage_enemy(lane, total_damage)
 
 	EventBus.emit_signal("screen_flash", Color(1.0, 0.75, 0.3, 0.16), 0.10)
-	EventBus.emit_signal("slow_motion", 0.72, 0.10)
+
+	if beat == "perfect":
+		EventBus.emit_signal("slow_motion", 0.55, 0.14)
+	elif beat == "good":
+		EventBus.emit_signal("slow_motion", 0.62, 0.12)
+	else:
+		EventBus.emit_signal("slow_motion", 0.72, 0.10)
 
 	chain_bypass_available = false
 	chain_bypass_timer = 0.0
@@ -348,6 +480,7 @@ func _idle_attack(combo_mult: float) -> void:
 	var idle_damage: float = (GameState.get_attack_damage() * IDLE_ATTACK_DAMAGE_RATIO) * combo_mult
 	lane_manager.damage_enemy(current_lane, idle_damage)
 	combat_meter.record_attack()
+	_clear_mastery_context("idle_attack", current_lane)
 	EventBus.emit_signal("player_attacked", current_lane, idle_damage, false)
 	EventBus.emit_signal("screen_flash", Color(0.85, 0.85, 0.85, 0.04), 0.03)
 
@@ -355,22 +488,40 @@ func _idle_attack(combo_mult: float) -> void:
 
 
 func _resolve_timed_attack(projectile, combo_mult: float, quality: String) -> void:
-	var timed_damage: float = (float(projectile.damage) * TIMED_ATTACK_DAMAGE_RATIO) * combo_mult + _get_timed_damage_bonus()
+	var beat: String = _get_beat_quality()
+	var phrase_bonus: float = combat_meter.get_phrase_bonus()
+
+	# Beat bonus damage: +35% on perfect-quality + on-beat-perfect, +15% on on-beat-good.
+	var beat_mult: float = 1.0
+	if quality == "perfect" and beat == "perfect":
+		beat_mult = 1.35
+	elif beat == "perfect" or beat == "good":
+		beat_mult = 1.15
+
+	var timed_damage: float = (float(projectile.damage) * TIMED_ATTACK_DAMAGE_RATIO) * combo_mult * (1.0 + phrase_bonus) * beat_mult + _get_timed_damage_bonus()
 	var recovery: float = TIMED_ATTACK_RECOVERY
 
 	projectile.resolve("attack_%s" % quality)
 	lane_manager.clear_slot(current_lane)
 	lane_manager.damage_enemy(current_lane, timed_damage)
 	combat_meter.record_timed_attack()
+	combat_meter.record_phrase_action(quality)
+	_emit_mastery_context("timed_attack", current_lane, quality, beat)
 
 	EventBus.emit_signal("player_attacked", current_lane, timed_damage, true)
 	EventBus.emit_signal("timed_attack_resolved", current_lane, quality, timed_damage)
-	EventBus.emit_signal("screen_flash", Color(1.0, 0.95, 0.55, 0.12), 0.07)
 
 	if quality == "perfect":
+		_flash_sprite_color(Color(1.0, 0.75, 0.25, 1.0), 0.12)
+		EventBus.emit_signal("screen_flash", Color(1.0, 0.85, 0.35, 0.14), 0.08)
 		recovery = PERFECT_ATTACK_RECOVERY
-		EventBus.emit_signal("slow_motion", 0.80, 0.06)
+		if beat == "perfect":
+			EventBus.emit_signal("slow_motion", 0.68, 0.08)
+		else:
+			EventBus.emit_signal("slow_motion", 0.80, 0.06)
 	else:
+		_flash_sprite_color(Color(0.95, 0.62, 0.18, 1.0), 0.10)
+		EventBus.emit_signal("screen_flash", Color(1.0, 0.95, 0.55, 0.12), 0.07)
 		EventBus.emit_signal("slow_motion", 0.88, 0.04)
 
 	_grant_chain_bypass()
@@ -379,6 +530,7 @@ func _resolve_timed_attack(projectile, combo_mult: float, quality: String) -> vo
 
 func _resolve_early_attack() -> void:
 	combat_meter.record_bad_timing()
+	_clear_mastery_context("early_attack", current_lane)
 	EventBus.emit_signal("screen_flash", Color(1.0, 0.15, 0.15, 0.05), 0.04)
 	chain_bypass_available = false
 	chain_bypass_timer = 0.0
@@ -389,6 +541,7 @@ func _resolve_late_attack(projectile) -> void:
 	var punish_damage: float = float(projectile.damage) * LATE_ATTACK_PUNISH_RATIO
 	_take_damage(punish_damage, current_lane)
 	combat_meter.record_bad_timing()
+	_clear_mastery_context("late_attack", current_lane)
 	EventBus.emit_signal("screen_flash", Color(1.0, 0.15, 0.15, 0.10), 0.06)
 	chain_bypass_available = false
 	chain_bypass_timer = 0.0
@@ -415,9 +568,13 @@ func _fire_parry_followup(combo_mult: float) -> void:
 
 func _take_damage(amount: float, source_lane: int) -> void:
 	_play_hit_state(source_lane)
+	_show_hurt_image()
 
 	amount = amount * (1.0 - _get_damage_reduction())
 	GameState.player_hp = max(GameState.player_hp - amount, 0.0)
+	_flash_sprite_color(Color(1.0, 0.25, 0.25, 1.0), 0.18)
+	combat_meter.break_phrase()
+	_clear_mastery_context("damage_taken", source_lane)
 	EventBus.emit_signal("player_took_damage", amount, source_lane)
 	EventBus.emit_signal("screen_shake", 5.0, 0.12)
 	EventBus.emit_signal("screen_flash", Color(1.0, 0.1, 0.1, 0.14), 0.10)
@@ -492,13 +649,68 @@ func _action_world_position(target_lane: int, x_offset: float) -> Vector2:
 	)
 
 
+func _setup_player_sprite() -> void:
+	# Load textures; fall back gracefully if either file is missing.
+	if ResourceLoader.exists(PLAYER_IDLE_PATH):
+		_idle_tex = load(PLAYER_IDLE_PATH) as Texture2D
+	if ResourceLoader.exists(PLAYER_ATTACK_PATH):
+		_attack_tex = load(PLAYER_ATTACK_PATH) as Texture2D
+	if ResourceLoader.exists(PLAYER_PARRY_PATH):
+		_parry_tex = load(PLAYER_PARRY_PATH) as Texture2D
+	if ResourceLoader.exists(PLAYER_HURT_PATH):
+		_hurt_tex = load(PLAYER_HURT_PATH) as Texture2D
+
+	_player_sprite = Sprite2D.new()
+	_player_sprite.name = "PlayerSprite"
+	_player_sprite.texture = _idle_tex
+	# flip_h = false keeps the character facing right (toward enemy side).
+	_player_sprite.flip_h = false
+	_player_sprite.position = NEUTRAL_SPRITE_POSITION
+	_player_sprite.scale = NEUTRAL_SPRITE_SCALE * PLAYER_SPRITE_SCALE_BASE
+	add_child(_player_sprite)
+
+
+func _show_player_image(tex: Texture2D, duration: float) -> void:
+	# Central helper for all temporary image states. Kills any in-flight restore,
+	# swaps to tex, then returns to idle after duration seconds.
+	# Each state call naturally overrides the previous one — latest call wins.
+	if _player_sprite == null or tex == null:
+		return
+	_player_sprite.texture = tex
+	if _image_restore_tween != null:
+		_image_restore_tween.kill()
+	_image_restore_tween = create_tween()
+	_image_restore_tween.tween_interval(duration)
+	_image_restore_tween.tween_callback(func() -> void:
+		if _player_sprite != null:
+			_player_sprite.texture = _idle_tex
+	)
+
+
+func _show_attack_image() -> void:
+	_show_player_image(_attack_tex, ATTACK_IMAGE_DURATION)
+
+
+func _show_parry_image() -> void:
+	# Only called on successful parry (good or perfect) — not on failed parry attempts.
+	_show_player_image(_parry_tex, PARRY_IMAGE_DURATION)
+
+
+func _show_hurt_image() -> void:
+	# Hurt overrides any ongoing attack or parry image — damage always registers visually.
+	_show_player_image(_hurt_tex, HURT_IMAGE_DURATION)
+
+
 func _return_to_neutral_state(immediate: bool = false) -> void:
 	current_lane = NEUTRAL_LANE
 
+	var vis_node = _player_sprite if _player_sprite != null else sprite
+	var neutral_s: Vector2 = NEUTRAL_SPRITE_SCALE * PLAYER_SPRITE_SCALE_BASE if _player_sprite != null else NEUTRAL_SPRITE_SCALE
+
 	if immediate:
 		position = _neutral_world_position()
-		sprite.position = NEUTRAL_SPRITE_POSITION
-		sprite.scale = NEUTRAL_SPRITE_SCALE
+		vis_node.position = NEUTRAL_SPRITE_POSITION
+		vis_node.scale = neutral_s
 		return
 
 	_play_sprite_pose(NEUTRAL_SPRITE_POSITION, NEUTRAL_SPRITE_SCALE, 0.06)
@@ -506,6 +718,7 @@ func _return_to_neutral_state(immediate: bool = false) -> void:
 
 
 func _play_attack_state(target_lane: int) -> void:
+	_show_attack_image()
 	_play_sprite_pose(ATTACK_SPRITE_POSITION, ATTACK_SPRITE_SCALE, 0.08)
 	_play_world_motion(
 		_action_world_position(target_lane, ATTACK_WORLD_X_OFFSET),
@@ -549,11 +762,17 @@ func _play_sprite_pose(target_position: Vector2, target_scale: Vector2, return_t
 	if _sprite_pose_tween != null:
 		_sprite_pose_tween.kill()
 
+	var vis_node = _player_sprite if _player_sprite != null else sprite
+	# Scale constants are squash-stretch multipliers; apply PLAYER_SPRITE_SCALE_BASE
+	# so the Sprite2D stays at the right display size through the pose animation.
+	var action_s: Vector2 = target_scale * PLAYER_SPRITE_SCALE_BASE if _player_sprite != null else target_scale
+	var neutral_s: Vector2 = NEUTRAL_SPRITE_SCALE * PLAYER_SPRITE_SCALE_BASE if _player_sprite != null else NEUTRAL_SPRITE_SCALE
+
 	_sprite_pose_tween = create_tween()
-	_sprite_pose_tween.tween_property(sprite, "position", target_position, 0.03)
-	_sprite_pose_tween.parallel().tween_property(sprite, "scale", target_scale, 0.03)
-	_sprite_pose_tween.tween_property(sprite, "position", NEUTRAL_SPRITE_POSITION, return_time)
-	_sprite_pose_tween.parallel().tween_property(sprite, "scale", NEUTRAL_SPRITE_SCALE, return_time)
+	_sprite_pose_tween.tween_property(vis_node, "position", target_position, 0.03)
+	_sprite_pose_tween.parallel().tween_property(vis_node, "scale", action_s, 0.03)
+	_sprite_pose_tween.tween_property(vis_node, "position", NEUTRAL_SPRITE_POSITION, return_time)
+	_sprite_pose_tween.parallel().tween_property(vis_node, "scale", neutral_s, return_time)
 
 
 func _play_world_motion(action_position: Vector2, return_position: Vector2, push_time: float, return_time: float) -> void:

@@ -13,6 +13,32 @@ const BIOME_FEEDING_HOLLOW := {
 	"defeat_text": "YOU FED THE HOLLOW"
 }
 
+const BIOME_PALE_SHELF := {
+	"name": "The Pale Shelf",
+	"subtitle": "Nothing hides here. Neither do you.",
+	"background_color": Color(0.06, 0.06, 0.10, 1.0),
+	"lane_color": Color(0.28, 0.28, 0.40, 1.0),
+	"enemy_active_color": Color(0.58, 0.60, 0.82, 1.0),
+	"enemy_inactive_color": Color(0.26, 0.27, 0.42, 0.55),
+	"ring_active_color": Color(0.84, 0.90, 1.00, 1.0),
+	"ring_inactive_color": Color(0.50, 0.52, 0.64, 0.45),
+	"victory_text": "THE SHELF YIELDS",
+	"defeat_text": "EXPOSED AND CONSUMED"
+}
+
+const BIOME_DROWNED_CUT := {
+	"name": "The Drowned Cut",
+	"subtitle": "The water still remembers its weight.",
+	"background_color": Color(0.04, 0.07, 0.08, 1.0),
+	"lane_color": Color(0.16, 0.28, 0.30, 1.0),
+	"enemy_active_color": Color(0.28, 0.72, 0.62, 1.0),
+	"enemy_inactive_color": Color(0.13, 0.34, 0.32, 0.55),
+	"ring_active_color": Color(0.68, 0.98, 0.88, 1.0),
+	"ring_inactive_color": Color(0.42, 0.58, 0.56, 0.45),
+	"victory_text": "THE CUT REMEMBERS",
+	"defeat_text": "DROWNED IN THE WEIGHT"
+}
+
 const BIOME_FEEDING_HOLLOW_BOSS := {
 	"name": "The Feeding Hollow",
 	"subtitle": "It was always here.",
@@ -37,6 +63,13 @@ const CREATURES := {
 		"capture_threshold": 0.30,
 		"bond_level": 1,
 		"description": "Something that learned to cut before it learned to stop.",
+		"sprite_path": "res://assets/creatures/ashclaw/forms/ashclaw_baby.png",
+		"combat_render": {
+			"scale": 0.058,
+			"world_offset": Vector2(-116.0, 82.0),
+			"z_index": 6,
+			"modulate": Color(0.92, 0.91, 0.88, 0.90)
+		},
 		"eat_effect": {"type": "damage_flat", "value": 2.0},
 		"bond_passive": {"type": "damage_on_ultimate", "value": 5.0},
 		"support_role": {
@@ -237,6 +270,10 @@ static func get_biome(biome_id: String) -> Dictionary:
 	match biome_id:
 		"feeding_hollow":
 			return BIOME_FEEDING_HOLLOW.duplicate(true)
+		"pale_shelf":
+			return BIOME_PALE_SHELF.duplicate(true)
+		"drowned_cut":
+			return BIOME_DROWNED_CUT.duplicate(true)
 		_:
 			return {}
 
@@ -252,6 +289,30 @@ static func get_support_role(species_id: String) -> Dictionary:
 	if creature.is_empty():
 		return {}
 	return creature.get("support_role", {}).duplicate(true)
+
+
+static func get_creature_sprite_path(species_id: String) -> String:
+	var creature: Dictionary = get_creature(species_id)
+	if creature.is_empty():
+		return ""
+	return String(creature.get("sprite_path", ""))
+
+
+static func get_creature_combat_render(species_id: String) -> Dictionary:
+	var creature: Dictionary = get_creature(species_id)
+	if creature.is_empty():
+		return {}
+
+	var render: Dictionary = {
+		"scale": 0.052,
+		"world_offset": Vector2(-108.0, 74.0),
+		"z_index": 5,
+		"modulate": Color(0.90, 0.89, 0.86, 0.86)
+	}
+	var creature_render: Dictionary = creature.get("combat_render", {})
+	for key in creature_render.keys():
+		render[key] = creature_render[key]
+	return render
 
 
 static func get_encounter(encounter_id: String) -> Dictionary:

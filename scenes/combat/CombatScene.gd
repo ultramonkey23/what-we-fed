@@ -17,19 +17,39 @@ extends Node2D
 @onready var controls_label: Label = $UI/ControlsLabel
 
 const COMBAT_CONTENT = preload("res://data/CombatContent.gd")
+const AUDIO_CONTENT = preload("res://data/AudioContent.gd")
 const GROWTH_CONTENT = preload("res://data/RunGrowthContent.gd")
 const SONG_CONTENT = preload("res://data/SongContent.gd")
+const TRICKY_SONGMAP = preload("res://data/song_maps/tricky_songmap.gd")
+const SONG_CONDUCTOR_SCRIPT = preload("res://systems/SongConductor.gd")
+const COMBAT_TRANSITION_STATE = preload("res://systems/CombatTransitionState.gd")
+const COMBAT_IMPACT_FEEDBACK = preload("res://systems/CombatImpactFeedback.gd")
+const COMBAT_PRESENTATION_RUNTIME = preload("res://systems/CombatPresentationRuntime.gd")
+const ENCOUNTER_IDENTITY_RUNTIME = preload("res://systems/EncounterIdentityRuntime.gd")
+const UI_STYLE = preload("res://systems/UIStyle.gd")
 const RING_OUTER_RADIUS: float = 30.0
 const RING_GOOD_RADIUS: float = 24.0
 const RING_PERFECT_RADIUS: float = 15.0
 const RING_POINT_COUNT: int = 32
-const LANE_BAND_HEIGHT: float = 54.0
-const LANE_IDLE_ALPHA: float = 0.18
-const LANE_THREAT_ALPHA: float = 0.34
-const LANE_CRITICAL_ALPHA: float = 0.50
+const LANE_BAND_HEIGHT: float = 36.0
+const LANE_IDLE_ALPHA: float = 0.0
+const LANE_THREAT_ALPHA: float = 0.026
+const LANE_CRITICAL_ALPHA: float = 0.060
 const EDGE_STATE_WIDTH: float = 0.016
 const RUN_GROWTH_SCRIPT_PATH: String = "res://systems/RunGrowth.gd"
 const ENEMY_LOW_HP_THRESHOLD: float = 0.25
+const SUPPORT_MASTERY_CONTEXT_TIMEOUT: float = 1.75
+
+# Combat background images. Picked randomly at run start; expandable for
+# boss-specific or region-specific overrides via _apply_combat_background().
+const COMBAT_BG_PATHS: Array[String] = [
+	"res://assets/backgrounds/combat/cbg1.png",
+	"res://assets/backgrounds/combat/cbg2.png",
+	"res://assets/backgrounds/combat/cbg3.png",
+]
+# Dim factor applied to all combat backgrounds.
+# Keeps images atmospheric without competing with lanes, rings, or HUD.
+const COMBAT_BG_MODULATE: Color = Color(0.78, 0.78, 0.78, 1.0)
 
 var _base_time_scale: float = 1.0
 # Incremented each time _on_slow_motion fires. Each restore timer checks its
@@ -53,6 +73,8 @@ var _support_shell: ColorRect = null
 var _support_bar: ProgressBar = null
 var _support_value_label: Label = null
 var _support_name_label: Label = null
+var _support_creature_portrait: TextureRect = null
+var _support_portrait_species: String = ""  # cached species_id to skip redundant texture loads
 var _run_build_shell: ColorRect = null
 var _eaten_value_label: Label = null
 var _upgrade_value_label: Label = null
@@ -68,6 +90,10 @@ var _battlefield_left_shade: ColorRect = null
 var _battlefield_right_shade: ColorRect = null
 var _battlefield_top_trim: ColorRect = null
 var _battlefield_bottom_trim: ColorRect = null
+var _bg_sprite: TextureRect = null
+var _bonded_creature_sprite: Sprite2D = null
+var _bonded_creature_species: String = ""
+var _presentation_runtime: RefCounted = null
 
 # Reward / inter-encounter overlay.
 var _reward_overlay: ColorRect = null
@@ -83,6 +109,7 @@ var _reward_eat_label: Label = null
 var _reward_bond_effect_label: Label = null
 var _reward_eat_effect_label: Label = null
 var _reward_creature_tag_label: Label = null
+var _reward_creature_portrait: TextureRect = null
 var _growth_overlay: ColorRect = null
 var _growth_panel: ColorRect = null
 var _growth_title_label: Label = null
@@ -98,19 +125,16 @@ var _status_marker_overrides: Dictionary = {}
 
 var _awaiting_reward_choice: bool = false
 var _reward_choice_made: bool = false
-var _awaiting_continue: bool = false
 var _run_finished: bool = false
 var _pending_reward_creature: Dictionary = {}
 
-# Incremented each time _load_current_queued_encounter is called. The function
-# captures this at entry and bails after the boss-intro await if a newer load
+# Incremented each time an encounter payload is loaded. The function
+# captures this at entry and bails after the boss intro await if a newer load
 # has superseded it — mirrors the _cycle_task_id pattern in LaneManager.
 var _encounter_load_gen: int = 0
 
 var _active_encounter: Dictionary = {}
 var _current_phase_index: int = 0
-var _encounter_queue: Array = []
-var _current_encounter_queue_index: int = 0
 var _run_growth: Node = null
 var _awaiting_growth_choice: bool = false
 var _growth_pause_active: bool = false
@@ -142,11 +166,29 @@ var _song_phase_index: int = -1
 var _song_boss_triggered: bool = false
 var _next_song_enemy_id: int = 100
 var _song_reward_pending: bool = false
+# Active phase table — set at run start from RegionSongContent based on active_region.
+var _song_phases: Array = []
+# SongConductor child node — null when no music-driven run is active.
+var _song_conductor: Node = null
 # Maps dynamically spawned song enemy_id → lane (so we know where to respawn on death).
 var _song_enemy_lanes: Dictionary = {}
 var _song_timer_label: Label = null
 var _song_phase_label: Label = null
 var _song_rng: RandomNumberGenerator = RandomNumberGenerator.new()
+# Brief beat-quality text shown near the timing rings when the player acts on-beat.
+var _beat_feedback_label: Label = null
+var _last_mastery_context: Dictionary = {}
+
+# Boss music race state.
+# newness.wav plays during the final boss encounter.
+# If the boss is not killed before the track ends, the player loses.
+var _boss_music_player: AudioStreamPlayer = null
+var _boss_race_active: bool = false
+var _boss_music_duration: float = 0.0
+var _boss_hp_threshold_fired: bool = false  # fires once when boss HP crosses 50%
+var _boss_presence_timer: float = 0.0       # drives sovereign marker urgency pulse
+# Current region id — set at _start_song_run(); drives per-region runtime feel.
+var _region_id: String = ""
 
 
 func _ready() -> void:
@@ -156,6 +198,7 @@ func _ready() -> void:
 	_create_title_cards()
 	_create_timing_circle_container()
 	_create_attack_fx_container()
+	_setup_presentation_runtime()
 	_create_reward_overlay()
 	_create_growth_overlay()
 	_setup_run_growth()
@@ -176,11 +219,27 @@ func _process(delta: float) -> void:
 	_maybe_present_growth_offer()
 
 	if _song_mode and not _song_paused and not _run_finished:
-		_song_elapsed += delta
-		_tick_song_phase()
+		if _song_conductor != null:
+			# Conductor is active: sync elapsed time from audio playback position.
+			# Section transitions and boss trigger are driven by conductor signals,
+			# not by _tick_song_phase() or the manual SONG_DURATION check below.
+			_song_elapsed = _song_conductor.get_song_time()
+		else:
+			# Fallback (no audio): wall-clock timer with manual phase/boss checks.
+			_song_elapsed += delta
+			_tick_song_phase()
+			if not _song_boss_triggered and _song_elapsed >= SONG_CONTENT.SONG_DURATION:
+				_trigger_boss_final_movement()
 		_update_song_hud()
-		if not _song_boss_triggered and _song_elapsed >= SONG_CONTENT.SONG_DURATION:
-			_trigger_boss_final_movement()
+		# Stall recovery: if the fire cycle is running but stalled with live enemies,
+		# kick it back. This catches any edge case where _cycle_stalled got set but
+		# set_enemy() missed the restart (e.g. enemies placed while _combat_running was false).
+		if not _song_boss_triggered and lane_manager.is_combat_running() and lane_manager.is_song_cycle_stalled() and lane_manager.alive_count() > 0:
+			lane_manager.start_song_cycle()
+
+	if _boss_race_active and _boss_music_player != null and is_instance_valid(_boss_music_player):
+		_update_boss_race_hud()
+		_update_boss_presence(delta)
 
 
 func _update_timing_ring_proximity() -> void:
@@ -197,6 +256,17 @@ func _update_timing_ring_proximity() -> void:
 	var perfect_entry: float = 1.0 - RING_PERFECT_RADIUS / intercept_dist
 	var perfect_exit: float = 1.0 + RING_PERFECT_RADIUS / intercept_dist
 	var approach_start: float = outer_entry - 0.08
+
+	# Beat pulse — brief alpha boost on all receivers each beat.
+	# Phase 0 = beat fired, decays quickly; small anticipation rise near phase 1.
+	# This gives the player a visual metronome without relying on a projectile.
+	var beat_pulse: float = 0.0
+	if _song_conductor != null and is_instance_valid(_song_conductor) and _song_conductor.is_beat_active():
+		var bp: float = _song_conductor.get_beat_phase()
+		if bp < 0.18:
+			beat_pulse = (1.0 - bp / 0.18) * 0.13
+		elif bp > 0.88:
+			beat_pulse = ((bp - 0.88) / 0.12) * 0.06
 
 	for lane in range(3):
 		if _ring_highlight_timers[lane] > 0.0:
@@ -218,13 +288,13 @@ func _update_timing_ring_proximity() -> void:
 
 		var base_color: Color = active_color if lane == player_combat.current_lane else inactive_color
 
-		var outer_color: Color = base_color.darkened(0.02)
-		var good_color: Color = Color(base_color.r, base_color.g, base_color.b, base_color.a * 0.10)
-		var perfect_color: Color = base_color.lightened(0.20)
-		var outer_width: float = 2.5
-		var good_width: float = 0.8
-		var perfect_width: float = 2.5
-		var receiver_alpha: float = 0.06 if lane == player_combat.current_lane else 0.03
+		var outer_color: Color = Color(base_color.r, base_color.g, base_color.b, base_color.a * 0.50)
+		var good_color: Color = Color(base_color.r, base_color.g, base_color.b, base_color.a * 0.18)
+		var perfect_color: Color = base_color.lightened(0.28)
+		var outer_width: float = 1.4
+		var good_width: float = 0.9
+		var perfect_width: float = 2.8
+		var receiver_alpha: float = 0.10 if lane == player_combat.current_lane else 0.05
 		var receiver_glow_alpha: float = 0.0
 		var edge_alpha: float = 0.0
 		var beat_color: Color = base_color.lightened(0.06)
@@ -263,6 +333,12 @@ func _update_timing_ring_proximity() -> void:
 					edge_alpha = 0.18 + (0.26 * edge_t)
 					outer_width = lerp(outer_width, 3.0, edge_t)
 
+		# Apply beat pulse on top of proximity-driven alpha.
+		# The pulse is identical across all lanes — it is a global metronome, not lane-specific.
+		receiver_alpha = minf(receiver_alpha + beat_pulse, 0.52)
+		if beat_pulse > 0.03:
+			beat_color = beat_color.lerp(active_color.lightened(0.38), beat_pulse / 0.13)
+
 		receiver_fill.color = Color(active_color.r, active_color.g, active_color.b, receiver_alpha)
 		receiver_glow.color = Color(active_color.r, active_color.g, active_color.b, receiver_glow_alpha)
 		edge_ring.default_color = Color(active_color.r, active_color.g, active_color.b, edge_alpha)
@@ -298,13 +374,13 @@ func _update_lane_visual_states() -> void:
 
 		var state_color: Color = lane_color
 		var state_alpha: float = LANE_IDLE_ALPHA
-		var focus_alpha: float = 0.08
+		var focus_alpha: float = 0.015
 		var focus_scale: float = 1.0
 		var focus_color: Color = inactive_color
 
 		if lane == player_combat.current_lane:
-			state_alpha += 0.05
-			focus_alpha = 0.12
+			state_alpha += 0.014
+			focus_alpha = 0.032
 
 		var proj = lane_manager.get_projectile(lane)
 		if proj != null and not proj.is_resolved and not proj.is_reflected:
@@ -314,8 +390,8 @@ func _update_lane_visual_states() -> void:
 				state_color = lane_color.lerp(active_color.darkened(0.20), 0.55)
 				state_alpha = lerp(state_alpha, LANE_THREAT_ALPHA, pressure)
 				focus_color = active_color
-				focus_alpha = lerp(focus_alpha, 0.28, pressure)
-				focus_scale = lerp(1.0, 1.12, pressure)
+				focus_alpha = lerp(focus_alpha, 0.16, pressure)
+				focus_scale = lerp(1.0, 1.08, pressure)
 				var pulse: float = 0.92 + (sin(time * 5.2 + lane) * 0.03 + 0.03) * pressure
 				strip.scale.y = pulse
 			else:
@@ -324,8 +400,8 @@ func _update_lane_visual_states() -> void:
 			if p >= outer_entry and p <= outer_exit:
 				var critical_t: float = 1.0 - clamp(abs(p - 1.0) / (outer_exit - 1.0), 0.0, 1.0)
 				state_alpha = lerp(state_alpha, LANE_CRITICAL_ALPHA, 0.65 + critical_t * 0.35)
-				focus_alpha = lerp(focus_alpha, 0.42, 0.70 + critical_t * 0.30)
-				focus_scale = lerp(focus_scale, 1.22, 0.70 + critical_t * 0.30)
+				focus_alpha = lerp(focus_alpha, 0.24, 0.70 + critical_t * 0.30)
+				focus_scale = lerp(focus_scale, 1.14, 0.70 + critical_t * 0.30)
 				focus_color = active_color.lightened(0.08)
 		else:
 			strip.scale.y = 1.0
@@ -362,14 +438,6 @@ func _unhandled_input(event: InputEvent) -> void:
 			_choose_eat()
 			return
 
-	if _awaiting_continue:
-		if key_event.keycode == KEY_C:
-			_continue_to_next_encounter()
-			return
-		if key_event.keycode == KEY_R:
-			_start_mini_run()
-			return
-
 	if _run_finished:
 		if key_event.keycode == KEY_R:
 			_start_mini_run()
@@ -379,59 +447,85 @@ func _unhandled_input(event: InputEvent) -> void:
 			return
 
 
+func _apply_text_role(label: Label, role: String, align: int = -1) -> void:
+	UI_STYLE.apply_label(label, role, align)
+
+
+func _set_shell_treatment(shell: ColorRect, color: Color, border_color: Color) -> void:
+	if shell == null:
+		return
+	shell.color = color
+	shell.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	var panel := StyleBoxFlat.new()
+	panel.bg_color = color
+	panel.corner_radius_top_left = 7
+	panel.corner_radius_top_right = 7
+	panel.corner_radius_bottom_left = 7
+	panel.corner_radius_bottom_right = 7
+	panel.border_width_left = 1
+	panel.border_width_top = 1
+	panel.border_width_right = 1
+	panel.border_width_bottom = 1
+	panel.border_color = border_color
+	shell.add_theme_stylebox_override("panel", panel)
+
+
 func _setup_visuals() -> void:
 	background.anchor_right = 1.0
 	background.anchor_bottom = 1.0
 	background.z_index = -10
 	background.color = Color(0.05, 0.04, 0.05, 1.0)
 
-	var field_rect := Rect2(86.0, 102.0, 1108.0, 488.0)
+	_apply_combat_background()
+
+	var field_rect := Rect2(104.0, 112.0, 1060.0, 464.0)
 
 	_battlefield_panel = ColorRect.new()
 	_battlefield_panel.name = "BattlefieldPanel"
 	_battlefield_panel.position = field_rect.position
 	_battlefield_panel.size = field_rect.size
-	_battlefield_panel.color = Color(0.07, 0.07, 0.08, 0.92)
+	_battlefield_panel.color = Color(0.02, 0.02, 0.03, 0.02)
 	_battlefield_panel.z_index = -7
 	add_child(_battlefield_panel)
 
 	_battlefield_inner_panel = ColorRect.new()
 	_battlefield_inner_panel.name = "BattlefieldInner"
-	_battlefield_inner_panel.position = field_rect.position + Vector2(16.0, 14.0)
-	_battlefield_inner_panel.size = field_rect.size - Vector2(32.0, 28.0)
-	_battlefield_inner_panel.color = Color(0.10, 0.09, 0.10, 0.56)
+	_battlefield_inner_panel.position = field_rect.position + Vector2(18.0, 18.0)
+	_battlefield_inner_panel.size = field_rect.size - Vector2(36.0, 36.0)
+	_battlefield_inner_panel.color = Color(0.02, 0.02, 0.03, 0.01)
 	_battlefield_inner_panel.z_index = -6
 	add_child(_battlefield_inner_panel)
 
 	_battlefield_left_shade = ColorRect.new()
 	_battlefield_left_shade.name = "BattlefieldLeftShade"
-	_battlefield_left_shade.position = Vector2(field_rect.position.x + 12.0, field_rect.position.y + 16.0)
-	_battlefield_left_shade.size = Vector2(48.0, field_rect.size.y - 32.0)
-	_battlefield_left_shade.color = Color(0.03, 0.03, 0.04, 0.46)
+	_battlefield_left_shade.position = Vector2(field_rect.position.x + 6.0, field_rect.position.y + 20.0)
+	_battlefield_left_shade.size = Vector2(86.0, field_rect.size.y - 40.0)
+	_battlefield_left_shade.color = Color(0.02, 0.02, 0.03, 0.14)
 	_battlefield_left_shade.z_index = -5
 	add_child(_battlefield_left_shade)
 
 	_battlefield_right_shade = ColorRect.new()
 	_battlefield_right_shade.name = "BattlefieldRightShade"
-	_battlefield_right_shade.position = Vector2(field_rect.end.x - 60.0, field_rect.position.y + 16.0)
-	_battlefield_right_shade.size = Vector2(48.0, field_rect.size.y - 32.0)
-	_battlefield_right_shade.color = Color(0.03, 0.03, 0.04, 0.40)
+	_battlefield_right_shade.position = Vector2(field_rect.end.x - 92.0, field_rect.position.y + 20.0)
+	_battlefield_right_shade.size = Vector2(86.0, field_rect.size.y - 40.0)
+	_battlefield_right_shade.color = Color(0.02, 0.02, 0.03, 0.10)
 	_battlefield_right_shade.z_index = -5
 	add_child(_battlefield_right_shade)
 
 	_battlefield_top_trim = ColorRect.new()
 	_battlefield_top_trim.name = "BattlefieldTopTrim"
-	_battlefield_top_trim.position = field_rect.position + Vector2(10.0, 10.0)
-	_battlefield_top_trim.size = Vector2(field_rect.size.x - 20.0, 3.0)
-	_battlefield_top_trim.color = Color(0.34, 0.29, 0.25, 0.36)
+	_battlefield_top_trim.position = field_rect.position + Vector2(76.0, 8.0)
+	_battlefield_top_trim.size = Vector2(field_rect.size.x - 152.0, 2.0)
+	_battlefield_top_trim.color = Color(0.44, 0.37, 0.28, 0.20)
 	_battlefield_top_trim.z_index = -5
 	add_child(_battlefield_top_trim)
 
 	_battlefield_bottom_trim = ColorRect.new()
 	_battlefield_bottom_trim.name = "BattlefieldBottomTrim"
-	_battlefield_bottom_trim.position = Vector2(field_rect.position.x + 10.0, field_rect.end.y - 13.0)
-	_battlefield_bottom_trim.size = Vector2(field_rect.size.x - 20.0, 2.0)
-	_battlefield_bottom_trim.color = Color(0.20, 0.16, 0.14, 0.28)
+	_battlefield_bottom_trim.position = Vector2(field_rect.position.x + 96.0, field_rect.end.y - 10.0)
+	_battlefield_bottom_trim.size = Vector2(field_rect.size.x - 192.0, 1.0)
+	_battlefield_bottom_trim.color = Color(0.34, 0.27, 0.21, 0.16)
 	_battlefield_bottom_trim.z_index = -5
 	add_child(_battlefield_bottom_trim)
 
@@ -442,50 +536,85 @@ func _setup_visuals() -> void:
 	flash_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 
+func _apply_combat_background(override_path: String = "") -> void:
+	# Loads and applies a combat background image behind the battlefield.
+	# override_path: pass a specific res:// path to force a particular image.
+	#   e.g. for a boss encounter: _apply_combat_background("res://assets/backgrounds/combat/boss_hollow.png")
+	#   e.g. for a region: _apply_combat_background("res://assets/backgrounds/combat/pale_shelf.png")
+	# Without override, picks randomly from COMBAT_BG_PATHS.
+	if _bg_sprite != null and is_instance_valid(_bg_sprite):
+		_bg_sprite.queue_free()
+		_bg_sprite = null
+
+	var path: String = override_path
+	if path.is_empty():
+		path = COMBAT_BG_PATHS[randi() % COMBAT_BG_PATHS.size()]
+
+	if not ResourceLoader.exists(path):
+		return
+
+	var tex: Texture2D = load(path) as Texture2D
+	if tex == null:
+		return
+
+	_bg_sprite = TextureRect.new()
+	_bg_sprite.name = "CombatBg"
+	_bg_sprite.texture = tex
+	# Explicit pixel size from viewport — anchor-based sizing on a Control node
+	# dynamically added to a Node2D parent resolves to Vector2(0,0) at _ready() time
+	# because there is no parent Control rect to anchor against. Setting position and
+	# size directly is the reliable path here.
+	_bg_sprite.position = Vector2.ZERO
+	_bg_sprite.size = get_viewport_rect().size
+	# STRETCH_SCALE fills the rect exactly — no cropping, no letterboxing.
+	# The image is always centered and covers the full window.
+	_bg_sprite.stretch_mode = TextureRect.STRETCH_SCALE
+	_bg_sprite.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_bg_sprite.z_index = -9
+	_bg_sprite.modulate = COMBAT_BG_MODULATE
+	add_child(_bg_sprite)
+
+
 func _setup_ui() -> void:
 	_build_meter_shell()
 	combo_label.text = "0"
-	combo_label.position = Vector2(1052.0, 18.0)
-	combo_label.size = Vector2(168.0, 24.0)
-	combo_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	combo_label.add_theme_font_size_override("font_size", 20)
-	combo_label.add_theme_color_override("font_color", Color(0.98, 0.95, 0.89, 1.0))
+	combo_label.position = Vector2(1040.0, 16.0)
+	combo_label.size = Vector2(180.0, 30.0)
+	_apply_text_role(combo_label, "primary_value", HORIZONTAL_ALIGNMENT_RIGHT)
+	combo_label.add_theme_font_size_override("font_size", 24)
 	style_label.text = "Stirring"
-	style_label.position = Vector2(954.0, 43.0)
-	style_label.size = Vector2(222.0, 20.0)
-	style_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	style_label.add_theme_font_size_override("font_size", 16)
-	style_label.add_theme_color_override("font_color", Color(0.93, 0.90, 0.84, 1.0))
+	style_label.position = Vector2(962.0, 46.0)
+	style_label.size = Vector2(174.0, 24.0)
+	_apply_text_role(style_label, "secondary_value", HORIZONTAL_ALIGNMENT_LEFT)
+	style_label.add_theme_font_size_override("font_size", 17)
 	stamina_bar.min_value = 0.0
 	stamina_bar.max_value = 100.0
 	stamina_bar.value = 100.0
-	stamina_bar.position = Vector2(124.0, 50.0)
-	stamina_bar.size = Vector2(222.0, 10.0)
+	stamina_bar.position = Vector2(34.0, 58.0)
+	stamina_bar.size = Vector2(340.0, 13.0)
 	stamina_bar.show_percentage = false
 	hp_bar.min_value = 0.0
 	hp_bar.max_value = GameState.player_max_hp
 	hp_bar.value = GameState.player_hp
-	hp_bar.position = Vector2(124.0, 27.0)
-	hp_bar.size = Vector2(222.0, 12.0)
+	hp_bar.position = Vector2(34.0, 36.0)
+	hp_bar.size = Vector2(340.0, 16.0)
 	hp_bar.show_percentage = false
 	ultimate_label.text = "0%"
-	ultimate_label.position = Vector2(954.0, 18.0)
-	ultimate_label.size = Vector2(100.0, 20.0)
-	ultimate_label.add_theme_font_size_override("font_size", 15)
-	ultimate_label.add_theme_color_override("font_color", Color(0.98, 0.90, 0.70, 1.0))
+	ultimate_label.position = Vector2(946.0, 18.0)
+	ultimate_label.size = Vector2(102.0, 24.0)
+	_apply_text_role(ultimate_label, "warm_value")
+	ultimate_label.add_theme_font_size_override("font_size", 20)
 	result_label.visible = false
 	result_label.text = ""
-	result_label.position = Vector2(352.0, 254.0)
-	result_label.size = Vector2(576.0, 118.0)
+	result_label.position = Vector2(320.0, 290.0)
+	result_label.size = Vector2(640.0, 72.0)
 	result_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	result_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	result_label.add_theme_font_size_override("font_size", 28)
-	result_label.add_theme_color_override("font_color", Color(0.92, 0.89, 0.80, 1.0))
-	controls_label.text = "A/S/D lane  |  Left+Lane parry  |  Right+Lane dodge  |  R ultimate"
-	controls_label.position = Vector2(34.0, 648.0)
-	controls_label.size = Vector2(620.0, 24.0)
-	controls_label.add_theme_font_size_override("font_size", 12)
-	controls_label.add_theme_color_override("font_color", Color(0.67, 0.63, 0.58, 0.92))
+	_apply_text_role(result_label, "screen_title")
+	controls_label.text = "A S D choose lane  |  Left Arrow + lane parry  |  Right Arrow + lane dodge  |  R unleash"
+	controls_label.position = Vector2(32.0, 646.0)
+	controls_label.size = Vector2(720.0, 26.0)
+	_apply_text_role(controls_label, "hint")
 	_style_progress_bar(hp_bar, Color(0.18, 0.06, 0.08, 0.88), Color(0.73, 0.24, 0.26, 1.0), 6)
 	_style_progress_bar(stamina_bar, Color(0.08, 0.09, 0.10, 0.82), Color(0.44, 0.66, 0.58, 1.0), 5)
 	_build_quig_anchor()
@@ -503,52 +632,62 @@ func _build_meter_shell() -> void:
 
 	_combo_shell = ColorRect.new()
 	_combo_shell.name = "LeftHudShell"
-	_combo_shell.position = Vector2(20.0, 10.0)
-	_combo_shell.size = Vector2(338.0, 62.0)
-	_combo_shell.color = Color(0.08, 0.08, 0.09, 0.68)
+	_combo_shell.position = Vector2(18.0, 8.0)
+	_combo_shell.size = Vector2(374.0, 108.0)
+	_set_shell_treatment(_combo_shell, Color(0.07, 0.07, 0.08, 0.84), Color(0.23, 0.20, 0.18, 0.88))
 	ui_layer.add_child(_combo_shell)
 
 	_style_shell = ColorRect.new()
 	_style_shell.name = "RightHudShell"
-	_style_shell.position = Vector2(920.0, 10.0)
-	_style_shell.size = Vector2(312.0, 62.0)
-	_style_shell.color = Color(0.09, 0.08, 0.09, 0.66)
+	_style_shell.position = Vector2(892.0, 8.0)
+	_style_shell.size = Vector2(340.0, 84.0)
+	_set_shell_treatment(_style_shell, Color(0.08, 0.07, 0.08, 0.84), Color(0.24, 0.20, 0.18, 0.88))
 	ui_layer.add_child(_style_shell)
 
 	_resource_shell = ColorRect.new()
 	_resource_shell.name = "RightHudAccent"
-	_resource_shell.position = Vector2(1038.0, 22.0)
-	_resource_shell.size = Vector2(182.0, 16.0)
-	_resource_shell.color = Color(0.16, 0.13, 0.11, 0.28)
+	_resource_shell.position = Vector2(1044.0, 18.0)
+	_resource_shell.size = Vector2(176.0, 24.0)
+	_set_shell_treatment(_resource_shell, Color(0.15, 0.12, 0.10, 0.30), Color(0.30, 0.24, 0.18, 0.46))
 	ui_layer.add_child(_resource_shell)
 
 	_support_shell = ColorRect.new()
 	_support_shell.name = "SupportShell"
-	_support_shell.position = Vector2(904.0, 80.0)
-	_support_shell.size = Vector2(220.0, 50.0)
-	_support_shell.color = Color(0.08, 0.08, 0.10, 0.56)
+	_support_shell.position = Vector2(892.0, 98.0)
+	_support_shell.size = Vector2(276.0, 90.0)
+	_set_shell_treatment(_support_shell, Color(0.08, 0.08, 0.10, 0.74), Color(0.20, 0.22, 0.19, 0.78))
 	ui_layer.add_child(_support_shell)
 
+	# Bonded creature portrait — shown when the active support creature has a sprite_path.
+	# Hides automatically for creatures without art; no fallback needed.
+	_support_creature_portrait = TextureRect.new()
+	_support_creature_portrait.name = "SupportPortrait"
+	_support_creature_portrait.position = Vector2(902.0, 108.0)
+	_support_creature_portrait.size = Vector2(64.0, 64.0)
+	_support_creature_portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_support_creature_portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_support_creature_portrait.visible = false
+	ui_layer.add_child(_support_creature_portrait)
+
 	_support_name_label = Label.new()
-	_support_name_label.position = Vector2(916.0, 84.0)
-	_support_name_label.size = Vector2(144.0, 14.0)
-	_support_name_label.text = "NO BOND"
-	_support_name_label.add_theme_font_size_override("font_size", 10)
-	_support_name_label.add_theme_color_override("font_color", Color(0.69, 0.66, 0.62, 0.90))
+	_support_name_label.position = Vector2(974.0, 108.0)
+	_support_name_label.size = Vector2(136.0, 20.0)
+	_support_name_label.text = "No bond"
+	_apply_text_role(_support_name_label, "caption_strong")
+	_support_name_label.add_theme_font_size_override("font_size", 16)
 	ui_layer.add_child(_support_name_label)
 
 	_support_value_label = Label.new()
-	_support_value_label.position = Vector2(1060.0, 84.0)
-	_support_value_label.size = Vector2(52.0, 14.0)
-	_support_value_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	_support_value_label.text = "0%"
-	_support_value_label.add_theme_font_size_override("font_size", 11)
-	_support_value_label.add_theme_color_override("font_color", Color(0.93, 0.90, 0.84, 1.0))
+	_support_value_label.position = Vector2(1106.0, 108.0)
+	_support_value_label.size = Vector2(54.0, 20.0)
+	_support_value_label.text = "--"
+	_apply_text_role(_support_value_label, "secondary_value", HORIZONTAL_ALIGNMENT_RIGHT)
+	_support_value_label.add_theme_font_size_override("font_size", 16)
 	ui_layer.add_child(_support_value_label)
 
 	_support_bar = ProgressBar.new()
-	_support_bar.position = Vector2(916.0, 99.0)
-	_support_bar.size = Vector2(196.0, 8.0)
+	_support_bar.position = Vector2(974.0, 132.0)
+	_support_bar.size = Vector2(186.0, 12.0)
 	_support_bar.min_value = 0.0
 	_support_bar.max_value = 100.0
 	_support_bar.value = 0.0
@@ -558,139 +697,138 @@ func _build_meter_shell() -> void:
 
 	_support_trigger_label = Label.new()
 	_support_trigger_label.name = "SupportTriggerHint"
-	_support_trigger_label.position = Vector2(916.0, 110.0)
-	_support_trigger_label.size = Vector2(196.0, 12.0)
+	_support_trigger_label.position = Vector2(974.0, 150.0)
+	_support_trigger_label.size = Vector2(186.0, 22.0)
 	_support_trigger_label.text = ""
-	_support_trigger_label.add_theme_font_size_override("font_size", 9)
-	_support_trigger_label.add_theme_color_override("font_color", Color(0.58, 0.56, 0.52, 0.72))
+	_apply_text_role(_support_trigger_label, "dim")
+	_support_trigger_label.add_theme_font_size_override("font_size", 12)
 	ui_layer.add_child(_support_trigger_label)
 
 	_run_build_shell = ColorRect.new()
 	_run_build_shell.name = "RunBuildShell"
-	_run_build_shell.position = Vector2(904.0, 134.0)
+	_run_build_shell.position = Vector2(892.0, 196.0)
 	_run_build_shell.size = Vector2(244.0, 70.0)
-	_run_build_shell.color = Color(0.07, 0.07, 0.09, 0.54)
+	_set_shell_treatment(_run_build_shell, Color(0.07, 0.07, 0.09, 0.58), Color(0.19, 0.18, 0.17, 0.66))
 	ui_layer.add_child(_run_build_shell)
 
 	var eaten_caption := Label.new()
-	eaten_caption.position = Vector2(916.0, 137.0)
+	eaten_caption.position = Vector2(904.0, 199.0)
 	eaten_caption.size = Vector2(44.0, 12.0)
-	eaten_caption.text = "EAT"
-	eaten_caption.add_theme_font_size_override("font_size", 10)
-	eaten_caption.add_theme_color_override("font_color", Color(0.69, 0.64, 0.59, 0.88))
+	eaten_caption.text = "Consumed"
+	_apply_text_role(eaten_caption, "caption")
 	ui_layer.add_child(eaten_caption)
 
 	_eaten_value_label = Label.new()
-	_eaten_value_label.position = Vector2(954.0, 136.0)
+	_eaten_value_label.position = Vector2(942.0, 198.0)
 	_eaten_value_label.size = Vector2(184.0, 12.0)
 	_eaten_value_label.text = "--"
-	_eaten_value_label.add_theme_font_size_override("font_size", 10)
-	_eaten_value_label.add_theme_color_override("font_color", Color(0.92, 0.87, 0.81, 0.96))
+	_apply_text_role(_eaten_value_label, "hint")
 	ui_layer.add_child(_eaten_value_label)
 
 	var upgrade_caption := Label.new()
-	upgrade_caption.position = Vector2(916.0, 160.0)
+	upgrade_caption.position = Vector2(904.0, 220.0)
 	upgrade_caption.size = Vector2(44.0, 12.0)
-	upgrade_caption.text = "MUT"
-	upgrade_caption.add_theme_font_size_override("font_size", 10)
-	upgrade_caption.add_theme_color_override("font_color", Color(0.69, 0.64, 0.59, 0.88))
+	upgrade_caption.text = "Mutations"
+	_apply_text_role(upgrade_caption, "caption")
 	ui_layer.add_child(upgrade_caption)
 
 	_upgrade_value_label = Label.new()
-	_upgrade_value_label.position = Vector2(954.0, 159.0)
+	_upgrade_value_label.position = Vector2(942.0, 219.0)
 	_upgrade_value_label.size = Vector2(184.0, 12.0)
 	_upgrade_value_label.text = "--"
-	_upgrade_value_label.add_theme_font_size_override("font_size", 10)
-	_upgrade_value_label.add_theme_color_override("font_color", Color(0.92, 0.87, 0.81, 0.96))
+	_apply_text_role(_upgrade_value_label, "hint")
 	ui_layer.add_child(_upgrade_value_label)
 
 	var bond_caption := Label.new()
-	bond_caption.position = Vector2(916.0, 183.0)
-	bond_caption.size = Vector2(44.0, 12.0)
-	bond_caption.text = "BOND"
-	bond_caption.add_theme_font_size_override("font_size", 10)
-	bond_caption.add_theme_color_override("font_color", Color(0.69, 0.64, 0.59, 0.88))
+	bond_caption.position = Vector2(904.0, 243.0)
+	bond_caption.size = Vector2(52.0, 12.0)
+	bond_caption.text = "Bond"
+	_apply_text_role(bond_caption, "caption")
 	ui_layer.add_child(bond_caption)
 
 	_bond_value_label = Label.new()
-	_bond_value_label.position = Vector2(954.0, 182.0)
+	_bond_value_label.position = Vector2(942.0, 242.0)
 	_bond_value_label.size = Vector2(184.0, 12.0)
 	_bond_value_label.text = "--"
-	_bond_value_label.add_theme_font_size_override("font_size", 10)
-	_bond_value_label.add_theme_color_override("font_color", Color(0.72, 0.86, 0.80, 0.96))
+	_apply_text_role(_bond_value_label, "cool_value")
 	ui_layer.add_child(_bond_value_label)
 
 	var hp_caption := Label.new()
-	hp_caption.position = Vector2(34.0, 18.0)
-	hp_caption.size = Vector2(72.0, 16.0)
-	hp_caption.text = "HEALTH"
-	hp_caption.add_theme_font_size_override("font_size", 11)
-	hp_caption.add_theme_color_override("font_color", Color(0.70, 0.66, 0.61, 0.92))
+	hp_caption.position = Vector2(34.0, 16.0)
+	hp_caption.size = Vector2(96.0, 20.0)
+	hp_caption.text = "Health"
+	_apply_text_role(hp_caption, "caption_strong")
+	hp_caption.add_theme_font_size_override("font_size", 15)
 	ui_layer.add_child(hp_caption)
 
 	_hp_value_label = Label.new()
-	_hp_value_label.position = Vector2(262.0, 16.0)
-	_hp_value_label.size = Vector2(86.0, 18.0)
-	_hp_value_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	_hp_value_label.add_theme_font_size_override("font_size", 15)
-	_hp_value_label.add_theme_color_override("font_color", Color(0.98, 0.94, 0.90, 1.0))
+	_hp_value_label.position = Vector2(250.0, 12.0)
+	_hp_value_label.size = Vector2(124.0, 24.0)
+	_apply_text_role(_hp_value_label, "primary_value", HORIZONTAL_ALIGNMENT_RIGHT)
+	_hp_value_label.add_theme_font_size_override("font_size", 22)
 	ui_layer.add_child(_hp_value_label)
 
+	# EXP and Attack share the bottom row of the left panel, separated left/right.
 	var exp_caption := Label.new()
-	exp_caption.position = Vector2(34.0, 41.0)
-	exp_caption.size = Vector2(72.0, 14.0)
+	exp_caption.position = Vector2(34.0, 84.0)
+	exp_caption.size = Vector2(44.0, 16.0)
 	exp_caption.text = "EXP"
-	exp_caption.add_theme_font_size_override("font_size", 11)
-	exp_caption.add_theme_color_override("font_color", Color(0.66, 0.68, 0.64, 0.90))
+	_apply_text_role(exp_caption, "caption")
+	exp_caption.add_theme_font_size_override("font_size", 13)
 	ui_layer.add_child(exp_caption)
 
 	_exp_value_label = Label.new()
-	_exp_value_label.position = Vector2(262.0, 40.0)
-	_exp_value_label.size = Vector2(86.0, 16.0)
-	_exp_value_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	_exp_value_label.add_theme_font_size_override("font_size", 13)
-	_exp_value_label.add_theme_color_override("font_color", Color(0.95, 0.97, 0.93, 1.0))
+	_exp_value_label.position = Vector2(78.0, 82.0)
+	_exp_value_label.size = Vector2(156.0, 18.0)
+	_apply_text_role(_exp_value_label, "secondary_value", HORIZONTAL_ALIGNMENT_LEFT)
+	_exp_value_label.add_theme_font_size_override("font_size", 15)
 	ui_layer.add_child(_exp_value_label)
 
 	var atk_caption := Label.new()
-	atk_caption.position = Vector2(34.0, 63.0)
-	atk_caption.size = Vector2(72.0, 14.0)
-	atk_caption.text = "ATK"
-	atk_caption.add_theme_font_size_override("font_size", 11)
-	atk_caption.add_theme_color_override("font_color", Color(0.66, 0.65, 0.63, 0.90))
+	atk_caption.position = Vector2(246.0, 84.0)
+	atk_caption.size = Vector2(38.0, 16.0)
+	atk_caption.text = "Atk"
+	_apply_text_role(atk_caption, "caption")
+	atk_caption.add_theme_font_size_override("font_size", 13)
 	ui_layer.add_child(atk_caption)
 
 	_atk_value_label = Label.new()
-	_atk_value_label.position = Vector2(262.0, 62.0)
-	_atk_value_label.size = Vector2(86.0, 16.0)
-	_atk_value_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	_atk_value_label.add_theme_font_size_override("font_size", 13)
-	_atk_value_label.add_theme_color_override("font_color", Color(0.90, 0.88, 0.85, 1.0))
+	_atk_value_label.position = Vector2(286.0, 82.0)
+	_atk_value_label.size = Vector2(88.0, 18.0)
+	_apply_text_role(_atk_value_label, "secondary_value", HORIZONTAL_ALIGNMENT_RIGHT)
+	_atk_value_label.add_theme_font_size_override("font_size", 15)
 	ui_layer.add_child(_atk_value_label)
 
 	var style_caption := Label.new()
-	style_caption.position = Vector2(954.0, 41.0)
-	style_caption.size = Vector2(48.0, 16.0)
-	style_caption.text = "STYLE"
-	style_caption.add_theme_font_size_override("font_size", 11)
-	style_caption.add_theme_color_override("font_color", Color(0.71, 0.67, 0.62, 0.92))
+	style_caption.position = Vector2(904.0, 48.0)
+	style_caption.size = Vector2(56.0, 18.0)
+	style_caption.text = "Style"
+	_apply_text_role(style_caption, "caption")
+	style_caption.add_theme_font_size_override("font_size", 13)
 	ui_layer.add_child(style_caption)
 
 	var score_caption := Label.new()
-	score_caption.position = Vector2(1080.0, 18.0)
-	score_caption.size = Vector2(68.0, 14.0)
-	score_caption.text = "SCORE"
-	score_caption.add_theme_font_size_override("font_size", 11)
-	score_caption.add_theme_color_override("font_color", Color(0.71, 0.67, 0.62, 0.92))
+	score_caption.position = Vector2(1088.0, 20.0)
+	score_caption.size = Vector2(70.0, 16.0)
+	score_caption.text = "Score"
+	_apply_text_role(score_caption, "caption")
+	score_caption.add_theme_font_size_override("font_size", 13)
 	ui_layer.add_child(score_caption)
 
 	var ultimate_caption := Label.new()
-	ultimate_caption.position = Vector2(954.0, 18.0)
-	ultimate_caption.size = Vector2(72.0, 14.0)
-	ultimate_caption.text = "ULTIMATE"
-	ultimate_caption.add_theme_font_size_override("font_size", 11)
-	ultimate_caption.add_theme_color_override("font_color", Color(0.76, 0.70, 0.62, 0.94))
+	ultimate_caption.position = Vector2(904.0, 20.0)
+	ultimate_caption.size = Vector2(50.0, 16.0)
+	ultimate_caption.text = "Ult"
+	_apply_text_role(ultimate_caption, "caption")
+	ultimate_caption.add_theme_font_size_override("font_size", 13)
 	ui_layer.add_child(ultimate_caption)
+
+	_bonded_creature_sprite = Sprite2D.new()
+	_bonded_creature_sprite.name = "BondedCreatureSprite"
+	_bonded_creature_sprite.visible = false
+	_bonded_creature_sprite.centered = true
+	_bonded_creature_sprite.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	add_child(_bonded_creature_sprite)
 
 	# Boss HP bar — centered between HUD shells, hidden until a boss encounter loads.
 	_boss_hp_shell = ColorRect.new()
@@ -705,10 +843,8 @@ func _build_meter_shell() -> void:
 	_boss_name_label.name = "BossNameLabel"
 	_boss_name_label.position = Vector2(380.0, 10.0)
 	_boss_name_label.size = Vector2(520.0, 16.0)
-	_boss_name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_boss_name_label.text = ""
-	_boss_name_label.add_theme_font_size_override("font_size", 11)
-	_boss_name_label.add_theme_color_override("font_color", Color(0.84, 0.60, 0.18, 1.0))
+	_apply_text_role(_boss_name_label, "boss", HORIZONTAL_ALIGNMENT_CENTER)
 	_boss_name_label.visible = false
 	ui_layer.add_child(_boss_name_label)
 
@@ -754,9 +890,7 @@ func _build_song_hud() -> void:
 	_song_phase_label = Label.new()
 	_song_phase_label.name = "SongPhaseLabel"
 	_song_phase_label.text = ""
-	_song_phase_label.add_theme_font_size_override("font_size", 13)
-	_song_phase_label.add_theme_color_override("font_color", Color(0.55, 0.48, 0.40, 0.70))
-	_song_phase_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_apply_text_role(_song_phase_label, "dim", HORIZONTAL_ALIGNMENT_CENTER)
 	_song_phase_label.size = Vector2(400.0, 20.0)
 	_song_phase_label.position = Vector2(440.0, 10.0)
 	_song_phase_label.visible = false
@@ -766,24 +900,34 @@ func _build_song_hud() -> void:
 	_song_timer_label = Label.new()
 	_song_timer_label.name = "SongTimerLabel"
 	_song_timer_label.text = ""
-	_song_timer_label.add_theme_font_size_override("font_size", 15)
-	_song_timer_label.add_theme_color_override("font_color", Color(0.60, 0.52, 0.44, 0.65))
-	_song_timer_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_apply_text_role(_song_timer_label, "secondary_value", HORIZONTAL_ALIGNMENT_RIGHT)
 	_song_timer_label.size = Vector2(80.0, 22.0)
 	_song_timer_label.position = Vector2(1180.0, 10.0)
 	_song_timer_label.visible = false
 	ui_layer.add_child(_song_timer_label)
+
+	# Beat feedback label — appears near the timing rings briefly when the player
+	# lands a combat action on-beat (IN SYNC / ON BEAT / LOCKED IN / SLIP).
+	# Position is tunable; currently centered on the hit zone area.
+	_beat_feedback_label = Label.new()
+	_beat_feedback_label.name = "BeatFeedbackLabel"
+	_beat_feedback_label.text = ""
+	_apply_text_role(_beat_feedback_label, "hint", HORIZONTAL_ALIGNMENT_CENTER)
+	_beat_feedback_label.size = Vector2(180.0, 20.0)
+	_beat_feedback_label.position = Vector2(354.0, 344.0)
+	_beat_feedback_label.visible = false
+	_beat_feedback_label.z_index = 6
+	ui_layer.add_child(_beat_feedback_label)
 
 
 func _build_quig_anchor() -> void:
 	_quig_anchor_label = Label.new()
 	_quig_anchor_label.name = "QuigAnchor"
 	_quig_anchor_label.visible = false
-	_quig_anchor_label.position = Vector2(978.0, 176.0)
-	_quig_anchor_label.size = Vector2(250.0, 42.0)
+	_quig_anchor_label.position = Vector2(916.0, 234.0)
+	_quig_anchor_label.size = Vector2(228.0, 42.0)
 	_quig_anchor_label.text = ""
-	_quig_anchor_label.add_theme_font_size_override("font_size", 12)
-	_quig_anchor_label.add_theme_color_override("font_color", Color(0.72, 0.67, 0.58, 0.72))
+	_apply_text_role(_quig_anchor_label, "dim")
 	ui_layer.add_child(_quig_anchor_label)
 
 
@@ -808,8 +952,7 @@ func _create_feedback_label() -> void:
 	_feedback_label.z_index = 90
 	_feedback_label.position = Vector2(500.0, 88.0)
 	_feedback_label.size = Vector2(260.0, 30.0)
-	_feedback_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_feedback_label.add_theme_font_size_override("font_size", 18)
+	_apply_text_role(_feedback_label, "feedback", HORIZONTAL_ALIGNMENT_CENTER)
 	add_child(_feedback_label)
 
 
@@ -819,6 +962,8 @@ func _create_title_cards() -> void:
 	_title_card.visible = false
 	_title_card.z_index = 95
 	_title_card.position = Vector2(420.0, 110.0)
+	_title_card.size = Vector2(480.0, 34.0)
+	_apply_text_role(_title_card, "heading", HORIZONTAL_ALIGNMENT_CENTER)
 	add_child(_title_card)
 
 	_subtitle_card = Label.new()
@@ -826,6 +971,8 @@ func _create_title_cards() -> void:
 	_subtitle_card.visible = false
 	_subtitle_card.z_index = 95
 	_subtitle_card.position = Vector2(420.0, 140.0)
+	_subtitle_card.size = Vector2(480.0, 26.0)
+	_apply_text_role(_subtitle_card, "hint", HORIZONTAL_ALIGNMENT_CENTER)
 	add_child(_subtitle_card)
 
 
@@ -843,6 +990,19 @@ func _create_attack_fx_container() -> void:
 	add_child(_attack_fx_container)
 
 
+func _setup_presentation_runtime() -> void:
+	_presentation_runtime = COMBAT_PRESENTATION_RUNTIME.new(
+		flash_overlay,
+		camera_2d,
+		_timing_circle_container,
+		_attack_fx_container,
+		player_combat,
+		lane_manager,
+		_enemy_markers_by_id,
+		_ring_highlight_timers
+	)
+
+
 func _create_reward_overlay() -> void:
 	_reward_overlay = ColorRect.new()
 	_reward_overlay.name = "RewardOverlay"
@@ -855,49 +1015,63 @@ func _create_reward_overlay() -> void:
 
 	_reward_panel = ColorRect.new()
 	_reward_panel.name = "RewardPanel"
-	_reward_panel.color = Color(0.09, 0.07, 0.08, 0.98)
+	_set_shell_treatment(_reward_panel, Color(0.09, 0.07, 0.08, 0.98), Color(0.26, 0.20, 0.18, 0.94))
 	_reward_panel.position = Vector2(160.0, 88.0)
 	_reward_panel.size = Vector2(960.0, 452.0)
 	_reward_overlay.add_child(_reward_panel)
 
+	# Creature portrait — shown when a sprite_path is available for the offered creature.
+	# Positioned in the left column; text labels shift right to accommodate it.
+	_reward_creature_portrait = TextureRect.new()
+	_reward_creature_portrait.name = "CreaturePortrait"
+	_reward_creature_portrait.position = Vector2(42.0, 50.0)
+	_reward_creature_portrait.size = Vector2(152.0, 240.0)
+	_reward_creature_portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_reward_creature_portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_reward_creature_portrait.visible = false
+	_reward_panel.add_child(_reward_creature_portrait)
+
 	_reward_creature_tag_label = Label.new()
 	_reward_creature_tag_label.name = "RewardTag"
-	_reward_creature_tag_label.position = Vector2(42.0, 18.0)
-	_reward_creature_tag_label.size = Vector2(220.0, 18.0)
-	_reward_creature_tag_label.add_theme_font_size_override("font_size", 11)
-	_reward_creature_tag_label.add_theme_color_override("font_color", Color(0.70, 0.62, 0.56, 0.92))
+	_reward_creature_tag_label.position = Vector2(204.0, 18.0)
+	_reward_creature_tag_label.size = Vector2(250.0, 18.0)
+	_apply_text_role(_reward_creature_tag_label, "caption_strong")
 	_reward_panel.add_child(_reward_creature_tag_label)
 
 	_reward_title_label = Label.new()
 	_reward_title_label.name = "RewardTitle"
-	_reward_title_label.position = Vector2(42.0, 40.0)
-	_reward_title_label.size = Vector2(420.0, 48.0)
-	_reward_title_label.add_theme_font_size_override("font_size", 30)
-	_reward_title_label.add_theme_color_override("font_color", Color(0.95, 0.92, 0.84, 1.0))
+	_reward_title_label.position = Vector2(204.0, 40.0)
+	_reward_title_label.size = Vector2(250.0, 56.0)
+	_apply_text_role(_reward_title_label, "heading")
 	_reward_panel.add_child(_reward_title_label)
 
 	_reward_body_label = Label.new()
 	_reward_body_label.name = "RewardBody"
-	_reward_body_label.position = Vector2(42.0, 98.0)
-	_reward_body_label.size = Vector2(390.0, 150.0)
+	_reward_body_label.position = Vector2(204.0, 98.0)
+	_reward_body_label.size = Vector2(250.0, 150.0)
 	_reward_body_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_reward_body_label.add_theme_font_size_override("font_size", 16)
-	_reward_body_label.add_theme_color_override("font_color", Color(0.80, 0.77, 0.72, 0.96))
+	_apply_text_role(_reward_body_label, "body")
 	_reward_panel.add_child(_reward_body_label)
 
 	_reward_bond_card = ColorRect.new()
 	_reward_bond_card.name = "RewardBondCard"
 	_reward_bond_card.position = Vector2(468.0, 54.0)
 	_reward_bond_card.size = Vector2(206.0, 244.0)
-	_reward_bond_card.color = Color(0.09, 0.10, 0.09, 0.96)
+	_set_shell_treatment(_reward_bond_card, Color(0.09, 0.10, 0.09, 0.96), Color(0.24, 0.31, 0.25, 0.88))
 	_reward_panel.add_child(_reward_bond_card)
+
+	var bond_accent := ColorRect.new()
+	bond_accent.name = "BondAccent"
+	bond_accent.size = Vector2(206.0, 4.0)
+	bond_accent.position = Vector2.ZERO
+	bond_accent.color = Color(0.80, 0.60, 0.24, 0.90)
+	_reward_bond_card.add_child(bond_accent)
 
 	_reward_bond_label = Label.new()
 	_reward_bond_label.name = "RewardBondLabel"
 	_reward_bond_label.position = Vector2(18.0, 18.0)
-	_reward_bond_label.size = Vector2(160.0, 26.0)
-	_reward_bond_label.add_theme_font_size_override("font_size", 18)
-	_reward_bond_label.add_theme_color_override("font_color", Color(0.78, 0.88, 0.78, 1.0))
+	_reward_bond_label.size = Vector2(168.0, 26.0)
+	_apply_text_role(_reward_bond_label, "bond_heading")
 	_reward_bond_card.add_child(_reward_bond_label)
 
 	_reward_bond_effect_label = Label.new()
@@ -905,23 +1079,28 @@ func _create_reward_overlay() -> void:
 	_reward_bond_effect_label.position = Vector2(18.0, 56.0)
 	_reward_bond_effect_label.size = Vector2(170.0, 154.0)
 	_reward_bond_effect_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_reward_bond_effect_label.add_theme_font_size_override("font_size", 14)
-	_reward_bond_effect_label.add_theme_color_override("font_color", Color(0.77, 0.81, 0.76, 0.94))
+	_apply_text_role(_reward_bond_effect_label, "body")
 	_reward_bond_card.add_child(_reward_bond_effect_label)
 
 	_reward_eat_card = ColorRect.new()
 	_reward_eat_card.name = "RewardEatCard"
 	_reward_eat_card.position = Vector2(694.0, 54.0)
 	_reward_eat_card.size = Vector2(206.0, 244.0)
-	_reward_eat_card.color = Color(0.11, 0.08, 0.07, 0.96)
+	_set_shell_treatment(_reward_eat_card, Color(0.11, 0.08, 0.07, 0.96), Color(0.36, 0.24, 0.20, 0.92))
 	_reward_panel.add_child(_reward_eat_card)
+
+	var eat_accent := ColorRect.new()
+	eat_accent.name = "EatAccent"
+	eat_accent.size = Vector2(206.0, 4.0)
+	eat_accent.position = Vector2.ZERO
+	eat_accent.color = Color(0.72, 0.22, 0.18, 0.90)
+	_reward_eat_card.add_child(eat_accent)
 
 	_reward_eat_label = Label.new()
 	_reward_eat_label.name = "RewardEatLabel"
 	_reward_eat_label.position = Vector2(18.0, 18.0)
-	_reward_eat_label.size = Vector2(160.0, 26.0)
-	_reward_eat_label.add_theme_font_size_override("font_size", 18)
-	_reward_eat_label.add_theme_color_override("font_color", Color(0.94, 0.73, 0.62, 1.0))
+	_reward_eat_label.size = Vector2(168.0, 26.0)
+	_apply_text_role(_reward_eat_label, "eat_heading")
 	_reward_eat_card.add_child(_reward_eat_label)
 
 	_reward_eat_effect_label = Label.new()
@@ -929,24 +1108,21 @@ func _create_reward_overlay() -> void:
 	_reward_eat_effect_label.position = Vector2(18.0, 56.0)
 	_reward_eat_effect_label.size = Vector2(170.0, 154.0)
 	_reward_eat_effect_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_reward_eat_effect_label.add_theme_font_size_override("font_size", 14)
-	_reward_eat_effect_label.add_theme_color_override("font_color", Color(0.85, 0.78, 0.73, 0.94))
+	_apply_text_role(_reward_eat_effect_label, "body")
 	_reward_eat_card.add_child(_reward_eat_effect_label)
 
 	_reward_quig_label = Label.new()
 	_reward_quig_label.name = "RewardQuig"
 	_reward_quig_label.position = Vector2(42.0, 316.0)
 	_reward_quig_label.size = Vector2(860.0, 32.0)
-	_reward_quig_label.add_theme_font_size_override("font_size", 13)
-	_reward_quig_label.add_theme_color_override("font_color", Color(0.72, 0.67, 0.60, 0.92))
+	_apply_text_role(_reward_quig_label, "hint")
 	_reward_panel.add_child(_reward_quig_label)
 
 	_reward_hint_label = Label.new()
 	_reward_hint_label.name = "RewardHint"
 	_reward_hint_label.position = Vector2(42.0, 382.0)
 	_reward_hint_label.size = Vector2(860.0, 26.0)
-	_reward_hint_label.add_theme_font_size_override("font_size", 13)
-	_reward_hint_label.add_theme_color_override("font_color", Color(0.80, 0.76, 0.70, 0.98))
+	_apply_text_role(_reward_hint_label, "hint")
 	_reward_panel.add_child(_reward_hint_label)
 
 
@@ -964,21 +1140,19 @@ func _create_growth_overlay() -> void:
 	_growth_panel.name = "GrowthPanel"
 	_growth_panel.position = Vector2(240.0, 138.0)
 	_growth_panel.size = Vector2(800.0, 276.0)
-	_growth_panel.color = Color(0.09, 0.07, 0.08, 0.97)
+	_set_shell_treatment(_growth_panel, Color(0.09, 0.07, 0.08, 0.97), Color(0.26, 0.21, 0.18, 0.92))
 	_growth_overlay.add_child(_growth_panel)
 
 	_growth_title_label = Label.new()
 	_growth_title_label.position = Vector2(34.0, 24.0)
 	_growth_title_label.size = Vector2(732.0, 32.0)
-	_growth_title_label.add_theme_font_size_override("font_size", 22)
-	_growth_title_label.add_theme_color_override("font_color", Color(0.95, 0.91, 0.84, 1.0))
+	_apply_text_role(_growth_title_label, "subheading")
 	_growth_panel.add_child(_growth_title_label)
 
 	_growth_hint_label = Label.new()
 	_growth_hint_label.position = Vector2(34.0, 228.0)
 	_growth_hint_label.size = Vector2(732.0, 20.0)
-	_growth_hint_label.add_theme_font_size_override("font_size", 12)
-	_growth_hint_label.add_theme_color_override("font_color", Color(0.76, 0.71, 0.65, 0.98))
+	_apply_text_role(_growth_hint_label, "hint")
 	_growth_panel.add_child(_growth_hint_label)
 
 	for i in range(3):
@@ -987,8 +1161,7 @@ func _create_growth_overlay() -> void:
 		option_label.size = Vector2(212.0, 132.0)
 		option_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		option_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
-		option_label.add_theme_font_size_override("font_size", 15)
-		option_label.add_theme_color_override("font_color", Color(0.90, 0.85, 0.79, 1.0))
+		_apply_text_role(option_label, "body")
 		_growth_panel.add_child(option_label)
 		_growth_option_labels.append(option_label)
 
@@ -1016,8 +1189,8 @@ func _connect_eventbus() -> void:
 	EventBus.combat_ended.connect(_on_combat_ended)
 	EventBus.enemy_damaged.connect(_on_enemy_damaged)
 	EventBus.enemy_defeated.connect(_on_enemy_defeated)
-	EventBus.screen_flash.connect(_on_screen_flash)
-	EventBus.screen_shake.connect(_on_screen_shake)
+	EventBus.screen_flash.connect(_presentation_runtime.on_screen_flash)
+	EventBus.screen_shake.connect(_presentation_runtime.on_screen_shake)
 	EventBus.slow_motion.connect(_on_slow_motion)
 	EventBus.player_attacked.connect(_on_player_attacked)
 	EventBus.timed_attack_resolved.connect(_on_timed_attack_resolved)
@@ -1026,13 +1199,16 @@ func _connect_eventbus() -> void:
 	EventBus.player_no_stamina.connect(_on_player_no_stamina)
 	EventBus.combo_broken.connect(_on_combo_broken)
 	EventBus.player_teleported.connect(_on_player_teleported)
-	EventBus.timing_ring_pressed.connect(_on_timing_ring_pressed)
+	EventBus.timing_ring_pressed.connect(_presentation_runtime.on_timing_ring_pressed)
 	EventBus.run_growth_changed.connect(_on_run_growth_changed)
 	EventBus.support_charge_changed.connect(_on_support_charge_changed)
 	EventBus.bonded_support_triggered.connect(_on_bonded_support_triggered)
+	EventBus.mastery_context_updated.connect(_on_mastery_context_updated)
 	EventBus.run_upgrade_taken.connect(_on_run_upgrade_taken)
 	EventBus.enemy_status_applied.connect(_on_enemy_status_applied)
 	EventBus.enemy_status_cleared.connect(_on_enemy_status_cleared)
+	EventBus.phrase_milestone.connect(_on_phrase_milestone)
+	EventBus.tier_changed.connect(_on_tier_changed)
 
 
 func _setup_lane_manager() -> void:
@@ -1060,26 +1236,31 @@ func _start_song_run() -> void:
 	_song_reward_pending = false
 	_song_enemy_lanes.clear()
 	_song_rng.randomize()
+	_clear_mastery_context_cache()
 
-	# Use the Feeding Hollow biome for the song run presentation.
+	var region_id: String = String(GameState.active_region.get("id", "feeding_hollow"))
+	var song_run: Dictionary = ENCOUNTER_IDENTITY_RUNTIME.build_song_run(region_id)
+	_region_id = String(song_run.get("region_id", region_id))
+	_song_phases = song_run.get("phases", [])
+
 	_active_encounter = {
-		"biome": COMBAT_CONTENT.BIOME_FEEDING_HOLLOW,
+		"biome": song_run.get("biome", COMBAT_CONTENT.BIOME_FEEDING_HOLLOW),
+		"identity": song_run.get("identity", {}),
 		"phases": [],
 		"phase_intro_texts": []
 	}
 	_current_phase_index = 0
 	_combat_finished = false
 	_phase_transitioning = false
-	_encounter_queue = []
-	_current_encounter_queue_index = 0
 
 	_rebuild_enemy_lookup_tables()
 	_apply_encounter_presentation()
 	_build_arena_visuals()
 	_draw_timing_circles()
 	_prepare_for_encounter(true)
+	_refresh_bonded_creature_render()
 
-	lane_manager._song_mode = true
+	lane_manager.set_song_mode_enabled(true)
 
 	if _song_timer_label != null:
 		_song_timer_label.visible = true
@@ -1089,16 +1270,21 @@ func _start_song_run() -> void:
 
 	_set_song_controls_text()
 
-	# Enter phase 0 — this starts the fire cycle with initial enemies.
+	# Enter phase 0 — starts the fire cycle with initial enemies.
 	_enter_song_phase(0)
+
+	# Start the music conductor. Phase transitions from here on are driven by
+	# conductor signals, not _tick_song_phase(). Phase 0 is already entered above;
+	# the conductor's opening section signal will only update spawn_interval_mult.
+	_start_song_conductor()
 
 
 func _tick_song_phase() -> void:
 	# Check if it is time to advance to the next phase.
 	var next_idx: int = _song_phase_index + 1
-	if next_idx >= SONG_CONTENT.SONG_PHASES.size():
+	if next_idx >= _song_phases.size():
 		return
-	var next_phase: Dictionary = SONG_CONTENT.SONG_PHASES[next_idx]
+	var next_phase: Dictionary = _song_phases[next_idx]
 	if _song_elapsed >= float(next_phase.get("start_time", 9999.0)):
 		_enter_song_phase(next_idx)
 
@@ -1106,20 +1292,20 @@ func _tick_song_phase() -> void:
 func _enter_song_phase(new_idx: int) -> void:
 	var old_idx: int = _song_phase_index
 	_song_phase_index = new_idx
-	var new_phase: Dictionary = SONG_CONTENT.SONG_PHASES[new_idx]
+	var new_phase: Dictionary = _song_phases[new_idx]
 
-	lane_manager.set_cycle_interval(float(new_phase.get("cycle_interval", 2.2)))
+	_apply_song_phase_cadence(new_phase)
 
-	var intro_text: String = String(new_phase.get("intro_text", ""))
+	var intro_text: String = ENCOUNTER_IDENTITY_RUNTIME.get_phase_intro_text(_region_id, new_phase)
 	if not intro_text.is_empty():
 		_show_feedback(intro_text, Color(0.92, 0.88, 0.74, 1.0), 0.55)
 
 	if _song_phase_label != null:
-		_song_phase_label.text = String(new_phase.get("label", ""))
+		_song_phase_label.text = ENCOUNTER_IDENTITY_RUNTIME.get_phase_display_label(_region_id, new_phase)
 
 	# If the previous phase had a reward pool, pause and offer it now.
 	if old_idx >= 0:
-		var old_phase: Dictionary = SONG_CONTENT.SONG_PHASES[old_idx]
+		var old_phase: Dictionary = _song_phases[old_idx]
 		var reward_pool: Array = old_phase.get("reward_pool", [])
 		if not reward_pool.is_empty():
 			_offer_song_phase_reward(reward_pool)
@@ -1134,6 +1320,10 @@ func _seed_song_enemies_for_phase(phase: Dictionary) -> void:
 	var current_alive: int = lane_manager.alive_count()
 	var lanes_to_fill: int = min(max_threats - current_alive, lane_manager.LANE_COUNT)
 	if lanes_to_fill <= 0:
+		# Alive count already meets the phase cap, but still ensure the fire cycle
+		# is running — it may have been stopped by a reward-pause stop() call.
+		if not lane_manager.is_combat_running():
+			lane_manager.start_song_cycle()
 		return
 
 	# Prefer lanes without an active enemy; fall back to any lane.
@@ -1142,22 +1332,30 @@ func _seed_song_enemies_for_phase(phase: Dictionary) -> void:
 		if lane_manager.get_enemy(lane).is_empty() or float(lane_manager.get_enemy(lane).get("hp", 0.0)) <= 0.0:
 			empty_lanes.append(lane)
 
-	# Shuffle and fill up to lanes_to_fill.
+	var ordered_lanes: Array = ENCOUNTER_IDENTITY_RUNTIME.order_empty_lanes(
+		_region_id,
+		phase,
+		empty_lanes,
+		player_combat.current_lane,
+		_song_rng
+	)
+
+	# Fill lanes in the order preferred by the current encounter identity.
 	var filled: int = 0
-	for i in range(empty_lanes.size()):
+	for i in range(ordered_lanes.size()):
 		if filled >= lanes_to_fill:
 			break
-		_place_song_enemy(empty_lanes[i])
+		_place_song_enemy(int(ordered_lanes[i]))
 		filled += 1
 
 	# If the fire cycle hasn't started yet (phase 0 entry), kick it off.
-	if not lane_manager._combat_running:
+	if not lane_manager.is_combat_running():
 		lane_manager.start_song_cycle()
 
 
 func _place_song_enemy(lane: int) -> void:
-	var phase: Dictionary = SONG_CONTENT.SONG_PHASES[_song_phase_index]
-	var enemy: Dictionary = _pick_weighted_song_enemy(phase)
+	var phase: Dictionary = _song_phases[_song_phase_index]
+	var enemy: Dictionary = ENCOUNTER_IDENTITY_RUNTIME.pick_weighted_enemy(phase, _song_rng)
 	if enemy.is_empty():
 		return
 	enemy["id"] = _next_song_enemy_id
@@ -1166,29 +1364,37 @@ func _place_song_enemy(lane: int) -> void:
 	_next_song_enemy_id += 1
 	lane_manager.set_enemy(lane, enemy)
 
+	# Register the enemy in the lookup tables and create its visual marker.
+	# This mirrors _build_arena_visuals() per-enemy logic; skipping it would leave
+	# the enemy logically present but invisible (and break damage numbers / low-HP tint).
+	var enemy_id: int = int(enemy.get("id", 0))
+	_all_enemies_by_id[enemy_id] = enemy.duplicate(true)
+	_enemy_max_hp[enemy_id] = float(enemy.get("hp", 1.0))
 
-func _pick_weighted_song_enemy(phase: Dictionary) -> Dictionary:
-	var pool: Array = phase.get("enemy_pool", [])
-	if pool.is_empty():
-		return {}
-	var total_weight: float = 0.0
-	for entry in pool:
-		total_weight += float(entry.get("weight", 1.0))
-	var roll: float = _song_rng.randf_range(0.0, total_weight)
-	var cursor: float = 0.0
-	for entry in pool:
-		cursor += float(entry.get("weight", 1.0))
-		if roll <= cursor:
-			return entry.duplicate(true)
-	return pool.back().duplicate(true)
-
+	var biome: Dictionary = _active_encounter.get("biome", {})
+	var inactive_color: Color = biome.get("enemy_inactive_color", Color(0.38, 0.18, 0.18, 0.55))
+	var marker_half: float = 21.0  # standard non-boss marker: 42 * 0.5
+	var enemy_marker := ColorRect.new()
+	enemy_marker.name = "Enemy_%d" % enemy_id
+	enemy_marker.size = Vector2(42.0, 42.0)
+	enemy_marker.position = Vector2(
+		lane_manager.get_enemy_x() - marker_half,
+		lane_manager.get_lane_y(lane) - marker_half
+	)
+	enemy_marker.color = inactive_color
+	enemy_marker.modulate = Color(1.0, 1.0, 1.0, 1.0)
+	_enemy_marker_container.add_child(enemy_marker)
+	_enemy_markers_by_id[enemy_id] = enemy_marker
 
 func _offer_song_phase_reward(reward_pool: Array) -> void:
 	# Pause the song and show a creature reward choice.
 	_song_paused = true
 	_song_reward_pending = true
-	lane_manager.stop()
-	lane_manager._song_mode = true  # Preserve flag after stop().
+	COMBAT_TRANSITION_STATE.prepare_song_reward_pause(
+		lane_manager,
+		_song_conductor,
+		Callable(self, "_clear_mastery_context_cache")
+	)
 
 	var creature_id: String = reward_pool[randi() % reward_pool.size()]
 	var creature: Dictionary = COMBAT_CONTENT.get_creature(creature_id)
@@ -1205,15 +1411,11 @@ func _resume_song_after_reward() -> void:
 	_hide_reward_overlay()
 	_set_song_controls_text()
 
-	# Re-establish LaneManager song mode (stop() cleared it).
-	lane_manager._song_mode = true
-
-	if player_combat != null and player_combat.has_method("set_combat_enabled"):
-		player_combat.set_combat_enabled(true)
+	COMBAT_TRANSITION_STATE.resume_song_reward(lane_manager, _song_conductor, player_combat)
 
 	# Seed enemies and restart the fire cycle.
 	# _seed_song_enemies_for_phase starts the cycle when _combat_running is false (post-stop).
-	var phase: Dictionary = SONG_CONTENT.SONG_PHASES[_song_phase_index]
+	var phase: Dictionary = _song_phases[_song_phase_index]
 	_seed_song_enemies_for_phase(phase)
 
 
@@ -1221,31 +1423,84 @@ func _trigger_boss_final_movement() -> void:
 	_song_boss_triggered = true
 	_song_paused = true
 	_song_mode = false
-	lane_manager.stop()
-	lane_manager._song_mode = false
+	_boss_hp_threshold_fired = false
+	_boss_presence_timer = 0.0
+	COMBAT_TRANSITION_STATE.prepare_boss_handoff(
+		lane_manager,
+		Callable(self, "_clear_mastery_context_cache"),
+		Callable(self, "_stop_song_conductor")
+	)
+	# Phase 1 opens at a deliberate 1.05 s interval — slower than the final song
+	# chorus — so the first sovereign feels like a shift in register, not just more of
+	# the same. Phase 2 and the 50%-HP escalation accelerate from here.
+	# Wide stagger (0.54) keeps lanes separated — each sovereign arrives as its own event.
+	lane_manager.set_cycle_interval(1.05)
+	lane_manager.set_fire_stagger(0.54)
 
-	# Build the boss encounter with thornback as the post-boss reward.
-	var boss_encounter: Dictionary = COMBAT_CONTENT.get_encounter("feeding_hollow_boss")
-	boss_encounter["reward_creature_pool"] = [COMBAT_CONTENT.get_creature("thornback")]
+	# Start the boss climax track. This replaces tricky.wav and becomes the
+	# damage-race timer — kill the boss before newness.wav ends or lose.
+	_start_boss_music()
 
-	_encounter_queue = [boss_encounter]
-	_current_encounter_queue_index = 0
+	# The live boss handoff is a direct encounter payload, not a queued run step.
+	var boss_encounter: Dictionary = ENCOUNTER_IDENTITY_RUNTIME.build_live_boss_encounter()
+
 	_run_finished = false
 	_is_boss_encounter = false
 
 	_hide_song_hud()
-	_load_current_queued_encounter(false)
+	_show_boss_race_hud()
+	_load_encounter_payload(boss_encounter, false)
 
 
 func _update_song_hud() -> void:
 	if _song_timer_label == null:
 		return
-	var remaining: float = max(SONG_CONTENT.SONG_DURATION - _song_elapsed, 0.0)
+	var remaining: float
+	if _song_conductor != null:
+		# Count down to the final movement (boss trigger), not total song length.
+		remaining = max(_song_conductor.get_final_movement_time() - _song_elapsed, 0.0)
+	else:
+		remaining = max(SONG_CONTENT.SONG_DURATION - _song_elapsed, 0.0)
 	_song_timer_label.text = "%d" % int(ceil(remaining))
 
 
 func _set_song_controls_text() -> void:
-	controls_label.text = "A/S/D lane  |  Left parry  |  Right dodge  |  R ultimate"
+	controls_label.text = "A S D choose lane  |  Left Arrow parry  |  Right Arrow dodge  |  R unleash"
+
+
+func _start_song_conductor() -> void:
+	# Instantiate SongConductor, wire signals, and start playback.
+	# Called at the end of _start_song_run() after phase 0 is already entered,
+	# so the opening section signal from the conductor only updates spawn_mult.
+	_stop_song_conductor()
+
+	_song_conductor = SONG_CONDUCTOR_SCRIPT.new()
+	_song_conductor.name = "SongConductor"
+	add_child(_song_conductor)
+	_song_conductor.section_changed.connect(_on_conductor_section_changed)
+	_song_conductor.final_movement_reached.connect(_on_conductor_final_movement)
+	_song_conductor.start(TRICKY_SONGMAP)
+	player_combat.call("set_song_conductor", _song_conductor)
+
+
+func _on_conductor_section_changed(section_id: String, data: Dictionary) -> void:
+	# Find the matching phase in _song_phases by id and enter it.
+	# If we are already in this phase (phase 0 pre-entered at run start),
+	# skip _enter_song_phase() and only apply the conductor's cycle multiplier on
+	# top of the existing phase cadence baseline.
+	for i in range(_song_phases.size()):
+		if String(_song_phases[i].get("id", "")) == section_id:
+			if i != _song_phase_index:
+				_enter_song_phase(i)
+			_apply_song_phase_cadence(_song_phases[i], float(data.get("spawn_interval_mult", 1.0)))
+			break
+
+
+func _on_conductor_final_movement() -> void:
+	# Boss trigger driven by the song map's FINAL_MOVEMENT_FRACTION.
+	# Replaces the old SONG_CONTENT.SONG_DURATION wall-clock check.
+	if not _song_boss_triggered and _song_mode and not _run_finished:
+		_trigger_boss_final_movement()
 
 
 func _hide_song_hud() -> void:
@@ -1255,11 +1510,153 @@ func _hide_song_hud() -> void:
 		_song_phase_label.visible = false
 
 
-func _build_mini_run_queue() -> Array:
-	return COMBAT_CONTENT.build_mini_run_queue()
+# ── Boss music race ──────────────────────────────────────────────────────────
+
+func _start_boss_music() -> void:
+	# Load and play the live boss track. Wires the finished signal so song-end triggers
+	# defeat if the boss is still alive. Sets _boss_race_active immediately so
+	# the countdown is visible through the boss intro animation.
+	_stop_boss_music()
+	var stream: AudioStream = load(AUDIO_CONTENT.BOSS_TRACK_PATH)
+	if stream == null:
+		push_error("CombatScene: failed to load boss music " + AUDIO_CONTENT.BOSS_TRACK_PATH)
+		return
+	_boss_music_player = AudioStreamPlayer.new()
+	_boss_music_player.name = "BossMusicPlayer"
+	_boss_music_player.stream = stream
+	_boss_music_player.volume_db = 0.0
+	add_child(_boss_music_player)
+	_boss_music_duration = stream.get_length()
+	if _boss_music_duration <= 0.0:
+		push_error("CombatScene: boss music reports zero length — using 180 s fallback")
+		_boss_music_duration = 180.0
+	_boss_music_player.finished.connect(_on_boss_music_finished)
+	_boss_race_active = true
+	_boss_music_player.play()
+
+
+func _stop_boss_music() -> void:
+	_boss_race_active = false
+	if _boss_music_player != null and is_instance_valid(_boss_music_player):
+		_boss_music_player.stop()
+		_boss_music_player.queue_free()
+	_boss_music_player = null
+
+
+func _show_boss_race_hud() -> void:
+	# Reuse the song HUD labels for the boss countdown.
+	if _song_phase_label != null:
+		_song_phase_label.text = "KILL IT BEFORE THE SONG ENDS"
+		_song_phase_label.add_theme_color_override("font_color", Color(0.82, 0.50, 0.28, 0.80))
+		_song_phase_label.visible = true
+	if _song_timer_label != null:
+		_song_timer_label.add_theme_color_override("font_color", Color(0.70, 0.55, 0.44, 0.85))
+		_song_timer_label.visible = true
+
+
+func _update_boss_race_hud() -> void:
+	if _song_timer_label == null or _boss_music_player == null or not is_instance_valid(_boss_music_player):
+		return
+	var elapsed: float = _boss_music_player.get_playback_position()
+	var remaining: float = max(_boss_music_duration - elapsed, 0.0)
+	_song_timer_label.text = "%d" % int(ceil(remaining))
+	# Shift the timer label toward red as time runs out (ramps in the final 50%).
+	var frac: float = clampf(remaining / max(_boss_music_duration, 1.0), 0.0, 1.0)
+	var urgency: float = clampf((0.5 - frac) / 0.5, 0.0, 1.0)
+	_song_timer_label.add_theme_color_override("font_color",
+		Color(lerpf(0.70, 1.0, urgency), lerpf(0.55, 0.20, urgency), lerpf(0.44, 0.20, urgency), 0.92))
+
+
+func _update_boss_presence(delta: float) -> void:
+	# Pulses active sovereign markers with increasing urgency as the timer counts down.
+	# Status color overrides (REND, EXPOSE, etc.) always take priority.
+	_boss_presence_timer += delta
+	if _boss_music_player == null or not is_instance_valid(_boss_music_player):
+		return
+	var elapsed: float = _boss_music_player.get_playback_position()
+	var remaining: float = max(_boss_music_duration - elapsed, 0.0)
+	var urgency: float = clampf(1.0 - (remaining / max(_boss_music_duration, 1.0)), 0.0, 1.0)
+	# Pulse rate: 0.8 Hz at start → 2.5 Hz at full urgency
+	var pulse_rate: float = lerpf(0.8, 2.5, urgency)
+	var pulse: float = sin(_boss_presence_timer * TAU * pulse_rate) * 0.5 + 0.5
+	var biome: Dictionary = _active_encounter.get("biome", {})
+	var boss_active_color: Color = biome.get("enemy_active_color", Color(0.86, 0.58, 0.14, 1.0))
+	# Lerp toward danger red at high urgency
+	var danger_color: Color = Color(1.0, 0.18, 0.08, 1.0)
+	var base_color: Color = boss_active_color.lerp(danger_color, urgency * 0.65)
+	var pulse_alpha: float = lerpf(0.72, 1.0, pulse * urgency)
+	var pulsed_color: Color = Color(base_color.r, base_color.g, base_color.b, pulse_alpha)
+
+	for enemy_id in _enemy_markers_by_id.keys():
+		var marker: ColorRect = _enemy_markers_by_id[enemy_id]
+		if marker == null or not is_instance_valid(marker):
+			continue
+		# Never override a status color.
+		if _status_marker_overrides.has(enemy_id):
+			continue
+		var enemy_phase: int = int(_enemy_phase_by_id.get(enemy_id, -1))
+		if enemy_phase == _current_phase_index:
+			marker.color = pulsed_color
+
+
+func _on_boss_music_finished() -> void:
+	# Called when newness.wav plays to its end.
+	# Guard: if the boss was already killed, _boss_race_active is false — do nothing.
+	if not _boss_race_active or _run_finished:
+		return
+	_boss_race_active = false
+	_stop_boss_music()
+	_hide_song_hud()
+	if _run_finished:
+		return
+	# Song ended while boss still lives — player loses.
+	lane_manager.stop()
+	if player_combat != null and player_combat.has_method("set_combat_enabled"):
+		player_combat.set_combat_enabled(false)
+	_show_feedback("THE SONG DEVOURED YOU", Color(1.0, 0.28, 0.22, 1.0), 0.80)
+	EventBus.emit_signal("screen_flash", Color(0.55, 0.06, 0.06, 0.28), 0.40)
+	await get_tree().create_timer(0.8).timeout
+	if not _run_finished:
+		_finish_run(false)
+
+
+func _stop_song_conductor() -> void:
+	if _song_conductor != null and is_instance_valid(_song_conductor):
+		_song_conductor.stop()
+		_song_conductor.queue_free()
+	_song_conductor = null
+
+
+func _set_growth_audio_paused(paused: bool) -> void:
+	# Growth pause is a real combat freeze, so the audio drivers should stop
+	# advancing underneath the draft overlay as well.
+	if _song_mode and not _song_paused and _song_conductor != null and is_instance_valid(_song_conductor):
+		if paused:
+			_song_conductor.pause()
+		else:
+			_song_conductor.resume()
+
+	if _boss_race_active and _boss_music_player != null and is_instance_valid(_boss_music_player):
+		_boss_music_player.stream_paused = paused
+
+
+func _reset_growth_overlay_state() -> void:
+	_current_growth_options.clear()
+	_awaiting_growth_choice = false
+	if _growth_overlay != null:
+		_growth_overlay.visible = false
+	_exit_growth_pause()
 
 
 func _start_mini_run() -> void:
+	# Reset transient transition state before resetting run data.
+	COMBAT_TRANSITION_STATE.prepare_run_restart(
+		Callable(self, "_stop_song_conductor"),
+		Callable(self, "_stop_boss_music"),
+		Callable(self, "_reset_growth_overlay_state"),
+		Callable(self, "_clear_mastery_context_cache")
+	)
+
 	# Resets shared run state then launches in song mode.
 	GameState.run_number += 1
 	_run_finished = false
@@ -1277,15 +1674,17 @@ func _start_mini_run() -> void:
 	_start_song_run()
 
 
-func _load_current_queued_encounter(reset_hp: bool) -> void:
+# Direct encounter loader used by the live runtime. Song phases build their
+# own pressure state; only the boss handoff uses an authored encounter payload.
+func _load_encounter_payload(encounter: Dictionary, reset_hp: bool) -> void:
 	_encounter_load_gen += 1
 	var load_gen: int = _encounter_load_gen
 
-	if _current_encounter_queue_index < 0 or _current_encounter_queue_index >= _encounter_queue.size():
+	if encounter.is_empty():
 		_finish_run(true)
 		return
 
-	_active_encounter = _encounter_queue[_current_encounter_queue_index]
+	_active_encounter = encounter.duplicate(true)
 	_current_phase_index = 0
 	_combat_finished = false
 	_phase_transitioning = false
@@ -1362,50 +1761,22 @@ func _build_arena_visuals() -> void:
 	for lane in range(3):
 		var lane_strip := ColorRect.new()
 		lane_strip.name = "LaneStrip_%d" % lane
-		lane_strip.size = Vector2(get_viewport_rect().size.x - 240.0, LANE_BAND_HEIGHT)
-		lane_strip.position = Vector2(120.0, lane_manager.get_lane_y(lane) - LANE_BAND_HEIGHT * 0.5)
+		lane_strip.size = Vector2(760.0, LANE_BAND_HEIGHT)
+		lane_strip.position = Vector2(208.0, lane_manager.get_lane_y(lane) - LANE_BAND_HEIGHT * 0.5)
 		lane_strip.pivot_offset = lane_strip.size * 0.5
 		lane_strip.color = Color(lane_color.r, lane_color.g, lane_color.b, LANE_IDLE_ALPHA)
 		_lane_marker_container.add_child(lane_strip)
 		_lane_strips[lane] = lane_strip
 
-		var lane_channel := ColorRect.new()
-		lane_channel.name = "LaneChannel_%d" % lane
-		lane_channel.size = Vector2(get_viewport_rect().size.x - 260.0, LANE_BAND_HEIGHT - 18.0)
-		lane_channel.position = Vector2(130.0, lane_manager.get_lane_y(lane) - (LANE_BAND_HEIGHT - 18.0) * 0.5)
-		lane_channel.color = Color(lane_color.r * 0.70, lane_color.g * 0.72, lane_color.b * 0.78, 0.10)
-		_lane_marker_container.add_child(lane_channel)
-
-		var lane_line := Line2D.new()
-		lane_line.default_color = lane_color.lightened(0.05)
-		lane_line.width = 2.2
-		lane_line.add_point(Vector2(120.0, lane_manager.get_lane_y(lane)))
-		lane_line.add_point(Vector2(get_viewport_rect().size.x - 120.0, lane_manager.get_lane_y(lane)))
-		_lane_marker_container.add_child(lane_line)
-
-		var lane_cap_top := Line2D.new()
-		lane_cap_top.default_color = Color(lane_color.r, lane_color.g, lane_color.b, 0.16)
-		lane_cap_top.width = 1.0
-		lane_cap_top.add_point(Vector2(136.0, lane_manager.get_lane_y(lane) - 18.0))
-		lane_cap_top.add_point(Vector2(get_viewport_rect().size.x - 136.0, lane_manager.get_lane_y(lane) - 18.0))
-		_lane_marker_container.add_child(lane_cap_top)
-
-		var lane_cap_bottom := Line2D.new()
-		lane_cap_bottom.default_color = Color(lane_color.r, lane_color.g, lane_color.b, 0.12)
-		lane_cap_bottom.width = 1.0
-		lane_cap_bottom.add_point(Vector2(136.0, lane_manager.get_lane_y(lane) + 18.0))
-		lane_cap_bottom.add_point(Vector2(get_viewport_rect().size.x - 136.0, lane_manager.get_lane_y(lane) + 18.0))
-		_lane_marker_container.add_child(lane_cap_bottom)
-
 		var lane_focus := ColorRect.new()
 		lane_focus.name = "LaneFocus_%d" % lane
-		lane_focus.size = Vector2(48.0, 74.0)
+		lane_focus.size = Vector2(42.0, 66.0)
 		lane_focus.position = Vector2(
-			lane_manager.get_hit_zone_x() - 24.0,
-			lane_manager.get_lane_y(lane) - 37.0
+			lane_manager.get_hit_zone_x() - 21.0,
+			lane_manager.get_lane_y(lane) - 33.0
 		)
 		lane_focus.pivot_offset = lane_focus.size * 0.5
-		lane_focus.color = Color(0.78, 0.72, 0.54, 0.08)
+		lane_focus.color = Color(0.78, 0.72, 0.54, 0.012)
 		_lane_marker_container.add_child(lane_focus)
 		_lane_hit_focus[lane] = lane_focus
 
@@ -1472,34 +1843,40 @@ func _draw_timing_circles() -> void:
 		var is_active_lane: bool = lane == player_combat.current_lane
 		var base_color: Color = active_color if is_active_lane else inactive_color
 
+		# Glow and edge rings kept at alpha 0 — they serve as structural nodes for the
+		# proximity animation system in _update_timing_ring_proximity().
 		var receiver_glow := _make_disc_polygon(RING_OUTER_RADIUS + 6.0, Color(base_color.r, base_color.g, base_color.b, 0.0))
 		receiver_glow.name = "ReceiverGlow"
 
-		var receiver_fill := _make_disc_polygon(RING_GOOD_RADIUS + 1.0, Color(base_color.r, base_color.g, base_color.b, 0.06))
+		# Inner fill: active lane gets a subtle glow, inactive is nearly invisible.
+		var fill_alpha: float = 0.07 if is_active_lane else 0.03
+		var receiver_fill := _make_disc_polygon(RING_GOOD_RADIUS + 1.0, Color(base_color.r, base_color.g, base_color.b, fill_alpha))
 		receiver_fill.name = "ReceiverFill"
 
-		var outer_ring := _make_ring_line(RING_OUTER_RADIUS, base_color.darkened(0.02), 2.5)
+		# Outer ring: thin boundary — marks the timing window without dominating.
+		var outer_ring := _make_ring_line(RING_OUTER_RADIUS, Color(base_color.r, base_color.g, base_color.b, base_color.a * 0.50), 1.4)
 		outer_ring.name = "Outer"
 
+		# Good ring: subtle mid-ring, guides the eye toward perfect without calling attention.
 		var good_ring := _make_ring_line(
 			RING_GOOD_RADIUS,
-			Color(base_color.r, base_color.g, base_color.b, base_color.a * 0.10),
-			0.8
+			Color(base_color.r, base_color.g, base_color.b, base_color.a * 0.18),
+			0.9
 		)
 		good_ring.name = "Good"
 
-		var perfect_ring := _make_ring_line(RING_PERFECT_RADIUS, base_color.lightened(0.20), 2.5)
+		# Perfect ring: the focal point — thicker and brighter than the outer ring.
+		var perfect_ring := _make_ring_line(RING_PERFECT_RADIUS, base_color.lightened(0.28), 2.8)
 		perfect_ring.name = "Perfect"
 
 		var edge_ring := _make_ring_line(RING_OUTER_RADIUS + 4.0, Color(base_color.r, base_color.g, base_color.b, 0.0), 1.0)
 		edge_ring.name = "Edge"
 
-		# Vertical beat mark at the circle center — the projectile crosses this line
-		# at progress = 1.0, which is the center of the perfect parry window.
+		# Beat mark: thin vertical line at the exact hit point.
 		var beat_mark := Line2D.new()
 		beat_mark.name = "BeatMark"
-		beat_mark.default_color = base_color.darkened(0.10)
-		beat_mark.width = 1.8
+		beat_mark.default_color = Color(base_color.r, base_color.g, base_color.b, base_color.a * 0.55)
+		beat_mark.width = 1.2
 		beat_mark.add_point(Vector2(0.0, -RING_OUTER_RADIUS))
 		beat_mark.add_point(Vector2(0.0, RING_OUTER_RADIUS))
 
@@ -1562,12 +1939,10 @@ func _set_combat_controls_text() -> void:
 	if _song_mode:
 		_set_song_controls_text()
 		return
-	var encounter_count: int = _encounter_queue.size()
-	var encounter_number: int = _current_encounter_queue_index + 1
-	controls_label.text = "Encounter %d/%d  |  A/S/D lane  |  Left parry  |  Right dodge  |  R ultimate" % [
-		encounter_number,
-		encounter_count
-	]
+	if _is_boss_encounter:
+		controls_label.text = "Boss encounter  |  A S D choose lane  |  Left Arrow parry  |  Right Arrow dodge  |  R unleash"
+	else:
+		controls_label.text = "A S D choose lane  |  Left Arrow parry  |  Right Arrow dodge  |  R unleash"
 
 
 func _start_current_phase() -> void:
@@ -1616,6 +1991,11 @@ func _advance_phase() -> void:
 		pause_duration = 1.0
 		_show_feedback("THE HOLLOW OPENS ITS FULL MOUTH.", Color(0.86, 0.58, 0.14, 1.0), 0.70)
 		EventBus.emit_signal("screen_flash", Color(0.60, 0.36, 0.06, 0.20), 0.30)
+		EventBus.emit_signal("screen_shake", 5.0, 0.30)
+		# Three-lane phase — tighten the fire cadence to 0.78 s.
+		# Tighter stagger (0.45) brings all three sovereigns into quicker succession.
+		lane_manager.set_cycle_interval(0.78)
+		lane_manager.set_fire_stagger(0.45)
 
 	var timer: SceneTreeTimer = get_tree().create_timer(pause_duration)
 	await timer.timeout
@@ -1645,6 +2025,10 @@ func _complete_current_encounter() -> void:
 	result_label.visible = true
 
 	if _is_boss_encounter:
+		# Boss killed — stop the race music and timer before the reward overlay.
+		_boss_race_active = false
+		_stop_boss_music()
+		_hide_song_hud()
 		_hide_boss_bar()
 		_show_feedback("SOVEREIGN FELLED", Color(0.90, 0.74, 0.28, 1.0), 0.70)
 		EventBus.emit_signal("screen_flash", Color(0.55, 0.40, 0.10, 0.16), 0.20)
@@ -1662,11 +2046,7 @@ func _complete_current_encounter() -> void:
 		return
 
 	_refresh_run_build_readout()
-
-	if _has_next_encounter():
-		_show_continue_overlay_only()
-	else:
-		_finish_run(true)
+	_finish_run(true)
 
 
 func _finish_run(victory: bool) -> void:
@@ -1675,6 +2055,8 @@ func _finish_run(victory: bool) -> void:
 	_combat_finished = true
 	_phase_transitioning = false
 
+	_stop_boss_music()
+	_hide_song_hud()
 	_hide_boss_bar()
 
 	if lane_manager != null and lane_manager.has_method("stop"):
@@ -1687,29 +2069,14 @@ func _finish_run(victory: bool) -> void:
 		result_label.text = "RUN COMPLETE"
 		result_label.visible = true
 		_show_feedback("THE HOLLOW REMEMBERS YOU", Color(0.85, 1.0, 0.75, 1.0), 0.70)
-		controls_label.text = "Run complete  |  R restart  |  T title"
+		controls_label.text = "Run complete  |  R restart  |  T return to lair"
 	else:
 		result_label.text = "RUN FAILED"
 		result_label.visible = true
 		_show_feedback("RUN FAILED", Color(1.0, 0.45, 0.45, 1.0), 0.65)
-		controls_label.text = "Run failed  |  R restart  |  T title"
+		controls_label.text = "Run failed  |  R restart  |  T return to lair"
 
 	_hide_reward_overlay()
-
-
-func _has_next_encounter() -> bool:
-	return _current_encounter_queue_index < (_encounter_queue.size() - 1)
-
-
-func _continue_to_next_encounter() -> void:
-	if not _awaiting_continue:
-		return
-
-	_awaiting_continue = false
-	_hide_reward_overlay()
-	_current_encounter_queue_index += 1
-	_load_current_queued_encounter(false)
-
 
 func _show_boss_bar() -> void:
 	if _boss_hp_shell != null:
@@ -1809,6 +2176,31 @@ func _show_feedback(text: String, color: Color, lifetime: float = 0.38) -> void:
 	)
 
 
+func _get_beat_quality_for_action() -> String:
+	# Returns the conductor's current beat quality ("perfect" / "good" / "off").
+	# Returns "off" when no conductor is active (boss phase, no song, etc.).
+	if _song_conductor == null or not is_instance_valid(_song_conductor):
+		return "off"
+	return _song_conductor.get_beat_quality()
+
+
+func _show_beat_feedback(text: String, color: Color) -> void:
+	# Shows a brief beat-quality label (IN SYNC / ON BEAT / LOCKED IN / SLIP) near
+	# the timing rings. Fades out quickly so it does not crowd the main feedback.
+	if _beat_feedback_label == null:
+		return
+	_beat_feedback_label.text = text
+	_beat_feedback_label.modulate = Color(color.r, color.g, color.b, 1.0)
+	_beat_feedback_label.visible = true
+	var tween := create_tween()
+	tween.tween_interval(0.22)
+	tween.tween_property(_beat_feedback_label, "modulate:a", 0.0, 0.16)
+	tween.tween_callback(func() -> void:
+		_beat_feedback_label.visible = false
+		_beat_feedback_label.modulate.a = 1.0
+	)
+
+
 func _flash_meter_shell(color: Color, duration: float) -> void:
 	if _style_shell == null or _combo_shell == null:
 		return
@@ -1832,24 +2224,36 @@ func _offer_victory_reward(creature_data: Dictionary) -> void:
 	_pending_reward_creature = creature_data.duplicate(true)
 	_awaiting_reward_choice = true
 	_reward_choice_made = false
-	_awaiting_continue = false
 
 	EventBus.emit_signal("capture_offered", _pending_reward_creature)
 	_reward_overlay.visible = true
 
 	var _offer_creature_name: String = String(_pending_reward_creature.get("display_name", "creature"))
 	var _offer_description: String = String(_pending_reward_creature.get("description", ""))
-	_reward_creature_tag_label.text = "CREATURE OFFERING"
+	_reward_creature_tag_label.text = "Creature"
 	_reward_title_label.text = _offer_creature_name
 	_reward_body_label.text = _offer_description
-	_reward_bond_label.text = "[B] BOND"
-	_reward_bond_effect_label.text = "Keep it close.\n\n%s\n\nRun identity grows around this creature." % _format_bond_passive(_pending_reward_creature.get("bond_passive", {}))
-	_reward_eat_label.text = "[E] EAT"
-	_reward_eat_effect_label.text = "Take what it gives.\n\n%s\n\nPermanent pressure through consumption." % _format_eat_effect(_pending_reward_creature.get("eat_effect", {}))
+	_reward_bond_label.text = "Bond  [B]"
+	_reward_bond_effect_label.text = "Keep it close.\n\n%s\n\nThe run bends around this creature." % _format_bond_passive(_pending_reward_creature.get("bond_passive", {}))
+	_reward_eat_label.text = "Eat  [E]"
+	_reward_eat_effect_label.text = "Take what it gives.\n\n%s\n\nImmediate pressure through consumption." % _format_eat_effect(_pending_reward_creature.get("eat_effect", {}))
 	_reward_quig_label.text = String(_pending_reward_creature.get("quig_offer_text", ""))
-	_reward_hint_label.text = "Choose one  |  B keeps the creature  |  E consumes it"
+	_reward_hint_label.text = "Choose one  |  B keeps it close  |  E feeds on it"
 
-	controls_label.text = "Reward choice  |  Press B to Bond  |  Press E to Eat"
+	# Load and show creature portrait if art is available.
+	if _reward_creature_portrait != null:
+		var sprite_path: String = String(_pending_reward_creature.get("sprite_path", ""))
+		if not sprite_path.is_empty() and ResourceLoader.exists(sprite_path):
+			var portrait_tex: Texture2D = load(sprite_path) as Texture2D
+			if portrait_tex != null:
+				_reward_creature_portrait.texture = portrait_tex
+				_reward_creature_portrait.visible = true
+			else:
+				_reward_creature_portrait.visible = false
+		else:
+			_reward_creature_portrait.visible = false
+
+	controls_label.text = "Reward choice  |  B bond  |  E eat"
 
 
 func _format_eat_effect(effect: Dictionary) -> String:
@@ -1902,52 +2306,17 @@ func _format_trigger_hint(effect_id: String) -> String:
 	# One-line description of when the bonded creature fires, shown under the support bar.
 	match effect_id:
 		"ashclaw_strike":
-			return "strikes on perfect timing"
+			return "Triggers on perfect timing"
 		"bond_remnant_mend":
-			return "mends on hit when ready"
+			return "Triggers on damage while ready"
 		"gruvek_gorge":
-			return "gorges all lanes on kill"
+			return "Triggers on kill"
 		"veilskin_phase":
-			return "phases on perfect parry"
+			return "Triggers on perfect parry"
 		"thornback_rend":
-			return "rends on perfect timing"
+			return "Triggers on perfect timing"
 		_:
 			return ""
-
-
-func _show_continue_after_reward() -> void:
-	_awaiting_continue = true
-
-	_reward_creature_tag_label.text = "PATH"
-	_reward_title_label.text = "The path opens."
-	_reward_body_label.text = "Your choice settles into the hollow.\n\nContinue to the next encounter?"
-	_reward_bond_label.text = ""
-	_reward_bond_effect_label.text = ""
-	_reward_eat_label.text = ""
-	_reward_eat_effect_label.text = ""
-	_reward_hint_label.text = "Press C to continue  |  Press R to restart run"
-
-	controls_label.text = "Press C to continue  |  Press R to restart run"
-
-
-func _show_continue_overlay_only() -> void:
-	_awaiting_continue = true
-	_reward_choice_made = true
-	_awaiting_reward_choice = false
-	_pending_reward_creature = {}
-	_reward_overlay.visible = true
-
-	_reward_creature_tag_label.text = "DESCENT"
-	_reward_title_label.text = "The hollow turns deeper."
-	_reward_body_label.text = "The first mouth closes.\n\nAnother waits."
-	_reward_bond_label.text = ""
-	_reward_bond_effect_label.text = ""
-	_reward_eat_label.text = ""
-	_reward_eat_effect_label.text = ""
-	_reward_quig_label.text = "Quig: \"That wasn't the only one.\""
-	_reward_hint_label.text = "Press C to continue  |  Press R to restart run"
-
-	controls_label.text = "Press C to continue  |  Press R to restart run"
 
 
 func _hide_reward_overlay() -> void:
@@ -1955,7 +2324,6 @@ func _hide_reward_overlay() -> void:
 	_pending_reward_creature = {}
 	_awaiting_reward_choice = false
 	_reward_choice_made = false
-	_awaiting_continue = false
 	_reward_creature_tag_label.text = ""
 	_reward_title_label.text = ""
 	_reward_body_label.text = ""
@@ -2059,7 +2427,7 @@ func _join_compact_tokens(tokens: Array[String]) -> String:
 
 
 func _maybe_present_growth_offer() -> void:
-	if _awaiting_growth_choice or _awaiting_reward_choice or _awaiting_continue or _run_finished:
+	if _awaiting_growth_choice or _awaiting_reward_choice or _run_finished:
 		return
 	if _run_growth == null or not is_instance_valid(_run_growth):
 		return
@@ -2075,8 +2443,8 @@ func _maybe_present_growth_offer() -> void:
 	_current_growth_options = options
 	_awaiting_growth_choice = true
 	_growth_overlay.visible = true
-	_growth_title_label.text = "LEVEL %d  |  THE RUN MUTATES" % int(_run_growth.get("level"))
-	_growth_hint_label.text = "Choose one  |  Press 1, 2, or 3"
+	_growth_title_label.text = "Level %d  |  The run mutates" % int(_run_growth.get("level"))
+	_growth_hint_label.text = "Choose one  |  1 2 3 to claim it"
 
 	for i in range(_growth_option_labels.size()):
 		var label: Label = _growth_option_labels[i]
@@ -2097,7 +2465,7 @@ func _maybe_present_growth_offer() -> void:
 		player_combat.set_combat_enabled(false)
 
 	_enter_growth_pause()
-	controls_label.text = "Level up  |  Press 1, 2, or 3"
+	controls_label.text = "Level up  |  1 2 3 choose mutation"
 
 
 func _choose_growth_option(index: int) -> void:
@@ -2130,12 +2498,15 @@ func _enter_growth_pause() -> void:
 	_growth_pause_active = true
 	# Invalidate any in-flight slow-motion restore callback before freezing.
 	_slow_motion_gen += 1
-	Engine.time_scale = 0.0
+	COMBAT_TRANSITION_STATE.prepare_growth_pause(
+		Callable(self, "_clear_mastery_context_cache"),
+		Callable(self, "_set_growth_audio_paused")
+	)
 
 
 func _exit_growth_pause() -> void:
 	_growth_pause_active = false
-	Engine.time_scale = _base_time_scale
+	COMBAT_TRANSITION_STATE.restore_growth_pause(_base_time_scale, Callable(self, "_set_growth_audio_paused"))
 
 
 func _choose_bond() -> void:
@@ -2149,13 +2520,13 @@ func _choose_bond() -> void:
 	_awaiting_reward_choice = false
 
 	var _bond_creature_name: String = String(_pending_reward_creature.get("display_name", "creature"))
-	_reward_creature_tag_label.text = "BOND SEALED"
+	_reward_creature_tag_label.text = "Bond sealed"
 	_reward_title_label.text = "%s bonded." % _bond_creature_name
 	_reward_body_label.text = "%s enters your roster at bond level %d." % [
 		_bond_creature_name,
 		int(updated_creature.get("bond_level", 1))
 	]
-	_reward_bond_label.text = "BONDED"
+	_reward_bond_label.text = "Bonded"
 	_reward_bond_effect_label.text = _format_bond_passive(_pending_reward_creature.get("bond_passive", {}))
 	_reward_eat_label.text = ""
 	_reward_eat_effect_label.text = ""
@@ -2163,11 +2534,9 @@ func _choose_bond() -> void:
 
 	if _song_reward_pending:
 		_resume_song_after_reward()
-	elif _has_next_encounter():
-		_show_continue_after_reward()
 	else:
-		_reward_hint_label.text = "Press R to restart run"
-		controls_label.text = "Run complete  |  Press R to restart run"
+		_reward_hint_label.text = "R restart run"
+		controls_label.text = "Run complete  |  R restart run"
 		_finish_run(true)
 
 
@@ -2194,12 +2563,12 @@ func _choose_eat() -> void:
 	_awaiting_reward_choice = false
 
 	var _eat_creature_name: String = String(_pending_reward_creature.get("display_name", "creature"))
-	_reward_creature_tag_label.text = "CONSUMED"
+	_reward_creature_tag_label.text = "Consumed"
 	_reward_title_label.text = "%s consumed." % _eat_creature_name
 	_reward_body_label.text = "Its nature folds into you."
 	_reward_bond_label.text = ""
 	_reward_bond_effect_label.text = ""
-	_reward_eat_label.text = "ABSORBED"
+	_reward_eat_label.text = "Absorbed"
 	var _eat_type_str: String = String(absorbed_entry.get("eat_type", "damage_flat"))
 	if _eat_type_str == "hp_restore":
 		_reward_eat_effect_label.text = "Type: %s\n\n+%.0f HP restored.\nNo permanent bonus." % [
@@ -2226,11 +2595,9 @@ func _choose_eat() -> void:
 
 	if _song_reward_pending:
 		_resume_song_after_reward()
-	elif _has_next_encounter():
-		_show_continue_after_reward()
 	else:
-		_reward_hint_label.text = "Press R to restart run"
-		controls_label.text = "Run complete  |  Press R to restart run"
+		_reward_hint_label.text = "R restart run"
+		controls_label.text = "Run complete  |  R restart run"
 		_finish_run(true)
 
 
@@ -2252,9 +2619,17 @@ func _on_player_took_damage(_amount: float, source_lane: int) -> void:
 	hp_bar.value = GameState.player_hp
 	if _hp_value_label != null:
 		_hp_value_label.text = "%d/%d" % [int(GameState.player_hp), int(GameState.player_max_hp)]
-	_show_feedback("STRUCK", Color(0.96, 0.44, 0.40, 1.0), 0.34)
-	_highlight_timing_ring(source_lane, Color(1.0, 0.25, 0.25, 1.0), 5.0)
-	_flash_meter_shell(Color(0.42, 0.10, 0.11, 0.94), 0.18)
+	# Pale Shelf: hits feel clinical and punishing — "EXPOSED" in cold blue, harder flash.
+	# All other regions: standard warm "STRUCK".
+	if _region_id == "pale_shelf":
+		_show_feedback("EXPOSED", Color(0.72, 0.76, 0.96, 1.0), 0.48)
+		_presentation_runtime.highlight_timing_ring(source_lane, Color(0.65, 0.72, 0.98, 1.0), 5.0)
+		_flash_meter_shell(Color(0.18, 0.18, 0.38, 0.96), 0.22)
+		EventBus.emit_signal("screen_flash", Color(0.38, 0.40, 0.62, 0.18), 0.28)
+	else:
+		_show_feedback("STRUCK", Color(0.96, 0.44, 0.40, 1.0), 0.34)
+		_presentation_runtime.highlight_timing_ring(source_lane, Color(1.0, 0.25, 0.25, 1.0), 5.0)
+		_flash_meter_shell(Color(0.42, 0.10, 0.11, 0.94), 0.18)
 
 
 func _on_player_healed(_amount: float) -> void:
@@ -2267,14 +2642,25 @@ func _on_player_healed(_amount: float) -> void:
 
 
 func _on_ultimate_available() -> void:
-	ultimate_label.text = "READY"
+	ultimate_label.text = "Ready"
 	_show_feedback("READY", Color(1.0, 0.85, 0.35, 1.0), 0.45)
 	_flash_meter_shell(Color(0.30, 0.21, 0.10, 0.94), 0.20)
 
 
 func _on_ultimate_fired(_power: float) -> void:
 	ultimate_label.text = "0%"
-	_show_feedback("DEVOUR", Color(1.0, 0.72, 0.25, 1.0), 0.45)
+	var tier: String = combat_meter.get_current_tier()
+	var ult_text: String = "DEVOUR"
+	if tier == "sovereign":
+		ult_text = "SOVEREIGN DEVOUR"
+	elif tier == "apex":
+		ult_text = "APEX STRIKE"
+	_show_feedback(ult_text, Color(1.0, 0.72, 0.25, 1.0), 0.50)
+	var bq: String = _get_beat_quality_for_action()
+	if bq == "perfect":
+		_show_beat_feedback("PERFECT DROP", Color(1.0, 0.88, 0.40, 1.0))
+	elif bq == "good":
+		_show_beat_feedback("ON THE DROP", Color(0.92, 0.80, 0.36, 1.0))
 	_flash_meter_shell(Color(0.33, 0.16, 0.08, 0.94), 0.18)
 
 
@@ -2295,6 +2681,7 @@ func _on_combat_ended(victory: bool) -> void:
 func _on_enemy_damaged(enemy_id: int, damage: float) -> void:
 	# Apply persistent low-HP tint before the damage flash so the flash restores to it.
 	var lane: int = int(_all_enemies_by_id.get(enemy_id, {}).get("lane", -1))
+	var is_boss_target: bool = _is_boss_encounter and _enemy_phase_by_id.has(enemy_id)
 	if lane >= 0:
 		var max_hp: float = float(_enemy_max_hp.get(enemy_id, 0))
 		if max_hp > 0.0:
@@ -2308,9 +2695,18 @@ func _on_enemy_damaged(enemy_id: int, damage: float) -> void:
 	if _is_boss_encounter and _boss_hp_bar != null and is_instance_valid(_boss_hp_bar):
 		_boss_current_hp = max(_boss_current_hp - damage, 0.0)
 		_boss_hp_bar.value = _boss_current_hp
+		# One-shot mid-fight escalation at 50% total HP.
+		# Fires during phase 1 or 2 — whichever the blow lands in.
+		if not _boss_hp_threshold_fired and _boss_total_hp > 0.0 and (_boss_current_hp / _boss_total_hp) <= 0.5:
+			_boss_hp_threshold_fired = true
+			_show_feedback("SOVEREIGN UNLEASH", Color(0.92, 0.42, 0.12, 1.0), 0.70)
+			_presentation_runtime.apply_impact_profile(COMBAT_IMPACT_FEEDBACK.build_boss_threshold_profile())
+			# State 3: tightest cadence - 0.60 s cycle, 0.44 stagger. Projectiles cluster hard.
+			lane_manager.set_cycle_interval(0.60)
+			lane_manager.set_fire_stagger(0.44)
 
 	_spawn_damage_number(enemy_id, damage)
-	_animate_enemy_damage(enemy_id)
+	_presentation_runtime.apply_impact_profile(COMBAT_IMPACT_FEEDBACK.build_enemy_hit_profile(damage, is_boss_target), lane, enemy_id)
 
 
 func _spawn_damage_number(enemy_id: int, damage: float) -> void:
@@ -2320,10 +2716,9 @@ func _spawn_damage_number(enemy_id: int, damage: float) -> void:
 	var start_pos: Vector2 = marker.position + Vector2(6.0, -18.0)
 	var lbl := Label.new()
 	lbl.text = "%.0f" % damage
-	lbl.add_theme_font_size_override("font_size", 13)
-	lbl.add_theme_color_override("font_color", Color(0.96, 0.90, 0.78, 1.0))
 	lbl.position = start_pos
 	lbl.z_index = 10
+	UI_STYLE.apply_label(lbl, "caption_strong")
 	_enemy_marker_container.add_child(lbl)
 	var tween := create_tween()
 	tween.tween_property(lbl, "position:y", start_pos.y - 30.0, 0.6)
@@ -2339,6 +2734,19 @@ func _on_enemy_defeated(enemy_id: int) -> void:
 			EventBus.emit_signal("player_healed", healed)
 	_remove_enemy_marker(enemy_id)
 
+	# Region-specific kill momentum feedback (song mode only).
+	# Feeding Hollow: every kill pulses the predator identity.
+	# Pale Shelf: silence — deaths feel hollow, not celebrated.
+	# Drowned Cut: resonate the kill through the bond layer.
+	if _song_mode and not _song_paused and not _song_boss_triggered:
+		match _region_id:
+			"feeding_hollow":
+				_show_beat_feedback("FLESH", Color(0.88, 0.28, 0.18, 1.0))
+				EventBus.emit_signal("screen_flash", Color(0.35, 0.05, 0.05, 0.05), 0.05)
+			"drowned_cut":
+				_show_beat_feedback("RESONANCE", Color(0.48, 0.88, 0.76, 1.0))
+				EventBus.emit_signal("screen_flash", Color(0.10, 0.38, 0.32, 0.05), 0.05)
+
 	if _song_mode and not _song_paused and not _song_boss_triggered:
 		var dead_lane: int = _song_enemy_lanes.get(enemy_id, -1)
 		if dead_lane >= 0:
@@ -2347,31 +2755,11 @@ func _on_enemy_defeated(enemy_id: int) -> void:
 			var respawn_lane: int = dead_lane
 			get_tree().create_timer(0.40).timeout.connect(func() -> void:
 				if _song_mode and not _song_paused and not _song_boss_triggered:
-					var phase: Dictionary = SONG_CONTENT.SONG_PHASES[_song_phase_index]
+					var phase: Dictionary = _song_phases[_song_phase_index]
 					var max_threats: int = int(phase.get("max_active_threats", 2))
 					if lane_manager.alive_count() < max_threats:
 						_place_song_enemy(respawn_lane)
 			, CONNECT_ONE_SHOT)
-
-
-func _on_screen_flash(color: Color, duration: float) -> void:
-	flash_overlay.color = color
-	var tween := create_tween()
-	tween.tween_property(flash_overlay, "color:a", color.a, 0.03)
-	tween.tween_interval(duration)
-	tween.tween_property(flash_overlay, "color:a", 0.0, 0.12)
-
-
-func _on_screen_shake(intensity: float, duration: float) -> void:
-	var original_offset: Vector2 = camera_2d.offset
-	var half_duration: float = duration * 0.5
-
-	var tween := create_tween()
-	tween.tween_property(camera_2d, "offset", original_offset + Vector2(intensity, 0.0), half_duration)
-	tween.tween_property(camera_2d, "offset", original_offset - Vector2(intensity, 0.0), half_duration)
-	tween.tween_callback(func() -> void:
-		camera_2d.offset = original_offset
-	)
 
 
 func _on_slow_motion(scale: float, duration: float) -> void:
@@ -2393,22 +2781,30 @@ func _on_slow_motion(scale: float, duration: float) -> void:
 func _on_player_attacked(lane: int, _damage: float, was_timed: bool) -> void:
 	if was_timed:
 		_show_feedback("TIMED", Color(1.0, 0.95, 0.55, 1.0), 0.36)
-		_highlight_timing_ring(lane, Color(1.0, 0.95, 0.55, 1.0), 5.0)
-		_spawn_attack_silhouette_to_lane(lane, Color(1.0, 0.92, 0.58, 0.55), 10.0, 0.12, 1.0)
+		_presentation_runtime.highlight_timing_ring(lane, Color(1.0, 0.95, 0.55, 1.0), 5.0)
+		_presentation_runtime.spawn_attack_silhouette_to_lane(lane, Color(1.0, 0.92, 0.58, 0.55), 10.0, 0.12, 1.0)
 		_flash_meter_shell(Color(0.25, 0.20, 0.10, 0.94), 0.12)
+		# Beat quality bonus: on-beat timed attacks get richer feedback and a sharper flash.
+		var bq: String = _get_beat_quality_for_action()
+		if bq == "perfect":
+			_show_beat_feedback("IN SYNC", Color(1.0, 0.95, 0.55, 1.0))
+		elif bq == "good":
+			_show_beat_feedback("ON BEAT", Color(0.88, 0.84, 0.52, 1.0))
 	else:
 		_show_feedback("HIT", Color(0.95, 0.95, 0.95, 1.0), 0.28)
-		_highlight_timing_ring(lane, Color(0.95, 0.95, 0.95, 1.0), 4.0)
-		_spawn_attack_silhouette_to_lane(lane, Color(0.92, 0.92, 0.92, 0.35), 7.0, 0.10, 0.88)
+		_presentation_runtime.highlight_timing_ring(lane, Color(0.95, 0.95, 0.95, 1.0), 4.0)
+		_presentation_runtime.spawn_attack_silhouette_to_lane(lane, Color(0.92, 0.92, 0.92, 0.35), 7.0, 0.10, 0.88)
 		_flash_meter_shell(Color(0.16, 0.16, 0.17, 0.94), 0.08)
 
 
 func _on_timed_attack_resolved(lane: int, quality: String, damage: float) -> void:
 	var ravage_effect: Dictionary = _get_upgrade_effect("timed_attack_bonus_damage")
+	var beat_quality: String = _get_beat_quality_for_action()
+	var enemy_id: int = _get_enemy_id_for_lane(lane)
 	if not ravage_effect.is_empty():
 		var rip_damage: float = damage * float(ravage_effect.get("value", 0.0))
 		lane_manager.damage_enemy(lane, rip_damage)
-		_spawn_attack_silhouette_to_lane(lane, Color(0.95, 0.48, 0.36, 0.34), 8.0, 0.08, 0.92)
+		_presentation_runtime.spawn_attack_silhouette_to_lane(lane, Color(0.95, 0.48, 0.36, 0.34), 8.0, 0.08, 0.92)
 
 	if quality == "good":
 		var flow_effect: Dictionary = _get_upgrade_effect("good_timed_bonus_damage")
@@ -2416,23 +2812,43 @@ func _on_timed_attack_resolved(lane: int, quality: String, damage: float) -> voi
 			var flow_damage: float = damage * float(flow_effect.get("value", 0.0))
 			lane_manager.damage_enemy(lane, flow_damage)
 
+	_presentation_runtime.apply_impact_profile(COMBAT_IMPACT_FEEDBACK.build_timed_attack_profile(quality, beat_quality), lane, enemy_id)
+
 
 func _on_player_parried(lane: int, quality: String, _reflect_damage: float) -> void:
+	var bq: String = _get_beat_quality_for_action()
+	var enemy_id: int = _get_enemy_id_for_lane(lane)
 	if quality == "perfect":
 		_show_feedback("PERFECT PARRY", Color(0.68, 1.0, 0.82, 1.0), 0.46)
-		_highlight_timing_ring(lane, Color(0.68, 1.0, 0.82, 1.0), 7.0)
-		_spawn_attack_silhouette_to_lane(lane, Color(0.68, 1.0, 0.82, 0.72), 13.0, 0.18, 1.08)
+		_presentation_runtime.highlight_timing_ring(lane, Color(0.68, 1.0, 0.82, 1.0), 7.0)
+		_presentation_runtime.spawn_attack_silhouette_to_lane(lane, Color(0.68, 1.0, 0.82, 0.72), 13.0, 0.18, 1.08)
 		_flash_meter_shell(Color(0.12, 0.28, 0.20, 0.96), 0.20)
+		# Beat quality: perfect parry on the beat is the highest-reward action in the game.
+		# slow_motion is owned by PlayerCombat for parries; only show UI feedback here.
+		if bq == "perfect":
+			_show_beat_feedback("LOCKED IN", Color(0.68, 1.0, 0.82, 1.0))
+		elif bq == "good":
+			_show_beat_feedback("IN SYNC", Color(0.60, 0.94, 0.76, 1.0))
 	else:
 		_show_feedback("PARRY", Color(0.60, 0.94, 0.76, 1.0), 0.34)
-		_highlight_timing_ring(lane, Color(0.60, 0.94, 0.76, 1.0), 5.6)
-		_spawn_attack_silhouette_to_lane(lane, Color(0.60, 0.94, 0.76, 0.54), 10.0, 0.14, 0.98)
+		_presentation_runtime.highlight_timing_ring(lane, Color(0.60, 0.94, 0.76, 1.0), 5.6)
+		_presentation_runtime.spawn_attack_silhouette_to_lane(lane, Color(0.60, 0.94, 0.76, 0.54), 10.0, 0.14, 0.98)
 		_flash_meter_shell(Color(0.11, 0.22, 0.18, 0.94), 0.14)
+		if bq == "perfect" or bq == "good":
+			_show_beat_feedback("ON BEAT", Color(0.60, 0.94, 0.76, 1.0))
+
+	_presentation_runtime.apply_impact_profile(COMBAT_IMPACT_FEEDBACK.build_parry_profile(quality, bq), lane, enemy_id)
 
 
 func _on_player_dodged(_from_lane: int, to_lane: int) -> void:
 	_show_feedback("DODGE", Color(0.65, 0.85, 1.0, 1.0), 0.28)
-	_highlight_timing_ring(to_lane, Color(0.65, 0.85, 1.0, 1.0), 4.0)
+	_presentation_runtime.highlight_timing_ring(to_lane, Color(0.65, 0.85, 1.0, 1.0), 4.0)
+	var bq: String = _get_beat_quality_for_action()
+	if bq == "perfect":
+		_show_beat_feedback("SLIP", Color(0.65, 0.85, 1.0, 1.0))
+		EventBus.emit_signal("screen_flash", Color(0.50, 0.70, 1.0, 0.05), 0.04)
+	elif bq == "good":
+		_show_beat_feedback("SLIP", Color(0.55, 0.75, 0.92, 1.0))
 
 
 func _on_player_no_stamina() -> void:
@@ -2458,16 +2874,35 @@ func _on_support_charge_changed(current: float, maximum: float, active_species_i
 		if active_species_id.is_empty():
 			_support_value_label.text = "--"
 		elif current >= maximum:
-			_support_value_label.text = "READY"
+			_support_value_label.text = "Ready"
 		else:
 			_support_value_label.text = "%d%%" % int(round((current / maximum) * 100.0))
 
 	if _support_name_label != null:
 		if _run_growth != null and is_instance_valid(_run_growth) and _run_growth.has_method("get_active_display_name"):
 			var display_name: String = String(_run_growth.call("get_active_display_name"))
-			_support_name_label.text = display_name.to_upper()
+			_support_name_label.text = display_name
 		else:
-			_support_name_label.text = "NO BOND"
+			_support_name_label.text = "No bond"
+
+	# Creature portrait: load only when the active species changes.
+	if _support_creature_portrait != null:
+		if active_species_id != _support_portrait_species:
+			_support_portrait_species = active_species_id
+			if not active_species_id.is_empty():
+				var portrait_path: String = COMBAT_CONTENT.get_creature_sprite_path(active_species_id)
+				if not portrait_path.is_empty() and ResourceLoader.exists(portrait_path):
+					var portrait_tex: Texture2D = load(portrait_path) as Texture2D
+					if portrait_tex != null:
+						_support_creature_portrait.texture = portrait_tex
+						_support_creature_portrait.visible = true
+					else:
+						_support_creature_portrait.visible = false
+				else:
+					_support_creature_portrait.visible = false
+			else:
+				_support_creature_portrait.visible = false
+				_support_creature_portrait.texture = null
 
 	if _support_trigger_label != null:
 		if active_species_id.is_empty():
@@ -2481,7 +2916,133 @@ func _on_support_charge_changed(current: float, maximum: float, active_species_i
 		if not active_species_id.is_empty() and current >= maximum:
 			shell_color = Color(0.10, 0.12, 0.11, 0.72)
 		_support_shell.color = shell_color
+	_refresh_bonded_creature_render(active_species_id)
 	_refresh_run_build_readout()
+
+
+func _refresh_bonded_creature_render(active_species_id: String = "") -> void:
+	if _bonded_creature_sprite == null or lane_manager == null:
+		return
+
+	var species_id: String = active_species_id
+	if species_id.is_empty() and _run_growth != null and is_instance_valid(_run_growth) and _run_growth.has_method("get_active_species_id"):
+		species_id = String(_run_growth.call("get_active_species_id"))
+
+	if species_id.is_empty():
+		_bonded_creature_species = ""
+		_bonded_creature_sprite.visible = false
+		_bonded_creature_sprite.texture = null
+		return
+
+	var sprite_path: String = COMBAT_CONTENT.get_creature_sprite_path(species_id)
+	if sprite_path.is_empty() or not ResourceLoader.exists(sprite_path):
+		_bonded_creature_species = species_id
+		_bonded_creature_sprite.visible = false
+		_bonded_creature_sprite.texture = null
+		return
+
+	if species_id != _bonded_creature_species:
+		var render_tex: Texture2D = load(sprite_path) as Texture2D
+		if render_tex == null:
+			_bonded_creature_sprite.visible = false
+			_bonded_creature_sprite.texture = null
+			return
+		_bonded_creature_species = species_id
+		_bonded_creature_sprite.texture = render_tex
+
+	var render_config: Dictionary = COMBAT_CONTENT.get_creature_combat_render(species_id)
+	var world_offset: Vector2 = render_config.get("world_offset", Vector2(-108.0, 74.0))
+	var render_scale: float = float(render_config.get("scale", 0.052))
+	var render_modulate: Color = render_config.get("modulate", Color(0.90, 0.89, 0.86, 0.86))
+	var render_z: int = int(render_config.get("z_index", 5))
+	_bonded_creature_sprite.position = Vector2(
+		lane_manager.get_player_x() + world_offset.x,
+		lane_manager.get_lane_y(1) + world_offset.y
+	)
+	_bonded_creature_sprite.scale = Vector2.ONE * render_scale
+	_bonded_creature_sprite.modulate = render_modulate
+	_bonded_creature_sprite.z_index = render_z
+	_bonded_creature_sprite.visible = true
+
+
+func _apply_song_phase_cadence(phase: Dictionary, spawn_mult: float = 1.0) -> void:
+	var base_interval: float = float(phase.get("cycle_interval", 2.2))
+	var base_stagger: float = float(phase.get("fire_stagger", 0.45))
+	lane_manager.set_cycle_interval(base_interval * spawn_mult)
+	lane_manager.set_fire_stagger(base_stagger)
+
+
+func _clear_mastery_context_cache() -> void:
+	_last_mastery_context.clear()
+
+
+func _on_mastery_context_updated(data: Dictionary) -> void:
+	_last_mastery_context = data.duplicate(true)
+
+
+func _get_mastery_window() -> String:
+	# Returns the current phrase-depth tier for support mastery branching.
+	# Phrase count accumulates through consecutive quality (good/perfect) actions.
+	# "flow_state" = 8+ actions; "in_pocket" = 5+; "" = below threshold (no enhancement).
+	var count: int = combat_meter.phrase_count
+	if count >= 8:
+		return "flow_state"
+	if count >= 5:
+		return "in_pocket"
+	return ""
+
+
+func _get_current_cadence_window() -> String:
+	if _song_conductor == null or not is_instance_valid(_song_conductor):
+		return ""
+	var section_id: String = String(_song_conductor.get("current_section_id"))
+	var intensity: float = float(_song_conductor.get("current_intensity"))
+	if section_id == "final" or intensity >= 0.85:
+		return "surge"
+	if section_id == "chorus" or intensity >= 0.62:
+		return "drive"
+	return ""
+
+
+func _build_support_mastery_context(effect_id: String, lane: int) -> Dictionary:
+	var context: Dictionary = {
+		"source_event": "",
+		"lane": lane,
+		"action_quality": "",
+		"beat_quality": "off",
+		"phrase_window": _get_mastery_window(),
+		"cadence_window": _get_current_cadence_window(),
+		"is_recent": false,
+		"window_id": ""
+	}
+	if not _last_mastery_context.is_empty():
+		var now: float = Time.get_ticks_msec() / 1000.0
+		var age: float = now - float(_last_mastery_context.get("timestamp", -999.0))
+		if age <= SUPPORT_MASTERY_CONTEXT_TIMEOUT:
+			context["source_event"] = String(_last_mastery_context.get("event_id", ""))
+			context["lane"] = int(_last_mastery_context.get("lane", lane))
+			context["action_quality"] = String(_last_mastery_context.get("action_quality", ""))
+			context["beat_quality"] = String(_last_mastery_context.get("beat_quality", "off"))
+			context["phrase_window"] = String(_last_mastery_context.get("phrase_window", context["phrase_window"]))
+			context["cadence_window"] = String(_last_mastery_context.get("cadence_window", context["cadence_window"]))
+			context["is_recent"] = true
+
+	var phrase_window: String = String(context.get("phrase_window", ""))
+	var cadence_window: String = String(context.get("cadence_window", ""))
+	var action_quality: String = String(context.get("action_quality", ""))
+	var beat_quality: String = String(context.get("beat_quality", "off"))
+	var precision: bool = action_quality == "perfect" and (beat_quality == "perfect" or beat_quality == "good")
+
+	if precision and cadence_window == "surge" and (phrase_window == "flow_state" or phrase_window == "in_pocket"):
+		context["window_id"] = "cadence_surge"
+	elif phrase_window == "flow_state":
+		context["window_id"] = "flow_state"
+	elif phrase_window == "in_pocket":
+		context["window_id"] = "in_pocket"
+	elif precision and cadence_window == "drive" and effect_id == "thornback_rend":
+		context["window_id"] = "in_pocket"
+
+	return context
 
 
 func _on_bonded_support_triggered(_species_id: String, lane: int, effect_id: String) -> void:
@@ -2489,34 +3050,81 @@ func _on_bonded_support_triggered(_species_id: String, lane: int, effect_id: Str
 	var combo_mult: float = combat_meter.damage_multiplier()
 	var active_creature: Dictionary = GameState.get_active_bonded_creature()
 	var bond_mult: float = GameState.get_bond_level_mult(int(active_creature.get("bond_level", 1)))
+	var mastery_context: Dictionary = _build_support_mastery_context(effect_id, lane)
+	var mastery: String = String(mastery_context.get("window_id", ""))
+	var cadence_surge: bool = mastery == "cadence_surge"
+	var support_profile: Dictionary = COMBAT_IMPACT_FEEDBACK.build_support_profile(effect_id, cadence_surge)
+	var support_enemy_id: int = _get_enemy_id_for_lane(lane)
+	if effect_id == "bond_remnant_mend" or effect_id == "gruvek_gorge":
+		support_enemy_id = -1
 
 	# HOLLOW amplifier: when Bond Remnant is the active creature, REND gets one extra charge
-	# and EXPOSE lasts 0.5 s longer. This is structurally correct now and matures once
-	# status-applying upgrades or multi-support systems are added.
+	# and EXPOSE lasts 0.5 s longer. Mastery windows stack on top of this.
 	var is_hollow_active: bool = String(active_creature.get("species_id", "")) == "bond_remnant"
 	var rend_charges: int = 4 if is_hollow_active else 3
 	var expose_duration: float = 3.0 if is_hollow_active else 2.5
+	if cadence_surge:
+		_show_beat_feedback("CADENCE SURGE", Color(1.0, 0.88, 0.42, 1.0))
 
 	match effect_id:
 		"ashclaw_strike":
 			var strike_damage: float = float(support_role.get("effect_value", 10.0)) * combo_mult * bond_mult
+			var expose_time: float = expose_duration
+			if cadence_surge:
+				strike_damage *= 1.35
+				expose_time += 1.0
 			lane_manager.damage_enemy(lane, strike_damage)
-			lane_manager.apply_status(lane, "expose", {"duration": expose_duration})
-			_show_feedback(String(support_role.get("feedback_text", "ASHCLAW")), Color(0.95, 0.60, 0.42, 1.0), 0.28)
-			_highlight_timing_ring(lane, Color(0.92, 0.56, 0.38, 1.0), 5.4)
-			_spawn_attack_silhouette_to_lane(lane, Color(0.95, 0.60, 0.42, 0.52), 9.0, 0.12, 1.02)
+			lane_manager.apply_status(lane, "expose", {"duration": expose_time})
+			# Mastery window: in_pocket adds REND (1 charge) on top of EXPOSE — the claw tears
+			# deeper when triggered through sustained precision. flow_state escalates to 2 charges.
+			if cadence_surge:
+				lane_manager.apply_status(lane, "rend", {"charges": rend_charges + 1})
+				_show_feedback("ASHCLAW SURGE", Color(1.0, 0.58, 0.18, 1.0), 0.46)
+			elif mastery == "flow_state":
+				lane_manager.apply_status(lane, "rend", {"charges": rend_charges - 1})
+				_show_feedback("ASHCLAW REND", Color(1.0, 0.52, 0.22, 1.0), 0.44)
+			elif mastery == "in_pocket":
+				lane_manager.apply_status(lane, "rend", {"charges": 1})
+				_show_feedback("ASHCLAW TEARS", Color(0.98, 0.56, 0.30, 1.0), 0.40)
+			else:
+				_show_feedback(String(support_role.get("feedback_text", "ASHCLAW")), Color(0.95, 0.60, 0.42, 1.0), 0.36)
+			_presentation_runtime.highlight_timing_ring(lane, Color(0.92, 0.56, 0.38, 1.0), 7.0)
+			_presentation_runtime.spawn_attack_silhouette_to_lane(lane, Color(0.95, 0.60, 0.42, 0.72), 16.0, 0.14, 1.18)
 			_flash_meter_shell(Color(0.25, 0.12, 0.10, 0.92), 0.10)
 		"bond_remnant_mend":
-			var healed: float = GameState.heal_player(float(support_role.get("effect_value", 6.0)) * bond_mult)
+			var base_heal: float = float(support_role.get("effect_value", 6.0)) * bond_mult
+			# Mastery window: in_pocket adds a stamina pulse (precision earns recovery).
+			# flow_state heals more deeply and restores more stamina.
+			var heal_amount: float = base_heal
+			var stamina_restore: float = 0.0
+			var mend_text: String = String(support_role.get("feedback_text", "REMNANT"))
+			var mend_color: Color = Color(0.72, 0.96, 0.88, 1.0)
+			if cadence_surge:
+				heal_amount = base_heal * 1.85
+				stamina_restore = 28.0
+				mend_text = "SURGE MEND"
+				mend_color = Color(0.64, 1.0, 0.86, 1.0)
+			elif mastery == "flow_state":
+				heal_amount = base_heal * 1.5
+				stamina_restore = 20.0
+				mend_text = "DEEP MEND"
+				mend_color = Color(0.60, 1.0, 0.82, 1.0)
+			elif mastery == "in_pocket":
+				stamina_restore = 12.0
+				mend_text = "MEND PULSE"
+				mend_color = Color(0.66, 0.98, 0.86, 1.0)
+			var healed: float = GameState.heal_player(heal_amount)
 			if healed > 0.0:
 				EventBus.emit_signal("player_healed", healed)
-			# Bond Remnant does not apply a status directly. Its HOLLOW amplifier
-			# extends REND/EXPOSE durations applied by other creatures when it is active.
-			_show_feedback(String(support_role.get("feedback_text", "REMNANT")), Color(0.72, 0.96, 0.88, 1.0), 0.28)
-			_highlight_timing_ring(lane, Color(0.68, 0.94, 0.84, 1.0), 4.8)
+			if stamina_restore > 0.0:
+				combat_meter.restore_stamina(stamina_restore)
+			_show_feedback(mend_text, mend_color, 0.28)
+			_presentation_runtime.highlight_timing_ring(lane, Color(0.68, 0.94, 0.84, 1.0), 4.8)
 			_flash_meter_shell(Color(0.12, 0.22, 0.18, 0.92), 0.10)
 		"gruvek_gorge":
 			var gorge_damage: float = float(support_role.get("effect_value", 10.0)) * combo_mult * bond_mult
+			if cadence_surge:
+				gorge_damage *= 1.18
 			for check_lane in range(3):
 				lane_manager.damage_enemy(check_lane, gorge_damage)
 			# Apply GORGE-MARK to surviving enemies after gorge damage resolves.
@@ -2524,28 +3132,78 @@ func _on_bonded_support_triggered(_species_id: String, lane: int, effect_id: Str
 				var surviving: Dictionary = lane_manager.get_enemy(check_lane)
 				if surviving.has("hp") and float(surviving["hp"]) > 0.0:
 					lane_manager.apply_status(check_lane, "gorge_mark", {})
-			_show_feedback(String(support_role.get("feedback_text", "GORGE")), Color(0.90, 0.52, 0.22, 1.0), 0.30)
+			if cadence_surge:
+				var gorge_healed: float = GameState.heal_player(6.0 * bond_mult)
+				if gorge_healed > 0.0:
+					EventBus.emit_signal("player_healed", gorge_healed)
+				_show_feedback("FEAST WAVE", Color(0.94, 0.58, 0.18, 1.0), 0.42)
+			else:
+				_show_feedback(String(support_role.get("feedback_text", "GORGE")), Color(0.90, 0.52, 0.22, 1.0), 0.38)
 			for check_lane in range(3):
-				_highlight_timing_ring(check_lane, Color(0.88, 0.50, 0.20, 1.0), 5.0)
+				_presentation_runtime.highlight_timing_ring(check_lane, Color(0.88, 0.50, 0.20, 1.0), 6.0)
+				_presentation_runtime.spawn_attack_silhouette_to_lane(check_lane, Color(0.90, 0.52, 0.22, 0.55), 11.0, 0.10, 1.05)
 			_flash_meter_shell(Color(0.28, 0.14, 0.08, 0.92), 0.12)
 		"veilskin_phase":
 			var phase_damage: float = float(support_role.get("effect_value", 12.0)) * bond_mult
+			if cadence_surge:
+				phase_damage *= 1.20
 			lane_manager.damage_enemy(lane, phase_damage)
-			lane_manager.apply_status(lane, "pale", {})
-			combat_meter.restore_stamina(25.0)
-			_show_feedback(String(support_role.get("feedback_text", "PHASE")), Color(0.78, 0.92, 1.0, 1.0), 0.28)
-			_highlight_timing_ring(lane, Color(0.72, 0.88, 1.0, 1.0), 4.8)
+			# Mastery window: flow_state applies PALE to all 3 lanes — a full battlefield
+			# disruption instead of a single-lane nerf. in_pocket adds extra stamina.
+			var stamina_amount: float = 25.0
+			var phase_text: String = String(support_role.get("feedback_text", "PHASE"))
+			if cadence_surge:
+				for pale_lane in range(3):
+					lane_manager.apply_status(pale_lane, "pale", {})
+				stamina_amount = 40.0
+				phase_text = "VEIL CASCADE"
+			elif mastery == "flow_state":
+				for pale_lane in range(3):
+					lane_manager.apply_status(pale_lane, "pale", {})
+				stamina_amount = 35.0
+				phase_text = "FULL PHASE"
+			elif mastery == "in_pocket":
+				lane_manager.apply_status(lane, "pale", {})
+				stamina_amount = 32.0
+				phase_text = "CLEAN PHASE"
+			else:
+				lane_manager.apply_status(lane, "pale", {})
+			combat_meter.restore_stamina(stamina_amount)
+			_show_feedback(phase_text, Color(0.78, 0.92, 1.0, 1.0), 0.36)
+			for ring_lane in range(3):
+				_presentation_runtime.highlight_timing_ring(ring_lane, Color(0.72, 0.88, 1.0, 1.0), 5.5)
 			_flash_meter_shell(Color(0.10, 0.18, 0.26, 0.92), 0.10)
 		"thornback_rend":
 			var rend_damage: float = float(support_role.get("effect_value", 20.0)) * combo_mult * bond_mult
+			if cadence_surge:
+				rend_damage *= 1.25
 			lane_manager.damage_enemy(lane, rend_damage)
-			lane_manager.apply_status(lane, "rend", {"charges": rend_charges})
-			_show_feedback(String(support_role.get("feedback_text", "REND")), Color(0.96, 0.75, 0.38, 1.0), 0.28)
-			_highlight_timing_ring(lane, Color(0.94, 0.72, 0.34, 1.0), 6.0)
-			_spawn_attack_silhouette_to_lane(lane, Color(0.96, 0.75, 0.38, 0.60), 12.0, 0.14, 1.10)
+			# Mastery window: each tier adds rend charges — more hits at +30% damage.
+			# flow_state adds 2 charges; in_pocket adds 1.
+			var mastery_charges: int = rend_charges
+			var rend_text: String = String(support_role.get("feedback_text", "REND"))
+			var rend_color: Color = Color(0.96, 0.75, 0.38, 1.0)
+			if cadence_surge:
+				mastery_charges = rend_charges + 3
+				rend_text = "THORNBURST"
+				rend_color = Color(1.0, 0.84, 0.24, 1.0)
+			elif mastery == "flow_state":
+				mastery_charges = rend_charges + 2
+				rend_text = "REND SURGE"
+				rend_color = Color(1.0, 0.82, 0.28, 1.0)
+			elif mastery == "in_pocket":
+				mastery_charges = rend_charges + 1
+				rend_text = "DEEP REND"
+				rend_color = Color(0.98, 0.78, 0.32, 1.0)
+			lane_manager.apply_status(lane, "rend", {"charges": mastery_charges})
+			_show_feedback(rend_text, rend_color, 0.36)
+			_presentation_runtime.highlight_timing_ring(lane, Color(0.94, 0.72, 0.34, 1.0), 7.5)
+			_presentation_runtime.spawn_attack_silhouette_to_lane(lane, Color(0.96, 0.75, 0.38, 0.78), 18.0, 0.16, 1.22)
 			_flash_meter_shell(Color(0.28, 0.16, 0.08, 0.92), 0.10)
 		_:
 			return
+
+	_presentation_runtime.apply_impact_profile(support_profile, lane, support_enemy_id)
 
 	# Pack Signal upgrade: heal on every support trigger.
 	var pack_heal_effect: Dictionary = _get_upgrade_effect("support_trigger_heal")
@@ -2585,6 +3243,34 @@ func _on_run_upgrade_taken(upgrade_id: String) -> void:
 			pass
 	_refresh_run_build_readout()
 
+
+
+func _on_phrase_milestone(count: int) -> void:
+	# Consecutive quality action chain announcements.
+	if count >= 8:
+		_show_beat_feedback("FLOW STATE", Color(1.0, 0.88, 0.40, 1.0))
+		EventBus.emit_signal("screen_flash", Color(0.60, 0.50, 0.12, 0.08), 0.06)
+	elif count == 5:
+		_show_beat_feedback("IN THE POCKET", Color(0.95, 0.82, 0.38, 1.0))
+		EventBus.emit_signal("screen_flash", Color(0.50, 0.42, 0.10, 0.06), 0.05)
+	elif count == 3:
+		_show_beat_feedback("PHRASE", Color(0.88, 0.78, 0.36, 1.0))
+
+
+func _on_tier_changed(new_tier: String, _old_tier: String) -> void:
+	# Combat tier escalation announcements.
+	match new_tier:
+		"sovereign":
+			_show_feedback("SOVEREIGN", Color(1.0, 0.88, 0.35, 1.0), 0.60)
+			EventBus.emit_signal("screen_flash", Color(0.70, 0.55, 0.10, 0.14), 0.12)
+			EventBus.emit_signal("screen_shake", 3.0, 0.18)
+		"apex":
+			_show_feedback("APEX", Color(0.95, 0.72, 0.28, 1.0), 0.50)
+			EventBus.emit_signal("screen_flash", Color(0.55, 0.38, 0.08, 0.10), 0.08)
+		"rampage":
+			_show_feedback("RAMPAGE", Color(0.90, 0.55, 0.22, 1.0), 0.40)
+		"hunting":
+			_show_beat_feedback("HUNTING", Color(0.85, 0.58, 0.25, 1.0))
 
 
 func _get_enemy_id_for_lane(lane: int) -> int:
@@ -2674,107 +3360,6 @@ func _get_support_role_for_effect(effect_id: String) -> Dictionary:
 
 func _on_player_teleported(_from_lane: int, _to_lane: int) -> void:
 	_draw_timing_circles()
-
-
-func _on_timing_ring_pressed(lane: int) -> void:
-	_animate_timing_ring_press(lane)
-	_spawn_attack_silhouette_to_lane(lane, Color(1.0, 1.0, 1.0, 0.18), 5.0, 0.08, 0.72)
-
-
-func _highlight_timing_ring(lane: int, color: Color, width: float = 4.0) -> void:
-	var group: Node2D = _timing_circle_container.get_node_or_null("TimingRing_%d" % lane)
-	if group == null:
-		return
-
-	_ring_highlight_timers[lane] = 0.20
-
-	for child in group.get_children():
-		if child is Line2D:
-			var ring := child as Line2D
-			if ring.name == "BeatMark":
-				continue
-			ring.default_color = color
-			ring.width = width if ring.name == "Good" else max(width - 1.0, 1.5)
-
-
-func _animate_timing_ring_press(lane: int) -> void:
-	var group: Node2D = _timing_circle_container.get_node_or_null("TimingRing_%d" % lane)
-	if group == null:
-		return
-
-	var original_position: Vector2 = group.position
-	var original_scale: Vector2 = group.scale
-
-	group.scale = Vector2(0.92, 0.92)
-	group.position += Vector2(randf_range(-2.0, 2.0), randf_range(-2.0, 2.0))
-
-	var tween := create_tween()
-	tween.tween_property(group, "scale", original_scale, 0.06)
-	tween.parallel().tween_property(group, "position", original_position, 0.06)
-
-
-func _spawn_attack_silhouette_to_lane(
-	lane: int,
-	color: Color,
-	thickness: float,
-	lifetime: float,
-	reach_scale: float
-) -> void:
-	if player_combat == null:
-		return
-
-	var start_point: Vector2 = player_combat.position + Vector2(10.0, -6.0)
-	var end_point: Vector2 = Vector2(
-		lane_manager.get_hit_zone_x() + 8.0,
-		lane_manager.get_lane_y(lane)
-	)
-
-	var delta: Vector2 = (end_point - start_point) * reach_scale
-	var length: float = max(delta.length(), 10.0)
-	var angle: float = delta.angle()
-
-	var slash := Polygon2D.new()
-	slash.color = color
-	slash.position = start_point
-	slash.rotation = angle
-	slash.scale = Vector2(0.18, 1.0)
-	slash.polygon = PackedVector2Array([
-		Vector2(0.0, -thickness * 0.5),
-		Vector2(length, -thickness * 0.5),
-		Vector2(length, thickness * 0.5),
-		Vector2(0.0, thickness * 0.5)
-	])
-
-	_attack_fx_container.add_child(slash)
-
-	var tween := create_tween()
-	tween.tween_property(slash, "scale:x", 1.0, 0.04)
-	tween.parallel().tween_property(slash, "modulate:a", 0.0, lifetime)
-	tween.tween_callback(func() -> void:
-		if is_instance_valid(slash):
-			slash.queue_free()
-	)
-
-
-func _animate_enemy_damage(enemy_id: int) -> void:
-	var marker: ColorRect = _enemy_markers_by_id.get(enemy_id, null)
-	if marker == null or not is_instance_valid(marker):
-		return
-
-	var original_position: Vector2 = marker.position
-	var original_scale: Vector2 = marker.scale
-	var original_modulate: Color = marker.modulate
-
-	marker.modulate = Color(1.0, 0.85, 0.85, 1.0)
-
-	var tween := create_tween()
-	tween.tween_property(marker, "position", original_position + Vector2(-6.0, 0.0), 0.03)
-	tween.parallel().tween_property(marker, "scale", Vector2(1.12, 0.88), 0.03)
-	tween.tween_property(marker, "position", original_position + Vector2(4.0, 0.0), 0.04)
-	tween.parallel().tween_property(marker, "scale", Vector2(0.94, 1.06), 0.04)
-	tween.tween_property(marker, "position", original_position, 0.05)
-	tween.parallel().tween_property(marker, "scale", original_scale, 0.05)
-	tween.parallel().tween_property(marker, "modulate", original_modulate, 0.10)
 
 
 func _remove_enemy_marker(enemy_id: int) -> void:

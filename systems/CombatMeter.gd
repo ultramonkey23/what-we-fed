@@ -24,8 +24,10 @@ var combo_count: int = 0
 var style_score: float = 0.0
 var stamina: float = 100.0
 var stamina_max: float = 100.0
+var phrase_count: int = 0  # consecutive quality actions without a break
 
 var _ultimate_announced: bool = false
+var _last_tier: String = ""  # tracks tier for change detection
 
 
 func _ready() -> void:
@@ -110,6 +112,7 @@ func record_bad_timing() -> void:
 	style_score = max(style_score - 10.0, 0.0)
 	stamina = max(stamina - STAMINA_DAMAGE_TAKEN_LOSS, 0.0)
 	EventBus.emit_signal("stamina_changed", stamina, stamina_max)
+	break_phrase()
 	_emit_meter_state()
 
 
@@ -138,12 +141,50 @@ func reset() -> void:
 
 	combo_count = 0
 	style_score = 0.0
+	phrase_count = 0
 	_ultimate_announced = false
 	_emit_meter_state()
 
 
 func restore_stamina(amount: float) -> void:
 	_gain_stamina(amount)
+
+
+func record_phrase_action(quality: String) -> void:
+	# Call this after any good/perfect action to advance the phrase chain.
+	# quality: "perfect", "good" — anything else is ignored (does not break).
+	if quality != "perfect" and quality != "good":
+		return
+	phrase_count += 1
+	# Emit milestones at 3, 5, 8+ (each threshold fires only once per streak).
+	if phrase_count == 3 or phrase_count == 5 or phrase_count == 8:
+		EventBus.emit_signal("phrase_milestone", phrase_count)
+	elif phrase_count > 8 and (phrase_count - 8) % 4 == 0:
+		# Keep emitting every 4 actions past 8 for extended flow state.
+		EventBus.emit_signal("phrase_milestone", phrase_count)
+
+
+func break_phrase() -> void:
+	phrase_count = 0
+
+
+func get_phrase_bonus() -> float:
+	# Returns a damage multiplier bonus: 0.0 at no chain, up to +0.25 at 8+.
+	if phrase_count < 3:
+		return 0.0
+	if phrase_count < 5:
+		return 0.08
+	if phrase_count < 8:
+		return 0.16
+	return 0.25
+
+
+func is_in_flow() -> bool:
+	return phrase_count >= 3
+
+
+func get_current_tier() -> String:
+	return _current_tier()
 
 
 func _gain_stamina(amount: float) -> void:
@@ -165,6 +206,10 @@ func _current_tier() -> String:
 
 func _emit_meter_state() -> void:
 	var tier: String = _current_tier()
+
+	if tier != _last_tier and _last_tier != "":
+		EventBus.emit_signal("tier_changed", tier, _last_tier)
+	_last_tier = tier
 
 	EventBus.emit_signal("combo_changed", combo_count, tier)
 	EventBus.emit_signal("style_changed", style_score, tier)

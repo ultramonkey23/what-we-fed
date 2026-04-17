@@ -1,11 +1,16 @@
 extends Node
 
 const LANE_COUNT: int = 3
-const FIRE_OFFSET: float = 0.45
+# fire_stagger is the wait between firing successive lanes in a single cycle.
+# Wider = each lane projectile arrives as a distinct timed event.
+# Tighter = projectiles arrive in a cluster, reading the whole lane set at once.
+# Must stay >= MIN_IMPACT_SEPARATION to avoid the second lane being blocked
+# by the proximity check. Use set_fire_stagger() to change it at runtime.
+var fire_stagger: float = 0.45
 var cycle_interval: float = 2.2
 
-const TOP_Y_RATIO: float = 0.18
-const BOTTOM_Y_RATIO: float = 0.68
+const TOP_Y_RATIO: float = 0.24
+const BOTTOM_Y_RATIO: float = 0.74
 const PLAYER_X_RATIO: float = 0.16
 const ENEMY_X_RATIO: float = 0.80
 const HIT_ZONE_X_RATIO: float = 0.22
@@ -155,6 +160,12 @@ func set_cycle_interval(interval: float) -> void:
 	cycle_interval = max(0.3, interval)
 
 
+func set_fire_stagger(stagger: float) -> void:
+	# Clamp to a safe range: lower bound respects MIN_IMPACT_SEPARATION so
+	# sequential same-speed enemies always clear the ETA proximity check.
+	fire_stagger = clamp(stagger, 0.42, 0.90)
+
+
 func start_song_cycle() -> void:
 	# Starts (or restarts) the fire cycle for song mode without resetting enemy data.
 	_combat_running = true
@@ -163,11 +174,26 @@ func start_song_cycle() -> void:
 	_run_fire_cycle(_cycle_task_id)
 
 
+func set_song_mode_enabled(enabled: bool) -> void:
+	_song_mode = enabled
+
+
+func is_combat_running() -> bool:
+	return _combat_running
+
+
+func is_song_cycle_stalled() -> bool:
+	return _cycle_stalled
+
+
 func set_enemy(lane: int, enemy_data: Dictionary) -> void:
 	# Places a new enemy in a lane during song mode. Restarts the fire cycle
 	# if it stalled because all enemies were defeated.
 	if lane < 0 or lane >= LANE_COUNT:
 		return
+	# Lazy-init: _enemies is empty if start_combat() was never called (song mode entry).
+	while _enemies.size() < LANE_COUNT:
+		_enemies.append({})
 	_enemies[lane] = enemy_data.duplicate(true)
 	if _song_mode and _combat_running and _cycle_stalled:
 		_cycle_stalled = false
@@ -336,7 +362,7 @@ func _run_fire_cycle(task_id: int) -> void:
 			_fire_lane(lane)
 
 		if lane < LANE_COUNT - 1:
-			var offset_timer: SceneTreeTimer = get_tree().create_timer(FIRE_OFFSET)
+			var offset_timer: SceneTreeTimer = get_tree().create_timer(fire_stagger)
 			await offset_timer.timeout
 
 	if not _combat_running or task_id != _cycle_task_id:

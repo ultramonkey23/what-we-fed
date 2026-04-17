@@ -1,0 +1,146 @@
+extends RefCounted
+
+const COMBAT_CONTENT = preload("res://data/CombatContent.gd")
+const REGION_SONG_CONTENT = preload("res://data/RegionSongContent.gd")
+const IDENTITY_CONTENT = preload("res://data/EncounterIdentityContent.gd")
+
+
+static func build_song_run(region_id: String) -> Dictionary:
+	var resolved_region_id: String = region_id if not region_id.is_empty() else "feeding_hollow"
+	return {
+		"region_id": resolved_region_id,
+		"biome": _get_biome_for_region(resolved_region_id),
+		"identity": IDENTITY_CONTENT.get_region_identity(resolved_region_id),
+		"phases": REGION_SONG_CONTENT.get_song_phases(resolved_region_id)
+	}
+
+
+static func build_live_boss_encounter() -> Dictionary:
+	var boss_encounter: Dictionary = COMBAT_CONTENT.get_encounter("feeding_hollow_boss")
+	boss_encounter["reward_creature_pool"] = [COMBAT_CONTENT.get_creature("thornback")]
+	return boss_encounter
+
+
+static func get_phase_display_label(region_id: String, phase: Dictionary) -> String:
+	var base_label: String = String(phase.get("label", ""))
+	var style: Dictionary = IDENTITY_CONTENT.get_phase_style(region_id, String(phase.get("id", "")))
+	var tag: String = String(style.get("tag", ""))
+	if base_label.is_empty():
+		return tag
+	if tag.is_empty():
+		return base_label
+	return "%s  /  %s" % [base_label, tag]
+
+
+static func get_phase_intro_text(region_id: String, phase: Dictionary) -> String:
+	var intro_text: String = String(phase.get("intro_text", ""))
+	var identity: Dictionary = IDENTITY_CONTENT.get_region_identity(region_id)
+	var pressure_name: String = String(identity.get("pressure_name", ""))
+	if intro_text.is_empty() or pressure_name.is_empty():
+		return intro_text
+	return "%s  [%s]" % [intro_text, pressure_name]
+
+
+static func order_empty_lanes(
+	region_id: String,
+	phase: Dictionary,
+	empty_lanes: Array,
+	player_lane: int,
+	rng: RandomNumberGenerator
+) -> Array:
+	var lanes: Array = empty_lanes.duplicate()
+	if lanes.is_empty():
+		return lanes
+
+	var style: Dictionary = IDENTITY_CONTENT.get_phase_style(region_id, String(phase.get("id", "")))
+	var spawn_mode: String = String(style.get("spawn_mode", "spread"))
+	var preferred_order: Array = _preferred_lane_order(spawn_mode, player_lane, rng)
+	var ordered: Array = []
+
+	for lane in preferred_order:
+		if lanes.has(lane):
+			ordered.append(lane)
+
+	for lane in lanes:
+		if not ordered.has(lane):
+			ordered.append(lane)
+
+	return ordered
+
+
+static func pick_weighted_enemy(phase: Dictionary, rng: RandomNumberGenerator) -> Dictionary:
+	var pool: Array = phase.get("enemy_pool", [])
+	if pool.is_empty():
+		return {}
+
+	var total_weight: float = 0.0
+	for entry in pool:
+		total_weight += float(entry.get("weight", 1.0))
+
+	var roll: float = rng.randf_range(0.0, total_weight)
+	var cursor: float = 0.0
+	for entry in pool:
+		cursor += float(entry.get("weight", 1.0))
+		if roll <= cursor:
+			return entry.duplicate(true)
+
+	return pool.back().duplicate(true)
+
+
+static func _get_biome_for_region(region_id: String) -> Dictionary:
+	match region_id:
+		"pale_shelf":
+			return COMBAT_CONTENT.BIOME_PALE_SHELF.duplicate(true)
+		"drowned_cut":
+			return COMBAT_CONTENT.BIOME_DROWNED_CUT.duplicate(true)
+		_:
+			return COMBAT_CONTENT.BIOME_FEEDING_HOLLOW.duplicate(true)
+
+
+static func _preferred_lane_order(spawn_mode: String, player_lane: int, rng: RandomNumberGenerator) -> Array:
+	match spawn_mode:
+		"track_player":
+			match player_lane:
+				0:
+					return [0, 1, 2]
+				2:
+					return [2, 1, 0]
+				_:
+					return [1, 0, 2]
+		"center_bias":
+			return [1, 0, 2]
+		"edge_bias":
+			if rng.randi() % 2 == 0:
+				return [0, 2, 1]
+			return [2, 0, 1]
+		"flank_player":
+			match player_lane:
+				0:
+					return [2, 1, 0]
+				2:
+					return [0, 1, 2]
+				_:
+					if rng.randi() % 2 == 0:
+						return [0, 2, 1]
+					return [2, 0, 1]
+		"collapse":
+			var order: Array = []
+			order.append(player_lane)
+			order.append(1)
+			order.append(0)
+			order.append(2)
+			return _unique_lane_order(order)
+		"spread":
+			if rng.randi() % 2 == 0:
+				return [0, 2, 1]
+			return [2, 0, 1]
+		_:
+			return [0, 1, 2]
+
+
+static func _unique_lane_order(order: Array) -> Array:
+	var unique: Array = []
+	for lane in order:
+		if not unique.has(lane):
+			unique.append(lane)
+	return unique

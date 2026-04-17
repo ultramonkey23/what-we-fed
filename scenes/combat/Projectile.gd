@@ -282,8 +282,8 @@ func _update_visual_state(reflected: bool) -> void:
 
 	var pressure: float = 0.85 if reflected else clamp((progress - 0.72) / 0.32, 0.0, 1.0)
 	var body_scale: Vector2 = Vector2(1.0 + pressure * 0.12, 1.0 + pressure * 0.08)
-	var trail_alpha: float = 0.20 + pressure * 0.22
-	var glow_alpha: float = 0.10 + pressure * 0.18
+	var trail_alpha: float = 0.24 + pressure * 0.22
+	var glow_alpha: float = 0.13 + pressure * 0.18
 
 	if _body != null:
 		_body.scale = body_scale

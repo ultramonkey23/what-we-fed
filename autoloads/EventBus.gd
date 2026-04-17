@@ -35,6 +35,8 @@ signal stamina_changed(current: float, maximum: float)
 signal sovereign_reached()
 signal ultimate_available()
 signal ultimate_fired(power: float)
+signal phrase_milestone(count: int)   # consecutive quality action chain: 3 / 5 / 8+
+signal tier_changed(new_tier: String, old_tier: String)  # combat tier escalation
 
 # Creature systems
 signal capture_offered(creature_data: Dictionary)
@@ -47,6 +49,7 @@ signal run_growth_changed(level: int, exp: float, exp_to_next: float)
 signal support_charge_changed(current: float, maximum: float, active_species_id: String)
 signal bonded_support_triggered(species_id: String, lane: int, effect_id: String)
 signal run_upgrade_taken(upgrade_id: String)
+signal mastery_context_updated(data: Dictionary)
 
 # Presentation
 signal screen_shake(intensity: float, duration: float)

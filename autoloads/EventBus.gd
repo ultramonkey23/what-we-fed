@@ -42,6 +42,7 @@ signal tier_changed(new_tier: String, old_tier: String)  # combat tier escalatio
 signal capture_offered(creature_data: Dictionary)
 signal creature_eaten(creature_data: Dictionary)
 signal creature_bonded(creature_data: Dictionary)
+signal dna_gained(species_id: String, amount: float, total: float)
 
 # Run
 signal run_started(run_number: int)

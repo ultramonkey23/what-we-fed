@@ -39,6 +39,9 @@ const EDGE_STATE_WIDTH: float = 0.016
 const RUN_GROWTH_SCRIPT_PATH: String = "res://systems/RunGrowth.gd"
 const ENEMY_LOW_HP_THRESHOLD: float = 0.25
 const SUPPORT_MASTERY_CONTEXT_TIMEOUT: float = 1.75
+# DNA economy: amount granted per enemy kill from the current phase's reward pool.
+# Phase reward_pool maps kills to creature species — accumulated DNA gates bond/eat.
+const DNA_PER_KILL: float = 2.5
 
 # Combat background images. Picked randomly at run start; expandable for
 # boss-specific or region-specific overrides via _apply_combat_background().
@@ -127,6 +130,7 @@ var _awaiting_reward_choice: bool = false
 var _reward_choice_made: bool = false
 var _run_finished: bool = false
 var _pending_reward_creature: Dictionary = {}
+var _pending_reward_dna_locked: bool = false
 
 # Incremented each time an encounter payload is loaded. The function
 # captures this at entry and bails after the boss intro await if a newer load
@@ -436,6 +440,9 @@ func _unhandled_input(event: InputEvent) -> void:
 			return
 		if key_event.keycode == KEY_E:
 			_choose_eat()
+			return
+		if key_event.keycode == KEY_N:
+			_pass_reward()
 			return
 
 	if _run_finished:
@@ -2230,15 +2237,43 @@ func _offer_victory_reward(creature_data: Dictionary) -> void:
 
 	var _offer_creature_name: String = String(_pending_reward_creature.get("display_name", "creature"))
 	var _offer_description: String = String(_pending_reward_creature.get("description", ""))
+
+	# DNA gate: check whether the player has accumulated enough DNA for this species.
+	var _offer_species_id: String = String(_pending_reward_creature.get("species_id", ""))
+	var _offer_dna_threshold: float = float(_pending_reward_creature.get("dna_threshold", 0.0))
+	var _player_dna: float = GameState.get_dna(_offer_species_id)
+	_pending_reward_dna_locked = not GameState.has_dna_for(_offer_species_id, _offer_dna_threshold)
+
 	_reward_creature_tag_label.text = "Creature"
 	_reward_title_label.text = _offer_creature_name
-	_reward_body_label.text = _offer_description
-	_reward_bond_label.text = "Bond  [B]"
-	_reward_bond_effect_label.text = "Keep it close.\n\n%s\n\nThe run bends around this creature." % _format_bond_passive(_pending_reward_creature.get("bond_passive", {}))
-	_reward_eat_label.text = "Eat  [E]"
-	_reward_eat_effect_label.text = "Take what it gives.\n\n%s\n\nImmediate pressure through consumption." % _format_eat_effect(_pending_reward_creature.get("eat_effect", {}))
+
+	# Append DNA status to the description body.
+	if _offer_dna_threshold > 0.0:
+		var _dna_line: String
+		if _pending_reward_dna_locked:
+			_dna_line = "DNA:  %.0f / %.0f  —  not enough" % [_player_dna, _offer_dna_threshold]
+		else:
+			_dna_line = "DNA:  %.0f / %.0f  —  sufficient" % [_player_dna, _offer_dna_threshold]
+		_reward_body_label.text = _offer_description + "\n\n" + _dna_line
+	else:
+		_reward_body_label.text = _offer_description
+
+	if _pending_reward_dna_locked:
+		_reward_bond_label.text = "Bond  [B]  — locked"
+		_reward_bond_effect_label.text = "Not enough DNA.\n\n%s" % _format_bond_passive(_pending_reward_creature.get("bond_passive", {}))
+		_reward_eat_label.text = "Eat  [E]  — locked"
+		_reward_eat_effect_label.text = "Not enough DNA.\n\n%s" % _format_eat_effect(_pending_reward_creature.get("eat_effect", {}))
+		_reward_hint_label.text = "Insufficient DNA  |  N — pass this creature"
+		controls_label.text = "DNA locked  |  N pass"
+	else:
+		_reward_bond_label.text = "Bond  [B]"
+		_reward_bond_effect_label.text = "Keep it close.\n\n%s\n\nThe run bends around this creature." % _format_bond_passive(_pending_reward_creature.get("bond_passive", {}))
+		_reward_eat_label.text = "Eat  [E]"
+		_reward_eat_effect_label.text = "Take what it gives.\n\n%s\n\nImmediate pressure through consumption." % _format_eat_effect(_pending_reward_creature.get("eat_effect", {}))
+		_reward_hint_label.text = "Choose one  |  B keeps it close  |  E feeds on it  |  N pass"
+		controls_label.text = "Reward choice  |  B bond  |  E eat  |  N pass"
+
 	_reward_quig_label.text = String(_pending_reward_creature.get("quig_offer_text", ""))
-	_reward_hint_label.text = "Choose one  |  B keeps it close  |  E feeds on it"
 
 	# Load and show creature portrait if art is available.
 	if _reward_creature_portrait != null:
@@ -2252,8 +2287,6 @@ func _offer_victory_reward(creature_data: Dictionary) -> void:
 				_reward_creature_portrait.visible = false
 		else:
 			_reward_creature_portrait.visible = false
-
-	controls_label.text = "Reward choice  |  B bond  |  E eat"
 
 
 func _format_eat_effect(effect: Dictionary) -> String:
@@ -2513,6 +2546,15 @@ func _choose_bond() -> void:
 	if not _awaiting_reward_choice or _reward_choice_made:
 		return
 
+	# DNA gate: bond costs the creature's dna_threshold in species-specific DNA.
+	var _bond_species: String = String(_pending_reward_creature.get("species_id", ""))
+	var _bond_threshold: float = float(_pending_reward_creature.get("dna_threshold", 0.0))
+	if not GameState.has_dna_for(_bond_species, _bond_threshold):
+		_show_feedback("NOT ENOUGH DNA", Color(0.92, 0.46, 0.28, 1.0), 0.42)
+		return
+
+	GameState.spend_dna(_bond_species, _bond_threshold)
+
 	var updated_creature: Dictionary = GameState.add_bonded_creature(_pending_reward_creature)
 	EventBus.emit_signal("creature_bonded", updated_creature)
 
@@ -2543,6 +2585,15 @@ func _choose_bond() -> void:
 func _choose_eat() -> void:
 	if not _awaiting_reward_choice or _reward_choice_made:
 		return
+
+	# DNA gate: eat costs the creature's dna_threshold in species-specific DNA.
+	var _eat_species: String = String(_pending_reward_creature.get("species_id", ""))
+	var _eat_threshold: float = float(_pending_reward_creature.get("dna_threshold", 0.0))
+	if not GameState.has_dna_for(_eat_species, _eat_threshold):
+		_show_feedback("NOT ENOUGH DNA", Color(0.92, 0.46, 0.28, 1.0), 0.42)
+		return
+
+	GameState.spend_dna(_eat_species, _eat_threshold)
 
 	var absorbed_entry: Dictionary = GameState.absorb_creature_type(_pending_reward_creature)
 	if String(absorbed_entry.get("eat_type", "")) == "hp_restore":
@@ -2592,6 +2643,36 @@ func _choose_eat() -> void:
 		return
 
 	_reward_quig_label.text = "Quig: \"There will be others.\""
+
+	if _song_reward_pending:
+		_resume_song_after_reward()
+	else:
+		_reward_hint_label.text = "R restart run"
+		controls_label.text = "Run complete  |  R restart run"
+		_finish_run(true)
+
+
+func _pass_reward() -> void:
+	# Player opts out of the current reward offer.
+	# Fires when the player presses N — also the only valid action when DNA-locked.
+	if not _awaiting_reward_choice or _reward_choice_made:
+		return
+
+	_reward_choice_made = true
+	_awaiting_reward_choice = false
+	_pending_reward_dna_locked = false
+	_pending_reward_creature = {}
+
+	_reward_creature_tag_label.text = "Passed"
+	_reward_title_label.text = "Gone."
+	_reward_body_label.text = "It will not return."
+	_reward_bond_label.text = ""
+	_reward_eat_label.text = ""
+	_reward_bond_effect_label.text = ""
+	_reward_eat_effect_label.text = ""
+	_reward_quig_label.text = "Quig: \"It won't be back.\""
+	_reward_hint_label.text = "..."
+	controls_label.text = ""
 
 	if _song_reward_pending:
 		_resume_song_after_reward()
@@ -2746,6 +2827,18 @@ func _on_enemy_defeated(enemy_id: int) -> void:
 			"drowned_cut":
 				_show_beat_feedback("RESONANCE", Color(0.48, 0.88, 0.76, 1.0))
 				EventBus.emit_signal("screen_flash", Color(0.10, 0.38, 0.32, 0.05), 0.05)
+
+	# DNA economy: grant species-specific DNA from the current phase's reward pool.
+	# Kills in phases with a reward_pool accumulate DNA toward the bond/eat threshold.
+	# Phases without a reward_pool (chorus, final) contribute no DNA in this pass.
+	if _song_mode and not _song_boss_triggered and _song_phase_index >= 0 and _song_phase_index < _song_phases.size():
+		var _dna_phase: Dictionary = _song_phases[_song_phase_index]
+		var _dna_pool: Array = _dna_phase.get("reward_pool", [])
+		if not _dna_pool.is_empty():
+			var _dna_species: String = _dna_pool[_song_rng.randi() % _dna_pool.size()]
+			GameState.add_dna(_dna_species, DNA_PER_KILL)
+			EventBus.emit_signal("dna_gained", _dna_species, DNA_PER_KILL, GameState.get_dna(_dna_species))
+			_show_feedback("+DNA", Color(0.62, 0.96, 0.78, 1.0), 0.22)
 
 	if _song_mode and not _song_paused and not _song_boss_triggered:
 		var dead_lane: int = _song_enemy_lanes.get(enemy_id, -1)

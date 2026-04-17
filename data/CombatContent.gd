@@ -63,6 +63,7 @@ const CREATURES := {
 		"capture_threshold": 0.30,
 		"bond_level": 1,
 		"description": "Something that learned to cut before it learned to stop.",
+		"dna_threshold": 8.0,
 		"sprite_path": "res://assets/creatures/ashclaw/forms/ashclaw_baby.png",
 		"combat_render": {
 			"scale": 0.058,
@@ -92,6 +93,7 @@ const CREATURES := {
 		"capture_threshold": 0.25,
 		"bond_level": 1,
 		"description": "It holds the shape of something that survived its own end.",
+		"dna_threshold": 8.0,
 		"eat_effect": {"type": "damage_flat", "value": 1.0},
 		"bond_passive": {"type": "damage_reduction_pct", "value": 0.08},
 		"support_role": {
@@ -114,6 +116,7 @@ const CREATURES := {
 		"capture_threshold": 0.30,
 		"bond_level": 1,
 		"description": "It does not wait to be full. It eats until the hunger is someone else's problem.",
+		"dna_threshold": 10.0,
 		"eat_effect": {"type": "hp_restore", "value": 18.0},
 		"bond_passive": {"type": "hp_on_kill", "value": 3.0},
 		"support_role": {
@@ -136,6 +139,7 @@ const CREATURES := {
 		"capture_threshold": 0.20,
 		"bond_level": 1,
 		"description": "It only moves when you give it a reason. The reason never survives.",
+		"dna_threshold": 10.0,
 		"eat_effect": {"type": "damage_flat", "value": 1.0},
 		"bond_passive": {"type": "parry_reflect_mult", "value": 0.40},
 		"support_role": {
@@ -158,6 +162,7 @@ const CREATURES := {
 		"capture_threshold": 0.35,
 		"bond_level": 1,
 		"description": "Every hit it lands opens something that does not close cleanly.",
+		"dna_threshold": 12.0,
 		"eat_effect": {"type": "damage_flat", "value": 3.0},
 		"bond_passive": {"type": "timed_damage_flat", "value": 3.0},
 		"support_role": {

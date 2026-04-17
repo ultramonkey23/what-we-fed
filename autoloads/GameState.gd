@@ -15,6 +15,13 @@ var taken_upgrades: Array[String] = []
 #   "damage_bonus": float }  -- or "heal_applied": float for hp_restore eat types
 var absorbed_types: Array[Dictionary] = []
 
+# Per-species DNA accumulated during the current run.
+# Creature-specific — keys are species_id strings, values are accumulated float amounts.
+# Bond/eat now requires spending dna_threshold DNA for the offered creature's species.
+# Excess DNA past the threshold persists on the species entry (not removed until spent).
+# Will feed metaprogression in a future pass.
+var dna_by_species: Dictionary = {}
+
 # Each roster creature is stored as:
 # {
 #   "species_id": String,
@@ -180,6 +187,27 @@ func get_active_bonded_creature() -> Dictionary:
 	return best_creature
 
 
+func add_dna(species_id: String, amount: float) -> void:
+	if species_id.is_empty() or amount <= 0.0:
+		return
+	dna_by_species[species_id] = float(dna_by_species.get(species_id, 0.0)) + amount
+
+
+func get_dna(species_id: String) -> float:
+	return float(dna_by_species.get(species_id, 0.0))
+
+
+func spend_dna(species_id: String, amount: float) -> void:
+	var current: float = float(dna_by_species.get(species_id, 0.0))
+	dna_by_species[species_id] = max(current - amount, 0.0)
+
+
+func has_dna_for(species_id: String, threshold: float) -> bool:
+	if threshold <= 0.0:
+		return true
+	return get_dna(species_id) >= threshold
+
+
 func reset_run_state() -> void:
 	# Resets per-run state. Base stats are restored from constants before region modifiers
 	# are applied, so bonuses never accumulate across repeated runs.
@@ -193,6 +221,7 @@ func reset_run_state() -> void:
 			player_max_hp += float(modifier.get("value", 0.0))
 	player_hp = player_max_hp
 	absorbed_types.clear()
+	dna_by_species.clear()
 	roster.clear()
 	taken_upgrades.clear()
 	_bond_order_counter = 0

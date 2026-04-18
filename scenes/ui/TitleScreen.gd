@@ -121,10 +121,9 @@ func _build_ui() -> void:
 		+ "Right Arrow + A/S/D     Dodge to adjacent lane\n"
 		+ "R                       Ultimate attack\n"
 		+ "\n"
-		+ "- During overlays -\n"
-		+ "B / E                   Bond or Eat creature\n"
-		+ "C                       Continue to next encounter\n"
-		+ "1 / 2 / 3               Choose mutation\n"
+		+ "- During live offers -\n"
+		+ "B / E                   Bond or Eat live creature offer\n"
+		+ "N                       Pass live creature offer\n"
 		+ "R                       Restart run\n"
 		+ "T                       Return to lair"
 	)

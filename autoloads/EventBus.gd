@@ -47,9 +47,9 @@ signal dna_gained(species_id: String, amount: float, total: float)
 # Run
 signal run_started(run_number: int)
 signal run_growth_changed(level: int, exp: float, exp_to_next: float)
+signal tendency_growth_resolved(tendency_id: String, title: String, summary: String)
 signal support_charge_changed(current: float, maximum: float, active_species_id: String)
 signal bonded_support_triggered(species_id: String, lane: int, effect_id: String)
-signal run_upgrade_taken(upgrade_id: String)
 signal mastery_context_updated(data: Dictionary)
 
 # Presentation

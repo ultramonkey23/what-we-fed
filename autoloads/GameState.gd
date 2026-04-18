@@ -141,6 +141,16 @@ func absorb_creature_type(creature_data: Dictionary) -> Dictionary:
 		var healed: float = heal_player(value)
 		entry["heal_applied"] = healed
 		entry["damage_bonus"] = 0.0
+	elif eat_type == "max_hp_flat":
+		player_max_hp += value
+		var hp_before: float = player_hp
+		player_hp = min(player_hp + value, player_max_hp)
+		entry["max_hp_bonus"] = value
+		entry["heal_applied"] = player_hp - hp_before
+		entry["damage_bonus"] = 0.0
+	elif eat_type == "support_charge":
+		entry["support_charge_bonus"] = value
+		entry["damage_bonus"] = 0.0
 	else:
 		entry["damage_bonus"] = value
 

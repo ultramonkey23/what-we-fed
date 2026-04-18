@@ -18,8 +18,8 @@ extends Node
 #
 # V1 limits (known, acceptable):
 # - No waveform beat detection — sections are authored by fraction; beat quality uses authored BPM.
-# - CombatScene owns higher-level pause state and is responsible for pausing
-#   or resuming the conductor during reward / growth overlays.
+# - CombatScene owns higher-level handoff and restart state.
+#   Routine reward and growth flow should stay live and not pause the conductor.
 # - One song map active at a time — no crossfade or layering.
 
 signal section_changed(section_id: String, data: Dictionary)

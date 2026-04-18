@@ -174,6 +174,178 @@ const CREATURES := {
 		},
 		"quig_offer_text": "Quig keeps his hands where it can see them.",
 		"wrong_detail": "spines still growing — some through the wrong layers"
+	},
+	"knellspine": {
+		"species_id": "knellspine",
+		"display_name": "Knellspine",
+		"primary_type": "cadence",
+		"secondary_type": "spine",
+		"affinity": "cadence",
+		"archetypes": ["chorister", "razor"],
+		"capture_threshold": 0.22,
+		"bond_level": 1,
+		"description": "Its ribs ring when your timing is true. The note keeps cutting after the sound is gone.",
+		"dna_threshold": 6.0,
+		"eat_effect": {"type": "support_charge", "value": 35.0},
+		"bond_passive": {"type": "timed_damage_flat", "value": 2.0},
+		"support_role": {
+			"readout_name": "Knellspine",
+			"effect_id": "knellspine_peal",
+			"trigger_on": ["good_timed_attack", "perfect_timed_attack"],
+			"effect_value": 8.0,
+			"feedback_text": "PEAL"
+		},
+		"quig_offer_text": "Quig flinches when it sings. It has not started yet.",
+		"wrong_detail": "vertebrae tuned like bells and filed to a point"
+	},
+	"marrowward": {
+		"species_id": "marrowward",
+		"display_name": "Marrowward",
+		"primary_type": "guard",
+		"secondary_type": "bone",
+		"affinity": "guard",
+		"archetypes": ["anchor", "ward"],
+		"capture_threshold": 0.28,
+		"bond_level": 1,
+		"description": "It learned protection as a way to keep the feeding going longer.",
+		"dna_threshold": 8.0,
+		"eat_effect": {"type": "max_hp_flat", "value": 12.0},
+		"bond_passive": {"type": "damage_reduction_pct", "value": 0.06},
+		"support_role": {
+			"readout_name": "Marrowward",
+			"effect_id": "marrowward_ward",
+			"trigger_on": ["player_dodged"],
+			"effect_value": 8.0,
+			"feedback_text": "WARD"
+		},
+		"quig_offer_text": "Quig mutters that even its shelter looks like a threat.",
+		"wrong_detail": "bone plates growing inward as if trying to cage the heart"
+	},
+	"gorefane": {
+		"species_id": "gorefane",
+		"display_name": "Gorefane",
+		"primary_type": "predator",
+		"secondary_type": "flesh",
+		"affinity": "flesh",
+		"archetypes": ["mauler", "carrion"],
+		"capture_threshold": 0.33,
+		"bond_level": 1,
+		"description": "It only understands the moment after the wound opens and before anything admits it is dying.",
+		"dna_threshold": 10.0,
+		"eat_effect": {"type": "damage_flat", "value": 3.0},
+		"bond_passive": {"type": "hp_on_kill", "value": 2.5},
+		"support_role": {
+			"readout_name": "Gorefane",
+			"effect_id": "gorefane_maul",
+			"trigger_on": ["ultimate_fired"],
+			"effect_value": 14.0,
+			"feedback_text": "MAUL"
+		},
+		"quig_offer_text": "Quig says it smiles too early.",
+		"wrong_detail": "second jaw folding out from under the first"
+	},
+	"hushcoil": {
+		"species_id": "hushcoil",
+		"display_name": "Hushcoil",
+		"primary_type": "veil",
+		"secondary_type": "pressure",
+		"affinity": "hush",
+		"archetypes": ["suppressor", "serpent"],
+		"capture_threshold": 0.24,
+		"bond_level": 1,
+		"description": "When it tightens, the battlefield forgets how loudly it was trying to kill you.",
+		"dna_threshold": 9.0,
+		"eat_effect": {"type": "hp_restore", "value": 12.0},
+		"bond_passive": {"type": "parry_reflect_mult", "value": 0.25},
+		"support_role": {
+			"readout_name": "Hushcoil",
+			"effect_id": "hushcoil_lull",
+			"trigger_on": ["perfect_parry"],
+			"effect_value": 7.0,
+			"feedback_text": "LULL"
+		},
+		"quig_offer_text": "Quig lowers his voice without meaning to.",
+		"wrong_detail": "throat lined with soft tissue that dampens every sound except yours"
+	}
+}
+
+const ENCOUNTER_GRADES := {
+	"brood": {
+		"label": "BROOD",
+		"hp_mult": 0.90,
+		"damage_mult": 0.92,
+		"dna_mult": 0.85
+	},
+	"mature": {
+		"label": "MATURE",
+		"hp_mult": 1.0,
+		"damage_mult": 1.0,
+		"dna_mult": 1.0
+	},
+	"alpha": {
+		"label": "ALPHA",
+		"hp_mult": 1.18,
+		"damage_mult": 1.15,
+		"dna_mult": 1.25
+	}
+}
+
+const CREATURE_ENCOUNTER_PROFILES := {
+	"ashclaw": {
+		"projectile_speed": 300.0,
+		"dna_reward": 2.5,
+		"marker_modulate": Color(0.96, 0.89, 0.82, 0.96),
+		"encounter_summary": "Tracks your lane and punishes loose openings."
+	},
+	"bond_remnant": {
+		"projectile_speed": 330.0,
+		"dna_reward": 2.75,
+		"marker_modulate": Color(0.84, 0.88, 0.98, 0.96),
+		"status_flags": {"expose_duration_mult": 0.75},
+		"encounter_summary": "Anchors pressure and shortens the window you thought you had."
+	},
+	"gruvek": {
+		"projectile_speed": 248.0,
+		"dna_reward": 3.0,
+		"marker_modulate": Color(0.92, 0.72, 0.52, 0.96),
+		"encounter_summary": "Slow weight that turns one mistake into a full bite."
+	},
+	"veilskin": {
+		"projectile_speed": 450.0,
+		"dna_reward": 3.0,
+		"marker_modulate": Color(0.84, 0.96, 1.0, 0.98),
+		"status_flags": {"expose_duration_mult": 0.60},
+		"encounter_summary": "Precision pressure with almost no warning."
+	},
+	"thornback": {
+		"projectile_speed": 308.0,
+		"dna_reward": 3.25,
+		"marker_modulate": Color(0.96, 0.78, 0.70, 0.96),
+		"encounter_summary": "Brutal lane follow-through that rewards clean kills."
+	},
+	"knellspine": {
+		"projectile_speed": 365.0,
+		"dna_reward": 2.25,
+		"marker_modulate": Color(0.94, 0.88, 0.68, 0.96),
+		"encounter_summary": "Keeps time against you and cuts when your rhythm slips."
+	},
+	"marrowward": {
+		"projectile_speed": 282.0,
+		"dna_reward": 2.75,
+		"marker_modulate": Color(0.84, 0.90, 0.84, 0.96),
+		"encounter_summary": "Durable pressure that asks for committed, readable answers."
+	},
+	"gorefane": {
+		"projectile_speed": 332.0,
+		"dna_reward": 3.0,
+		"marker_modulate": Color(0.98, 0.78, 0.72, 0.96),
+		"encounter_summary": "Finishes wounded lanes before they recover."
+	},
+	"hushcoil": {
+		"projectile_speed": 272.0,
+		"dna_reward": 2.75,
+		"marker_modulate": Color(0.78, 0.92, 0.86, 0.96),
+		"encounter_summary": "Suppresses pace and forces cleaner reads under pressure."
 	}
 }
 
@@ -182,7 +354,7 @@ const ENCOUNTERS := {
 		"id": "feeding_hollow_01",
 		"title": "First Hunger",
 		"biome": BIOME_FEEDING_HOLLOW,
-		"reward_creature_pool": [CREATURES["ashclaw"], CREATURES["gruvek"]],
+		"reward_creature_pool": [CREATURES["ashclaw"], CREATURES["gruvek"], CREATURES["gorefane"]],
 		"phase_intro_texts": [
 			"Something stirs above.",
 			"It learns your rhythm.",
@@ -204,7 +376,7 @@ const ENCOUNTERS := {
 		"id": "feeding_hollow_02",
 		"title": "Second Mouth",
 		"biome": BIOME_FEEDING_HOLLOW,
-		"reward_creature_pool": [CREATURES["bond_remnant"], CREATURES["veilskin"]],
+		"reward_creature_pool": [CREATURES["bond_remnant"], CREATURES["veilskin"], CREATURES["marrowward"], CREATURES["hushcoil"]],
 		"phase_intro_texts": [
 			"It no longer waits for you.",
 			"The flanks open.",
@@ -227,7 +399,7 @@ const ENCOUNTERS := {
 		"id": "feeding_hollow_03",
 		"title": "Aftertaste",
 		"biome": BIOME_FEEDING_HOLLOW,
-		"reward_creature_pool": [CREATURES["thornback"]],
+		"reward_creature_pool": [CREATURES["thornback"], CREATURES["knellspine"]],
 		"phase_intro_texts": [
 			"It follows what you kept.",
 			"The hollow presses the wound.",
@@ -287,6 +459,43 @@ static func get_creature(species_id: String) -> Dictionary:
 	if not CREATURES.has(species_id):
 		return {}
 	return CREATURES[species_id].duplicate(true)
+
+
+static func get_creature_encounter_summary(species_id: String) -> String:
+	var profile: Dictionary = CREATURE_ENCOUNTER_PROFILES.get(species_id, {})
+	return String(profile.get("encounter_summary", ""))
+
+
+static func build_creature_enemy(entry: Dictionary) -> Dictionary:
+	var species_id: String = String(entry.get("species_id", ""))
+	var creature: Dictionary = get_creature(species_id)
+	if creature.is_empty():
+		return entry.duplicate(true)
+
+	var enemy: Dictionary = entry.duplicate(true)
+	var profile: Dictionary = CREATURE_ENCOUNTER_PROFILES.get(species_id, {})
+	var grade_id: String = String(enemy.get("grade", "mature"))
+	var grade: Dictionary = ENCOUNTER_GRADES.get(grade_id, ENCOUNTER_GRADES["mature"])
+	var profile_flags: Dictionary = profile.get("status_flags", {})
+	var entry_flags: Dictionary = enemy.get("status_flags", {})
+	var merged_flags: Dictionary = profile_flags.duplicate(true)
+	for key in entry_flags.keys():
+		merged_flags[key] = entry_flags[key]
+
+	enemy["species_id"] = species_id
+	enemy["reward_species_id"] = String(enemy.get("reward_species_id", species_id))
+	enemy["type"] = String(enemy.get("type", species_id))
+	enemy["display_name"] = String(creature.get("display_name", species_id))
+	enemy["projectile_speed"] = float(enemy.get("projectile_speed", profile.get("projectile_speed", 265.0)))
+	enemy["marker_modulate"] = enemy.get("marker_modulate", profile.get("marker_modulate", Color(1.0, 1.0, 1.0, 1.0)))
+	enemy["status_flags"] = merged_flags
+	enemy["encounter_summary"] = String(profile.get("encounter_summary", ""))
+	enemy["grade"] = grade_id
+	enemy["grade_label"] = String(grade.get("label", "MATURE"))
+	enemy["hp"] = float(enemy.get("hp", 28.0)) * float(grade.get("hp_mult", 1.0))
+	enemy["damage"] = float(enemy.get("damage", 8.0)) * float(grade.get("damage_mult", 1.0))
+	enemy["dna_reward"] = float(enemy.get("dna_reward", profile.get("dna_reward", 2.5))) * float(grade.get("dna_mult", 1.0))
+	return enemy
 
 
 static func get_support_role(species_id: String) -> Dictionary:

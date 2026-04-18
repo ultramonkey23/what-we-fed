@@ -304,8 +304,7 @@ func apply_status(lane: int, status_id: String, params: Dictionary = {}) -> void
 	if enemy.is_empty() or float(enemy.get("hp", 0.0)) <= 0.0:
 		return
 
-	var enemy_type: String = String(enemy.get("type", "dreg"))
-	var flags: Dictionary = ENEMY_STATUS_FLAGS.get(enemy_type, {})
+	var flags: Dictionary = _get_enemy_status_flags(enemy)
 	var status: Dictionary = {"id": status_id, "hits_remaining": 0, "duration": -1.0, "fire_pending": false}
 
 	match status_id:
@@ -387,8 +386,7 @@ func _fire_lane(lane: int) -> void:
 	if enemy.is_empty():
 		return
 
-	var enemy_type: String = String(enemy.get("type", "dreg"))
-	var projectile_speed: float = _get_enemy_projectile_speed(enemy_type)
+	var projectile_speed: float = _get_enemy_projectile_speed(enemy)
 
 	if not _can_schedule_projectile(projectile_speed):
 		return
@@ -472,7 +470,22 @@ func _on_projectile_enemy_contact(projectile, lane: int) -> void:
 		_projectile_slots[lane] = null
 
 
-func _get_enemy_projectile_speed(enemy_type: String) -> float:
+func _get_enemy_status_flags(enemy: Dictionary) -> Dictionary:
+	var enemy_type: String = String(enemy.get("type", "dreg"))
+	var flags: Dictionary = ENEMY_STATUS_FLAGS.get(enemy_type, {}).duplicate(true)
+	var explicit_flags: Dictionary = enemy.get("status_flags", {})
+	for key in explicit_flags.keys():
+		flags[key] = explicit_flags[key]
+	return flags
+
+
+func _get_enemy_projectile_speed(enemy: Dictionary) -> float:
+	if enemy.has("projectile_speed"):
+		var explicit_speed: float = float(enemy.get("projectile_speed", 0.0))
+		if explicit_speed > 0.0:
+			return explicit_speed
+
+	var enemy_type: String = String(enemy.get("type", "dreg"))
 	match enemy_type:
 		"dreg":
 			return 265.0

@@ -20,6 +20,9 @@ const CHARGE_SURVIVAL_RECOVERY: float = 20.0
 
 const LEVEL_THRESHOLDS: Array[float] = [40.0, 92.0, 150.0]
 
+# Deprecated compatibility pool.
+# Live run growth now comes from real-time tendency surges in RunGrowth.
+# Keep this data only while stale taken_upgrades state still exists.
 const UPGRADE_POOL: Array[Dictionary] = [
 	{
 		"id": "flesh_ravage",

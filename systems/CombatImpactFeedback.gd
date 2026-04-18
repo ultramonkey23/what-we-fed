@@ -106,6 +106,20 @@ static func build_support_profile(effect_id: String, cadence_surge: bool) -> Dic
 		"veilskin_phase":
 			profile["burst_color"] = Color(0.62, 0.86, 1.0, 0.40)
 			profile["sfx_cue"] = "support_phase"
+		"knellspine_peal":
+			profile["burst_color"] = Color(0.98, 0.82, 0.42, 0.40)
+			profile["sfx_cue"] = "support_peal"
+		"marrowward_ward":
+			profile["burst_color"] = Color(0.78, 0.90, 0.82, 0.34)
+			profile["sfx_cue"] = "support_ward"
+		"gorefane_maul":
+			profile["burst_color"] = Color(0.96, 0.42, 0.18, 0.46)
+			profile["shake_intensity"] = 1.1
+			profile["shake_duration"] = 0.08
+			profile["sfx_cue"] = "support_maul"
+		"hushcoil_lull":
+			profile["burst_color"] = Color(0.60, 0.74, 0.96, 0.36)
+			profile["sfx_cue"] = "support_lull"
 		"thornback_rend":
 			profile["burst_color"] = Color(0.98, 0.76, 0.32, 0.42)
 			profile["shake_intensity"] = 0.7

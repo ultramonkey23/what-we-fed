@@ -39,6 +39,8 @@ const EDGE_STATE_WIDTH: float = 0.016
 const RUN_GROWTH_SCRIPT_PATH: String = "res://systems/RunGrowth.gd"
 const ENEMY_LOW_HP_THRESHOLD: float = 0.25
 const SUPPORT_MASTERY_CONTEXT_TIMEOUT: float = 1.75
+const LIVE_REWARD_WINDOW: float = 8.0
+const DNA_HUD_VISIBLE_SLOTS: int = 2
 # DNA economy: amount granted per enemy kill from the current phase's reward pool.
 # Phase reward_pool maps kills to creature species — accumulated DNA gates bond/eat.
 const DNA_PER_KILL: float = 2.5
@@ -87,6 +89,8 @@ var _atk_value_label: Label = null
 var _quig_anchor_label: Label = null
 var _hp_value_label: Label = null
 var _exp_value_label: Label = null
+var _dna_shell: ColorRect = null
+var _dna_slot_labels: Array[Label] = []
 var _battlefield_panel: ColorRect = null
 var _battlefield_inner_panel: ColorRect = null
 var _battlefield_left_shade: ColorRect = null
@@ -113,11 +117,6 @@ var _reward_bond_effect_label: Label = null
 var _reward_eat_effect_label: Label = null
 var _reward_creature_tag_label: Label = null
 var _reward_creature_portrait: TextureRect = null
-var _growth_overlay: ColorRect = null
-var _growth_panel: ColorRect = null
-var _growth_title_label: Label = null
-var _growth_hint_label: Label = null
-var _growth_option_labels: Array[Label] = []
 
 var _combat_finished: bool = false
 var _phase_transitioning: bool = false
@@ -131,6 +130,12 @@ var _reward_choice_made: bool = false
 var _run_finished: bool = false
 var _pending_reward_creature: Dictionary = {}
 var _pending_reward_dna_locked: bool = false
+var _live_reward_shell: ColorRect = null
+var _live_reward_title_label: Label = null
+var _live_reward_body_label: Label = null
+var _live_reward_hint_label: Label = null
+var _live_reward_queue: Array[Dictionary] = []
+var _live_reward_offer_timer: float = 0.0
 
 # Incremented each time an encounter payload is loaded. The function
 # captures this at entry and bails after the boss intro await if a newer load
@@ -140,9 +145,6 @@ var _encounter_load_gen: int = 0
 var _active_encounter: Dictionary = {}
 var _current_phase_index: int = 0
 var _run_growth: Node = null
-var _awaiting_growth_choice: bool = false
-var _growth_pause_active: bool = false
-var _current_growth_options: Array = []
 
 # enemy_id -> ColorRect
 var _enemy_markers_by_id: Dictionary = {}
@@ -179,6 +181,7 @@ var _song_enemy_lanes: Dictionary = {}
 var _song_timer_label: Label = null
 var _song_phase_label: Label = null
 var _song_rng: RandomNumberGenerator = RandomNumberGenerator.new()
+var _song_phase_dna_award_index: int = 0
 # Brief beat-quality text shown near the timing rings when the player acts on-beat.
 var _beat_feedback_label: Label = null
 var _last_mastery_context: Dictionary = {}
@@ -204,7 +207,7 @@ func _ready() -> void:
 	_create_attack_fx_container()
 	_setup_presentation_runtime()
 	_create_reward_overlay()
-	_create_growth_overlay()
+	_create_live_reward_shell()
 	_setup_run_growth()
 	_connect_eventbus()
 	_setup_lane_manager()
@@ -220,7 +223,11 @@ func _process(delta: float) -> void:
 		_update_timing_ring_proximity()
 	if _lane_marker_container != null:
 		_update_lane_visual_states()
-	_maybe_present_growth_offer()
+	if _song_mode and _song_reward_pending and _awaiting_reward_choice and _live_reward_offer_timer > 0.0:
+		_live_reward_offer_timer = max(_live_reward_offer_timer - delta, 0.0)
+		_refresh_live_reward_shell()
+		if _live_reward_offer_timer <= 0.0:
+			_expire_live_reward_offer()
 
 	if _song_mode and not _song_paused and not _run_finished:
 		if _song_conductor != null:
@@ -423,17 +430,6 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not key_event.pressed or key_event.echo:
 		return
 
-	if _awaiting_growth_choice:
-		if key_event.keycode == KEY_1:
-			_choose_growth_option(0)
-			return
-		if key_event.keycode == KEY_2:
-			_choose_growth_option(1)
-			return
-		if key_event.keycode == KEY_3:
-			_choose_growth_option(2)
-			return
-
 	if _awaiting_reward_choice and not _reward_choice_made:
 		if key_event.keycode == KEY_B:
 			_choose_bond()
@@ -625,6 +621,7 @@ func _setup_ui() -> void:
 	_style_progress_bar(hp_bar, Color(0.18, 0.06, 0.08, 0.88), Color(0.73, 0.24, 0.26, 1.0), 6)
 	_style_progress_bar(stamina_bar, Color(0.08, 0.09, 0.10, 0.82), Color(0.44, 0.66, 0.58, 1.0), 5)
 	_build_quig_anchor()
+	_build_dna_shell()
 	_build_song_hud()
 	_refresh_hud_snapshot(0, 0.0, "stirring")
 
@@ -734,8 +731,8 @@ func _build_meter_shell() -> void:
 
 	var upgrade_caption := Label.new()
 	upgrade_caption.position = Vector2(904.0, 220.0)
-	upgrade_caption.size = Vector2(44.0, 12.0)
-	upgrade_caption.text = "Mutations"
+	upgrade_caption.size = Vector2(52.0, 12.0)
+	upgrade_caption.text = "Tendency"
 	_apply_text_role(upgrade_caption, "caption")
 	ui_layer.add_child(upgrade_caption)
 
@@ -938,6 +935,34 @@ func _build_quig_anchor() -> void:
 	ui_layer.add_child(_quig_anchor_label)
 
 
+func _build_dna_shell() -> void:
+	_dna_shell = ColorRect.new()
+	_dna_shell.name = "DnaShell"
+	_dna_shell.position = Vector2(892.0, 274.0)
+	_dna_shell.size = Vector2(276.0, 84.0)
+	_set_shell_treatment(_dna_shell, Color(0.07, 0.07, 0.09, 0.64), Color(0.18, 0.22, 0.20, 0.72))
+	ui_layer.add_child(_dna_shell)
+
+	var dna_caption := Label.new()
+	dna_caption.position = Vector2(904.0, 278.0)
+	dna_caption.size = Vector2(60.0, 14.0)
+	dna_caption.text = "DNA"
+	_apply_text_role(dna_caption, "caption_strong")
+	dna_caption.add_theme_font_size_override("font_size", 13)
+	ui_layer.add_child(dna_caption)
+
+	_dna_slot_labels.clear()
+	for i in range(DNA_HUD_VISIBLE_SLOTS):
+		var label := Label.new()
+		label.position = Vector2(904.0, 298.0 + i * 24.0)
+		label.size = Vector2(248.0, 20.0)
+		label.text = "--"
+		_apply_text_role(label, "secondary_value")
+		label.add_theme_font_size_override("font_size", 14)
+		ui_layer.add_child(label)
+		_dna_slot_labels.append(label)
+
+
 func _refresh_hud_snapshot(score_value: int, exp_value: float, style_tier: String) -> void:
 	if _hp_value_label != null:
 		_hp_value_label.text = "%d/%d" % [int(GameState.player_hp), int(GameState.player_max_hp)]
@@ -1133,44 +1158,35 @@ func _create_reward_overlay() -> void:
 	_reward_panel.add_child(_reward_hint_label)
 
 
-func _create_growth_overlay() -> void:
-	_growth_overlay = ColorRect.new()
-	_growth_overlay.name = "GrowthOverlay"
-	_growth_overlay.visible = false
-	_growth_overlay.color = Color(0.01, 0.01, 0.02, 0.76)
-	_growth_overlay.anchor_right = 1.0
-	_growth_overlay.anchor_bottom = 1.0
-	_growth_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	ui_layer.add_child(_growth_overlay)
+func _create_live_reward_shell() -> void:
+	_live_reward_shell = ColorRect.new()
+	_live_reward_shell.name = "LiveRewardShell"
+	_live_reward_shell.visible = false
+	_live_reward_shell.position = Vector2(456.0, 516.0)
+	_live_reward_shell.size = Vector2(410.0, 124.0)
+	_set_shell_treatment(_live_reward_shell, Color(0.08, 0.07, 0.08, 0.86), Color(0.30, 0.24, 0.18, 0.78))
+	ui_layer.add_child(_live_reward_shell)
 
-	_growth_panel = ColorRect.new()
-	_growth_panel.name = "GrowthPanel"
-	_growth_panel.position = Vector2(240.0, 138.0)
-	_growth_panel.size = Vector2(800.0, 276.0)
-	_set_shell_treatment(_growth_panel, Color(0.09, 0.07, 0.08, 0.97), Color(0.26, 0.21, 0.18, 0.92))
-	_growth_overlay.add_child(_growth_panel)
+	_live_reward_title_label = Label.new()
+	_live_reward_title_label.position = Vector2(16.0, 12.0)
+	_live_reward_title_label.size = Vector2(378.0, 24.0)
+	_apply_text_role(_live_reward_title_label, "subheading")
+	_live_reward_shell.add_child(_live_reward_title_label)
 
-	_growth_title_label = Label.new()
-	_growth_title_label.position = Vector2(34.0, 24.0)
-	_growth_title_label.size = Vector2(732.0, 32.0)
-	_apply_text_role(_growth_title_label, "subheading")
-	_growth_panel.add_child(_growth_title_label)
+	_live_reward_body_label = Label.new()
+	_live_reward_body_label.position = Vector2(16.0, 40.0)
+	_live_reward_body_label.size = Vector2(378.0, 48.0)
+	_live_reward_body_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_apply_text_role(_live_reward_body_label, "body")
+	_live_reward_body_label.add_theme_font_size_override("font_size", 13)
+	_live_reward_shell.add_child(_live_reward_body_label)
 
-	_growth_hint_label = Label.new()
-	_growth_hint_label.position = Vector2(34.0, 228.0)
-	_growth_hint_label.size = Vector2(732.0, 20.0)
-	_apply_text_role(_growth_hint_label, "hint")
-	_growth_panel.add_child(_growth_hint_label)
-
-	for i in range(3):
-		var option_label := Label.new()
-		option_label.position = Vector2(34.0 + 244.0 * i, 76.0)
-		option_label.size = Vector2(212.0, 132.0)
-		option_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		option_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
-		_apply_text_role(option_label, "body")
-		_growth_panel.add_child(option_label)
-		_growth_option_labels.append(option_label)
+	_live_reward_hint_label = Label.new()
+	_live_reward_hint_label.position = Vector2(16.0, 92.0)
+	_live_reward_hint_label.size = Vector2(378.0, 18.0)
+	_apply_text_role(_live_reward_hint_label, "hint")
+	_live_reward_hint_label.add_theme_font_size_override("font_size", 12)
+	_live_reward_shell.add_child(_live_reward_hint_label)
 
 
 func _setup_run_growth() -> void:
@@ -1208,10 +1224,11 @@ func _connect_eventbus() -> void:
 	EventBus.player_teleported.connect(_on_player_teleported)
 	EventBus.timing_ring_pressed.connect(_presentation_runtime.on_timing_ring_pressed)
 	EventBus.run_growth_changed.connect(_on_run_growth_changed)
+	EventBus.tendency_growth_resolved.connect(_on_tendency_growth_resolved)
 	EventBus.support_charge_changed.connect(_on_support_charge_changed)
 	EventBus.bonded_support_triggered.connect(_on_bonded_support_triggered)
+	EventBus.dna_gained.connect(_on_dna_gained)
 	EventBus.mastery_context_updated.connect(_on_mastery_context_updated)
-	EventBus.run_upgrade_taken.connect(_on_run_upgrade_taken)
 	EventBus.enemy_status_applied.connect(_on_enemy_status_applied)
 	EventBus.enemy_status_cleared.connect(_on_enemy_status_cleared)
 	EventBus.phrase_milestone.connect(_on_phrase_milestone)
@@ -1300,6 +1317,8 @@ func _enter_song_phase(new_idx: int) -> void:
 	var old_idx: int = _song_phase_index
 	_song_phase_index = new_idx
 	var new_phase: Dictionary = _song_phases[new_idx]
+	var new_reward_pool: Array = new_phase.get("reward_pool", [])
+	_song_phase_dna_award_index = _song_rng.randi_range(0, max(new_reward_pool.size() - 1, 0)) if not new_reward_pool.is_empty() else 0
 
 	_apply_song_phase_cadence(new_phase)
 
@@ -1310,15 +1329,13 @@ func _enter_song_phase(new_idx: int) -> void:
 	if _song_phase_label != null:
 		_song_phase_label.text = ENCOUNTER_IDENTITY_RUNTIME.get_phase_display_label(_region_id, new_phase)
 
-	# If the previous phase had a reward pool, pause and offer it now.
+	# If the previous phase had a reward pool, queue its creature offer without pausing the song.
 	if old_idx >= 0:
 		var old_phase: Dictionary = _song_phases[old_idx]
 		var reward_pool: Array = old_phase.get("reward_pool", [])
 		if not reward_pool.is_empty():
 			_offer_song_phase_reward(reward_pool)
-			return
 
-	# No reward — seed new enemies immediately.
 	_seed_song_enemies_for_phase(new_phase)
 
 
@@ -1377,6 +1394,7 @@ func _place_song_enemy(lane: int) -> void:
 	var enemy_id: int = int(enemy.get("id", 0))
 	_all_enemies_by_id[enemy_id] = enemy.duplicate(true)
 	_enemy_max_hp[enemy_id] = float(enemy.get("hp", 1.0))
+	_enemy_phase_by_id[enemy_id] = _song_phase_index
 
 	var biome: Dictionary = _active_encounter.get("biome", {})
 	var inactive_color: Color = biome.get("enemy_inactive_color", Color(0.38, 0.18, 0.18, 0.55))
@@ -1389,44 +1407,34 @@ func _place_song_enemy(lane: int) -> void:
 		lane_manager.get_lane_y(lane) - marker_half
 	)
 	enemy_marker.color = inactive_color
-	enemy_marker.modulate = Color(1.0, 1.0, 1.0, 1.0)
+	enemy_marker.modulate = enemy.get("marker_modulate", Color(1.0, 1.0, 1.0, 1.0))
 	_enemy_marker_container.add_child(enemy_marker)
 	_enemy_markers_by_id[enemy_id] = enemy_marker
 
 func _offer_song_phase_reward(reward_pool: Array) -> void:
-	# Pause the song and show a creature reward choice.
-	_song_paused = true
-	_song_reward_pending = true
-	COMBAT_TRANSITION_STATE.prepare_song_reward_pause(
-		lane_manager,
-		_song_conductor,
-		Callable(self, "_clear_mastery_context_cache")
-	)
-
-	var creature_id: String = reward_pool[randi() % reward_pool.size()]
+	var creature_id: String = reward_pool[_song_rng.randi_range(0, reward_pool.size() - 1)]
 	var creature: Dictionary = COMBAT_CONTENT.get_creature(creature_id)
 	if creature.is_empty():
-		_resume_song_after_reward()
 		return
 
-	_offer_victory_reward(creature)
+	_song_reward_pending = true
+	_live_reward_queue.append(creature)
+	if not _awaiting_reward_choice:
+		_show_next_live_reward_offer()
 
 
 func _resume_song_after_reward() -> void:
-	_song_reward_pending = false
-	_song_paused = false
-	_hide_reward_overlay()
-	_set_song_controls_text()
-
-	COMBAT_TRANSITION_STATE.resume_song_reward(lane_manager, _song_conductor, player_combat)
-
-	# Seed enemies and restart the fire cycle.
-	# _seed_song_enemies_for_phase starts the cycle when _combat_running is false (post-stop).
-	var phase: Dictionary = _song_phases[_song_phase_index]
-	_seed_song_enemies_for_phase(phase)
+	_hide_live_reward_shell()
+	_pending_reward_creature = {}
+	_pending_reward_dna_locked = false
+	_show_next_live_reward_offer()
 
 
 func _trigger_boss_final_movement() -> void:
+	_live_reward_queue.clear()
+	_song_reward_pending = false
+	_awaiting_reward_choice = false
+	_hide_live_reward_shell()
 	_song_boss_triggered = true
 	_song_paused = true
 	_song_mode = false
@@ -1634,33 +1642,11 @@ func _stop_song_conductor() -> void:
 	_song_conductor = null
 
 
-func _set_growth_audio_paused(paused: bool) -> void:
-	# Growth pause is a real combat freeze, so the audio drivers should stop
-	# advancing underneath the draft overlay as well.
-	if _song_mode and not _song_paused and _song_conductor != null and is_instance_valid(_song_conductor):
-		if paused:
-			_song_conductor.pause()
-		else:
-			_song_conductor.resume()
-
-	if _boss_race_active and _boss_music_player != null and is_instance_valid(_boss_music_player):
-		_boss_music_player.stream_paused = paused
-
-
-func _reset_growth_overlay_state() -> void:
-	_current_growth_options.clear()
-	_awaiting_growth_choice = false
-	if _growth_overlay != null:
-		_growth_overlay.visible = false
-	_exit_growth_pause()
-
-
 func _start_mini_run() -> void:
 	# Reset transient transition state before resetting run data.
 	COMBAT_TRANSITION_STATE.prepare_run_restart(
 		Callable(self, "_stop_song_conductor"),
 		Callable(self, "_stop_boss_music"),
-		Callable(self, "_reset_growth_overlay_state"),
 		Callable(self, "_clear_mastery_context_cache")
 	)
 
@@ -1677,6 +1663,9 @@ func _start_mini_run() -> void:
 		GameState.reset_run_state()
 
 	EventBus.emit_signal("run_started", int(GameState.run_number))
+	_live_reward_queue.clear()
+	_song_reward_pending = false
+	_hide_live_reward_shell()
 	_refresh_run_build_readout()
 	_start_song_run()
 
@@ -1801,7 +1790,7 @@ func _build_arena_visuals() -> void:
 			lane_manager.get_lane_y(lane) - marker_half
 		)
 		enemy_marker.color = inactive_enemy_color
-		enemy_marker.modulate = Color(1.0, 1.0, 1.0, 1.0)
+		enemy_marker.modulate = enemy.get("marker_modulate", Color(1.0, 1.0, 1.0, 1.0))
 
 		_enemy_marker_container.add_child(enemy_marker)
 		_enemy_markers_by_id[enemy_id] = enemy_marker
@@ -2084,6 +2073,8 @@ func _finish_run(victory: bool) -> void:
 		controls_label.text = "Run failed  |  R restart  |  T return to lair"
 
 	_hide_reward_overlay()
+	_hide_live_reward_shell()
+	_live_reward_queue.clear()
 
 func _show_boss_bar() -> void:
 	if _boss_hp_shell != null:
@@ -2237,6 +2228,7 @@ func _offer_victory_reward(creature_data: Dictionary) -> void:
 
 	var _offer_creature_name: String = String(_pending_reward_creature.get("display_name", "creature"))
 	var _offer_description: String = String(_pending_reward_creature.get("description", ""))
+	var _encounter_context: String = _describe_creature_offer_context(_pending_reward_creature)
 
 	# DNA gate: check whether the player has accumulated enough DNA for this species.
 	var _offer_species_id: String = String(_pending_reward_creature.get("species_id", ""))
@@ -2247,6 +2239,10 @@ func _offer_victory_reward(creature_data: Dictionary) -> void:
 	_reward_creature_tag_label.text = "Creature"
 	_reward_title_label.text = _offer_creature_name
 
+	var _body_text: String = _offer_description
+	if not _encounter_context.is_empty():
+		_body_text += "\n\nEncounter: %s" % _encounter_context
+
 	# Append DNA status to the description body.
 	if _offer_dna_threshold > 0.0:
 		var _dna_line: String
@@ -2254,22 +2250,22 @@ func _offer_victory_reward(creature_data: Dictionary) -> void:
 			_dna_line = "DNA:  %.0f / %.0f  —  not enough" % [_player_dna, _offer_dna_threshold]
 		else:
 			_dna_line = "DNA:  %.0f / %.0f  —  sufficient" % [_player_dna, _offer_dna_threshold]
-		_reward_body_label.text = _offer_description + "\n\n" + _dna_line
+		_reward_body_label.text = _body_text + "\n\n" + _dna_line
 	else:
-		_reward_body_label.text = _offer_description
+		_reward_body_label.text = _body_text
 
 	if _pending_reward_dna_locked:
 		_reward_bond_label.text = "Bond  [B]  — locked"
 		_reward_bond_effect_label.text = "Not enough DNA.\n\n%s" % _format_bond_passive(_pending_reward_creature.get("bond_passive", {}))
 		_reward_eat_label.text = "Eat  [E]  — locked"
-		_reward_eat_effect_label.text = "Not enough DNA.\n\n%s" % _format_eat_effect(_pending_reward_creature.get("eat_effect", {}))
+		_reward_eat_effect_label.text = "Not enough DNA.\n\n%s" % _describe_eat_effect(_pending_reward_creature.get("eat_effect", {}))
 		_reward_hint_label.text = "Insufficient DNA  |  N — pass this creature"
 		controls_label.text = "DNA locked  |  N pass"
 	else:
 		_reward_bond_label.text = "Bond  [B]"
 		_reward_bond_effect_label.text = "Keep it close.\n\n%s\n\nThe run bends around this creature." % _format_bond_passive(_pending_reward_creature.get("bond_passive", {}))
 		_reward_eat_label.text = "Eat  [E]"
-		_reward_eat_effect_label.text = "Take what it gives.\n\n%s\n\nImmediate pressure through consumption." % _format_eat_effect(_pending_reward_creature.get("eat_effect", {}))
+		_reward_eat_effect_label.text = "Take what it gives.\n\n%s\n\nImmediate pressure through consumption." % _describe_eat_effect(_pending_reward_creature.get("eat_effect", {}))
 		_reward_hint_label.text = "Choose one  |  B keeps it close  |  E feeds on it  |  N pass"
 		controls_label.text = "Reward choice  |  B bond  |  E eat  |  N pass"
 
@@ -2295,6 +2291,20 @@ func _format_eat_effect(effect: Dictionary) -> String:
 			return "+%.0f permanent attack damage" % float(effect.get("value", 0.0))
 		"hp_restore":
 			return "restores %.0f HP immediately — no permanent bonus" % float(effect.get("value", 0.0))
+		_:
+			return "absorb its essence"
+
+
+func _describe_eat_effect(effect: Dictionary) -> String:
+	match effect.get("type", ""):
+		"damage_flat":
+			return "+%.0f permanent attack damage" % float(effect.get("value", 0.0))
+		"hp_restore":
+			return "restores %.0f HP immediately â€” no permanent bonus" % float(effect.get("value", 0.0))
+		"max_hp_flat":
+			return "+%.0f max HP immediately" % float(effect.get("value", 0.0))
+		"support_charge":
+			return "+%.0f support charge immediately" % float(effect.get("value", 0.0))
 		_:
 			return "absorb its essence"
 
@@ -2352,6 +2362,20 @@ func _format_trigger_hint(effect_id: String) -> String:
 			return ""
 
 
+func _describe_trigger_hint(effect_id: String) -> String:
+	match effect_id:
+		"knellspine_peal":
+			return "Triggers on good timing"
+		"marrowward_ward":
+			return "Triggers on dodge"
+		"gorefane_maul":
+			return "Triggers on ultimate"
+		"hushcoil_lull":
+			return "Triggers on perfect parry"
+		_:
+			return _format_trigger_hint(effect_id)
+
+
 func _hide_reward_overlay() -> void:
 	_reward_overlay.visible = false
 	_pending_reward_creature = {}
@@ -2386,8 +2410,130 @@ func _refresh_run_build_readout() -> void:
 		_atk_value_label.text = "%.0f" % GameState.get_attack_damage()
 
 	if _run_build_shell != null:
-		var has_build: bool = not GameState.absorbed_types.is_empty() or not GameState.taken_upgrades.is_empty()
+		var has_build: bool = not GameState.absorbed_types.is_empty()
 		_run_build_shell.color = Color(0.08, 0.08, 0.10, 0.60) if has_build else Color(0.07, 0.07, 0.09, 0.50)
+	_refresh_dna_hud()
+
+
+func _refresh_dna_hud() -> void:
+	if _dna_slot_labels.is_empty():
+		return
+
+	var relevant_species: Array[String] = []
+	if _song_mode and _song_phase_index >= 0 and _song_phase_index < _song_phases.size():
+		var phase: Dictionary = _song_phases[_song_phase_index]
+		for species_id in phase.get("reward_pool", []):
+			var typed_species_id: String = String(species_id)
+			if not typed_species_id.is_empty() and not relevant_species.has(typed_species_id):
+				relevant_species.append(typed_species_id)
+
+	if not _pending_reward_creature.is_empty():
+		var pending_species_id: String = String(_pending_reward_creature.get("species_id", ""))
+		if not pending_species_id.is_empty() and not relevant_species.has(pending_species_id):
+			relevant_species.insert(0, pending_species_id)
+
+	if relevant_species.is_empty():
+		for species_id in GameState.dna_by_species.keys():
+			var typed_species_id: String = String(species_id)
+			if GameState.get_dna(typed_species_id) > 0.0:
+				relevant_species.append(typed_species_id)
+		relevant_species.sort()
+
+	for i in range(_dna_slot_labels.size()):
+		var label: Label = _dna_slot_labels[i]
+		if i >= relevant_species.size():
+			label.text = "--"
+			continue
+
+		var species_id: String = relevant_species[i]
+		var creature: Dictionary = COMBAT_CONTENT.get_creature(species_id)
+		var display_name: String = String(creature.get("display_name", species_id)).to_upper()
+		var threshold: float = float(creature.get("dna_threshold", 0.0))
+		var current: float = GameState.get_dna(species_id)
+		if threshold > 0.0:
+			label.text = "%s  %.0f/%.0f" % [display_name, current, threshold]
+		else:
+			label.text = "%s  %.0f" % [display_name, current]
+
+
+func _show_live_reward_offer(creature_data: Dictionary) -> void:
+	if _live_reward_shell == null:
+		return
+
+	_pending_reward_creature = creature_data.duplicate(true)
+	_pending_reward_dna_locked = not GameState.has_dna_for(
+		String(_pending_reward_creature.get("species_id", "")),
+		float(_pending_reward_creature.get("dna_threshold", 0.0))
+	)
+	_reward_choice_made = false
+	_awaiting_reward_choice = true
+	_live_reward_offer_timer = LIVE_REWARD_WINDOW
+	_live_reward_shell.visible = true
+	EventBus.emit_signal("capture_offered", _pending_reward_creature)
+	_refresh_live_reward_shell()
+	_refresh_dna_hud()
+	_refresh_song_controls_text()
+
+
+func _refresh_live_reward_shell() -> void:
+	if _live_reward_shell == null or _pending_reward_creature.is_empty():
+		return
+
+	var species_id: String = String(_pending_reward_creature.get("species_id", ""))
+	var threshold: float = float(_pending_reward_creature.get("dna_threshold", 0.0))
+	var current_dna: float = GameState.get_dna(species_id)
+	var display_name: String = String(_pending_reward_creature.get("display_name", "Creature"))
+	var encounter_context: String = _describe_creature_offer_context(_pending_reward_creature)
+	_live_reward_title_label.text = "%s in reach" % display_name
+	var live_body: String = String(_pending_reward_creature.get("description", ""))
+	if not encounter_context.is_empty():
+		live_body += "\nEncounter: %s" % encounter_context
+	live_body += "\nDNA %.0f/%.0f" % [current_dna, threshold]
+	_live_reward_body_label.text = live_body
+	if _pending_reward_dna_locked:
+		_live_reward_hint_label.text = "Locked for now  |  N pass  |  %.0fs" % ceil(_live_reward_offer_timer)
+	else:
+		_live_reward_hint_label.text = "B bond  |  E eat  |  N pass  |  %.0fs" % ceil(_live_reward_offer_timer)
+
+
+func _hide_live_reward_shell() -> void:
+	if _live_reward_shell != null:
+		_live_reward_shell.visible = false
+	_live_reward_offer_timer = 0.0
+
+
+func _refresh_song_controls_text() -> void:
+	if _song_reward_pending and _awaiting_reward_choice:
+		if _pending_reward_dna_locked:
+			controls_label.text = "Combat live  |  DNA locked  |  N pass reward"
+		else:
+			controls_label.text = "Combat live  |  B bond  |  E eat  |  N pass reward"
+		return
+	_set_song_controls_text()
+
+
+func _show_next_live_reward_offer() -> void:
+	if _live_reward_queue.is_empty():
+		_song_reward_pending = false
+		_hide_live_reward_shell()
+		_refresh_song_controls_text()
+		return
+
+	var next_creature: Dictionary = _live_reward_queue.pop_front()
+	_show_live_reward_offer(next_creature)
+
+
+func _expire_live_reward_offer() -> void:
+	if not _song_reward_pending or not _awaiting_reward_choice:
+		return
+	_pass_reward()
+
+
+func _describe_creature_offer_context(creature_data: Dictionary) -> String:
+	var species_id: String = String(creature_data.get("species_id", ""))
+	if species_id.is_empty():
+		return ""
+	return COMBAT_CONTENT.get_creature_encounter_summary(species_id)
 
 
 func _format_absorbed_bonus_summary() -> String:
@@ -2409,6 +2555,12 @@ func _format_absorbed_bonus_summary() -> String:
 		if eat_type == "hp_restore":
 			var heal_applied: int = int(round(float(entry.get("heal_applied", 0.0))))
 			chips.append("[%s~%d]" % [short_name, heal_applied])
+		elif eat_type == "max_hp_flat":
+			var max_hp_bonus: int = int(round(float(entry.get("max_hp_bonus", 0.0))))
+			chips.append("[%sHP+%d]" % [short_name, max_hp_bonus])
+		elif eat_type == "support_charge":
+			var support_charge_bonus: int = int(round(float(entry.get("support_charge_bonus", 0.0))))
+			chips.append("[%sCH+%d]" % [short_name, support_charge_bonus])
 		else:
 			var damage_bonus: int = int(round(float(entry.get("damage_bonus", 0.0))))
 			chips.append("[%s+%d]" % [short_name, damage_bonus])
@@ -2421,25 +2573,9 @@ func _format_absorbed_bonus_summary() -> String:
 
 
 func _format_upgrade_summary() -> String:
-	if GameState.taken_upgrades.is_empty():
-		return "--"
-
-	var titles_by_id: Dictionary = {}
-	for upgrade in GROWTH_CONTENT.UPGRADE_POOL:
-		titles_by_id[String(upgrade.get("id", ""))] = String(upgrade.get("title", ""))
-
-	var chips: Array[String] = []
-	var visible_count: int = min(3, GameState.taken_upgrades.size())
-	for i in range(visible_count):
-		var upgrade_id: String = String(GameState.taken_upgrades[i])
-		var title: String = String(titles_by_id.get(upgrade_id, upgrade_id))
-		chips.append("[%s]" % _compact_token(title, 8))
-
-	var hidden_count: int = GameState.taken_upgrades.size() - visible_count
-	if hidden_count > 0:
-		chips.append("+%d" % hidden_count)
-
-	return _join_compact_tokens(chips)
+	if _run_growth != null and is_instance_valid(_run_growth) and _run_growth.has_method("get_tendency_summary"):
+		return String(_run_growth.call("get_tendency_summary"))
+	return "--"
 
 
 func _compact_token(text: String, max_len: int) -> String:
@@ -2459,89 +2595,6 @@ func _join_compact_tokens(tokens: Array[String]) -> String:
 	return result
 
 
-func _maybe_present_growth_offer() -> void:
-	if _awaiting_growth_choice or _awaiting_reward_choice or _run_finished:
-		return
-	if _run_growth == null or not is_instance_valid(_run_growth):
-		return
-	if not _run_growth.has_method("has_pending_level_up_offer"):
-		return
-	if not bool(_run_growth.call("has_pending_level_up_offer")):
-		return
-
-	var options: Array = _run_growth.call("consume_pending_level_up_offer")
-	if options.is_empty():
-		return
-
-	_current_growth_options = options
-	_awaiting_growth_choice = true
-	_growth_overlay.visible = true
-	_growth_title_label.text = "Level %d  |  The run mutates" % int(_run_growth.get("level"))
-	_growth_hint_label.text = "Choose one  |  1 2 3 to claim it"
-
-	for i in range(_growth_option_labels.size()):
-		var label: Label = _growth_option_labels[i]
-		if i < options.size():
-			var option: Dictionary = options[i]
-			label.visible = true
-			label.text = "[%d] %s\n%s\n\n%s" % [
-				i + 1,
-				String(option.get("title", "Unknown")),
-				String(option.get("category", "")),
-				String(option.get("summary", ""))
-			]
-		else:
-			label.visible = false
-			label.text = ""
-
-	if player_combat != null and player_combat.has_method("set_combat_enabled"):
-		player_combat.set_combat_enabled(false)
-
-	_enter_growth_pause()
-	controls_label.text = "Level up  |  1 2 3 choose mutation"
-
-
-func _choose_growth_option(index: int) -> void:
-	if not _awaiting_growth_choice:
-		return
-	if index < 0 or index >= _current_growth_options.size():
-		return
-	if _run_growth == null or not is_instance_valid(_run_growth):
-		return
-
-	var chosen: Dictionary = _current_growth_options[index]
-	var upgrade_id: String = String(chosen.get("id", ""))
-	var resolved_choice: Dictionary = _run_growth.call("choose_upgrade", upgrade_id)
-	if resolved_choice.is_empty():
-		return
-
-	_awaiting_growth_choice = false
-	_current_growth_options.clear()
-	_growth_overlay.visible = false
-	_exit_growth_pause()
-
-	if player_combat != null and player_combat.has_method("set_combat_enabled") and not _combat_finished:
-		player_combat.set_combat_enabled(true)
-
-	_set_combat_controls_text()
-	_show_feedback(String(resolved_choice.get("title", "Mutation")), Color(0.86, 0.98, 0.76, 1.0), 0.40)
-
-
-func _enter_growth_pause() -> void:
-	_growth_pause_active = true
-	# Invalidate any in-flight slow-motion restore callback before freezing.
-	_slow_motion_gen += 1
-	COMBAT_TRANSITION_STATE.prepare_growth_pause(
-		Callable(self, "_clear_mastery_context_cache"),
-		Callable(self, "_set_growth_audio_paused")
-	)
-
-
-func _exit_growth_pause() -> void:
-	_growth_pause_active = false
-	COMBAT_TRANSITION_STATE.restore_growth_pause(_base_time_scale, Callable(self, "_set_growth_audio_paused"))
-
-
 func _choose_bond() -> void:
 	if not _awaiting_reward_choice or _reward_choice_made:
 		return
@@ -2557,6 +2610,7 @@ func _choose_bond() -> void:
 
 	var updated_creature: Dictionary = GameState.add_bonded_creature(_pending_reward_creature)
 	EventBus.emit_signal("creature_bonded", updated_creature)
+	_refresh_dna_hud()
 
 	_reward_choice_made = true
 	_awaiting_reward_choice = false
@@ -2575,6 +2629,7 @@ func _choose_bond() -> void:
 	_reward_quig_label.text = "Quig: \"Good. Watch — they're already positioning.\""
 
 	if _song_reward_pending:
+		_show_feedback("%s BONDED" % _bond_creature_name.to_upper(), Color(0.82, 0.94, 0.76, 1.0), 0.34)
 		_resume_song_after_reward()
 	else:
 		_reward_hint_label.text = "R restart run"
@@ -2600,15 +2655,21 @@ func _choose_eat() -> void:
 		var healed: float = float(absorbed_entry.get("heal_applied", 0.0))
 		if healed > 0.0:
 			EventBus.emit_signal("player_healed", healed)
+	elif String(absorbed_entry.get("eat_type", "")) == "max_hp_flat":
+		EventBus.emit_signal("player_healed", float(absorbed_entry.get("heal_applied", 0.0)))
+	elif String(absorbed_entry.get("eat_type", "")) == "support_charge":
+		if _run_growth != null and is_instance_valid(_run_growth) and _run_growth.has_method("gain_support_charge_direct"):
+			_run_growth.call("gain_support_charge_direct", float(absorbed_entry.get("support_charge_bonus", 0.0)))
 
 	# Hollow Feed upgrade: extra heal on any eat.
-	var hollow_feed_effect: Dictionary = _get_upgrade_effect("eat_hp_restore")
+	var hollow_feed_effect: Dictionary = _get_growth_effect("eat_hp_restore")
 	if not hollow_feed_effect.is_empty():
 		var feed_healed: float = GameState.heal_player(float(hollow_feed_effect.get("value", 0.0)))
 		if feed_healed > 0.0:
 			EventBus.emit_signal("player_healed", feed_healed)
 
 	EventBus.emit_signal("creature_eaten", _pending_reward_creature)
+	_refresh_dna_hud()
 
 	_reward_choice_made = true
 	_awaiting_reward_choice = false
@@ -2626,6 +2687,17 @@ func _choose_eat() -> void:
 			String(absorbed_entry.get("type", "unknown")).capitalize(),
 			float(absorbed_entry.get("heal_applied", 0.0))
 		]
+	elif _eat_type_str == "max_hp_flat":
+		_reward_eat_effect_label.text = "Type: %s\n\n+%.0f max HP.\n+%.0f HP restored." % [
+			String(absorbed_entry.get("type", "unknown")).capitalize(),
+			float(absorbed_entry.get("max_hp_bonus", 0.0)),
+			float(absorbed_entry.get("heal_applied", 0.0))
+		]
+	elif _eat_type_str == "support_charge":
+		_reward_eat_effect_label.text = "Type: %s\n\n+%.0f support charge immediately." % [
+			String(absorbed_entry.get("type", "unknown")).capitalize(),
+			float(absorbed_entry.get("support_charge_bonus", 0.0))
+		]
 	else:
 		_reward_eat_effect_label.text = "Type: %s\n\n+%.1f permanent attack damage" % [
 			String(absorbed_entry.get("type", "unknown")).capitalize(),
@@ -2636,6 +2708,11 @@ func _choose_eat() -> void:
 
 	_refresh_run_build_readout()
 
+	if _song_reward_pending:
+		_show_feedback("%s CONSUMED" % _eat_creature_name.to_upper(), Color(0.94, 0.62, 0.30, 1.0), 0.34)
+		_resume_song_after_reward()
+		return
+
 	var timer: SceneTreeTimer = get_tree().create_timer(3.0)
 	await timer.timeout
 
@@ -2645,6 +2722,7 @@ func _choose_eat() -> void:
 	_reward_quig_label.text = "Quig: \"There will be others.\""
 
 	if _song_reward_pending:
+		_show_feedback("REWARD PASSED", Color(0.76, 0.60, 0.42, 1.0), 0.24)
 		_resume_song_after_reward()
 	else:
 		_reward_hint_label.text = "R restart run"
@@ -2675,6 +2753,7 @@ func _pass_reward() -> void:
 	controls_label.text = ""
 
 	if _song_reward_pending:
+		_show_feedback("REWARD PASSED", Color(0.76, 0.60, 0.42, 1.0), 0.24)
 		_resume_song_after_reward()
 	else:
 		_reward_hint_label.text = "R restart run"
@@ -2688,6 +2767,17 @@ func _on_combo_changed(count: int, _tier: String) -> void:
 
 func _on_style_changed(score: float, tier: String) -> void:
 	style_label.text = tier.capitalize()
+
+
+func _on_dna_gained(_species_id: String, _amount: float, _total: float) -> void:
+	_refresh_dna_hud()
+	if _song_reward_pending and _awaiting_reward_choice:
+		_pending_reward_dna_locked = not GameState.has_dna_for(
+			String(_pending_reward_creature.get("species_id", "")),
+			float(_pending_reward_creature.get("dna_threshold", 0.0))
+		)
+		_refresh_live_reward_shell()
+		_refresh_song_controls_text()
 
 
 func _on_stamina_changed(current: float, maximum: float) -> void:
@@ -2808,7 +2898,7 @@ func _spawn_damage_number(enemy_id: int, damage: float) -> void:
 
 
 func _on_enemy_defeated(enemy_id: int) -> void:
-	var kill_heal_effect: Dictionary = _get_upgrade_effect("heal_on_kill")
+	var kill_heal_effect: Dictionary = _get_growth_effect("heal_on_kill")
 	if not kill_heal_effect.is_empty():
 		var healed: float = GameState.heal_player(float(kill_heal_effect.get("value", 0.0)))
 		if healed > 0.0:
@@ -2828,17 +2918,23 @@ func _on_enemy_defeated(enemy_id: int) -> void:
 				_show_beat_feedback("RESONANCE", Color(0.48, 0.88, 0.76, 1.0))
 				EventBus.emit_signal("screen_flash", Color(0.10, 0.38, 0.32, 0.05), 0.05)
 
-	# DNA economy: grant species-specific DNA from the current phase's reward pool.
-	# Kills in phases with a reward_pool accumulate DNA toward the bond/eat threshold.
-	# Phases without a reward_pool (chorus, final) contribute no DNA in this pass.
+	# DNA economy: creature encounters now pay out the species you actually killed.
+	# Fallback to the phase reward pool only if a legacy enemy payload has no species id.
 	if _song_mode and not _song_boss_triggered and _song_phase_index >= 0 and _song_phase_index < _song_phases.size():
-		var _dna_phase: Dictionary = _song_phases[_song_phase_index]
-		var _dna_pool: Array = _dna_phase.get("reward_pool", [])
-		if not _dna_pool.is_empty():
-			var _dna_species: String = _dna_pool[_song_rng.randi() % _dna_pool.size()]
-			GameState.add_dna(_dna_species, DNA_PER_KILL)
-			EventBus.emit_signal("dna_gained", _dna_species, DNA_PER_KILL, GameState.get_dna(_dna_species))
-			_show_feedback("+DNA", Color(0.62, 0.96, 0.78, 1.0), 0.22)
+		var defeated_enemy: Dictionary = _all_enemies_by_id.get(enemy_id, {})
+		var dna_species: String = String(defeated_enemy.get("reward_species_id", defeated_enemy.get("species_id", "")))
+		var dna_amount: float = float(defeated_enemy.get("dna_reward", DNA_PER_KILL))
+		if dna_species.is_empty():
+			var _dna_phase: Dictionary = _song_phases[_song_phase_index]
+			var _dna_pool: Array = _dna_phase.get("reward_pool", [])
+			if not _dna_pool.is_empty():
+				dna_species = String(_dna_pool[_song_phase_dna_award_index % _dna_pool.size()])
+				_song_phase_dna_award_index += 1
+				dna_amount = DNA_PER_KILL
+		if not dna_species.is_empty() and dna_amount > 0.0:
+			GameState.add_dna(dna_species, dna_amount)
+			EventBus.emit_signal("dna_gained", dna_species, dna_amount, GameState.get_dna(dna_species))
+			_show_feedback("+%s DNA" % String(COMBAT_CONTENT.get_creature(dna_species).get("display_name", dna_species)).to_upper(), Color(0.62, 0.96, 0.78, 1.0), 0.22)
 
 	if _song_mode and not _song_paused and not _song_boss_triggered:
 		var dead_lane: int = _song_enemy_lanes.get(enemy_id, -1)
@@ -2856,16 +2952,11 @@ func _on_enemy_defeated(enemy_id: int) -> void:
 
 
 func _on_slow_motion(scale: float, duration: float) -> void:
-	if _growth_pause_active:
-		return
-
 	_slow_motion_gen += 1
 	var gen: int = _slow_motion_gen
 	Engine.time_scale = scale
 	var timer := get_tree().create_timer(duration, true, false, true)
 	timer.timeout.connect(func() -> void:
-		if _growth_pause_active:
-			return
 		if _slow_motion_gen == gen:
 			Engine.time_scale = _base_time_scale
 	)
@@ -2891,7 +2982,7 @@ func _on_player_attacked(lane: int, _damage: float, was_timed: bool) -> void:
 
 
 func _on_timed_attack_resolved(lane: int, quality: String, damage: float) -> void:
-	var ravage_effect: Dictionary = _get_upgrade_effect("timed_attack_bonus_damage")
+	var ravage_effect: Dictionary = _get_growth_effect("timed_attack_bonus_damage")
 	var beat_quality: String = _get_beat_quality_for_action()
 	var enemy_id: int = _get_enemy_id_for_lane(lane)
 	if not ravage_effect.is_empty():
@@ -2900,7 +2991,7 @@ func _on_timed_attack_resolved(lane: int, quality: String, damage: float) -> voi
 		_presentation_runtime.spawn_attack_silhouette_to_lane(lane, Color(0.95, 0.48, 0.36, 0.34), 8.0, 0.08, 0.92)
 
 	if quality == "good":
-		var flow_effect: Dictionary = _get_upgrade_effect("good_timed_bonus_damage")
+		var flow_effect: Dictionary = _get_growth_effect("good_timed_bonus_damage")
 		if not flow_effect.is_empty():
 			var flow_damage: float = damage * float(flow_effect.get("value", 0.0))
 			lane_manager.damage_enemy(lane, flow_damage)
@@ -2956,6 +3047,31 @@ func _on_combo_broken(_lost: int) -> void:
 func _on_run_growth_changed(level: int, exp: float, exp_to_next: float) -> void:
 	if _exp_value_label != null:
 		_exp_value_label.text = "L%d  %.0f/%.0f" % [level, exp, exp_to_next]
+	_refresh_run_build_readout()
+
+
+func _on_tendency_growth_resolved(tendency_id: String, title: String, summary: String) -> void:
+	_refresh_run_build_readout()
+	var color: Color = Color(0.92, 0.86, 0.70, 1.0)
+	match tendency_id:
+		"aggression":
+			color = Color(0.96, 0.56, 0.30, 1.0)
+		"cadence":
+			color = Color(0.94, 0.86, 0.40, 1.0)
+		"guard":
+			color = Color(0.74, 0.92, 1.0, 1.0)
+		"bond":
+			color = Color(0.74, 0.96, 0.82, 1.0)
+	_show_feedback(title, color, 0.42)
+	_quig_anchor_label.text = summary
+	_quig_anchor_label.visible = true
+	var tween := create_tween()
+	tween.tween_interval(1.6)
+	tween.tween_property(_quig_anchor_label, "modulate:a", 0.0, 0.18)
+	tween.tween_callback(func() -> void:
+		_quig_anchor_label.visible = false
+		_quig_anchor_label.modulate.a = 1.0
+	)
 
 
 func _on_support_charge_changed(current: float, maximum: float, active_species_id: String) -> void:
@@ -3002,7 +3118,7 @@ func _on_support_charge_changed(current: float, maximum: float, active_species_i
 			_support_trigger_label.text = ""
 		else:
 			var support_role: Dictionary = COMBAT_CONTENT.get_support_role(active_species_id)
-			_support_trigger_label.text = _format_trigger_hint(String(support_role.get("effect_id", "")))
+			_support_trigger_label.text = _describe_trigger_hint(String(support_role.get("effect_id", "")))
 
 	if _support_shell != null:
 		var shell_color: Color = Color(0.08, 0.08, 0.10, 0.56)
@@ -3148,7 +3264,7 @@ func _on_bonded_support_triggered(_species_id: String, lane: int, effect_id: Str
 	var cadence_surge: bool = mastery == "cadence_surge"
 	var support_profile: Dictionary = COMBAT_IMPACT_FEEDBACK.build_support_profile(effect_id, cadence_surge)
 	var support_enemy_id: int = _get_enemy_id_for_lane(lane)
-	if effect_id == "bond_remnant_mend" or effect_id == "gruvek_gorge":
+	if effect_id == "bond_remnant_mend" or effect_id == "gruvek_gorge" or effect_id == "marrowward_ward" or effect_id == "gorefane_maul":
 		support_enemy_id = -1
 
 	# HOLLOW amplifier: when Bond Remnant is the active creature, REND gets one extra charge
@@ -3266,6 +3382,87 @@ func _on_bonded_support_triggered(_species_id: String, lane: int, effect_id: Str
 			for ring_lane in range(3):
 				_presentation_runtime.highlight_timing_ring(ring_lane, Color(0.72, 0.88, 1.0, 1.0), 5.5)
 			_flash_meter_shell(Color(0.10, 0.18, 0.26, 0.92), 0.10)
+		"knellspine_peal":
+			var peal_damage: float = float(support_role.get("effect_value", 8.0)) * combo_mult * bond_mult
+			var charge_return: float = 18.0
+			var peal_text: String = String(support_role.get("feedback_text", "PEAL"))
+			if cadence_surge:
+				peal_damage *= 1.25
+				charge_return = 28.0
+				lane_manager.apply_status(lane, "expose", {"duration": 3.0})
+				peal_text = "SURGE PEAL"
+			elif mastery == "flow_state":
+				charge_return = 24.0
+				lane_manager.apply_status(lane, "expose", {"duration": 2.5})
+				peal_text = "DEEP PEAL"
+			lane_manager.damage_enemy(lane, peal_damage)
+			if _run_growth != null and is_instance_valid(_run_growth) and _run_growth.has_method("gain_support_charge_direct"):
+				_run_growth.call("gain_support_charge_direct", charge_return)
+			_show_feedback(peal_text, Color(0.98, 0.82, 0.34, 1.0), 0.34)
+			_presentation_runtime.highlight_timing_ring(lane, Color(1.0, 0.84, 0.42, 1.0), 6.2)
+			_presentation_runtime.spawn_attack_silhouette_to_lane(lane, Color(0.98, 0.82, 0.34, 0.68), 14.0, 0.12, 1.12)
+			_flash_meter_shell(Color(0.24, 0.18, 0.08, 0.92), 0.10)
+		"marrowward_ward":
+			var ward_heal: float = float(support_role.get("effect_value", 8.0)) * bond_mult
+			var ward_stamina: float = 18.0
+			var ward_text: String = String(support_role.get("feedback_text", "WARD"))
+			for pale_lane in range(3):
+				lane_manager.apply_status(pale_lane, "pale", {})
+			if cadence_surge:
+				ward_heal *= 1.5
+				ward_stamina = 32.0
+				ward_text = "FULL WARD"
+			elif mastery == "flow_state":
+				ward_heal *= 1.25
+				ward_stamina = 24.0
+				ward_text = "BONE WARD"
+			var ward_restored: float = GameState.heal_player(ward_heal)
+			if ward_restored > 0.0:
+				EventBus.emit_signal("player_healed", ward_restored)
+			combat_meter.restore_stamina(ward_stamina)
+			_show_feedback(ward_text, Color(0.78, 0.92, 0.82, 1.0), 0.34)
+			for ring_lane in range(3):
+				_presentation_runtime.highlight_timing_ring(ring_lane, Color(0.78, 0.92, 0.82, 1.0), 5.4)
+			_flash_meter_shell(Color(0.12, 0.18, 0.14, 0.92), 0.10)
+		"gorefane_maul":
+			var maul_damage: float = float(support_role.get("effect_value", 14.0)) * combo_mult * bond_mult
+			var maul_charges: int = 1
+			var maul_text: String = String(support_role.get("feedback_text", "MAUL"))
+			if cadence_surge:
+				maul_damage *= 1.22
+				maul_charges = 3
+				maul_text = "FEAST MAUL"
+			elif mastery == "flow_state":
+				maul_charges = 2
+				maul_text = "RIP MAUL"
+			for check_lane in range(3):
+				lane_manager.damage_enemy(check_lane, maul_damage)
+			for check_lane in range(3):
+				var maul_enemy: Dictionary = lane_manager.get_enemy(check_lane)
+				if maul_enemy.has("hp") and float(maul_enemy["hp"]) > 0.0:
+					lane_manager.apply_status(check_lane, "rend", {"charges": maul_charges})
+			_show_feedback(maul_text, Color(0.96, 0.44, 0.20, 1.0), 0.40)
+			for check_lane in range(3):
+				_presentation_runtime.highlight_timing_ring(check_lane, Color(0.98, 0.48, 0.22, 1.0), 6.8)
+				_presentation_runtime.spawn_attack_silhouette_to_lane(check_lane, Color(0.96, 0.44, 0.20, 0.62), 15.0, 0.14, 1.10)
+			_flash_meter_shell(Color(0.30, 0.12, 0.08, 0.92), 0.12)
+		"hushcoil_lull":
+			var lull_damage: float = float(support_role.get("effect_value", 7.0)) * combo_mult * bond_mult
+			var lull_text: String = String(support_role.get("feedback_text", "LULL"))
+			lane_manager.damage_enemy(lane, lull_damage)
+			for pale_lane in range(3):
+				lane_manager.apply_status(pale_lane, "pale", {})
+			if cadence_surge:
+				lane_manager.apply_status(lane, "expose", {"duration": 3.0})
+				combat_meter.restore_stamina(18.0)
+				lull_text = "DEAD LULL"
+			elif mastery == "flow_state":
+				lane_manager.apply_status(lane, "expose", {"duration": 2.5})
+				lull_text = "DEEP LULL"
+			_show_feedback(lull_text, Color(0.72, 0.82, 0.98, 1.0), 0.34)
+			for ring_lane in range(3):
+				_presentation_runtime.highlight_timing_ring(ring_lane, Color(0.68, 0.80, 0.98, 1.0), 5.8)
+			_flash_meter_shell(Color(0.10, 0.14, 0.24, 0.92), 0.10)
 		"thornback_rend":
 			var rend_damage: float = float(support_role.get("effect_value", 20.0)) * combo_mult * bond_mult
 			if cadence_surge:
@@ -3299,43 +3496,11 @@ func _on_bonded_support_triggered(_species_id: String, lane: int, effect_id: Str
 	_presentation_runtime.apply_impact_profile(support_profile, lane, support_enemy_id)
 
 	# Pack Signal upgrade: heal on every support trigger.
-	var pack_heal_effect: Dictionary = _get_upgrade_effect("support_trigger_heal")
+	var pack_heal_effect: Dictionary = _get_growth_effect("support_trigger_heal")
 	if not pack_heal_effect.is_empty():
 		var pack_healed: float = GameState.heal_player(float(pack_heal_effect.get("value", 0.0)))
 		if pack_healed > 0.0:
 			EventBus.emit_signal("player_healed", pack_healed)
-
-
-func _on_run_upgrade_taken(upgrade_id: String) -> void:
-	match upgrade_id:
-		"flesh_ravage":
-			_flash_meter_shell(Color(0.28, 0.13, 0.10, 0.92), 0.10)
-		"flesh_devour_warmth":
-			_flash_meter_shell(Color(0.29, 0.16, 0.10, 0.92), 0.10)
-		"bond_surestep_pact":
-			_flash_meter_shell(Color(0.12, 0.22, 0.18, 0.92), 0.10)
-		"bond_shared_surge":
-			_flash_meter_shell(Color(0.13, 0.24, 0.19, 0.92), 0.10)
-		"cadence_knife_between_beats":
-			_flash_meter_shell(Color(0.24, 0.22, 0.10, 0.92), 0.10)
-		"survival_hollow_shelter":
-			_flash_meter_shell(Color(0.12, 0.20, 0.18, 0.92), 0.10)
-		"flesh_bloodrite":
-			_flash_meter_shell(Color(0.30, 0.12, 0.12, 0.92), 0.10)
-		"flesh_hollow_feed":
-			_flash_meter_shell(Color(0.28, 0.14, 0.08, 0.92), 0.10)
-		"bond_pack_signal":
-			_flash_meter_shell(Color(0.12, 0.22, 0.18, 0.92), 0.10)
-		"bond_depth_pulse":
-			_flash_meter_shell(Color(0.10, 0.20, 0.22, 0.92), 0.10)
-		"cadence_flow_state":
-			_flash_meter_shell(Color(0.24, 0.22, 0.10, 0.92), 0.10)
-		"survival_pressure_mend":
-			_flash_meter_shell(Color(0.12, 0.18, 0.20, 0.92), 0.10)
-		_:
-			pass
-	_refresh_run_build_readout()
-
 
 
 func _on_phrase_milestone(count: int) -> void:
@@ -3424,7 +3589,17 @@ func _on_enemy_status_cleared(lane: int) -> void:
 	marker.color = active_color if phase == _current_phase_index else inactive_color
 
 
-func _get_upgrade_effect(effect_type: String) -> Dictionary:
+func _get_growth_effect(effect_type: String) -> Dictionary:
+	if _run_growth != null and is_instance_valid(_run_growth) and _run_growth.has_method("get_runtime_effect"):
+		var runtime_effect: Dictionary = _run_growth.call("get_runtime_effect", effect_type)
+		if not runtime_effect.is_empty():
+			return runtime_effect
+	return _get_legacy_upgrade_effect(effect_type)
+
+
+func _get_legacy_upgrade_effect(effect_type: String) -> Dictionary:
+	# Deprecated compatibility path for stale taken_upgrades data.
+	# Real run growth now resolves through RunGrowth tendency effects.
 	for upgrade in GROWTH_CONTENT.UPGRADE_POOL:
 		var upgrade_id: String = String(upgrade.get("id", ""))
 		if not GameState.has_upgrade(upgrade_id):

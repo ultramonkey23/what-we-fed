@@ -1,0 +1,258 @@
+param(
+    [ValidateSet("run", "validate", "editor", "resolve")]
+    [string]$Mode = "run",
+    [Parameter(ValueFromRemainingArguments = $true)]
+    [string[]]$GodotArgs
+)
+
+$ErrorActionPreference = "Stop"
+$GodotArgs = @($GodotArgs | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+
+function Get-RepoRoot {
+    return (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
+}
+
+function Get-RepoLocalGodotPathFile {
+    $repoRoot = Get-RepoRoot
+    return Join-Path $repoRoot ".godot-cli\godot_path.txt"
+}
+
+function Get-ConfiguredGodotPath {
+    $pathFile = Get-RepoLocalGodotPathFile
+
+    if ($env:WHAT_WE_FED_GODOT_EXE) {
+        return $env:WHAT_WE_FED_GODOT_EXE
+    }
+
+    if (Test-Path $pathFile) {
+        $configuredPath = (Get-Content $pathFile | Select-Object -First 1).Trim()
+        if ($configuredPath) {
+            return $configuredPath
+        }
+    }
+
+    return $null
+}
+
+function Get-GodotSearchRoots {
+    return @(
+        "$env:USERPROFILE\Downloads",
+        "$env:USERPROFILE\Desktop",
+        "$env:LOCALAPPDATA\Programs",
+        "$env:ProgramFiles",
+        "$env:ProgramFiles(x86)"
+    )
+}
+
+function Find-GodotExecutable {
+    $commandCandidates = @(
+        "godot4_console.exe",
+        "godot4.exe",
+        "godot_console.exe",
+        "godot.exe"
+    )
+
+    foreach ($commandName in $commandCandidates) {
+        $command = Get-Command $commandName -ErrorAction SilentlyContinue
+        if ($command -and $command.Path) {
+            return $command.Path
+        }
+    }
+
+    $nameCandidates = @(
+        "Godot_v4.6.1-stable_win64_console.exe",
+        "Godot_v4.6.1-stable_mono_win64_console.exe",
+        "Godot_v4.6.1-stable_win64.exe",
+        "Godot_v4.6.1-stable_mono_win64.exe",
+        "Godot_v4.3-stable_win64_console.exe",
+        "Godot_v4.3-stable_win64.exe"
+    )
+
+    foreach ($root in Get-GodotSearchRoots) {
+        if (-not (Test-Path $root)) {
+            continue
+        }
+
+        foreach ($candidateName in $nameCandidates) {
+            $match = Get-ChildItem -Path $root -Recurse -Depth 4 -File -Filter $candidateName -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($match) {
+                return $match.FullName
+            }
+        }
+
+        $fallback = Get-ChildItem -Path $root -Recurse -Depth 4 -File -Include *godot*console*.exe,*godot*.exe -ErrorAction SilentlyContinue |
+            Sort-Object FullName |
+            Select-Object -First 1
+        if ($fallback) {
+            return $fallback.FullName
+        }
+    }
+
+    return $null
+}
+
+function Resolve-GodotExecutable {
+    $candidate = Get-ConfiguredGodotPath
+    if (-not $candidate) {
+        $candidate = Find-GodotExecutable
+    }
+
+    if (-not $candidate) {
+        $pathFile = Get-RepoLocalGodotPathFile
+        throw @"
+Unable to locate a Godot executable.
+
+Fix one of these:
+1. Set WHAT_WE_FED_GODOT_EXE for the current shell.
+2. Write the full path to the executable into:
+   $pathFile
+3. Install or unpack Godot in a common local path such as Downloads or Program Files.
+"@
+    }
+
+    $resolved = Resolve-Path $candidate -ErrorAction Stop
+    return $resolved.Path
+}
+
+function Get-RepoLocalStatePath {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ChildPath
+    )
+
+    $repoRoot = Get-RepoRoot
+    $fullPath = Join-Path $repoRoot ".godot-cli\$ChildPath"
+    New-Item -ItemType Directory -Force -Path $fullPath | Out-Null
+    return $fullPath
+}
+
+function Set-GodotLocalEnvironment {
+    $env:APPDATA = Get-RepoLocalStatePath -ChildPath "AppData\Roaming"
+    $env:LOCALAPPDATA = Get-RepoLocalStatePath -ChildPath "AppData\Local"
+    $env:TEMP = Get-RepoLocalStatePath -ChildPath "Temp"
+    $env:TMP = $env:TEMP
+}
+
+function Get-DefaultLogFile {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ModeName
+    )
+
+    $logsDir = Get-RepoLocalStatePath -ChildPath "logs"
+    return Join-Path $logsDir ("godot-{0}.log" -f $ModeName)
+}
+
+function Invoke-Godot {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string[]]$Arguments
+    )
+
+    $godotExe = Resolve-GodotExecutable
+    $repoRoot = Get-RepoRoot
+
+    Set-GodotLocalEnvironment
+
+    Write-Host ("Using Godot: {0}" -f $godotExe)
+    Write-Host ("Project root: {0}" -f $repoRoot)
+
+    & $godotExe @Arguments
+    $exitCode = $LASTEXITCODE
+    if ($exitCode -ne 0) {
+        throw ("Godot exited with code {0}." -f $exitCode)
+    }
+}
+
+function Get-GodotLogErrors {
+    # Reads a Godot log file and returns error lines, filtering out known-safe
+    # warnings that appear in every clean headless run on Windows.
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$LogPath
+    )
+
+    if (-not (Test-Path $LogPath)) {
+        return @()
+    }
+
+    # These patterns appear in clean headless runs on Windows and are not real errors.
+    $safePatterns = @(
+        "Failed to read the root certificate store",
+        "ObjectDB instances leaked at exit"
+    )
+
+    $errors = [System.Collections.Generic.List[string]]::new()
+    $inErrorBlock = $false
+
+    foreach ($line in (Get-Content $LogPath -ErrorAction SilentlyContinue)) {
+        # Error-class prefixes that matter.
+        if ($line -match "^(ERROR|SCRIPT ERROR|USER ERROR|USER WARNING):" -or $line -match "^Parse Error:") {
+            $isSafe = $false
+            foreach ($safe in $safePatterns) {
+                if ($line -match [regex]::Escape($safe)) {
+                    $isSafe = $true
+                    break
+                }
+            }
+            if (-not $isSafe) {
+                $errors.Add($line)
+                $inErrorBlock = $true
+            } else {
+                $inErrorBlock = $false
+            }
+        } elseif ($inErrorBlock -and $line -match "^\s+at:") {
+            # Stack-trace context for the preceding error — keep it.
+            $errors.Add($line)
+        } else {
+            $inErrorBlock = $false
+        }
+    }
+
+    return $errors.ToArray()
+}
+
+switch ($Mode) {
+    "resolve" {
+        Write-Host (Resolve-GodotExecutable)
+    }
+    "editor" {
+        $args = @("--editor", "--path", (Get-RepoRoot), "--log-file", (Get-DefaultLogFile -ModeName "editor")) + $GodotArgs
+        Invoke-Godot -Arguments $args
+    }
+    "run" {
+        $args = @("--path", (Get-RepoRoot), "--log-file", (Get-DefaultLogFile -ModeName "run")) + $GodotArgs
+        Invoke-Godot -Arguments $args
+    }
+    "validate" {
+        $repoRoot = Get-RepoRoot
+
+        # Step 1: import pass — re-imports any new or changed assets.
+        # Uses the non-headless path so audio/texture importers have full access.
+        $importArgs = @("--path", $repoRoot, "--import", "--log-file", (Get-DefaultLogFile -ModeName "import"))
+        Invoke-Godot -Arguments $importArgs
+
+        # Step 2: headless smoke run — boots the project for one frame and quits.
+        # Catches autoload failures, parse errors, and missing-node crashes.
+        $validateLog = Get-DefaultLogFile -ModeName "validate"
+        $smokeArgs = @("--path", $repoRoot, "--headless", "--quit-after", "1", "--log-file", $validateLog) + $GodotArgs
+        Invoke-Godot -Arguments $smokeArgs
+
+        # Step 3: scan the smoke log for real errors.
+        # Godot exits 0 even on GDScript parse/runtime errors — log scan is the only
+        # reliable way to detect them from the outside.
+        $logErrors = Get-GodotLogErrors -LogPath $validateLog
+        if ($logErrors.Count -gt 0) {
+            Write-Host ""
+            Write-Host "VALIDATE FAILED — errors found in smoke log:" -ForegroundColor Red
+            foreach ($line in $logErrors) {
+                Write-Host ("  {0}" -f $line) -ForegroundColor Red
+            }
+            Write-Host ""
+            Write-Host ("Full log: {0}" -f $validateLog)
+            exit 1
+        }
+
+        Write-Host "VALIDATE OK" -ForegroundColor Green
+    }
+}

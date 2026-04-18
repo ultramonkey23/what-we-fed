@@ -28,7 +28,7 @@ static func _style_for_role(role: String) -> Dictionary:
 		"caption":
 			return {
 				"font": UI_FONT,
-				"size": 10,
+				"size": 11,
 				"color": Color(0.66, 0.62, 0.58, 0.80),
 				"outline_size": 1,
 				"outline_color": Color(0.03, 0.03, 0.04, 0.94)
@@ -36,7 +36,7 @@ static func _style_for_role(role: String) -> Dictionary:
 		"caption_strong":
 			return {
 				"font": UI_FONT,
-				"size": 11,
+				"size": 12,
 				"color": Color(0.76, 0.71, 0.64, 0.94),
 				"outline_size": 1,
 				"outline_color": Color(0.03, 0.03, 0.04, 0.96)
@@ -52,7 +52,7 @@ static func _style_for_role(role: String) -> Dictionary:
 		"secondary_value":
 			return {
 				"font": UI_FONT,
-				"size": 15,
+				"size": 16,
 				"color": Color(0.94, 0.91, 0.86, 1.0),
 				"outline_size": 1,
 				"outline_color": Color(0.02, 0.02, 0.03, 0.94)
@@ -120,7 +120,7 @@ static func _style_for_role(role: String) -> Dictionary:
 		"feedback":
 			return {
 				"font": DISPLAY_FONT,
-				"size": 22,
+				"size": 24,
 				"color": Color(0.98, 0.95, 0.88, 1.0),
 				"outline_size": 2,
 				"outline_color": Color(0.02, 0.02, 0.03, 0.98),

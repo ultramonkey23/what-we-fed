@@ -39,11 +39,25 @@ func on_screen_flash(color: Color, duration: float) -> void:
 
 
 func on_screen_shake(intensity: float, duration: float) -> void:
+	# Multi-step shake with a small Y component for dimensional feel.
+	# Heavier shakes (intensity >= 2.0) use three reversals instead of one.
 	var original_offset: Vector2 = _camera_2d.offset
-	var half_duration: float = duration * 0.5
 	var tween := _camera_2d.create_tween()
-	tween.tween_property(_camera_2d, "offset", original_offset + Vector2(intensity, 0.0), half_duration)
-	tween.tween_property(_camera_2d, "offset", original_offset - Vector2(intensity, 0.0), half_duration)
+	var y_factor: float = intensity * 0.28
+
+	if intensity >= 2.0:
+		var step: float = duration / 6.0
+		tween.tween_property(_camera_2d, "offset", original_offset + Vector2(intensity, y_factor), step)
+		tween.tween_property(_camera_2d, "offset", original_offset + Vector2(-intensity * 0.75, -y_factor * 0.6), step)
+		tween.tween_property(_camera_2d, "offset", original_offset + Vector2(intensity * 0.50, y_factor * 0.4), step)
+		tween.tween_property(_camera_2d, "offset", original_offset + Vector2(-intensity * 0.30, -y_factor * 0.2), step)
+		tween.tween_property(_camera_2d, "offset", original_offset, step * 2.0)
+	else:
+		var half: float = duration * 0.5
+		tween.tween_property(_camera_2d, "offset", original_offset + Vector2(intensity, y_factor), half)
+		tween.tween_property(_camera_2d, "offset", original_offset - Vector2(intensity * 0.5, y_factor * 0.4), half * 0.6)
+		tween.tween_property(_camera_2d, "offset", original_offset, half * 0.4)
+
 	tween.tween_callback(func() -> void:
 		_camera_2d.offset = original_offset
 	)
@@ -68,6 +82,14 @@ func highlight_timing_ring(lane: int, color: Color, width: float = 4.0) -> void:
 				continue
 			ring.default_color = color
 			ring.width = width if ring.name == "Good" else max(width - 1.0, 1.5)
+		elif child is Polygon2D and child.name == "ReceiverFill":
+			# Brief fill flash — conveys impact through the timing ring interior.
+			var fill := child as Polygon2D
+			var original_alpha: float = fill.color.a
+			var flash_color: Color = Color(color.r, color.g, color.b, 0.28)
+			fill.color = flash_color
+			var tween := fill.create_tween()
+			tween.tween_property(fill, "color:a", original_alpha, 0.22)
 
 
 func animate_timing_ring_press(lane: int) -> void:
@@ -152,12 +174,21 @@ func apply_impact_profile(profile: Dictionary, lane: int = -1, enemy_id: int = -
 	if enemy_id >= 0:
 		animate_enemy_damage(enemy_id, profile)
 		var burst_color: Color = profile.get("burst_color", Color(1.0, 0.55, 0.35, 0.32))
+		var b_scale: float = float(profile.get("burst_scale", 1.0))
 		spawn_enemy_impact_burst(
 			enemy_id,
 			burst_color,
-			float(profile.get("burst_scale", 1.0)),
+			b_scale,
 			float(profile.get("burst_lifetime", 0.14))
 		)
+		# For strong hits (burst_scale >= 1.3) spawn manga-style impact lines.
+		if b_scale >= 1.3:
+			var marker: ColorRect = _enemy_markers_by_id.get(enemy_id, null)
+			if marker != null and is_instance_valid(marker):
+				var impact_center: Vector2 = marker.position + marker.size * 0.5
+				var line_color: Color = Color(burst_color.r, burst_color.g, burst_color.b, burst_color.a * 0.55)
+				var line_count: int = 8 if b_scale >= 1.4 else 5
+				spawn_impact_lines(impact_center, line_color, line_count, 26.0, 0.13)
 
 	play_combat_sfx(String(profile.get("sfx_cue", "")))
 
@@ -202,26 +233,51 @@ func spawn_enemy_impact_burst(enemy_id: int, color: Color, burst_scale: float, l
 		return
 
 	var center: Vector2 = marker.position + marker.size * 0.5
+
+	# Spike star — 8 alternating long/short points for sharper manga-style impact reads.
 	var burst := Polygon2D.new()
 	burst.color = color
 	burst.position = center
-	burst.scale = Vector2(0.35, 0.35) * burst_scale
-	burst.polygon = PackedVector2Array([
-		Vector2(0.0, -18.0),
-		Vector2(8.0, -8.0),
-		Vector2(18.0, 0.0),
-		Vector2(8.0, 8.0),
-		Vector2(0.0, 18.0),
-		Vector2(-8.0, 8.0),
-		Vector2(-18.0, 0.0),
-		Vector2(-8.0, -8.0),
-	])
+	burst.scale = Vector2(0.32, 0.32) * burst_scale
+	var spike_points := PackedVector2Array()
+	for i in range(16):
+		var angle: float = (float(i) / 16.0) * TAU - PI * 0.5
+		var radius: float = 24.0 if i % 2 == 0 else 10.0
+		spike_points.append(Vector2(cos(angle) * radius, sin(angle) * radius))
+	burst.polygon = spike_points
 	_attack_fx_container.add_child(burst)
 
 	var tween := _attack_fx_container.create_tween()
-	tween.tween_property(burst, "scale", Vector2.ONE * burst_scale, 0.04)
+	tween.tween_property(burst, "scale", Vector2.ONE * burst_scale, 0.05)
 	tween.parallel().tween_property(burst, "modulate:a", 0.0, lifetime)
 	tween.tween_callback(func() -> void:
 		if is_instance_valid(burst):
 			burst.queue_free()
 	)
+
+
+func spawn_impact_lines(center: Vector2, color: Color, count: int, length: float, lifetime: float) -> void:
+	# Radial impact lines — manga-style concentrated force lines from the impact point.
+	# Used for strong hits (burst_scale >= 1.3) to convey force without particle clutter.
+	for i in range(count):
+		var angle: float = (float(i) / count) * TAU + randf_range(-0.28, 0.28)
+		var line := Polygon2D.new()
+		line.color = color
+		line.position = center
+		line.rotation = angle
+		var half_w: float = randf_range(0.6, 1.5)
+		var line_length: float = length * randf_range(0.55, 1.0)
+		var start_offset: float = 5.0
+		line.polygon = PackedVector2Array([
+			Vector2(start_offset, -half_w),
+			Vector2(line_length, -half_w * 0.25),
+			Vector2(line_length, half_w * 0.25),
+			Vector2(start_offset, half_w)
+		])
+		_attack_fx_container.add_child(line)
+		var tween := _attack_fx_container.create_tween()
+		tween.tween_property(line, "modulate:a", 0.0, lifetime * randf_range(0.65, 1.0))
+		tween.tween_callback(func() -> void:
+			if is_instance_valid(line):
+				line.queue_free()
+		)

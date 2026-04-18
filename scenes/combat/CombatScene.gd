@@ -33,8 +33,8 @@ const RING_PERFECT_RADIUS: float = 15.0
 const RING_POINT_COUNT: int = 32
 const LANE_BAND_HEIGHT: float = 36.0
 const LANE_IDLE_ALPHA: float = 0.0
-const LANE_THREAT_ALPHA: float = 0.026
-const LANE_CRITICAL_ALPHA: float = 0.060
+const LANE_THREAT_ALPHA: float = 0.054
+const LANE_CRITICAL_ALPHA: float = 0.112
 const EDGE_STATE_WIDTH: float = 0.016
 const RUN_GROWTH_SCRIPT_PATH: String = "res://systems/RunGrowth.gd"
 const ENEMY_LOW_HP_THRESHOLD: float = 0.25
@@ -299,12 +299,12 @@ func _update_timing_ring_proximity() -> void:
 
 		var base_color: Color = active_color if lane == player_combat.current_lane else inactive_color
 
-		var outer_color: Color = Color(base_color.r, base_color.g, base_color.b, base_color.a * 0.50)
-		var good_color: Color = Color(base_color.r, base_color.g, base_color.b, base_color.a * 0.18)
-		var perfect_color: Color = base_color.lightened(0.28)
-		var outer_width: float = 1.4
-		var good_width: float = 0.9
-		var perfect_width: float = 2.8
+		var outer_color: Color = Color(base_color.r, base_color.g, base_color.b, base_color.a * 0.56)
+		var good_color: Color = Color(base_color.r, base_color.g, base_color.b, base_color.a * 0.20)
+		var perfect_color: Color = base_color.lightened(0.32)
+		var outer_width: float = 1.8
+		var good_width: float = 1.0
+		var perfect_width: float = 3.6
 		var receiver_alpha: float = 0.10 if lane == player_combat.current_lane else 0.05
 		var receiver_glow_alpha: float = 0.0
 		var edge_alpha: float = 0.0
@@ -333,8 +333,8 @@ func _update_timing_ring_proximity() -> void:
 					# Projectile is inside the perfect ring - sharpen the inner receiver truth.
 					good_color = Color(active_color.r, active_color.g, active_color.b, 0.16)
 					perfect_color = active_color.lightened(0.45)
-					perfect_width = 3.4
-					receiver_alpha = 0.30
+					perfect_width = 4.4
+					receiver_alpha = 0.32
 					receiver_glow_alpha = 0.18
 					beat_color = active_color.lightened(0.44)
 
@@ -982,9 +982,11 @@ func _create_feedback_label() -> void:
 	_feedback_label.name = "FeedbackLabel"
 	_feedback_label.visible = false
 	_feedback_label.z_index = 90
-	_feedback_label.position = Vector2(500.0, 88.0)
-	_feedback_label.size = Vector2(260.0, 30.0)
+	_feedback_label.position = Vector2(494.0, 84.0)
+	_feedback_label.size = Vector2(272.0, 36.0)
+	_feedback_label.pivot_offset = Vector2(136.0, 18.0)
 	_apply_text_role(_feedback_label, "feedback", HORIZONTAL_ALIGNMENT_CENTER)
+	_feedback_label.add_theme_font_size_override("font_size", 26)
 	add_child(_feedback_label)
 
 
@@ -1398,10 +1400,21 @@ func _place_song_enemy(lane: int) -> void:
 
 	var biome: Dictionary = _active_encounter.get("biome", {})
 	var inactive_color: Color = biome.get("enemy_inactive_color", Color(0.38, 0.18, 0.18, 0.55))
-	var marker_half: float = 21.0  # standard non-boss marker: 42 * 0.5
+	var marker_size: float = 42.0
+	var marker_half: float = marker_size * 0.5
+	# Dark frame behind the marker gives enemies visual weight and separates them from the background.
+	var marker_frame := ColorRect.new()
+	marker_frame.size = Vector2(marker_size + 2.0, marker_size + 2.0)
+	marker_frame.position = Vector2(
+		lane_manager.get_enemy_x() - marker_half - 1.0,
+		lane_manager.get_lane_y(lane) - marker_half - 1.0
+	)
+	marker_frame.color = Color(0.0, 0.0, 0.0, 0.44)
+	_enemy_marker_container.add_child(marker_frame)
+
 	var enemy_marker := ColorRect.new()
 	enemy_marker.name = "Enemy_%d" % enemy_id
-	enemy_marker.size = Vector2(42.0, 42.0)
+	enemy_marker.size = Vector2(marker_size, marker_size)
 	enemy_marker.position = Vector2(
 		lane_manager.get_enemy_x() - marker_half,
 		lane_manager.get_lane_y(lane) - marker_half
@@ -1849,20 +1862,20 @@ func _draw_timing_circles() -> void:
 		var receiver_fill := _make_disc_polygon(RING_GOOD_RADIUS + 1.0, Color(base_color.r, base_color.g, base_color.b, fill_alpha))
 		receiver_fill.name = "ReceiverFill"
 
-		# Outer ring: thin boundary — marks the timing window without dominating.
-		var outer_ring := _make_ring_line(RING_OUTER_RADIUS, Color(base_color.r, base_color.g, base_color.b, base_color.a * 0.50), 1.4)
+		# Outer ring: boundary marker — slightly thicker for cleaner visibility.
+		var outer_ring := _make_ring_line(RING_OUTER_RADIUS, Color(base_color.r, base_color.g, base_color.b, base_color.a * 0.56), 1.8)
 		outer_ring.name = "Outer"
 
 		# Good ring: subtle mid-ring, guides the eye toward perfect without calling attention.
 		var good_ring := _make_ring_line(
 			RING_GOOD_RADIUS,
-			Color(base_color.r, base_color.g, base_color.b, base_color.a * 0.18),
-			0.9
+			Color(base_color.r, base_color.g, base_color.b, base_color.a * 0.20),
+			1.0
 		)
 		good_ring.name = "Good"
 
-		# Perfect ring: the focal point — thicker and brighter than the outer ring.
-		var perfect_ring := _make_ring_line(RING_PERFECT_RADIUS, base_color.lightened(0.28), 2.8)
+		# Perfect ring: the focal point — thicker and bright, the true target.
+		var perfect_ring := _make_ring_line(RING_PERFECT_RADIUS, base_color.lightened(0.32), 3.6)
 		perfect_ring.name = "Perfect"
 
 		var edge_ring := _make_ring_line(RING_OUTER_RADIUS + 4.0, Color(base_color.r, base_color.g, base_color.b, 0.0), 1.0)
@@ -2112,18 +2125,30 @@ func _setup_boss_hp_bar() -> void:
 
 
 func _show_boss_intro(boss_name: String) -> void:
-	EventBus.emit_signal("screen_flash", Color(0.62, 0.36, 0.06, 0.28), 0.30)
+	# First strike: flash + shake + all rings flare to threat color.
+	EventBus.emit_signal("screen_flash", Color(0.68, 0.32, 0.06, 0.34), 0.20)
+	EventBus.emit_signal("screen_shake", 2.2, 0.16)
+	for _intro_lane in range(3):
+		_presentation_runtime.highlight_timing_ring(_intro_lane, Color(0.92, 0.42, 0.12, 1.0), 6.2)
 
 	_title_card.text = boss_name
-	_title_card.modulate = Color(0.86, 0.62, 0.20, 1.0)
+	_title_card.modulate = Color(0.88, 0.52, 0.10, 0.0)
 	_title_card.visible = true
 
 	_subtitle_card.text = String(_active_encounter.get("boss_subtitle", "APEX OF THE HOLLOW"))
-	_subtitle_card.modulate = Color(0.72, 0.52, 0.28, 0.92)
+	_subtitle_card.modulate = Color(0.72, 0.52, 0.28, 0.0)
 	_subtitle_card.visible = true
 
 	var tween := create_tween()
-	tween.tween_interval(1.2)
+	# Title punches in quickly.
+	tween.tween_property(_title_card, "modulate:a", 1.0, 0.10)
+	tween.tween_interval(0.16)
+	# Second impact flash as subtitle reveals.
+	tween.tween_callback(func() -> void:
+		EventBus.emit_signal("screen_flash", Color(0.62, 0.24, 0.04, 0.20), 0.14)
+	)
+	tween.tween_property(_subtitle_card, "modulate:a", 0.80, 0.18)
+	tween.tween_interval(0.76)
 	tween.tween_property(_title_card, "modulate:a", 0.0, 0.42)
 	tween.parallel().tween_property(_subtitle_card, "modulate:a", 0.0, 0.42)
 	tween.tween_callback(func() -> void:
@@ -2134,6 +2159,27 @@ func _show_boss_intro(boss_name: String) -> void:
 	)
 
 	await tween.finished
+
+
+func _trigger_boss_threshold_spectacle() -> void:
+	# Fires once when boss HP crosses 50% — a second-act arrival moment.
+	# All rings flare to threat color, two pulse-flashes, and a strong shake.
+	for _thresh_lane in range(3):
+		_presentation_runtime.highlight_timing_ring(_thresh_lane, Color(0.94, 0.38, 0.08, 1.0), 7.2)
+
+	EventBus.emit_signal("screen_flash", Color(0.74, 0.28, 0.04, 0.34), 0.20)
+	EventBus.emit_signal("screen_shake", 2.4, 0.14)
+
+	var pulse_tween := create_tween()
+	pulse_tween.tween_interval(0.26)
+	pulse_tween.tween_callback(func() -> void:
+		EventBus.emit_signal("screen_flash", Color(0.80, 0.32, 0.04, 0.20), 0.16)
+		EventBus.emit_signal("screen_shake", 1.6, 0.10)
+	)
+	pulse_tween.tween_interval(0.22)
+	pulse_tween.tween_callback(func() -> void:
+		EventBus.emit_signal("screen_flash", Color(0.62, 0.22, 0.04, 0.12), 0.12)
+	)
 
 
 func _show_title_card(title_text: String, subtitle_text: String) -> void:
@@ -2161,12 +2207,13 @@ func _show_feedback(text: String, color: Color, lifetime: float = 0.38) -> void:
 	_feedback_label.text = text
 	_feedback_label.modulate = color
 	_feedback_label.visible = true
-	_feedback_label.scale = Vector2.ONE
+	# Punch-in: start enlarged and snap down — reads as impact authority, not decoration.
+	_feedback_label.scale = Vector2(1.32, 1.32)
 
 	var tween := create_tween()
-	tween.tween_property(_feedback_label, "scale", Vector2(1.10, 1.10), 0.07)
+	tween.tween_property(_feedback_label, "scale", Vector2.ONE, 0.10).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
 	tween.tween_interval(lifetime)
-	tween.tween_property(_feedback_label, "modulate:a", 0.0, 0.10)
+	tween.tween_property(_feedback_label, "modulate:a", 0.0, 0.13)
 	tween.tween_callback(func() -> void:
 		_feedback_label.visible = false
 		_feedback_label.modulate.a = 1.0
@@ -2872,6 +2919,7 @@ func _on_enemy_damaged(enemy_id: int, damage: float) -> void:
 			_boss_hp_threshold_fired = true
 			_show_feedback("SOVEREIGN UNLEASH", Color(0.92, 0.42, 0.12, 1.0), 0.70)
 			_presentation_runtime.apply_impact_profile(COMBAT_IMPACT_FEEDBACK.build_boss_threshold_profile())
+			_trigger_boss_threshold_spectacle()
 			# State 3: tightest cadence - 0.60 s cycle, 0.44 stagger. Projectiles cluster hard.
 			lane_manager.set_cycle_interval(0.60)
 			lane_manager.set_fire_stagger(0.44)
@@ -3052,6 +3100,7 @@ func _on_run_growth_changed(level: int, exp: float, exp_to_next: float) -> void:
 
 func _on_tendency_growth_resolved(tendency_id: String, title: String, summary: String) -> void:
 	_refresh_run_build_readout()
+	_presentation_runtime.apply_impact_profile(COMBAT_IMPACT_FEEDBACK.build_tendency_surge_profile(tendency_id))
 	var color: Color = Color(0.92, 0.86, 0.70, 1.0)
 	match tendency_id:
 		"aggression":

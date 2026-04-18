@@ -71,15 +71,15 @@ func get_tendency_summary() -> String:
 		var tendency_id: String = ordered_ids[i]
 		var tendency_level: int = int(tendency_levels.get(tendency_id, 0))
 		if tendency_level > 0:
-			tendency_tokens.append("[%s+%d]" % [_tendency_short_name(tendency_id), tendency_level])
+			tendency_tokens.append("%s %d" % [_tendency_short_name(tendency_id), tendency_level])
 
 	if not tendency_tokens.is_empty():
-		return " ".join(PackedStringArray(tendency_tokens))
+		return " | ".join(PackedStringArray(tendency_tokens))
 
 	var lead_id: String = _get_leading_tendency_id()
 	if lead_id.is_empty():
 		return "--"
-	return "[%s]" % _tendency_short_name(lead_id)
+	return _tendency_short_name(lead_id)
 
 
 func get_runtime_effect(effect_type: String) -> Dictionary:

@@ -35,6 +35,11 @@ const ROUTE_HEADER: String = "CHOOSE YOUR GROUND"
 const ROUTE_SUBTITLE: String = "Each ground changes how the hunger closes."
 const DNA_ROUTE_EXP_LABEL: String = "DNA->EXP"
 const DNA_ROUTE_BOND_LABEL: String = "DNA->BOND"
+const RUN_PREP_HEADER: String = "CARRY CHECK"
+const RUN_PREP_SUBTITLE: String = "What the hollow holds before the next leg."
+const RUN_PREP_CONTROLS: String = "SPACE / ENTER — continue  |  Q — DNA route (bond ↔ growth)"
+const RUN_PREP_NEXT_REGULAR: String = "Next: deeper song slice."
+const RUN_PREP_NEXT_BOSS: String = "Next: sovereign — full song."
 
 static func dna_status_line(current: float, threshold: float, locked: bool) -> String:
 	return "DNA  %.0f / %.0f  %s" % [current, threshold, "LOCKED" if locked else "READY"]

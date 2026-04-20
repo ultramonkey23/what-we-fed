@@ -43,6 +43,7 @@ const PERFORMANCE_REWARD_DIRECTOR_SCRIPT_PATH: String = "res://systems/Performan
 const RUN_STATS_SCRIPT_PATH: String = "res://systems/RunStats.gd"
 const COMBAT_PERFORMANCE_HUD_SCENE: PackedScene = preload("res://scenes/ui/CombatPerformanceHUD.tscn")
 const RUN_SPINE_SCENE: PackedScene = preload("res://scenes/ui/RunSpineScene.tscn")
+const PREDATION_POOL = preload("res://systems/PredationPool.gd")
 const ENEMY_LOW_HP_THRESHOLD: float = 0.25
 const SUPPORT_MASTERY_CONTEXT_TIMEOUT: float = 1.75
 const LIVE_REWARD_WINDOW: float = 10.0
@@ -143,6 +144,7 @@ var _upgrade_card_nodes: Array[ColorRect] = []
 var _upgrade_choice_labels: Array[Label] = []
 var _awaiting_upgrade_choice: bool = false
 var _pending_upgrades: Array[Dictionary] = []
+var _pending_predation: Array[Dictionary] = []
 
 var _run_spine_surface: Node = null
 # Legacy between-level overlay vars retained for non-song upgrade flow compatibility.
@@ -2752,6 +2754,8 @@ func _show_level_completion_rewards() -> void:
 	var advancing_to_boss: bool = _regular_level_index + 1 >= _regular_level_windows.size()
 	if _run_spine_surface != null and _run_spine_surface.has_method("present_level_completion"):
 		_run_spine_surface.call("present_level_completion", _pending_upgrades, _run_growth, advancing_to_boss)
+	if _pending_upgrades.is_empty():
+		_try_present_predation_after_run_spine()
 	_show_feedback("LEVEL COMPLETE", Color(0.85, 0.95, 0.75, 1.0), 0.60)
 	controls_label.text = ""
 
@@ -2767,6 +2771,8 @@ func _create_run_spine_surface() -> void:
 		_run_spine_surface.connect("upgrade_selected", Callable(self, "_on_run_spine_upgrade_selected"))
 	if _run_spine_surface.has_signal("continue_requested"):
 		_run_spine_surface.connect("continue_requested", Callable(self, "_on_run_spine_continue_requested"))
+	if _run_spine_surface.has_signal("predation_selected"):
+		_run_spine_surface.connect("predation_selected", Callable(self, "_on_run_spine_predation_selected"))
 
 
 func _is_run_spine_active() -> bool:
@@ -2792,6 +2798,29 @@ func _on_run_spine_upgrade_selected(index: int) -> void:
 
 	if _run_spine_surface != null and _run_spine_surface.has_method("notify_upgrade_committed"):
 		_run_spine_surface.call("notify_upgrade_committed", index)
+	_pending_upgrades.clear()
+	_try_present_predation_after_run_spine()
+
+
+func _try_present_predation_after_run_spine() -> void:
+	_pending_predation = PREDATION_POOL.build_offers(3)
+	if _pending_predation.is_empty():
+		return
+	if _run_spine_surface != null and is_instance_valid(_run_spine_surface) and _run_spine_surface.has_method("present_predation_pool"):
+		_run_spine_surface.call("present_predation_pool", _pending_predation)
+
+
+func _on_run_spine_predation_selected(index: int) -> void:
+	if index < 0 or index >= _pending_predation.size():
+		return
+	var choice: Dictionary = _pending_predation[index]
+	if not PREDATION_POOL.apply_choice(choice, _run_growth):
+		return
+	_refresh_run_build_readout()
+	_show_feedback("PREDATION TAKEN", Color(0.88, 0.62, 0.42, 1.0), 0.55)
+	_pending_predation.clear()
+	if _run_spine_surface != null and is_instance_valid(_run_spine_surface) and _run_spine_surface.has_method("notify_predation_committed"):
+		_run_spine_surface.call("notify_predation_committed", index)
 
 
 func _on_run_spine_continue_requested(advance_to_boss: bool) -> void:

@@ -1,6 +1,7 @@
 extends Node2D
 
 signal upgrade_selected(index: int)
+signal predation_selected(index: int)
 signal continue_requested(advance_to_boss: bool)
 
 const UI_STYLE = preload("res://systems/UIStyle.gd")
@@ -12,6 +13,8 @@ var _run_growth: Node = null
 var _advance_to_boss: bool = false
 var _awaiting_upgrade_choice: bool = false
 var _awaiting_continue: bool = false
+## evolution → optional predation → review (continue)
+var _shell_phase: String = "evolution"
 
 var _canvas: CanvasLayer = null
 var _panel: ColorRect = null
@@ -19,26 +22,60 @@ var _next_label: Label = null
 var _prep_scroll: ScrollContainer = null
 var _prep_body_label: Label = null
 var _state_hint_label: Label = null
+var _header_label: Label = null
+var _subtitle_label: Label = null
 var _choice_cards: Array[ColorRect] = []
 
 
 func _ready() -> void:
 	_build_ui()
 	visible = false
+	if _canvas != null:
+		_canvas.visible = false
 
 
 func present_level_completion(choices: Array[Dictionary], run_growth_ref: Node, advance_to_boss: bool) -> void:
+	_shell_phase = "evolution"
 	_choices.clear()
 	for choice in choices:
 		_choices.append(choice.duplicate(true))
 	_run_growth = run_growth_ref
 	_advance_to_boss = advance_to_boss
-	_awaiting_upgrade_choice = true
-	_awaiting_continue = false
+	_awaiting_upgrade_choice = not _choices.is_empty()
+	_awaiting_continue = _choices.is_empty()
+	_apply_shell_titles()
 	_refresh_cards()
 	_refresh_prep_body()
 	_refresh_hint()
+	if _canvas != null:
+		_canvas.visible = true
 	visible = true
+
+
+func present_predation_pool(offers: Array[Dictionary]) -> void:
+	if offers.is_empty():
+		return
+	_shell_phase = "predation"
+	_choices.clear()
+	for o in offers:
+		_choices.append(o.duplicate(true))
+	_awaiting_upgrade_choice = true
+	_awaiting_continue = false
+	_apply_shell_titles()
+	_refresh_cards()
+	_refresh_prep_body()
+	_refresh_hint()
+
+
+func notify_predation_committed(_selected_index: int) -> void:
+	_shell_phase = "review"
+	_awaiting_upgrade_choice = false
+	_awaiting_continue = true
+	_choices.clear()
+	_apply_shell_titles()
+	_refresh_cards()
+	_refresh_prep_body()
+	_refresh_hint()
 
 
 func notify_upgrade_committed(_selected_index: int) -> void:
@@ -50,6 +87,9 @@ func notify_upgrade_committed(_selected_index: int) -> void:
 
 func hide_surface() -> void:
 	visible = false
+	if _canvas != null:
+		_canvas.visible = false
+	_shell_phase = "evolution"
 	_awaiting_upgrade_choice = false
 	_awaiting_continue = false
 	_choices.clear()
@@ -89,7 +129,10 @@ func _unhandled_input(event: InputEvent) -> void:
 			KEY_3:
 				selected_index = 2
 		if selected_index >= 0 and selected_index < _choices.size():
-			emit_signal("upgrade_selected", selected_index)
+			if _shell_phase == "predation":
+				emit_signal("predation_selected", selected_index)
+			else:
+				emit_signal("upgrade_selected", selected_index)
 			get_viewport().set_input_as_handled()
 		return
 
@@ -120,19 +163,19 @@ func _build_ui() -> void:
 	UI_STYLE.apply_shell_style(_panel, "", "", Color(0.07, 0.05, 0.06, 0.98), Color(0.22, 0.16, 0.14, 0.94))
 	_canvas.add_child(_panel)
 
-	var header: Label = Label.new()
-	header.text = "LEVEL COMPLETE"
-	header.position = Vector2(0.0, 14.0)
-	header.size = Vector2(1112.0, 36.0)
-	UI_STYLE.apply_label(header, "heading", HORIZONTAL_ALIGNMENT_CENTER)
-	_panel.add_child(header)
+	_header_label = Label.new()
+	_header_label.text = PRESENTATION_TEXT.RUN_SPINE_LEVEL_HEADER
+	_header_label.position = Vector2(0.0, 14.0)
+	_header_label.size = Vector2(1112.0, 36.0)
+	UI_STYLE.apply_label(_header_label, "heading", HORIZONTAL_ALIGNMENT_CENTER)
+	_panel.add_child(_header_label)
 
-	var subtitle: Label = Label.new()
-	subtitle.text = "Choose one evolution and review the run before moving on."
-	subtitle.position = Vector2(0.0, 48.0)
-	subtitle.size = Vector2(1112.0, 22.0)
-	UI_STYLE.apply_label(subtitle, "screen_subtitle", HORIZONTAL_ALIGNMENT_CENTER)
-	_panel.add_child(subtitle)
+	_subtitle_label = Label.new()
+	_subtitle_label.text = PRESENTATION_TEXT.RUN_SPINE_LEVEL_SUBTITLE
+	_subtitle_label.position = Vector2(0.0, 48.0)
+	_subtitle_label.size = Vector2(1112.0, 22.0)
+	UI_STYLE.apply_label(_subtitle_label, "screen_subtitle", HORIZONTAL_ALIGNMENT_CENTER)
+	_panel.add_child(_subtitle_label)
 
 	_next_label = Label.new()
 	_next_label.position = Vector2(0.0, 72.0)
@@ -229,6 +272,21 @@ func _refresh_cards() -> void:
 			card.visible = false
 
 
+func _apply_shell_titles() -> void:
+	if _header_label == null or _subtitle_label == null:
+		return
+	match _shell_phase:
+		"predation":
+			_header_label.text = PRESENTATION_TEXT.RUN_SPINE_PREDATION_HEADER
+			_subtitle_label.text = PRESENTATION_TEXT.RUN_SPINE_PREDATION_SUBTITLE
+		"review":
+			_header_label.text = PRESENTATION_TEXT.RUN_SPINE_REVIEW_HEADER
+			_subtitle_label.text = PRESENTATION_TEXT.RUN_SPINE_REVIEW_SUBTITLE
+		_:
+			_header_label.text = PRESENTATION_TEXT.RUN_SPINE_LEVEL_HEADER
+			_subtitle_label.text = PRESENTATION_TEXT.RUN_SPINE_LEVEL_SUBTITLE
+
+
 func _refresh_hint() -> void:
 	_next_label.text = (
 		PRESENTATION_TEXT.RUN_PREP_NEXT_BOSS
@@ -236,9 +294,15 @@ func _refresh_hint() -> void:
 		else PRESENTATION_TEXT.RUN_PREP_NEXT_REGULAR
 	)
 	if _awaiting_upgrade_choice:
-		_state_hint_label.text = "1 / 2 / 3 - Select Evolution"
+		if _shell_phase == "predation":
+			_state_hint_label.text = PRESENTATION_TEXT.RUN_SPINE_PREDATION_CONTROLS
+		else:
+			_state_hint_label.text = PRESENTATION_TEXT.RUN_SPINE_EVOLUTION_CONTROLS
 		return
-	_state_hint_label.text = PRESENTATION_TEXT.RUN_PREP_CONTROLS
+	if _awaiting_continue:
+		_state_hint_label.text = PRESENTATION_TEXT.RUN_PREP_CONTROLS
+		return
+	_state_hint_label.text = ""
 
 
 func _refresh_prep_body() -> void:

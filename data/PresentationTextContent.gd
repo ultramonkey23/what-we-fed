@@ -40,6 +40,14 @@ const RUN_PREP_SUBTITLE: String = "What the hollow holds before the next leg."
 const RUN_PREP_CONTROLS: String = "SPACE / ENTER — continue  |  Q — DNA route (bond ↔ growth)"
 const RUN_PREP_NEXT_REGULAR: String = "Next: deeper song slice."
 const RUN_PREP_NEXT_BOSS: String = "Next: sovereign — full song."
+const RUN_SPINE_LEVEL_HEADER: String = "LEVEL COMPLETE"
+const RUN_SPINE_LEVEL_SUBTITLE: String = "Choose one evolution, then one predation feed if the hollow offers it."
+const RUN_SPINE_EVOLUTION_CONTROLS: String = "1 / 2 / 3 — select evolution"
+const RUN_SPINE_PREDATION_HEADER: String = "PREDATION POOL"
+const RUN_SPINE_PREDATION_SUBTITLE: String = "One compact feeding between legs of the run — DNA stays species-true."
+const RUN_SPINE_PREDATION_CONTROLS: String = "1 / 2 / 3 — commit predation  |  Q — DNA route (bond ↔ growth)"
+const RUN_SPINE_REVIEW_HEADER: String = "CARRY LOCKED"
+const RUN_SPINE_REVIEW_SUBTITLE: String = "Evolution and predation are set for this leg. Scroll the digest, then continue."
 
 static func dna_status_line(current: float, threshold: float, locked: bool) -> String:
 	return "DNA  %.0f / %.0f  %s" % [current, threshold, "LOCKED" if locked else "READY"]

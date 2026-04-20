@@ -197,6 +197,7 @@ func absorb_creature_type(creature_data: Dictionary) -> Dictionary:
 		var effect: Dictionary = active_entry.get("effect", {})
 		active_entry["current_charges"] = int(effect.get("charges", 0))
 		active_entry["feedback_fired"] = false
+		active_entry["source_species_id"] = String(creature_data.get("species_id", ""))
 		active_mutations.append(active_entry)
 
 	return entry
@@ -218,6 +219,22 @@ func consume_mutation_charge(mutation_id: String, amount: int = 1) -> void:
 			if charges > 0:
 				active_mutations[i]["current_charges"] = max(0, charges - amount)
 				return
+
+
+func restore_mutation_charges(mutation_id: String, amount: int) -> void:
+	if mutation_id.is_empty() or amount <= 0:
+		return
+	for i in range(active_mutations.size()):
+		if String(active_mutations[i].get("id", "")) != mutation_id:
+			continue
+		var effect: Dictionary = active_mutations[i].get("effect", {})
+		var cap: int = int(effect.get("charges", 0))
+		var cur: int = int(active_mutations[i].get("current_charges", 0))
+		var next_charges: int = cur + amount
+		if cap > 0:
+			next_charges = mini(next_charges, cap)
+		active_mutations[i]["current_charges"] = next_charges
+		return
 
 
 func set_mutation_flag(mutation_id: String, flag: String, value: bool) -> void:

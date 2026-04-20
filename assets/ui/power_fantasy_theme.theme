@@ -1,0 +1,27 @@
+[gd_resource type="Theme" script_class="Theme" load_steps=3 format=2]
+
+[ext_resource type="StyleBox" path="res://assets/ui/panels/power_panel_style.tres" id="power_panel_style"]
+[ext_resource type="StyleBox" path="res://assets/ui/panels/power_progress_style.tres" id="power_progress_style"]
+
+[sub_resource type="StyleBoxFlat" id="ProgressBar_background_style"]
+bg_color = Color(0.1, 0.1, 0.05, 0.9)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.3, 0.3, 0.2, 0.8)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[resource]
+Panel/styles/panel = ExtResource("power_panel_style")
+ProgressBar/styles/progress = ExtResource("power_progress_style")
+ProgressBar/styles/background = SubResource("ProgressBar_background_style")
+Label/colors/font_color = Color(0.95, 0.95, 0.95, 1)
+Label/colors/font_shadow_color = Color(0, 0, 0, 0.8)
+Label/constants/shadow_offset_x = 2
+Label/constants/shadow_offset_y = 2
+Label/constants/outline_size = 1
+Label/colors/font_outline_color = Color(0, 0, 0, 0.5)

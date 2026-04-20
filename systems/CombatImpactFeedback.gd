@@ -1,35 +1,47 @@
 extends RefCounted
 
 # Small impact/readability helper for CombatScene.
-# Keeps impact tuning in one place without inventing a full combat FX architecture.
+# Now uses centralized CombatFeelConstants for consistent feel across all systems.
+
+const COMBAT_FEEL_CONSTANTS = preload("res://data/CombatFeelConstants.gd")
 
 
-static func build_timed_attack_profile(quality: String, beat_quality: String) -> Dictionary:
+static func build_timed_attack_profile(quality: String, _beat_quality: String) -> Dictionary:
+	var base_flash: Dictionary = COMBAT_FEEL_CONSTANTS.get_screen_flash_params("light_damage")
+	var base_shake: Dictionary = COMBAT_FEEL_CONSTANTS.get_camera_shake_params("light_hit")
+	var base_hitstop: float = COMBAT_FEEL_CONSTANTS.get_hit_stop_duration("light_attack")
+	var base_impact: Dictionary = COMBAT_FEEL_CONSTANTS.get_impact_scaling("light_hit")
+	
 	var profile: Dictionary = {
-		"flash_color": Color(1.0, 0.80, 0.28, 0.07),
-		"flash_duration": 0.04,
-		"shake_intensity": 0.40,
-		"shake_duration": 0.04,
+		"flash_color": base_flash.get("color", Color(1.0, 0.80, 0.28, 0.07)),
+		"flash_duration": base_flash.get("duration", 0.04),
+		"shake_intensity": base_shake.get("intensity", 0.40),
+		"shake_duration": base_shake.get("duration", 0.04),
 		"hitstop_scale": 0.88,
-		"hitstop_duration": 0.04,
+		"hitstop_duration": base_hitstop,
 		"ring_width": 3.4,
 		"burst_color": Color(1.0, 0.86, 0.38, 0.54),
-		"burst_scale": 1.10,
+		"burst_scale": base_impact.get("scale_multiplier", 1.10),
 		"enemy_push": 8.0,
 		"enemy_scale": Vector2(1.16, 0.84),
 		"sfx_cue": "timed_hit"
 	}
 
 	if quality == "perfect":
-		profile["flash_color"] = Color(1.0, 0.88, 0.32, 0.13)
-		profile["flash_duration"] = 0.07
-		profile["shake_intensity"] = 0.95
-		profile["shake_duration"] = 0.07
+		var perfect_flash: Dictionary = COMBAT_FEEL_CONSTANTS.get_screen_flash_params("perfect_parry")
+		var perfect_shake: Dictionary = COMBAT_FEEL_CONSTANTS.get_camera_shake_params("perfect_parry")
+		var perfect_hitstop: float = COMBAT_FEEL_CONSTANTS.get_hit_stop_duration("perfect_parry")
+		var perfect_impact: Dictionary = COMBAT_FEEL_CONSTANTS.get_impact_scaling("critical_hit")
+		
+		profile["flash_color"] = perfect_flash.get("color", Color(1.0, 0.88, 0.32, 0.13))
+		profile["flash_duration"] = perfect_flash.get("duration", 0.07)
+		profile["shake_intensity"] = perfect_shake.get("intensity", 0.95)
+		profile["shake_duration"] = perfect_shake.get("duration", 0.07)
 		profile["hitstop_scale"] = 0.70
-		profile["hitstop_duration"] = 0.08
+		profile["hitstop_duration"] = perfect_hitstop
 		profile["ring_width"] = 5.4
 		profile["burst_color"] = Color(1.0, 0.92, 0.50, 0.70)
-		profile["burst_scale"] = 1.50
+		profile["burst_scale"] = perfect_impact.get("scale_multiplier", 1.50)
 		profile["enemy_push"] = 13.0
 		profile["enemy_scale"] = Vector2(1.26, 0.74)
 		profile["sfx_cue"] = "perfect_timed_hit"
@@ -37,7 +49,7 @@ static func build_timed_attack_profile(quality: String, beat_quality: String) ->
 	return profile
 
 
-static func build_parry_profile(quality: String, beat_quality: String) -> Dictionary:
+static func build_parry_profile(quality: String, _beat_quality: String) -> Dictionary:
 	var profile: Dictionary = {
 		"flash_color": Color(0.40, 0.90, 0.65, 0.08),
 		"flash_duration": 0.05,

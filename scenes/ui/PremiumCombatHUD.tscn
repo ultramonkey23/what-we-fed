@@ -1,0 +1,149 @@
+[gd_scene format=3 uid="uid://b8m7f5j2k3l2"]
+
+[ext_resource type="Script" path="res://scenes/ui/CombatPerformanceHUD.gd" id="1_script"]
+[ext_resource type="Theme" uid="uid://premium_ui_theme" path="res://assets/ui/premium_theme.theme" id="premium_theme"]
+
+[node name="PremiumCombatHUD" type="Control"]
+layout_mode = 3
+anchors_preset = 0
+theme = ExtResource("premium_theme")
+script = ExtResource("1_script")
+
+[node name="PerformancePanel" type="Panel" parent="."]
+unique_name_in_owner = true
+layout_mode = 0
+offset_right = 156.0
+offset_bottom = 60.0
+
+[node name="PanelStyle" type="StyleBoxFlat" parent="PerformancePanel"]
+bg_color = Color(0.06, 0.06, 0.06, 0.9)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0, 1, 1, 0.3)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+shadow_color = Color(0, 1, 1, 0.1)
+shadow_size = 4
+
+[node name="PerformanceContainer" type="VBoxContainer" parent="PerformancePanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_top = 6.0
+offset_right = -8.0
+offset_bottom = -6.0
+
+[node name="Caption" type="Label" parent="PerformancePanel/PerformanceContainer"]
+layout_mode = 2
+text = "PERFORMANCE"
+label_settings = SubResource("LabelSettings_cyan_header")
+
+[node name="ProgressLabel" type="Label" parent="PerformancePanel/PerformanceContainer"]
+layout_mode = 2
+text = "0x COMBO"
+label_settings = SubResource("LabelSettings_progress")
+
+[node name="StatusLabel" type="Label" parent="PerformancePanel/PerformanceContainer"]
+layout_mode = 2
+text = "FLOWING"
+label_settings = SubResource("LabelSettings_status")
+
+[node name="ClaimsLabel" type="Label" parent="PerformancePanel/PerformanceContainer"]
+layout_mode = 2
+text = "CLAIMS: 0"
+label_settings = SubResource("LabelSettings_claims")
+
+[node name="OfferPanel" type="Panel" parent="."]
+unique_name_in_owner = true
+layout_mode = 0
+offset_left = 164.0
+offset_right = 484.0
+offset_bottom = 80.0
+
+[node name="OfferPanelStyle" type="StyleBoxFlat" parent="OfferPanel"]
+bg_color = Color(0.06, 0.05, 0.06, 0.94)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(1, 0, 1, 0.3)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+shadow_color = Color(1, 0, 1, 0.1)
+shadow_size = 4
+
+[node name="OfferContainer" type="VBoxContainer" parent="OfferPanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 12.0
+offset_top = 8.0
+offset_right = -12.0
+offset_bottom = -8.0
+
+[node name="OfferTitleLabel" type="Label" parent="OfferPanel/OfferContainer"]
+layout_mode = 2
+text = "ASHCLAW APPEARS"
+label_settings = SubResource("LabelSettings_offer_title")
+
+[node name="OfferBodyLabel" type="Label" parent="OfferPanel/OfferContainer"]
+layout_mode = 2
+text = "Bond for support, or consume for power?"
+autowrap_mode = 3
+label_settings = SubResource("LabelSettings_offer_body")
+
+[node name="OfferHintLabel" type="Label" parent="OfferPanel/OfferContainer"]
+layout_mode = 2
+text = "[Q] Bond  [E] Consume"
+label_settings = SubResource("LabelSettings_offer_hint")
+
+[node name="OfferProgressBar" type="ProgressBar" parent="OfferPanel"]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -4.0
+offset_bottom = 0.0
+max_value = 1.0
+value = 0.5
+show_percentage = false
+tint_progress = Color(1, 0, 1, 0.8)
+
+[SubResource type="LabelSettings" id="LabelSettings_cyan_header"]
+font_size = 10
+font_color = Color(0, 1, 1, 1)
+
+[SubResource type="LabelSettings" id="LabelSettings_progress"]
+font_size = 14
+font_color = Color(1, 1, 1, 1)
+
+[SubResource type="LabelSettings" id="LabelSettings_status"]
+font_size = 12
+font_color = Color(0.8, 0.8, 0.8, 1)
+
+[SubResource type="LabelSettings" id="LabelSettings_claims"]
+font_size = 12
+font_color = Color(0.8, 0.8, 0.8, 1)
+
+[SubResource type="LabelSettings" id="LabelSettings_offer_title"]
+font_size = 14
+font_color = Color(1, 0, 1, 1)
+
+[SubResource type="LabelSettings" id="LabelSettings_offer_body"]
+font_size = 12
+font_color = Color(0.9, 0.9, 0.9, 1)
+
+[SubResource type="LabelSettings" id="LabelSettings_offer_hint"]
+font_size = 10
+font_color = Color(0.7, 0.7, 0.7, 1)
+italic = true

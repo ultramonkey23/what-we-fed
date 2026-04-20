@@ -1,0 +1,198 @@
+{
+  "frames": [
+    {
+      "filename": "ashclaw_teen_idle_001",
+      "frame": {"x": 0, "y": 0, "w": 96, "h": 96},
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {"x": 0, "y": 0, "w": 96, "h": 96},
+      "sourceSize": {"w": 96, "h": 96},
+      "duration": 125
+    },
+    {
+      "filename": "ashclaw_teen_idle_002",
+      "frame": {"x": 96, "y": 0, "w": 96, "h": 96},
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {"x": 0, "y": 0, "w": 96, "h": 96},
+      "sourceSize": {"w": 96, "h": 96},
+      "duration": 125
+    },
+    {
+      "filename": "ashclaw_teen_idle_003",
+      "frame": {"x": 192, "y": 0, "w": 96, "h": 96},
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {"x": 0, "y": 0, "w": 96, "h": 96},
+      "sourceSize": {"w": 96, "h": 96},
+      "duration": 125
+    },
+    {
+      "filename": "ashclaw_teen_idle_004",
+      "frame": {"x": 288, "y": 0, "w": 96, "h": 96},
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {"x": 0, "y": 0, "w": 96, "h": 96},
+      "sourceSize": {"w": 96, "h": 96},
+      "duration": 125
+    },
+    {
+      "filename": "ashclaw_teen_idle_005",
+      "frame": {"x": 384, "y": 0, "w": 96, "h": 96},
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {"x": 0, "y": 0, "w": 96, "h": 96},
+      "sourceSize": {"w": 96, "h": 96},
+      "duration": 125
+    },
+    {
+      "filename": "ashclaw_teen_idle_006",
+      "frame": {"x": 480, "y": 0, "w": 96, "h": 96},
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {"x": 0, "y": 0, "w": 96, "h": 96},
+      "sourceSize": {"w": 96, "h": 96},
+      "duration": 125
+    },
+    {
+      "filename": "ashclaw_teen_idle_007",
+      "frame": {"x": 576, "y": 0, "w": 96, "h": 96},
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {"x": 0, "y": 0, "w": 96, "h": 96},
+      "sourceSize": {"w": 96, "h": 96},
+      "duration": 125
+    },
+    {
+      "filename": "ashclaw_teen_idle_008",
+      "frame": {"x": 672, "y": 0, "w": 96, "h": 96},
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {"x": 0, "y": 0, "w": 96, "h": 96},
+      "sourceSize": {"w": 96, "h": 96},
+      "duration": 125
+    },
+    {
+      "filename": "ashclaw_teen_attack_001",
+      "frame": {"x": 768, "y": 0, "w": 96, "h": 96},
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {"x": 0, "y": 0, "w": 96, "h": 96},
+      "sourceSize": {"w": 96, "h": 96},
+      "duration": 83
+    },
+    {
+      "filename": "ashclaw_teen_attack_002",
+      "frame": {"x": 864, "y": 0, "w": 96, "h": 96},
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {"x": 0, "y": 0, "w": 96, "h": 96},
+      "sourceSize": {"w": 96, "h": 96},
+      "duration": 83
+    },
+    {
+      "filename": "ashclaw_teen_attack_003",
+      "frame": {"x": 960, "y": 0, "w": 96, "h": 96},
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {"x": 0, "y": 0, "w": 96, "h": 96},
+      "sourceSize": {"w": 96, "h": 96},
+      "duration": 83
+    },
+    {
+      "filename": "ashclaw_teen_attack_004",
+      "frame": {"x": 1056, "y": 0, "w": 96, "h": 96},
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {"x": 0, "y": 0, "w": 96, "h": 96},
+      "sourceSize": {"w": 96, "h": 96},
+      "duration": 83
+    },
+    {
+      "filename": "ashclaw_teen_attack_005",
+      "frame": {"x": 1152, "y": 0, "w": 96, "h": 96},
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {"x": 0, "y": 0, "w": 96, "h": 96},
+      "sourceSize": {"w": 96, "h": 96},
+      "duration": 83
+    },
+    {
+      "filename": "ashclaw_teen_attack_006",
+      "frame": {"x": 1248, "y": 0, "w": 96, "h": 96},
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {"x": 0, "y": 0, "w": 96, "h": 96},
+      "sourceSize": {"w": 96, "h": 96},
+      "duration": 83
+    },
+    {
+      "filename": "ashclaw_teen_support_001",
+      "frame": {"x": 1344, "y": 0, "w": 96, "h": 96},
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {"x": 0, "y": 0, "w": 96, "h": 96},
+      "sourceSize": {"w": 96, "h": 96},
+      "duration": 125
+    },
+    {
+      "filename": "ashclaw_teen_support_002",
+      "frame": {"x": 1440, "y": 0, "w": 96, "h": 96},
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {"x": 0, "y": 0, "w": 96, "h": 96},
+      "sourceSize": {"w": 96, "h": 96},
+      "duration": 125
+    },
+    {
+      "filename": "ashclaw_teen_support_003",
+      "frame": {"x": 1536, "y": 0, "w": 96, "h": 96},
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {"x": 0, "y": 0, "w": 96, "h": 96},
+      "sourceSize": {"w": 96, "h": 96},
+      "duration": 125
+    },
+    {
+      "filename": "ashclaw_teen_support_004",
+      "frame": {"x": 1632, "y": 0, "w": 96, "h": 96},
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {"x": 0, "y": 0, "w": 96, "h": 96},
+      "sourceSize": {"w": 96, "h": 96},
+      "duration": 125
+    }
+  ],
+  "meta": {
+    "app": "https://www.aseprite.org/",
+    "version": "1.3.1-x64",
+    "image": "intimidating_ashclaw_teen.png",
+    "format": "RGBA8888",
+    "size": {"w": 1728, "h": 96},
+    "scale": "1",
+    "layers": [
+      {
+        "name": "creature_base",
+        "opacity": 255,
+        "blendMode": "normal"
+      },
+      {
+        "name": "unstable_energy",
+        "opacity": 200,
+        "blendMode": "screen"
+      },
+      {
+        "name": "aggressive_eyes",
+        "opacity": 220,
+        "blendMode": "add"
+      },
+      {
+        "name": "overgrown_claws",
+        "opacity": 180,
+        "blendMode": "overlay"
+      }
+    ],
+    "tags": [],
+    "slices": []
+  }
+}

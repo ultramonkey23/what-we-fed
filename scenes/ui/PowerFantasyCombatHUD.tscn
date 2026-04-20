@@ -1,4 +1,4 @@
-[gd_scene load_steps=12 format=3 uid="uid://b8m7f5j2k3l3"]
+[gd_scene format=3 uid="uid://b8m7f5j2k3l3"]
 
 [ext_resource type="Script" path="res://scenes/ui/CombatPerformanceHUD.gd" id="1_script"]
 [ext_resource type="Theme" uid="uid://power_fantasy_ui_theme" path="res://assets/ui/power_fantasy_theme.theme" id="power_theme"]
@@ -16,6 +16,12 @@ layout_mode = 0
 offset_right = 200.0
 offset_bottom = 80.0
 material = SubResource("ShaderMaterial_energy_border")
+
+[node name="EnergyBorder" type="ShaderMaterial" parent="PerformancePanel"]
+shader = ExtResource("energy_shader")
+shader_parameter/energy_color = Color(0, 1, 1, 1)
+shader_parameter/energy_intensity = 1.0
+shader_parameter/pulse_speed = 2.0
 
 [node name="PanelStyle" type="StyleBoxFlat" parent="PerformancePanel"]
 bg_color = Color(0.05, 0.05, 0.05, 0.95)
@@ -69,6 +75,12 @@ offset_left = 220.0
 offset_right = 620.0
 offset_bottom = 120.0
 material = SubResource("ShaderMaterial_mutation_border")
+
+[node name="MutationBorder" type="ShaderMaterial" parent="OfferPanel"]
+shader = ExtResource("energy_shader")
+shader_parameter/energy_color = Color(1, 0, 1, 1)
+shader_parameter/energy_intensity = 1.2
+shader_parameter/pulse_speed = 1.5
 
 [node name="OfferPanelStyle" type="StyleBoxFlat" parent="OfferPanel"]
 bg_color = Color(0.05, 0.03, 0.05, 0.95)
@@ -133,6 +145,12 @@ anchor_bottom = 1.0
 offset_top = -60.0
 offset_bottom = 0.0
 material = SubResource("ShaderMaterial_ultimate_border")
+
+[node name="UltimateBorder" type="ShaderMaterial" parent="UltimateGauge"]
+shader = ExtResource("energy_shader")
+shader_parameter/energy_color = Color(1, 1, 0, 1)
+shader_parameter/energy_intensity = 1.5
+shader_parameter/pulse_speed = 1.0
 
 [node name="UltimateStyle" type="StyleBoxFlat" parent="UltimateGauge"]
 bg_color = Color(0.05, 0.05, 0.02, 0.95)

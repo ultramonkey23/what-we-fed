@@ -95,6 +95,7 @@ var _hp_value_label: Label = null
 var _exp_value_label: Label = null
 var _dna_route_label: Label = null
 var _dna_route_shell: ColorRect = null
+var _mutation_value_label: Label = null
 var _run_score_label: Label = null
 var _end_stats_label: Label = null
 var _dna_shell: ColorRect = null
@@ -363,7 +364,7 @@ func _setup_escalation_director() -> void:
 	_escalation_director.feedback_requested.connect(_on_escalation_feedback_requested)
 
 
-func _on_escalation_phase_changed(index: int, phase_data: Dictionary) -> void:
+func _on_escalation_phase_changed(index: int, _phase_data: Dictionary) -> void:
 	_enter_song_phase(index)
 
 
@@ -1278,6 +1279,17 @@ func _build_meter_shell() -> void:
 	_dna_route_label.add_theme_font_size_override("font_size", 16)
 	_dna_route_shell.add_child(_dna_route_label)
 
+	# Initialize mutation value label (for enhanced mutation system)
+	_mutation_value_label = Label.new()
+	_mutation_value_label.position = Vector2(0.0, 22.0)
+	_mutation_value_label.size = Vector2(COMBAT_FEEL_CONTENT.RIGHT_HUD_STACK_WIDTH, 18.0)
+	_mutation_value_label.text = ""
+	_apply_text_role(_mutation_value_label, "status_line", HORIZONTAL_ALIGNMENT_CENTER)
+	_mutation_value_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_mutation_value_label.add_theme_font_size_override("font_size", 14)
+	_mutation_value_label.visible = false
+	_dna_route_shell.add_child(_mutation_value_label)
+
 	var run_score_row := HBoxContainer.new()
 	run_score_row.alignment = BoxContainer.ALIGNMENT_END
 	_hud_top_right_container.add_child(run_score_row)
@@ -1871,7 +1883,7 @@ func _create_upgrade_overlay() -> void:
 
 
 func _create_live_reward_shell() -> void:
-	var live_reward_art: TextureRect = null
+	var _live_reward_art: TextureRect = null
 	_live_reward_shell = ColorRect.new()
 	_live_reward_shell.name = "LiveRewardShell"
 	_live_reward_shell.visible = false
@@ -4612,7 +4624,7 @@ func _build_support_mastery_context(effect_id: String, lane: int) -> Dictionary:
 
 
 func _on_bonded_support_triggered(species_id: String, lane: int, effect_id: String) -> void:
-	var support_role: Dictionary = COMBAT_CONTENT.get_support_role(species_id)
+	var _support_role: Dictionary = COMBAT_CONTENT.get_support_role(species_id)
 	var combo_mult: float = float(combat_meter.call("damage_multiplier"))
 	var active_creature: Dictionary = GameState.get_active_bonded_creature()
 	@warning_ignore("static_called_on_instance")

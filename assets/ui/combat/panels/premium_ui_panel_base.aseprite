@@ -1,0 +1,65 @@
+{
+  "frames": [
+    {
+      "frame": {
+        "x": 0,
+        "y": 0,
+        "w": 400,
+        "h": 200
+      },
+      "duration": 100,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 400,
+        "h": 200
+      },
+      "sourceSize": {
+        "w": 400,
+        "h": 200
+      }
+    }
+  ],
+  "meta": {
+    "app": "https://www.aseprite.org/",
+    "version": "1.3.1-x64",
+    "image": "premium_ui_panel_base.png",
+    "format": "RGBA8888",
+    "size": {
+      "w": 400,
+      "h": 200
+    },
+    "scale": "1",
+    "layers": [
+      {
+        "name": "background",
+        "opacity": 255,
+        "blendMode": "normal",
+        "cel": {
+          "frame": 0,
+          "image": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg=="
+        }
+      },
+      {
+        "name": "border",
+        "opacity": 255,
+        "blendMode": "normal",
+        "cel": {
+          "frame": 0,
+          "image": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg=="
+        }
+      },
+      {
+        "name": "glow",
+        "opacity": 128,
+        "blendMode": "screen",
+        "cel": {
+          "frame": 0,
+          "image": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg=="
+        }
+      }
+    ],
+    "tags": [],
+    "slices": []
+  }
+}

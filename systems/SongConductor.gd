@@ -136,7 +136,12 @@ func stop() -> void:
 func get_song_time() -> float:
 	if _stream_player == null or not is_instance_valid(_stream_player):
 		return 0.0
-	return _stream_player.get_playback_position() + AudioServer.get_time_since_last_mix()
+
+	var playback_position: float = _stream_player.get_playback_position()
+	if not _running or not _stream_player.playing:
+		return playback_position
+
+	return playback_position + AudioServer.get_time_since_last_mix()
 
 
 func get_song_duration() -> float:

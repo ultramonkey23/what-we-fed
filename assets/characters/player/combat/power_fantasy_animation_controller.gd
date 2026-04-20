@@ -140,7 +140,7 @@ func play_attack_heavy():
 	attack_animation.length = 0.6 # Longer for dramatic effect
 	
 	var track_index = attack_animation.add_track(Animation.TYPE_VALUE)
-	attack_animation.track_set_path(track_index, sprite_2d.get_path() + ":frame")
+	attack_animation.track_set_path(track_index, str(sprite_2d.get_path()) + ":frame")
 	
 	# Heavy attack with dramatic pauses
 	var frame_times = [0.0, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5]

@@ -1,8 +1,9 @@
-[gd_scene load_steps=12 format=3 uid="uid://b8m7f5j2k3l3"]
+[gd_scene load_steps=3 format=3 uid="uid://b8m7f5j2k3l4"]
 
-[ext_resource type="Script" path="res://scenes/ui/CombatPerformanceHUD.gd" id="1_script"]
-[ext_resource type="Theme" uid="uid://power_fantasy_ui_theme" path="res://assets/ui/power_fantasy_theme.theme" id="power_theme"]
-[ext_resource type="Shader" path="res://assets/ui/shaders/energy_border_shader.gdshader" id="energy_shader"]
+[ext_resource type="Script" uid="uid://dl824hd7lw5j1" path="res://scenes/ui/CombatPerformanceHUD.gd" id="1_script"]
+[ext_resource type="Theme" path="res://assets/ui/power_fantasy_theme.theme" id="power_theme"]
+[ext_resource type="Shader" uid="uid://c5m6wmsoe4qoq" path="res://assets/ui/shaders/energy_border_shader.gdshader" id="energy_shader"]
+
 
 [node name="PowerFantasyCombatHUD" type="Control"]
 layout_mode = 3

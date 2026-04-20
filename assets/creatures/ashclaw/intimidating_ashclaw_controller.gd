@@ -62,7 +62,7 @@ func setup_teen_threat():
 		ember_particles.amount = 60
 		ember_particles.lifetime = 1.5
 		# Unstable energy pattern
-		ember_particles.process_material.set("emission_shape", EmissionShape.EMISSION_SHAPE_SPHERE)
+		ember_particles.process_material.set("emission_shape", 0) # EMISSION_SHAPE_SPHERE
 	
 	if intimidation_aura:
 		intimidation_aura.amount = 45
@@ -82,7 +82,7 @@ func setup_adult_apex():
 		ember_particles.amount = 120
 		ember_particles.lifetime = 2.0
 		# Overwhelming ember field
-		ember_particles.process_material.set("emission_shape", EmissionShape.EMISSION_SHAPE_SPHERE)
+		ember_particles.process_material.set("emission_shape", 0) # EMISSION_SHAPE_SPHERE
 		ember_particles.process_material.set("emission_sphere_radius", 50.0)
 	
 	if intimidation_aura:
@@ -185,7 +185,7 @@ func show_coordination_signal(player_position: Vector2):
 	var player_node = get_tree().get_first_node_in_group("player")
 	if player_node:
 		# Create visual connection between Ashclaw and player
-		create_energy_link(player_position, global_position)
+		create_energy_link(player_position, position)
 		
 		# Both characters' energy fields pulse together
 		pulse_energy_fields()
@@ -250,7 +250,7 @@ func apply_environmental_damage(position: Vector2):
 	var damage_radius = 50.0 * environmental_damage
 	
 	# Find environmental objects in radius
-	var space_state = get_world_2d().direct_space_state
+	var space_state = get_world_2d(self).direct_space_state
 	var query = PhysicsShapeQueryParameters2D.new()
 	var circle_shape = CircleShape2D.new()
 	circle_shape.radius = damage_radius
@@ -289,7 +289,7 @@ func play_transformation_sequence():
 
 func create_transformation_particles():
 	var transform_particles = GPUParticles2D.new()
-	transform_particles.position = global_position
+	transform_particles.position = position
 	transform_particles.amount = 100
 	transform_particles.lifetime = 2.0
 	transform_particles.emitting = true

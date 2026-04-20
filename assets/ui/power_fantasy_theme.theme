@@ -1,4 +1,4 @@
-[gd_resource type="Theme" script_class="Theme" load_steps=3 format=2]
+[gd_resource type="Theme" script_class="Theme" load_steps=3 format=3]
 
 [ext_resource type="StyleBox" path="res://assets/ui/panels/power_panel_style.tres" id="power_panel_style"]
 [ext_resource type="StyleBox" path="res://assets/ui/panels/power_progress_style.tres" id="power_progress_style"]

@@ -178,16 +178,34 @@ func _build_creature_card(canvas: CanvasLayer, creature: Dictionary, index: int,
 
 	var desc: String = String(creature.get("description", ""))
 	if not desc.is_empty():
+		var desc_scroll := ScrollContainer.new()
+		desc_scroll.position = Vector2(348.0, 14.0)
+		desc_scroll.size = Vector2(456.0, 68.0)
+		desc_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+		desc_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+		desc_scroll.mouse_filter = Control.MOUSE_FILTER_STOP
+		card.add_child(desc_scroll)
+
 		var desc_label: Label = Label.new()
 		desc_label.text = desc
-		desc_label.position = Vector2(348.0, 14.0)
-		desc_label.size = Vector2(456.0, 68.0)
+		desc_label.position = Vector2.ZERO
 		desc_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		desc_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		UI_STYLE.apply_label(desc_label, "card_body")
-		card.add_child(desc_label)
+		desc_scroll.add_child(desc_label)
+		_reflow_lair_desc_scroll(desc_scroll, desc_label)
 
 	_creature_cards.append(card)
 	_card_accents.append(accent)
+
+
+func _reflow_lair_desc_scroll(scroll: ScrollContainer, label: Label) -> void:
+	if scroll == null or label == null:
+		return
+	var inner_w: float = maxf(1.0, scroll.size.x - 10.0)
+	label.custom_minimum_size.x = inner_w
+	var content_h: float = label.get_content_height()
+	label.custom_minimum_size.y = maxf(scroll.size.y, content_h)
 
 
 func _build_bottom_bar(canvas: CanvasLayer, lair: Array) -> void:

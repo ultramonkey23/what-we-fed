@@ -151,13 +151,22 @@ func _build_region_card(canvas: CanvasLayer, region: Dictionary, index: int, x: 
 	sep.position = Vector2(14.0, 112.0)
 	card.add_child(sep)
 
+	var flavor_scroll := ScrollContainer.new()
+	flavor_scroll.position = Vector2(14.0, 126.0)
+	flavor_scroll.size = Vector2(CARD_WIDTH - 28.0, 110.0)
+	flavor_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	flavor_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	flavor_scroll.mouse_filter = Control.MOUSE_FILTER_STOP
+	card.add_child(flavor_scroll)
+
 	var flavor_label: Label = Label.new()
 	flavor_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	flavor_label.text = String(region.get("flavor", ""))
-	flavor_label.position = Vector2(14.0, 126.0)
-	flavor_label.size = Vector2(CARD_WIDTH - 28.0, 110.0)
+	flavor_label.position = Vector2.ZERO
+	flavor_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	UI_STYLE.apply_label(flavor_label, "card_body")
-	card.add_child(flavor_label)
+	flavor_scroll.add_child(flavor_label)
+	_reflow_route_scroll(flavor_scroll, flavor_label)
 
 	var mod_bg: ColorRect = ColorRect.new()
 	mod_bg.color = Color(0.16, 0.10, 0.06, 1.0)
@@ -165,13 +174,22 @@ func _build_region_card(canvas: CanvasLayer, region: Dictionary, index: int, x: 
 	mod_bg.position = Vector2(14.0, CARD_HEIGHT - 88.0)
 	card.add_child(mod_bg)
 
+	var mod_scroll := ScrollContainer.new()
+	mod_scroll.position = Vector2(24.0, CARD_HEIGHT - 82.0)
+	mod_scroll.size = Vector2(CARD_WIDTH - 40.0, 64.0)
+	mod_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	mod_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	mod_scroll.mouse_filter = Control.MOUSE_FILTER_STOP
+	card.add_child(mod_scroll)
+
 	var mod_label: Label = Label.new()
 	mod_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	mod_label.text = String(region.get("modifier_label", ""))
-	mod_label.position = Vector2(24.0, CARD_HEIGHT - 82.0)
-	mod_label.size = Vector2(CARD_WIDTH - 40.0, 64.0)
+	mod_label.position = Vector2.ZERO
+	mod_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	UI_STYLE.apply_label(mod_label, "body")
-	card.add_child(mod_label)
+	mod_scroll.add_child(mod_label)
+	_reflow_route_scroll(mod_scroll, mod_label)
 
 	_region_cards.append(card)
 	_card_accents.append(accent)
@@ -185,6 +203,15 @@ func _build_bottom_bar(canvas: CanvasLayer) -> void:
 	hint.position = Vector2(0.0, 660.0)
 	UI_STYLE.apply_label(hint, "hint")
 	canvas.add_child(hint)
+
+
+func _reflow_route_scroll(scroll: ScrollContainer, label: Label) -> void:
+	if scroll == null or label == null:
+		return
+	var inner_w: float = maxf(1.0, scroll.size.x - 10.0)
+	label.custom_minimum_size.x = inner_w
+	var content_h: float = label.get_content_height()
+	label.custom_minimum_size.y = maxf(scroll.size.y, content_h)
 
 
 func _refresh_card_highlights() -> void:

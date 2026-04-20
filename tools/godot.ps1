@@ -1,5 +1,5 @@
 param(
-    [ValidateSet("run", "validate", "smoke", "editor", "resolve", "debug")]
+    [ValidateSet("run", "validate", "smoke", "editor", "resolve", "debug", "exec", "add-path")]
     [string]$Mode = "run",
     [Parameter(ValueFromRemainingArguments = $true)]
     [string[]]$GodotArgs
@@ -217,6 +217,47 @@ function Get-GodotLogErrors {
 }
 
 switch ($Mode) {
+    "add-path" {
+        # Put tools\bin on PATH (not tools\) so `godot` resolves to godot.cmd, not godot.ps1 (PowerShell prefers .ps1 in the same folder).
+        $toolsDir = (Resolve-Path $PSScriptRoot).Path
+        $binDir = (Resolve-Path (Join-Path $PSScriptRoot "bin")).Path
+        $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
+        $parts = @()
+        if (-not [string]::IsNullOrWhiteSpace($userPath)) {
+            $parts = $userPath.Split(";") | ForEach-Object { $_.Trim() } | Where-Object { $_ }
+        }
+        $out = [System.Collections.Generic.List[string]]::new()
+        $hadBin = $false
+        $removedLegacy = $false
+        foreach ($p in $parts) {
+            if ($p -ieq $toolsDir) {
+                $removedLegacy = $true
+                continue
+            }
+            if ($p -ieq $binDir) {
+                $hadBin = $true
+            }
+            $out.Add($p)
+        }
+        if (-not $hadBin) {
+            $out.Add($binDir)
+        }
+        $newPath = ($out | Where-Object { $_ }) -join ";"
+        [Environment]::SetEnvironmentVariable("Path", $newPath, "User")
+        Write-Host ("User PATH updated. Godot shim directory: {0}" -f $binDir) -ForegroundColor Green
+        if ($removedLegacy) {
+            Write-Host ("Removed legacy PATH entry: {0}" -f $toolsDir) -ForegroundColor DarkYellow
+        }
+        Write-Host "Open a new terminal, then run: godot --version"
+        exit 0
+    }
+    "exec" {
+        $godotExe = Resolve-GodotExecutable
+        Set-GodotLocalEnvironment
+        Write-Host ("Using Godot: {0}" -f $godotExe)
+        & $godotExe @GodotArgs
+        exit $LASTEXITCODE
+    }
     "resolve" {
         Write-Host (Resolve-GodotExecutable)
     }

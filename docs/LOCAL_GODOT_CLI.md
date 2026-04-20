@@ -22,3 +22,31 @@ $env:WHAT_WE_FED_GODOT_EXE = "C:\full\path\to\Godot_v4.6.1-stable_win64_console.
 2. Persistent for this checkout:
 
 Create `.godot-cli\godot_path.txt` and put the full executable path on line 1.
+
+## Use `godot` from any terminal (Windows)
+
+This repo ships `tools/bin/godot.cmd` (only `tools\bin` is added to `PATH`, not `tools\`, so PowerShell does not treat `godot.ps1` as the `godot` command).
+
+1. From repo root, run once (updates your **user** `PATH`):
+
+```bat
+add_tools_to_path.bat
+```
+
+Or:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File "tools\godot.ps1" add-path
+```
+
+2. **Close and reopen** your terminal (PATH is read at startup).
+
+3. Run Godot CLI as usual, for example:
+
+```bat
+godot --path "%CD%" --headless --quit-after 1
+```
+
+The shim runs `tools\godot.ps1 exec …`, which resolves the engine then passes your arguments through. Repo wrappers (`run_project.bat`, etc.) are unchanged.
+
+If you previously added the whole `tools` folder to `PATH` and `godot` fails with a `ValidateSet` error, remove that `tools` entry from **User** environment variables and run `add_tools_to_path.bat` again.

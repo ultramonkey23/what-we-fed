@@ -131,6 +131,9 @@ var _reward_bond_effect_label: Label = null
 var _reward_eat_effect_label: Label = null
 var _reward_creature_tag_label: Label = null
 var _reward_creature_portrait: TextureRect = null
+var _reward_body_scroll: ScrollContainer = null
+var _reward_bond_effect_scroll: ScrollContainer = null
+var _reward_eat_effect_scroll: ScrollContainer = null
 
 # ─── UPGRADE CHOICE ELEMENTS ─────────────────────────────────────────────────
 var _upgrade_overlay: ColorRect = null
@@ -1858,13 +1861,22 @@ func _create_reward_overlay() -> void:
 	_apply_text_role(_reward_title_label, "heading")
 	_reward_panel.add_child(_reward_title_label)
 
+	_reward_body_scroll = ScrollContainer.new()
+	_reward_body_scroll.name = "RewardBodyScroll"
+	_reward_body_scroll.position = Vector2(204.0, 98.0)
+	_reward_body_scroll.size = Vector2(250.0, 150.0)
+	_reward_body_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_reward_body_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	_reward_body_scroll.mouse_filter = Control.MOUSE_FILTER_STOP
+	_reward_panel.add_child(_reward_body_scroll)
+
 	_reward_body_label = Label.new()
 	_reward_body_label.name = "RewardBody"
-	_reward_body_label.position = Vector2(204.0, 98.0)
-	_reward_body_label.size = Vector2(250.0, 150.0)
+	_reward_body_label.position = Vector2.ZERO
 	_reward_body_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_reward_body_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_apply_text_role(_reward_body_label, "body")
-	_reward_panel.add_child(_reward_body_label)
+	_reward_body_scroll.add_child(_reward_body_label)
 
 	_reward_bond_card = ColorRect.new()
 	_reward_bond_card.name = "RewardBondCard"
@@ -1887,13 +1899,22 @@ func _create_reward_overlay() -> void:
 	_apply_text_role(_reward_bond_label, "bond_heading")
 	_reward_bond_card.add_child(_reward_bond_label)
 
+	_reward_bond_effect_scroll = ScrollContainer.new()
+	_reward_bond_effect_scroll.name = "RewardBondEffectScroll"
+	_reward_bond_effect_scroll.position = Vector2(18.0, 56.0)
+	_reward_bond_effect_scroll.size = Vector2(170.0, 154.0)
+	_reward_bond_effect_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_reward_bond_effect_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	_reward_bond_effect_scroll.mouse_filter = Control.MOUSE_FILTER_STOP
+	_reward_bond_card.add_child(_reward_bond_effect_scroll)
+
 	_reward_bond_effect_label = Label.new()
 	_reward_bond_effect_label.name = "RewardBondEffect"
-	_reward_bond_effect_label.position = Vector2(18.0, 56.0)
-	_reward_bond_effect_label.size = Vector2(170.0, 154.0)
+	_reward_bond_effect_label.position = Vector2.ZERO
 	_reward_bond_effect_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_reward_bond_effect_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_apply_text_role(_reward_bond_effect_label, "body")
-	_reward_bond_card.add_child(_reward_bond_effect_label)
+	_reward_bond_effect_scroll.add_child(_reward_bond_effect_label)
 
 	_reward_eat_card = ColorRect.new()
 	_reward_eat_card.name = "RewardEatCard"
@@ -1916,13 +1937,22 @@ func _create_reward_overlay() -> void:
 	_apply_text_role(_reward_eat_label, "eat_heading")
 	_reward_eat_card.add_child(_reward_eat_label)
 
+	_reward_eat_effect_scroll = ScrollContainer.new()
+	_reward_eat_effect_scroll.name = "RewardEatEffectScroll"
+	_reward_eat_effect_scroll.position = Vector2(18.0, 56.0)
+	_reward_eat_effect_scroll.size = Vector2(170.0, 154.0)
+	_reward_eat_effect_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_reward_eat_effect_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	_reward_eat_effect_scroll.mouse_filter = Control.MOUSE_FILTER_STOP
+	_reward_eat_card.add_child(_reward_eat_effect_scroll)
+
 	_reward_eat_effect_label = Label.new()
 	_reward_eat_effect_label.name = "RewardEatEffect"
-	_reward_eat_effect_label.position = Vector2(18.0, 56.0)
-	_reward_eat_effect_label.size = Vector2(170.0, 154.0)
+	_reward_eat_effect_label.position = Vector2.ZERO
 	_reward_eat_effect_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_reward_eat_effect_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_apply_text_role(_reward_eat_effect_label, "body")
-	_reward_eat_card.add_child(_reward_eat_effect_label)
+	_reward_eat_effect_scroll.add_child(_reward_eat_effect_label)
 
 	_reward_quig_label = Label.new()
 	_reward_quig_label.name = "RewardQuig"
@@ -1949,6 +1979,25 @@ func _create_reward_overlay() -> void:
 	_reward_hint_label.size = Vector2(860.0, 26.0)
 	_apply_text_role(_reward_hint_label, "hint")
 	_reward_panel.add_child(_reward_hint_label)
+
+
+func _schedule_reward_scroll_reflow() -> void:
+	call_deferred("_reflow_reward_scroll_labels")
+
+
+func _reflow_reward_scroll_labels() -> void:
+	_reflow_scroll_label_pair(_reward_body_scroll, _reward_body_label)
+	_reflow_scroll_label_pair(_reward_bond_effect_scroll, _reward_bond_effect_label)
+	_reflow_scroll_label_pair(_reward_eat_effect_scroll, _reward_eat_effect_label)
+
+
+func _reflow_scroll_label_pair(scroll: ScrollContainer, label: Label) -> void:
+	if scroll == null or label == null:
+		return
+	var inner_w: float = maxf(1.0, scroll.size.x - 10.0)
+	label.custom_minimum_size.x = inner_w
+	var content_h: float = label.get_content_height()
+	label.custom_minimum_size.y = maxf(scroll.size.y, content_h)
 
 
 func _create_upgrade_overlay() -> void:
@@ -3864,6 +3913,8 @@ func _offer_victory_reward(creature_data: Dictionary) -> void:
 		else:
 			_reward_creature_portrait.visible = false
 
+	_schedule_reward_scroll_reflow()
+
 
 func _hide_reward_overlay() -> void:
 	_reward_overlay.visible = false
@@ -3880,6 +3931,7 @@ func _hide_reward_overlay() -> void:
 	_reward_quig_label.text = ""
 	_reward_hint_label.text = ""
 	_refresh_quig_ui_state()
+	_schedule_reward_scroll_reflow()
 
 
 func _refresh_run_build_readout() -> void:
@@ -4014,6 +4066,7 @@ func _choose_bond() -> void:
 	_reward_eat_effect_label.text = ""
 	_reward_quig_label.text = PRESENTATION_TEXT.bond_result_quig(_bond_creature_name)
 	_refresh_quig_ui_state()
+	_schedule_reward_scroll_reflow()
 
 	if _song_reward_pending:
 		_resume_song_after_reward()
@@ -4099,6 +4152,7 @@ func _choose_eat() -> void:
 	_reward_quig_label.text = PRESENTATION_TEXT.eat_result_quig(_eat_creature_name)
 	_reward_hint_label.text = PRESENTATION_TEXT.REWARD_HINT_WAIT
 	_refresh_quig_ui_state()
+	_schedule_reward_scroll_reflow()
 
 	_refresh_run_build_readout()
 
@@ -4147,6 +4201,7 @@ func _pass_reward() -> void:
 	_reward_hint_label.text = PRESENTATION_TEXT.REWARD_HINT_WAIT
 	controls_label.text = ""
 	_refresh_quig_ui_state()
+	_schedule_reward_scroll_reflow()
 
 	if _song_reward_pending:
 		_show_feedback("REWARD PASSED", Color(0.76, 0.60, 0.42, 1.0), 0.24)

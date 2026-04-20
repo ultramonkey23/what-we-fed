@@ -32,6 +32,7 @@ smoke_project.bat
 validate_project.bat
 editor_project.bat
 resolve_godot.bat
+add_tools_to_path.bat
 ```
 
 What they do:
@@ -41,6 +42,7 @@ What they do:
 - `validate_project.bat`: import pass, then one-frame headless smoke validation
 - `editor_project.bat`: open the Godot editor against this repo
 - `resolve_godot.bat`: print the Godot executable path the repo-local wrapper will use
+- `add_tools_to_path.bat`: append `tools\bin\` to your **user** `PATH` so `godot` runs `tools\bin\godot.cmd` in new terminals (see [docs/LOCAL_GODOT_CLI.md](docs/LOCAL_GODOT_CLI.md))
 
 Wrapper behavior:
 - Uses `tools/godot.ps1`

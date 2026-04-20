@@ -35,15 +35,26 @@ func _init(
 
 
 func _get_enemy_marker_root(enemy_id: int) -> Node2D:
-	var marker: Node2D = _enemy_markers_by_id.get(enemy_id, null)
-	if marker == null or not is_instance_valid(marker):
+	var marker_data = _enemy_markers_by_id.get(enemy_id, null)
+	if marker_data == null:
 		return null
-	return marker
+	var root: Node2D = marker_data["root"]
+	if root == null or not is_instance_valid(root):
+		return null
+	return root
 
 
 func _get_enemy_marker_body(marker: Node2D) -> ColorRect:
 	if marker == null:
 		return null
+	
+	# Since we pass markers around, we might have the root node directly.
+	# But in our system, marker_data contains the pre-cached Body.
+	# We search for the ID to use the cache if possible.
+	for enemy_id in _enemy_markers_by_id:
+		if _enemy_markers_by_id[enemy_id]["root"] == marker:
+			return _enemy_markers_by_id[enemy_id]["body"]
+			
 	return marker.get_node_or_null("Body") as ColorRect
 
 

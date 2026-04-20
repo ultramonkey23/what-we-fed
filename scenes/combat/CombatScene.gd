@@ -116,8 +116,10 @@ var _feedback_backing: ColorRect = null
 var _title_card: Label = null
 var _subtitle_card: Label = null
 var _timing_circle_container: Node2D = null
+var _timing_rings_cache: Array[Dictionary] = []
 var _enemy_marker_container: Node2D = null
 var _lane_marker_container: Node2D = null
+var _texture_cache: Dictionary = {}
 var _attack_fx_container: Node2D = null
 var _meter_shell: ColorRect = null
 var _combo_shell: ColorRect = null
@@ -499,22 +501,17 @@ func _update_timing_ring_proximity() -> void:
 	# Pre-compute surge window fade factor once — used inside the per-lane loop.
 	var surge_wf: float = clamp(_surge_window_timer / 4.0, 0.0, 1.0) if _surge_window_timer > 0.0 else 0.0
 
-	for lane in range(3):
+	for lane in range(min(3, _timing_rings_cache.size())):
 		if _ring_highlight_timers[lane] > 0.0:
 			continue
 
-		var group: Node2D = _timing_circle_container.get_node_or_null("TimingRing_%d" % lane)
-		if group == null:
-			continue
-
-		var outer_ring: Line2D = group.get_node_or_null("Outer") as Line2D
-		var perfect_ring: Line2D = group.get_node_or_null("Perfect") as Line2D
-		var receiver_fill: Polygon2D = group.get_node_or_null("ReceiverFill") as Polygon2D
-		var receiver_glow: Polygon2D = group.get_node_or_null("ReceiverGlow") as Polygon2D
-		var edge_ring: Line2D = group.get_node_or_null("Edge") as Line2D
-		var beat_mark: Line2D = group.get_node_or_null("BeatMark") as Line2D
-		if outer_ring == null or perfect_ring == null or receiver_fill == null or receiver_glow == null or edge_ring == null or beat_mark == null:
-			continue
+		var cache: Dictionary = _timing_rings_cache[lane]
+		var outer_ring: Line2D = cache["outer"]
+		var perfect_ring: Line2D = cache["perfect"]
+		var receiver_fill: Polygon2D = cache["fill"]
+		var receiver_glow: Polygon2D = cache["glow"]
+		var edge_ring: Line2D = cache["edge"]
+		var beat_mark: Line2D = cache["beat"]
 
 		var base_color: Color = active_color if lane == player_combat.current_lane else inactive_color
 
@@ -2104,9 +2101,12 @@ func _place_song_enemy_data(lane: int, enemy_data: Dictionary) -> void:
 
 	var biome: Dictionary = _active_encounter.get("biome", {})
 	var inactive_color: Color = biome.get("enemy_inactive_color", Color(0.38, 0.18, 0.18, 0.55))
-	var enemy_marker: Node2D = _build_enemy_marker(enemy_id, lane, enemy, 42.0, inactive_color)
-	_enemy_marker_container.add_child(enemy_marker)
-	_enemy_markers_by_id[enemy_id] = enemy_marker
+	var marker_data: Dictionary = _build_enemy_marker(enemy_id, lane, enemy, 42.0, inactive_color)
+	
+	if _enemy_marker_container != null and is_instance_valid(_enemy_marker_container):
+		_enemy_marker_container.add_child(marker_data["root"])
+	
+	_enemy_markers_by_id[enemy_id] = marker_data
 
 	if not lane_manager.is_combat_running():
 		lane_manager.start_song_cycle()
@@ -2307,16 +2307,14 @@ func _update_boss_presence(delta: float) -> void:
 	var pulsed_color: Color = Color(base_color.r, base_color.g, base_color.b, pulse_alpha)
 
 	for enemy_id in _enemy_markers_by_id.keys():
-		var marker: Node2D = _enemy_markers_by_id[enemy_id]
-		if marker == null or not is_instance_valid(marker):
-			continue
+		var marker_data: Dictionary = _enemy_markers_by_id[enemy_id]
 		# Never override a status color.
 		if _status_marker_overrides.has(enemy_id):
 			continue
 		var enemy_phase: int = int(_enemy_phase_by_id.get(enemy_id, -1))
 		if enemy_phase == _current_phase_index:
-			var marker_body: ColorRect = marker.get_node_or_null("Body") as ColorRect
-			if marker_body != null:
+			var marker_body: ColorRect = marker_data["body"]
+			if marker_body != null and is_instance_valid(marker_body):
 				marker_body.color = pulsed_color
 
 
@@ -2358,6 +2356,7 @@ func _start_mini_run() -> void:
 
 	# Resets shared run state then launches in song mode.
 	GameState.run_number += 1
+	_texture_cache.clear()
 	_run_finished = false
 	_is_boss_encounter = false
 	_boss_total_hp = 0.0
@@ -2578,14 +2577,26 @@ func _build_arena_visuals() -> void:
 		_lane_marker_container.add_child(lane_focus)
 		_lane_hit_focus[lane] = lane_focus
 
+	# Clear and rebuild markers based on the current logical state.
+	# We also check _enemy_markers_by_id to see if any markers were already created
+	# (e.g., during a brief window where the container was null).
 	for enemy_id in _all_enemies_by_id.keys():
 		var enemy: Dictionary = _all_enemies_by_id[enemy_id]
 		var lane: int = int(enemy.get("lane", 0))
 
 		var marker_size: float = 64.0 if _is_boss_encounter else 42.0
-		var enemy_marker: Node2D = _build_enemy_marker(enemy_id, lane, enemy, marker_size, inactive_enemy_color)
-		_enemy_marker_container.add_child(enemy_marker)
-		_enemy_markers_by_id[enemy_id] = enemy_marker
+		var marker_data: Dictionary
+		
+		# If a marker was already built but not attached, reuse its root.
+		if _enemy_markers_by_id.has(enemy_id):
+			marker_data = _enemy_markers_by_id[enemy_id]
+			if marker_data["root"].get_parent() == null:
+				_enemy_marker_container.add_child(marker_data["root"])
+		else:
+			marker_data = _build_enemy_marker(enemy_id, lane, enemy, marker_size, inactive_enemy_color)
+			_enemy_marker_container.add_child(marker_data["root"])
+			_enemy_markers_by_id[enemy_id] = marker_data
+		
 		_enemy_max_hp[enemy_id] = float(enemy.get("hp", 1))
 
 	_refresh_enemy_marker_states()
@@ -2597,10 +2608,8 @@ func _refresh_enemy_marker_states() -> void:
 	var inactive_color: Color = biome.get("enemy_inactive_color", Color(0.38, 0.18, 0.18, 0.55))
 
 	for enemy_id in _enemy_markers_by_id.keys():
-		var marker: Node2D = _enemy_markers_by_id[enemy_id]
-		if marker == null or not is_instance_valid(marker):
-			continue
-		var marker_body: ColorRect = marker.get_node_or_null("Body") as ColorRect
+		var marker_data: Dictionary = _enemy_markers_by_id[enemy_id]
+		var marker_body: ColorRect = marker_data["body"]
 		if marker_body == null:
 			continue
 
@@ -2615,7 +2624,7 @@ func _refresh_enemy_marker_states() -> void:
 			marker_body.color = _status_marker_overrides[enemy_id]
 
 
-func _build_enemy_marker(enemy_id: int, lane: int, enemy: Dictionary, marker_size: float, base_color: Color) -> Node2D:
+func _build_enemy_marker(enemy_id: int, lane: int, enemy: Dictionary, marker_size: float, base_color: Color) -> Dictionary:
 	var telegraph_profile: Dictionary = COMBAT_CONTENT.get_enemy_telegraph_profile(enemy)
 	var marker_half: float = marker_size * 0.5
 	var marker_root := Node2D.new()
@@ -2668,9 +2677,15 @@ func _build_enemy_marker(enemy_id: int, lane: int, enemy: Dictionary, marker_siz
 	if not species_id.is_empty():
 		var sprite_path: String = COMBAT_CONTENT.get_creature_art_path(species_id, "battlefield")
 		if not sprite_path.is_empty():
-			var sprite := Sprite2D.new()
-			var tex: Texture2D = load(sprite_path)
+			var tex: Texture2D = null
+			if _texture_cache.has(sprite_path):
+				tex = _texture_cache[sprite_path]
+			else:
+				tex = load(sprite_path) as Texture2D
+				_texture_cache[sprite_path] = tex
+
 			if tex != null:
+				var sprite := Sprite2D.new()
 				sprite.texture = tex
 				sprite.name = "CreatureSilhouette"
 				# Desaturated, dark silhouette that fits the procedural frame.
@@ -2683,9 +2698,15 @@ func _build_enemy_marker(enemy_id: int, lane: int, enemy: Dictionary, marker_siz
 				sprite.position = Vector2(0.0, -2.0)
 				marker_root.add_child(sprite)
 				marker_root.move_child(sprite, 3) # Put it above the Core but below Accent/Sigil
-	
-	return marker_root
 
+	return {
+		"root": marker_root,
+		"body": body,
+		"core": core,
+		"edge": edge,
+		"accent": accent,
+		"sigil": sigil
+	}
 
 func _configure_enemy_marker_shape(accent: ColorRect, sigil: ColorRect, marker_size: float, family: String) -> void:
 	var half: float = marker_size * 0.5
@@ -2726,18 +2747,21 @@ func _configure_enemy_marker_shape(accent: ColorRect, sigil: ColorRect, marker_s
 
 func _update_enemy_marker_threat_states() -> void:
 	for enemy_id in _enemy_markers_by_id.keys():
-		var marker: Node2D = _enemy_markers_by_id[enemy_id]
-		if marker == null or not is_instance_valid(marker):
+		var marker_data: Dictionary = _enemy_markers_by_id[enemy_id]
+		var root: Node2D = marker_data["root"]
+		if root == null or not is_instance_valid(root):
 			continue
+		
 		var enemy: Dictionary = _all_enemies_by_id.get(enemy_id, {})
 		var lane: int = int(enemy.get("lane", -1))
 		if lane < 0:
 			continue
 		var telegraph_profile: Dictionary = COMBAT_CONTENT.get_enemy_telegraph_profile(enemy)
-		var edge: ColorRect = marker.get_node_or_null("Edge") as ColorRect
-		var accent: ColorRect = marker.get_node_or_null("Accent") as ColorRect
-		var sigil: ColorRect = marker.get_node_or_null("Sigil") as ColorRect
-		var core: ColorRect = marker.get_node_or_null("Core") as ColorRect
+		var edge: ColorRect = marker_data["edge"]
+		var accent: ColorRect = marker_data["accent"]
+		var sigil: ColorRect = marker_data["sigil"]
+		var core: ColorRect = marker_data["core"]
+		
 		if edge == null or accent == null or sigil == null or core == null:
 			continue
 
@@ -2761,6 +2785,7 @@ func _update_enemy_marker_threat_states() -> void:
 func _draw_timing_circles() -> void:
 	for child in _timing_circle_container.get_children():
 		child.queue_free()
+	_timing_rings_cache.clear()
 
 	var biome: Dictionary = _active_encounter.get("biome", {})
 	var active_color: Color = biome.get("ring_active_color", Color(1.0, 0.95, 0.55, 1.0))
@@ -2813,6 +2838,16 @@ func _draw_timing_circles() -> void:
 		lane_group.add_child(perfect_ring)
 		lane_group.add_child(beat_mark)
 		_timing_circle_container.add_child(lane_group)
+
+		_timing_rings_cache.append({
+			"root": lane_group,
+			"outer": outer_ring,
+			"perfect": perfect_ring,
+			"fill": receiver_fill,
+			"glow": receiver_glow,
+			"edge": edge_ring,
+			"beat": beat_mark
+		})
 
 
 func _make_ring_line(radius: float, color: Color, width: float) -> Line2D:
@@ -3697,10 +3732,10 @@ func _on_enemy_damaged(enemy_id: int, damage: float) -> void:
 		if max_hp > 0.0:
 			var current_hp: float = float(lane_manager.get_enemy(lane).get("hp", 0))
 			if current_hp / max_hp <= ENEMY_LOW_HP_THRESHOLD:
-				var marker: Node2D = _enemy_markers_by_id.get(enemy_id, null)
-				if marker != null and is_instance_valid(marker):
-					var marker_body: ColorRect = marker.get_node_or_null("Body") as ColorRect
-					if marker_body != null:
+				var marker_data = _enemy_markers_by_id.get(enemy_id, null)
+				if marker_data != null:
+					var marker_body: ColorRect = marker_data["body"]
+					if marker_body != null and is_instance_valid(marker_body):
 						marker_body.modulate = Color(0.90, 0.28, 0.28, 1.0)
 
 	# Decrement unified boss HP bar.
@@ -4281,8 +4316,8 @@ func _on_enemy_status_applied(lane: int, status_id: String) -> void:
 	var enemy_id: int = _get_enemy_id_for_lane(lane)
 	if enemy_id < 0:
 		return
-	var marker: Node2D = _enemy_markers_by_id.get(enemy_id, null)
-	if marker == null or not is_instance_valid(marker):
+	var marker_data = _enemy_markers_by_id.get(enemy_id, null)
+	if marker_data == null:
 		return
 
 	match status_id:
@@ -4301,8 +4336,8 @@ func _on_enemy_status_applied(lane: int, status_id: String) -> void:
 		_:
 			return
 
-	var marker_body: ColorRect = marker.get_node_or_null("Body") as ColorRect
-	if marker_body != null:
+	var marker_body: ColorRect = marker_data["body"]
+	if marker_body != null and is_instance_valid(marker_body):
 		marker_body.color = _status_marker_overrides[enemy_id]
 
 
@@ -4313,16 +4348,16 @@ func _on_enemy_status_cleared(lane: int) -> void:
 		return
 	_status_marker_overrides.erase(enemy_id)
 
-	var marker: Node2D = _enemy_markers_by_id.get(enemy_id, null)
-	if marker == null or not is_instance_valid(marker):
+	var marker_data = _enemy_markers_by_id.get(enemy_id, null)
+	if marker_data == null:
 		return
 
 	var biome: Dictionary = _active_encounter.get("biome", {})
 	var active_color: Color = biome.get("enemy_active_color", Color(0.76, 0.21, 0.21, 1.0))
 	var inactive_color: Color = biome.get("enemy_inactive_color", Color(0.38, 0.18, 0.18, 0.55))
 	var phase: int = int(_enemy_phase_by_id.get(enemy_id, -1))
-	var marker_body: ColorRect = marker.get_node_or_null("Body") as ColorRect
-	if marker_body != null:
+	var marker_body: ColorRect = marker_data["body"]
+	if marker_body != null and is_instance_valid(marker_body):
 		marker_body.color = active_color if phase == _current_phase_index else inactive_color
 
 
@@ -4362,7 +4397,8 @@ func _remove_enemy_marker(enemy_id: int) -> void:
 	if not _enemy_markers_by_id.has(enemy_id):
 		return
 
-	var marker: Node2D = _enemy_markers_by_id[enemy_id]
+	var marker_data: Dictionary = _enemy_markers_by_id[enemy_id]
+	var marker: Node2D = marker_data["root"]
 	if marker == null or not is_instance_valid(marker):
 		_enemy_markers_by_id.erase(enemy_id)
 		return

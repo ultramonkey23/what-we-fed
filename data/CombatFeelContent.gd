@@ -142,10 +142,25 @@ static func _texture_region_or_full(texture_path: String, atlas_region: Rect2) -
 		return Rect2()
 	return inter
 
-const RIGHT_HUD_STACK_X: float = 1172.0
-const RIGHT_HUD_STACK_WIDTH: float = 96.0
-const RIGHT_HUD_LABEL_X: float = 1180.0
-const RIGHT_HUD_VALUE_X: float = 1238.0
+## Combat HUD grid @ 1280×720: symmetric top corners, one right rail, bottom strip.
+const HUD_VIEWPORT_WIDTH: float = 1280.0
+const HUD_OUTER_MARGIN: float = 12.0
+const HUD_TOP_BAND_Y: float = 6.0
+const HUD_TOP_BAND_HEIGHT: float = 96.0
+const HUD_TOP_PANEL_WIDTH: float = 300.0
+const HUD_GAP_BELOW_TOP_BAND: float = 10.0
+const HUD_RIGHT_RAIL_WIDTH: float = 108.0
+const HUD_BOTTOM_STRIP_HEIGHT: float = 42.0
+const HUD_BOTTOM_OUTER_MARGIN: float = 10.0
+## Boss readout sits in the lane between top corner panels (not under them).
+const HUD_BOSS_BLOCK_WIDTH: float = 488.0
+const HUD_BOSS_BLOCK_X: float = (HUD_VIEWPORT_WIDTH - HUD_BOSS_BLOCK_WIDTH) * 0.5
+const HUD_BOSS_BLOCK_Y: float = HUD_TOP_BAND_Y + HUD_TOP_BAND_HEIGHT + 4.0
+
+const RIGHT_HUD_STACK_X: float = HUD_VIEWPORT_WIDTH - HUD_OUTER_MARGIN - HUD_RIGHT_RAIL_WIDTH
+const RIGHT_HUD_STACK_WIDTH: float = HUD_RIGHT_RAIL_WIDTH
+const RIGHT_HUD_LABEL_X: float = RIGHT_HUD_STACK_X + 8.0
+const RIGHT_HUD_VALUE_X: float = RIGHT_HUD_STACK_X + 56.0
 const RIGHT_HUD_ROW_WIDTH: float = 24.0
 const RIGHT_HUD_TEXT_WIDTH: float = 80.0
 

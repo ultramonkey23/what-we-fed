@@ -78,7 +78,8 @@ static func apply_shell_style(
 	texture_region: Rect2 = Rect2(),
 	texture_expand_margin: Vector4 = Vector4.ZERO,
 	shell_content_margin: Vector4 = Vector4.ZERO,
-	texture_modulate: Color = Color(0.0, 0.0, 0.0, 0.0)
+	texture_modulate: Color = Color(0.0, 0.0, 0.0, 0.0),
+	flat_transparent_center: bool = false
 ) -> void:
 	if control == null:
 		return
@@ -110,7 +111,15 @@ static func apply_shell_style(
 		return
 
 	var panel := StyleBoxFlat.new()
-	panel.bg_color = bg_color
+	if flat_transparent_center:
+		panel.bg_color = Color(0.0, 0.0, 0.0, 0.0)
+		panel.shadow_size = 0
+	else:
+		panel.bg_color = bg_color
+		if shadow_size > 0:
+			panel.shadow_color = shadow_color
+			panel.shadow_size = shadow_size
+			panel.shadow_offset = Vector2.ZERO
 	panel.corner_radius_top_left = corner_radius
 	panel.corner_radius_top_right = corner_radius
 	panel.corner_radius_bottom_left = corner_radius
@@ -120,14 +129,10 @@ static func apply_shell_style(
 	panel.border_width_right = border_width
 	panel.border_width_bottom = border_width
 	panel.border_color = border_color
-	if shadow_size > 0:
-		panel.shadow_color = shadow_color
-		panel.shadow_size = shadow_size
-		panel.shadow_offset = Vector2.ZERO
 	control.add_theme_stylebox_override("panel", panel)
 	control.add_theme_stylebox_override("background", panel)
 	if control is ColorRect:
-		(control as ColorRect).color = bg_color
+		(control as ColorRect).color = panel.bg_color
 
 
 static func apply_bar_style(
@@ -204,6 +209,7 @@ static func _stylebox_texture_from_source(
 	var panel_tex := StyleBoxTexture.new()
 	panel_tex.texture = source
 	panel_tex.modulate_color = modulate
+	panel_tex.draw_center = true
 	panel_tex.axis_stretch_horizontal = StyleBoxTexture.AXIS_STRETCH_MODE_STRETCH
 	panel_tex.axis_stretch_vertical = StyleBoxTexture.AXIS_STRETCH_MODE_STRETCH
 	if texture_region.size.x > 0.0 and texture_region.size.y > 0.0:
@@ -237,9 +243,16 @@ static func stylebox_texture_from_path(
 
 
 static func _load_texture(texture_path: String) -> Texture2D:
-	if texture_path.is_empty() or not ResourceLoader.exists(texture_path):
+	if texture_path.is_empty():
 		return null
-	return load(texture_path) as Texture2D
+	if ResourceLoader.exists(texture_path):
+		var loaded: Texture2D = load(texture_path) as Texture2D
+		if loaded != null:
+			return loaded
+	var abs_path: String = ProjectSettings.globalize_path(texture_path)
+	if FileAccess.file_exists(abs_path):
+		return ResourceLoader.load(texture_path, "", ResourceLoader.CACHE_MODE_REUSE) as Texture2D
+	return null
 
 
 static func _shell_palette_for_role(role: String) -> Dictionary:

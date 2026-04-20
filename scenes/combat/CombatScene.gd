@@ -940,7 +940,9 @@ func _setup_ui() -> void:
 	hp_bar.min_value = 0.0
 	hp_bar.max_value = GameState.player_max_hp
 	hp_bar.value = GameState.player_hp
-	hp_bar.custom_minimum_size = Vector2(240.0, 14.0)
+	var bar_w: float = COMBAT_FEEL_CONTENT.HUD_TOP_PANEL_WIDTH - 32.0
+	hp_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hp_bar.custom_minimum_size = Vector2(bar_w, 14.0)
 	hp_bar.show_percentage = false
 
 	var stamina_row := HBoxContainer.new()
@@ -953,11 +955,12 @@ func _setup_ui() -> void:
 	stamina_caption.add_theme_font_size_override("font_size", 14)
 	stamina_row.add_child(stamina_caption)
 
-	stamina_bar.reparent(_hud_top_left_container)
+	stamina_bar.reparent(stamina_row)
 	stamina_bar.min_value = 0.0
 	stamina_bar.max_value = 100.0
 	stamina_bar.value = 100.0
-	stamina_bar.custom_minimum_size = Vector2(240.0, 11.0)
+	stamina_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	stamina_bar.custom_minimum_size = Vector2(0.0, 11.0)
 	stamina_bar.show_percentage = false
 
 	ultimate_label.reparent(_hud_top_right_container)
@@ -997,87 +1000,155 @@ func _setup_ui() -> void:
 	_build_quig_anchor()
 	_build_dna_shell()
 	_build_song_hud()
+	var stats_row_node: Node = _hud_top_left_container.get_node_or_null("StatsRow")
+	if stats_row_node != null:
+		_hud_top_left_container.move_child(stats_row_node, _hud_top_left_container.get_child_count() - 1)
+
+
+func _hud_attach_combat_panel_art(panel: PanelContainer, texture_path: String, region: Rect2) -> void:
+	if texture_path.is_empty():
+		return
+	var existing: Node = panel.get_node_or_null("HudPanelArt")
+	if existing != null:
+		existing.queue_free()
+	var src: Texture2D = load(texture_path) as Texture2D
+	if src == null:
+		src = ResourceLoader.load(texture_path, "", ResourceLoader.CACHE_MODE_REUSE) as Texture2D
+	if src == null:
+		push_warning("CombatScene: could not load HUD panel texture: " + texture_path)
+		return
+	var art := TextureRect.new()
+	art.name = "HudPanelArt"
+	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	art.ignore_texture_size = true
+	art.stretch_mode = TextureRect.STRETCH_SCALE
+	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	art.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	art.anchor_left = 0.0
+	art.anchor_top = 0.0
+	art.anchor_right = 1.0
+	art.anchor_bottom = 1.0
+	art.offset_left = 0.0
+	art.offset_top = 0.0
+	art.offset_right = 0.0
+	art.offset_bottom = 0.0
+	if region.size.x > 0.0 and region.size.y > 0.0:
+		var atlas := AtlasTexture.new()
+		atlas.atlas = src
+		atlas.region = region
+		art.texture = atlas
+	else:
+		art.texture = src
+	panel.add_child(art)
+	panel.move_child(art, 0)
 
 
 func _build_hud_containers() -> void:
+	var hud_m: float = COMBAT_FEEL_CONTENT.HUD_OUTER_MARGIN
+	var hud_ty: float = COMBAT_FEEL_CONTENT.HUD_TOP_BAND_Y
+	var hud_th: float = COMBAT_FEEL_CONTENT.HUD_TOP_BAND_HEIGHT
+	var hud_tw: float = COMBAT_FEEL_CONTENT.HUD_TOP_PANEL_WIDTH
+	var hud_rw: float = COMBAT_FEEL_CONTENT.HUD_RIGHT_RAIL_WIDTH
 	# Top Left Stack
 	var tl_panel := PanelContainer.new()
 	tl_panel.name = "TopLeftPanel"
-	tl_panel.position = Vector2(8.0, 4.0)
-	tl_panel.size = Vector2(300.0, 108.0)
-	UI_STYLE.apply_shell_style(
-		tl_panel,
-		"hud_left",
-		COMBAT_FEEL_CONTENT.resolved_hud_top_left_panel_path(),
-		Color(),
-		Color(),
-		COMBAT_FEEL_CONTENT.hud_top_left_texture_region(),
-		COMBAT_FEEL_CONTENT.HUD_TOP_LEFT_NINE_SLICE,
-		COMBAT_FEEL_CONTENT.HUD_TOP_LEFT_CONTENT_MARGIN,
-		Color()
-	)
+	tl_panel.z_index = 40
+	tl_panel.position = Vector2(hud_m, hud_ty)
+	tl_panel.size = Vector2(hud_tw, hud_th)
+	tl_panel.custom_minimum_size = Vector2(hud_tw, hud_th)
+	var tl_tex: String = COMBAT_FEEL_CONTENT.resolved_hud_top_left_panel_path()
+	if tl_tex.is_empty():
+		UI_STYLE.apply_shell_style(tl_panel, "hud_left", "")
+	else:
+		UI_STYLE.apply_shell_style(
+			tl_panel,
+			"hud_left",
+			"",
+			Color(),
+			Color(),
+			Rect2(),
+			Vector4.ZERO,
+			Vector4.ZERO,
+			Color(),
+			true
+		)
+	_hud_attach_combat_panel_art(tl_panel, tl_tex, COMBAT_FEEL_CONTENT.hud_top_left_texture_region())
 	ui_layer.add_child(tl_panel)
 	
 	_hud_top_left_container = VBoxContainer.new()
 	_hud_top_left_container.name = "TopLeftVBox"
-	_hud_top_left_container.add_theme_constant_override("separation", 2)
-	_hud_top_left_container.add_theme_constant_override("margin_left", 12)
-	_hud_top_left_container.add_theme_constant_override("margin_top", 10)
+	_hud_top_left_container.add_theme_constant_override("separation", 3)
+	_hud_top_left_container.add_theme_constant_override("margin_left", 14)
+	_hud_top_left_container.add_theme_constant_override("margin_right", 12)
+	_hud_top_left_container.add_theme_constant_override("margin_top", 8)
+	_hud_top_left_container.add_theme_constant_override("margin_bottom", 6)
 	tl_panel.add_child(_hud_top_left_container)
 
 	# Top Right Stack (anchors only — explicit size fights anchor layout and can zero the panel)
 	var tr_panel := PanelContainer.new()
 	tr_panel.name = "TopRightPanel"
+	tr_panel.z_index = 40
 	tr_panel.anchor_left = 1.0
 	tr_panel.anchor_top = 0.0
 	tr_panel.anchor_right = 1.0
 	tr_panel.anchor_bottom = 0.0
-	tr_panel.offset_left = -212.0
-	tr_panel.offset_top = 4.0
-	tr_panel.offset_right = -8.0
-	tr_panel.offset_bottom = 92.0
-	UI_STYLE.apply_shell_style(
-		tr_panel,
-		"hud_right",
-		COMBAT_FEEL_CONTENT.resolved_hud_top_right_panel_path(),
-		Color(),
-		Color(),
-		COMBAT_FEEL_CONTENT.hud_top_right_texture_region(),
-		COMBAT_FEEL_CONTENT.HUD_TOP_RIGHT_NINE_SLICE,
-		COMBAT_FEEL_CONTENT.HUD_TOP_RIGHT_CONTENT_MARGIN,
-		Color()
-	)
+	tr_panel.offset_right = -hud_m
+	tr_panel.offset_left = -(hud_m + hud_tw)
+	tr_panel.offset_top = hud_ty
+	tr_panel.offset_bottom = hud_ty + hud_th
+	tr_panel.custom_minimum_size = Vector2(hud_tw, hud_th)
+	var tr_tex: String = COMBAT_FEEL_CONTENT.resolved_hud_top_right_panel_path()
+	if tr_tex.is_empty():
+		UI_STYLE.apply_shell_style(tr_panel, "hud_right", "")
+	else:
+		UI_STYLE.apply_shell_style(
+			tr_panel,
+			"hud_right",
+			"",
+			Color(),
+			Color(),
+			Rect2(),
+			Vector4.ZERO,
+			Vector4.ZERO,
+			Color(),
+			true
+		)
+	_hud_attach_combat_panel_art(tr_panel, tr_tex, COMBAT_FEEL_CONTENT.hud_top_right_texture_region())
 	ui_layer.add_child(tr_panel)
 
 	_hud_top_right_container = VBoxContainer.new()
 	_hud_top_right_container.name = "TopRightVBox"
-	_hud_top_right_container.add_theme_constant_override("separation", 0)
-	_hud_top_right_container.add_theme_constant_override("margin_right", 16)
+	_hud_top_right_container.add_theme_constant_override("separation", 2)
+	_hud_top_right_container.add_theme_constant_override("margin_left", 10)
+	_hud_top_right_container.add_theme_constant_override("margin_right", 14)
 	_hud_top_right_container.add_theme_constant_override("margin_top", 8)
+	_hud_top_right_container.add_theme_constant_override("margin_bottom", 6)
 	tr_panel.add_child(_hud_top_right_container)
 
 	_hud_right_stack = VBoxContainer.new()
 	_hud_right_stack.name = "RightStackContainer"
 	_hud_right_stack.anchor_left = 1.0
 	_hud_right_stack.anchor_right = 1.0
-	_hud_right_stack.offset_left = -120.0
-	_hud_right_stack.offset_top = 100.0
-	_hud_right_stack.offset_right = -24.0
-	_hud_right_stack.size = Vector2(COMBAT_FEEL_CONTENT.RIGHT_HUD_STACK_WIDTH, 500.0)
+	_hud_right_stack.offset_right = -hud_m
+	_hud_right_stack.offset_left = -(hud_m + hud_rw)
+	_hud_right_stack.offset_top = hud_ty + hud_th + COMBAT_FEEL_CONTENT.HUD_GAP_BELOW_TOP_BAND
+	_hud_right_stack.size = Vector2(hud_rw, 500.0)
 	_hud_right_stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_hud_right_stack.add_theme_constant_override("separation", 6)
+	_hud_right_stack.z_index = 36
 	ui_layer.add_child(_hud_right_stack)
 
 	var bottom_panel := PanelContainer.new()
 	bottom_panel.name = "BottomHudPanel"
+	bottom_panel.z_index = 40
 	bottom_panel.anchor_left = 0.0
 	bottom_panel.anchor_top = 1.0
 	bottom_panel.anchor_right = 1.0
 	bottom_panel.anchor_bottom = 1.0
-	bottom_panel.offset_left = 28.0
-	bottom_panel.offset_top = -52.0
-	bottom_panel.offset_right = -28.0
-	bottom_panel.offset_bottom = -8.0
+	bottom_panel.offset_left = hud_m
+	bottom_panel.offset_right = -hud_m
+	bottom_panel.offset_top = -(COMBAT_FEEL_CONTENT.HUD_BOTTOM_STRIP_HEIGHT + COMBAT_FEEL_CONTENT.HUD_BOTTOM_OUTER_MARGIN)
+	bottom_panel.offset_bottom = -COMBAT_FEEL_CONTENT.HUD_BOTTOM_OUTER_MARGIN
 	var bottom_tex: String = COMBAT_FEEL_CONTENT.resolved_hud_bottom_panel_path()
 	if bottom_tex.is_empty():
 		UI_STYLE.apply_shell_style(bottom_panel, "hud_accent")
@@ -1085,14 +1156,16 @@ func _build_hud_containers() -> void:
 		UI_STYLE.apply_shell_style(
 			bottom_panel,
 			"hud_left",
-			bottom_tex,
+			"",
 			Color(),
 			Color(),
-			COMBAT_FEEL_CONTENT.hud_bottom_texture_region(),
-			COMBAT_FEEL_CONTENT.HUD_BOTTOM_NINE_SLICE,
-			COMBAT_FEEL_CONTENT.HUD_BOTTOM_CONTENT_MARGIN,
-			Color()
+			Rect2(),
+			Vector4.ZERO,
+			Vector4.ZERO,
+			Color(),
+			true
 		)
+	_hud_attach_combat_panel_art(bottom_panel, bottom_tex, COMBAT_FEEL_CONTENT.hud_bottom_texture_region())
 	ui_layer.add_child(bottom_panel)
 
 	_hud_bottom_container = HBoxContainer.new()
@@ -1118,8 +1191,12 @@ func _build_meter_shell() -> void:
 
 	_resource_shell = ColorRect.new()
 	_resource_shell.name = "RightHudAccent"
-	_resource_shell.position = Vector2(1208.0, 12.0)
-	_resource_shell.size = Vector2(48.0, 16.0)
+	_resource_shell.z_index = 42
+	_resource_shell.position = Vector2(
+		COMBAT_FEEL_CONTENT.HUD_VIEWPORT_WIDTH - COMBAT_FEEL_CONTENT.HUD_OUTER_MARGIN - 52.0,
+		COMBAT_FEEL_CONTENT.HUD_TOP_BAND_Y + 6.0
+	)
+	_resource_shell.size = Vector2(44.0, 14.0)
 	UI_STYLE.apply_shell_style(_resource_shell, "hud_accent")
 	_resource_shell.color = Color(0.16, 0.10, 0.08, 0.12)
 	ui_layer.add_child(_resource_shell)
@@ -1233,10 +1310,10 @@ func _build_meter_shell() -> void:
 	_bond_value_label.visible = false
 	_run_build_shell.add_child(_bond_value_label)
 
-	# Top-left sub-container for secondary stats (EXP, Def, Atk)
+	# Top-left sub-container for secondary stats (EXP, Def, Atk) — moved to bottom of column in _setup_ui
 	var stats_row := HBoxContainer.new()
 	stats_row.name = "StatsRow"
-	stats_row.custom_minimum_size = Vector2(240.0, 20.0)
+	stats_row.custom_minimum_size = Vector2(COMBAT_FEEL_CONTENT.HUD_TOP_PANEL_WIDTH - 28.0, 18.0)
 	_hud_top_left_container.add_child(stats_row)
 
 	var exp_caption := Label.new()
@@ -1363,40 +1440,47 @@ func _build_meter_shell() -> void:
 	_bonded_creature_sprite.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 	add_child(_bonded_creature_sprite)
 
-	# Boss HP bar — centered between HUD shells, hidden until a boss encounter loads.
+	# Boss HP bar — centered between top corner panels, below top band (hidden until boss).
+	var boss_x: float = COMBAT_FEEL_CONTENT.HUD_BOSS_BLOCK_X
+	var boss_y: float = COMBAT_FEEL_CONTENT.HUD_BOSS_BLOCK_Y
+	var boss_w: float = COMBAT_FEEL_CONTENT.HUD_BOSS_BLOCK_WIDTH
 	_boss_hp_shell = ColorRect.new()
 	_boss_hp_shell.name = "BossHpShell"
-	_boss_hp_shell.position = Vector2(396.0, 8.0)
-	_boss_hp_shell.size = Vector2(488.0, 48.0)
+	_boss_hp_shell.position = Vector2(boss_x, boss_y)
+	_boss_hp_shell.size = Vector2(boss_w, 48.0)
+	_boss_hp_shell.z_index = 38
 	UI_STYLE.apply_shell_style(_boss_hp_shell, "boss_shell")
 	_boss_hp_shell.visible = false
 	ui_layer.add_child(_boss_hp_shell)
 
 	_boss_name_label = Label.new()
 	_boss_name_label.name = "BossNameLabel"
-	_boss_name_label.position = Vector2(410.0, 8.0)
-	_boss_name_label.size = Vector2(460.0, 22.0)
+	_boss_name_label.position = Vector2(boss_x + 14.0, boss_y + 2.0)
+	_boss_name_label.size = Vector2(boss_w - 28.0, 22.0)
 	_boss_name_label.text = ""
 	_apply_text_role(_boss_name_label, "boss", HORIZONTAL_ALIGNMENT_CENTER)
 	_boss_name_label.add_theme_font_size_override("font_size", 26)
+	_boss_name_label.z_index = 38
 	_boss_name_label.visible = false
 	ui_layer.add_child(_boss_name_label)
 
 	_boss_state_label = Label.new()
 	_boss_state_label.name = "BossStateLabel"
-	_boss_state_label.position = Vector2(410.0, 26.0)
-	_boss_state_label.size = Vector2(460.0, 14.0)
+	_boss_state_label.position = Vector2(boss_x + 14.0, boss_y + 22.0)
+	_boss_state_label.size = Vector2(boss_w - 28.0, 14.0)
 	_boss_state_label.text = ""
 	_apply_text_role(_boss_state_label, "body", HORIZONTAL_ALIGNMENT_CENTER)
 	_boss_state_label.add_theme_font_size_override("font_size", 14)
 	_boss_state_label.add_theme_color_override("font_color", Color(0.82, 0.72, 0.58, 0.96))
+	_boss_state_label.z_index = 38
 	_boss_state_label.visible = false
 	ui_layer.add_child(_boss_state_label)
 
 	_boss_hp_bar = ProgressBar.new()
 	_boss_hp_bar.name = "BossHpBar"
-	_boss_hp_bar.position = Vector2(410.0, 38.0)
-	_boss_hp_bar.size = Vector2(460.0, 14.0)
+	_boss_hp_bar.position = Vector2(boss_x + 14.0, boss_y + 36.0)
+	_boss_hp_bar.size = Vector2(boss_w - 28.0, 12.0)
+	_boss_hp_bar.z_index = 38
 	_boss_hp_bar.min_value = 0.0
 	_boss_hp_bar.max_value = 100.0
 	_boss_hp_bar.value = 100.0
@@ -1530,23 +1614,27 @@ func _build_strip_sprite(
 
 
 func _build_song_hud() -> void:
-	# Song phase label — top-center, dim.
+	var hud_m: float = COMBAT_FEEL_CONTENT.HUD_OUTER_MARGIN
+	var hud_ty: float = COMBAT_FEEL_CONTENT.HUD_TOP_BAND_Y
+	# Song phase label — top-center, dim (above corner art).
 	_song_phase_label = Label.new()
 	_song_phase_label.name = "SongPhaseLabel"
 	_song_phase_label.text = ""
 	_apply_text_role(_song_phase_label, "dim", HORIZONTAL_ALIGNMENT_CENTER)
 	_song_phase_label.size = Vector2(300.0, 18.0)
-	_song_phase_label.position = Vector2(490.0, 12.0)
+	_song_phase_label.position = Vector2((COMBAT_FEEL_CONTENT.HUD_VIEWPORT_WIDTH - 300.0) * 0.5, hud_ty + 4.0)
+	_song_phase_label.z_index = 45
 	_song_phase_label.visible = false
 	ui_layer.add_child(_song_phase_label)
 
-	# Song timer label — top-right corner, shows seconds remaining.
+	# Song timer label — upper-right, aligned with top band (above corner panels).
 	_song_timer_label = Label.new()
 	_song_timer_label.name = "SongTimerLabel"
 	_song_timer_label.text = ""
 	_apply_text_role(_song_timer_label, "secondary_value", HORIZONTAL_ALIGNMENT_RIGHT)
-	_song_timer_label.size = Vector2(46.0, 18.0)
-	_song_timer_label.position = Vector2(1216.0, 56.0)
+	_song_timer_label.size = Vector2(52.0, 18.0)
+	_song_timer_label.position = Vector2(COMBAT_FEEL_CONTENT.HUD_VIEWPORT_WIDTH - hud_m - 56.0, hud_ty + 26.0)
+	_song_timer_label.z_index = 45
 	_song_timer_label.visible = false
 	ui_layer.add_child(_song_timer_label)
 
@@ -1956,6 +2044,7 @@ func _create_live_reward_shell() -> void:
 	_live_reward_shell = PanelContainer.new()
 	_live_reward_shell.name = "LiveRewardShell"
 	_live_reward_shell.visible = false
+	_live_reward_shell.z_index = 38
 	_live_reward_shell.anchor_left = 1.0
 	_live_reward_shell.anchor_top = 1.0
 	_live_reward_shell.anchor_right = 1.0
@@ -1972,14 +2061,16 @@ func _create_live_reward_shell() -> void:
 		UI_STYLE.apply_shell_style(
 			_live_reward_shell,
 			"live_reward",
-			reward_tex,
+			"",
 			Color(),
 			Color(),
-			COMBAT_FEEL_CONTENT.hud_reward_texture_region(),
-			COMBAT_FEEL_CONTENT.HUD_REWARD_NINE_SLICE,
-			COMBAT_FEEL_CONTENT.HUD_REWARD_CONTENT_MARGIN,
-			Color()
+			Rect2(),
+			Vector4.ZERO,
+			Vector4.ZERO,
+			Color(),
+			true
 		)
+	_hud_attach_combat_panel_art(_live_reward_shell, reward_tex, COMBAT_FEEL_CONTENT.hud_reward_texture_region())
 	ui_layer.add_child(_live_reward_shell)
 
 	var reward_body := VBoxContainer.new()

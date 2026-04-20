@@ -330,6 +330,24 @@ const CREATURES := {
 	}
 }
 
+const ESCALATION_PROFILES := {
+	"surge": {
+		"cycle_interval": 0.72,
+		"fire_stagger": 0.18,
+		"desc": "Aggressive, fast, high pressure."
+	},
+	"bulwark": {
+		"cycle_interval": 1.18,
+		"fire_stagger": 0.38,
+		"desc": "Defensive, slow, more time to read."
+	},
+	"cascade": {
+		"cycle_interval": 0.92,
+		"fire_stagger": 0.26,
+		"desc": "Rising, wave-like escalation."
+	}
+}
+
 const ENCOUNTER_GRADES := {
 	"brood": {
 		"label": "BROOD",
@@ -548,29 +566,30 @@ const CREATURE_ENCOUNTER_PROFILES := {
 }
 
 const ENCOUNTERS := {
-	"feeding_hollow_01": {
-		"id": "feeding_hollow_01",
-		"title": "First Hunger",
-		"biome": BIOME_FEEDING_HOLLOW,
-		"reward_creature_pool": [CREATURES["ashclaw"], CREATURES["gruvek"], CREATURES["gorefane"]],
-		"phase_intro_texts": [
-			"Something stirs above.",
-			"It learns your rhythm.",
-			"The hunger reveals itself."
-		],
-		"phases": [
-			[
-				{"id": 0, "type": "dreg", "hp": 28.0, "damage": 7.0, "lane": 0}
-			],
-			[
-				{"id": 1, "type": "dreg", "hp": 32.0, "damage": 8.0, "lane": 1}
-			],
-			[
-				{"id": 2, "type": "bond_reaper", "hp": 58.0, "damage": 13.0, "lane": 2}
-			]
-		]
-	},
-	"feeding_hollow_02": {
+   "feeding_hollow_01": {
+	   "id": "feeding_hollow_01",
+	   "title": "First Hunger",
+	   "biome": BIOME_FEEDING_HOLLOW,
+	   "reward_creature_pool": [CREATURES["ashclaw"], CREATURES["gruvek"], CREATURES["gorefane"]],
+	   "escalation_profile": "surge",
+	   "phase_intro_texts": [
+		   "Something stirs above.",
+		   "It learns your rhythm.",
+		   "The hunger reveals itself."
+	   ],
+	   "phases": [
+		   [
+			   {"id": 0, "type": "dreg", "hp": 28.0, "damage": 7.0, "lane": 0}
+		   ],
+		   [
+			   {"id": 1, "type": "dreg", "hp": 32.0, "damage": 8.0, "lane": 1}
+		   ],
+		   [
+			   {"id": 2, "type": "dreg", "hp": 58.0, "damage": 13.0, "lane": 2}
+		   ]
+	   ]
+   },
+   "feeding_hollow_02": {
 		"id": "feeding_hollow_02",
 		"title": "Second Mouth",
 		"biome": BIOME_FEEDING_HOLLOW,

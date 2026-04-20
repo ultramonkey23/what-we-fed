@@ -1913,7 +1913,7 @@ func _setup_player_combat() -> void:
 func _start_song_run() -> void:
 	_song_mode = true
 	_song_elapsed = 0.0
-	_song_paused = false
+	_set_song_paused(false)
 	_song_phase_index = -1
 	_song_boss_triggered = false
 	_song_level_transitioning = false
@@ -2047,6 +2047,7 @@ func _on_regular_level_complete() -> void:
 		_trigger_boss_final_movement()
 
 
+
 func _enter_song_phase(new_idx: int) -> void:
 	var old_idx: int = _song_phase_index
 	_song_phase_index = new_idx
@@ -2055,6 +2056,22 @@ func _enter_song_phase(new_idx: int) -> void:
 	_song_phase_dna_award_index = _song_rng.randi_range(0, max(new_reward_pool.size() - 1, 0)) if not new_reward_pool.is_empty() else 0
 	if _performance_reward_director != null and is_instance_valid(_performance_reward_director) and _performance_reward_director.has_method("enter_song_phase"):
 		_performance_reward_director.call("enter_song_phase", new_idx, new_phase)
+
+	# ─── Apply escalation profile if present ─────────────────────────────
+	var profile_name = null
+	if _active_encounter.has("phase_escalation_profiles"):
+		var phase_profiles = _active_encounter["phase_escalation_profiles"]
+		if phase_profiles is Array and _song_phase_index >= 0 and _song_phase_index < phase_profiles.size():
+			profile_name = phase_profiles[_song_phase_index]
+	elif _active_encounter.has("escalation_profile"):
+		profile_name = _active_encounter["escalation_profile"]
+	if profile_name != null and COMBAT_CONTENT.ESCALATION_PROFILES.has(profile_name):
+		var profile = COMBAT_CONTENT.ESCALATION_PROFILES[profile_name]
+		if lane_manager != null:
+			if profile.has("cycle_interval"):
+				lane_manager.set_cycle_interval(profile["cycle_interval"])
+			if profile.has("fire_stagger"):
+				lane_manager.set_fire_stagger(profile["fire_stagger"])
 
 	_apply_song_phase_cadence(new_phase, _song_section_spawn_mult)
 
@@ -2124,7 +2141,7 @@ func _trigger_boss_final_movement() -> void:
 	_awaiting_reward_choice = false
 	_hide_live_reward_shell()
 	_song_boss_triggered = true
-	_song_paused = true
+	_set_song_paused(true)
 	_song_mode = false
 	if _escalation_director != null:
 		_escalation_director.stop()
@@ -2191,6 +2208,17 @@ func _start_song_conductor(start_time: float = 0.0, end_time: float = -1.0) -> v
 	player_combat.call("set_song_conductor", _song_conductor)
 	if _song_conductor != null:
 		_hud_presenter.update_song_timer(max(_song_conductor.get_final_movement_time() - start_time, 0.0))
+
+
+func _set_song_paused(paused: bool) -> void:
+	if _song_paused == paused:
+		return
+	_song_paused = paused
+	if _song_conductor != null and is_instance_valid(_song_conductor):
+		if paused:
+			_song_conductor.pause()
+		else:
+			_song_conductor.resume()
 
 
 func _on_conductor_section_changed(section_id: String, data: Dictionary) -> void:

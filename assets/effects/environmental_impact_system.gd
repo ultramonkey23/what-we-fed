@@ -7,8 +7,8 @@ class_name EnvironmentalImpactSystem
 
 # Environmental components
 @onready var terrain_deformation: Node2D = $TerrainDeformation
-@onready var weather_effects: WeatherSystem = $WeatherEffects
-@onready var world_state: WorldStateManager = $WorldState
+@onready var weather_effects: Node = $WeatherEffects
+@onready var world_state: Node = $WorldState
 
 # Power progression tracking
 var current_power_level: float = 0.0
@@ -160,7 +160,7 @@ func create_destruction_particles(position: Vector2, radius: float, particle_cou
 
 func trigger_world_reaction(position: Vector2, radius: float):
 	# Environmental objects react to power
-	var space_state = get_world_2d().direct_space_state
+	var space_state = get_viewport().get_world_2d().direct_space_state
 	var query = PhysicsShapeQueryParameters2D.new()
 	var circle_shape = CircleShape2D.new()
 	circle_shape.radius = radius
@@ -249,7 +249,7 @@ func apply_stage_4_changes():
 		terrain_deformation.set_permanent_deformation(1.0)
 		terrain_deformation.permanent_terrain_reshaping()
 
-func create_world_transformation_effects(radius: float):
+func create_world_transformation_effects(_radius: float):
 	# Spectacular world transformation visual effects
 	var transform_particles = GPUParticles2D.new()
 	transform_particles.position = get_viewport().get_visible_rect().size / 2

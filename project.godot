@@ -17,8 +17,8 @@ config/icon="res://icon.svg"
 
 [autoload]
 
-EventBus="*uid://x7mf7f0ojw1a"
-GameState="*uid://br82vu0e675s6"
+EventBus="*res://autoloads/EventBus.gd"
+GameState="*res://autoloads/GameState.gd"
 DevHarness="*res://autoloads/DevHarness.gd"
 
 [display]

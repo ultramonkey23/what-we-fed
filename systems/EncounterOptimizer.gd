@@ -254,7 +254,7 @@ func cleanup_pools() -> void:
 		_clear_oldest_cache_entries()
 
 func _clear_oldest_cache_entries() -> void:
-	var entries_to_remove: int = encounter_cache.size() - int(cache_max_size / 2)
+	var entries_to_remove: int = encounter_cache.size() - int(cache_max_size / 2.0)
 	var keys: Array = encounter_cache.keys()
 	
 	for i in range(entries_to_remove):

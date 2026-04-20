@@ -41,7 +41,7 @@ const SUPPORT_EFFECT_RESOLVER = preload("res://systems/SupportEffectResolver.gd"
 const RUN_GROWTH_SCRIPT_PATH: String = "res://systems/RunGrowth.gd"
 const PERFORMANCE_REWARD_DIRECTOR_SCRIPT_PATH: String = "res://systems/PerformanceRewardDirector.gd"
 const RUN_STATS_SCRIPT_PATH: String = "res://systems/RunStats.gd"
-const COMBAT_PERFORMANCE_HUD_SCENE: PackedScene = preload("res://scenes/ui/CombatPerformanceHUD.tscn")
+# const COMBAT_PERFORMANCE_HUD_SCENE: PackedScene = preload("res://scenes/ui/CombatPerformanceHUD.tscn")
 const ENEMY_LOW_HP_THRESHOLD: float = 0.25
 const SUPPORT_MASTERY_CONTEXT_TIMEOUT: float = 1.75
 const LIVE_REWARD_WINDOW: float = 10.0
@@ -2006,23 +2006,23 @@ func _setup_performance_rewards() -> void:
 	_performance_reward_director.set_script(script)
 	add_child(_performance_reward_director)
 
-	_performance_hud = COMBAT_PERFORMANCE_HUD_SCENE.instantiate()
-	_performance_hud.position = Vector2(COMBAT_FEEL_CONTENT.RIGHT_HUD_STACK_X - 14.0, 238.0)
-	ui_layer.add_child(_performance_hud)
+	# _performance_hud = COMBAT_PERFORMANCE_HUD_SCENE.instantiate()
+	# _performance_hud.position = Vector2(COMBAT_FEEL_CONTENT.RIGHT_HUD_STACK_X - 14.0, 238.0)
+	# ui_layer.add_child(_performance_hud)
 
 	# Center the OfferShell on the screen.
 	# The HUD Control itself is at (X-14, 268), so we need to offset back.
-	var offer_shell: Control = _performance_hud.get_node_or_null("OfferShell")
-	if offer_shell != null:
-		var screen_center_x: float = get_viewport_rect().size.x * 0.5
-		offer_shell.global_position = Vector2(screen_center_x - 160.0, 580.0)
+	# var offer_shell: Control = _performance_hud.get_node_or_null("OfferShell")
+	# if offer_shell != null:
+	# 	var screen_center_x: float = get_viewport_rect().size.x * 0.5
+	# 	offer_shell.global_position = Vector2(screen_center_x - 160.0, 580.0)
 
 	if _performance_reward_director.has_method("bind_runtime"):
 		_performance_reward_director.call("bind_runtime", combat_meter, _run_growth, _run_stats)
 		_performance_reward_director.set("offers_enabled", false)
 		if _performance_reward_director.has_method("sync_from_gamestate"):
 			_performance_reward_director.call("sync_from_gamestate")
-	_performance_hud.bind_runtime(_performance_reward_director)
+	# _performance_hud.bind_runtime(_performance_reward_director)
 
 	if _performance_reward_director.has_signal("reward_claimed"):
 		_performance_reward_director.connect("reward_claimed", Callable(self, "_on_performance_reward_claimed"))

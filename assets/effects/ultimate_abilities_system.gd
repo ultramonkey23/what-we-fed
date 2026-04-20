@@ -15,7 +15,7 @@ enum UltimateType {
 @onready var screen_overlay: ColorRect = $ScreenOverlay
 @onready var world_particles: GPUParticles2D = $WorldParticles
 @onready var reality_distortion: ShaderMaterial = $RealityDistortion.material
-@onready var time_freeze: TimeFreezeEffect = $TimeFreezeEffect
+@onready var time_freeze: Node = $TimeFreezeEffect
 
 # Ultimate state
 var is_ultimate_active: bool = false

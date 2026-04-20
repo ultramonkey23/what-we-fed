@@ -1,13 +1,11 @@
 [gd_scene format=3 uid="uid://b8m7f5j2k3l3"]
 
 [ext_resource type="Script" path="res://scenes/ui/CombatPerformanceHUD.gd" id="1_script"]
-[ext_resource type="Theme" uid="uid://power_fantasy_ui_theme" path="res://assets/ui/power_fantasy_theme.theme" id="power_theme"]
 [ext_resource type="Shader" path="res://assets/ui/shaders/energy_border_shader.gdshader" id="energy_shader"]
 
 [node name="PowerFantasyCombatHUD" type="Control"]
 layout_mode = 3
 anchors_preset = 0
-theme = ExtResource("power_theme")
 script = ExtResource("1_script")
 
 [node name="PerformancePanel" type="Panel" parent="."]
@@ -15,7 +13,6 @@ unique_name_in_owner = true
 layout_mode = 0
 offset_right = 200.0
 offset_bottom = 80.0
-material = SubResource("ShaderMaterial_energy_border")
 
 [node name="EnergyBorder" type="ShaderMaterial" parent="PerformancePanel"]
 shader = ExtResource("energy_shader")

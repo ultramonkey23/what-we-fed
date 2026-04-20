@@ -2,17 +2,17 @@ extends Node
 class_name PowerFantasyEffectManager
 
 # Central manager for all spectacular combat effects
-@onready var light_attack_particles: PowerFantasyParticles = $LightAttackParticles
-@onready var heavy_attack_particles: PowerFantasyParticles = $HeavyAttackParticles
-@onready var perfect_attack_particles: PowerFantasyParticles = $PerfectAttackParticles
-@onready var parry_particles: PowerFantasyParticles = $ParryParticles
-@onready var perfect_parry_particles: PowerFantasyParticles = $PerfectParryParticles
-@onready var ultimate_dominion_particles: PowerFantasyParticles = $UltimateDominionParticles
-@onready var ultimate_ascension_particles: PowerFantasyParticles = $UltimateAscensionParticles
+@onready var light_attack_particles: GPUParticles2D = $LightAttackParticles
+@onready var heavy_attack_particles: GPUParticles2D = $HeavyAttackParticles
+@onready var perfect_attack_particles: GPUParticles2D = $PerfectAttackParticles
+@onready var parry_particles: GPUParticles2D = $ParryParticles
+@onready var perfect_parry_particles: GPUParticles2D = $PerfectParryParticles
+@onready var ultimate_dominion_particles: GPUParticles2D = $UltimateDominionParticles
+@onready var ultimate_ascension_particles: GPUParticles2D = $UltimateAscensionParticles
 
 # Screen effects
-@onready var screen_shake: ScreenShake = $ScreenShake
-@onready var time_freeze: TimeFreezeEffect = $TimeFreezeEffect
+@onready var screen_shake: Node = $ScreenShake
+@onready var time_freeze: Node = $TimeFreezeEffect
 @onready var color_grading: ColorRect = $ColorGrading
 
 func trigger_light_attack(world_position: Vector2):
@@ -49,16 +49,16 @@ func trigger_perfect_parry(world_position: Vector2):
 	# Reality distortion effect
 	apply_reality_distortion(Color.PURPLE, 0.4)
 
-func trigger_ultimate_dominion(world_position: Vector2):
+func trigger_ultimate_dominion(_world_position: Vector2):
 	ultimate_dominion_particles.trigger_screen_filling_effect()
 	screen_shake.add_trauma(0.8)
 	time_freeze.activate(0.5)
 	
 	# World-breaking screen effects
-	apply_screen_flash(Color.DARK_PURPLE, 0.6)
+	apply_screen_flash(Color.PURPLE, 0.6)
 	apply_reality_distortion(Color.BLACK, 0.8)
 
-func trigger_ultimate_ascension(world_position: Vector2):
+func trigger_ultimate_ascension(_world_position: Vector2):
 	ultimate_ascension_particles.trigger_screen_filling_effect()
 	screen_shake.add_trauma(1.0)
 	time_freeze.activate(1.0)
@@ -77,7 +77,7 @@ func apply_screen_flash(color: Color, duration: float):
 	tween.tween_property(color_grading, "modulate", Color.TRANSPARENT, duration)
 	tween.tween_property(color_grading, "color", Color.WHITE, 0.1)
 
-func apply_reality_distortion(color: Color, intensity: float):
+func apply_reality_distortion(color: Color, _intensity: float):
 	var tween = create_tween()
 	
 	# Distortion effect

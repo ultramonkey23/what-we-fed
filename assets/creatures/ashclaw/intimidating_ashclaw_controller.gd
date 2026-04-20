@@ -185,7 +185,7 @@ func show_coordination_signal(player_position: Vector2):
 	var player_node = get_tree().get_first_node_in_group("player")
 	if player_node:
 		# Create visual connection between Ashclaw and player
-		create_energy_link(player_position, position)
+		create_energy_link(player_position, animated_sprite.global_position)
 		
 		# Both characters' energy fields pulse together
 		pulse_energy_fields()
@@ -250,7 +250,7 @@ func apply_environmental_damage(position: Vector2):
 	var damage_radius = 50.0 * environmental_damage
 	
 	# Find environmental objects in radius
-	var space_state = get_world_2d(self).direct_space_state
+	var space_state = animated_sprite.get_world_2d().direct_space_state
 	var query = PhysicsShapeQueryParameters2D.new()
 	var circle_shape = CircleShape2D.new()
 	circle_shape.radius = damage_radius
@@ -289,7 +289,7 @@ func play_transformation_sequence():
 
 func create_transformation_particles():
 	var transform_particles = GPUParticles2D.new()
-	transform_particles.position = position
+	transform_particles.position = animated_sprite.global_position
 	transform_particles.amount = 100
 	transform_particles.lifetime = 2.0
 	transform_particles.emitting = true

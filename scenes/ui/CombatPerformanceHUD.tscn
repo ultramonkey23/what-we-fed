@@ -1,14 +1,12 @@
-[gd_scene load_steps=3 format=3 uid="uid://b8m7f5j2k3l4"]
+[gd_scene load_steps=14 format=3 uid="uid://b8m7f5j2k3l4"]
 
 [ext_resource type="Script" uid="uid://dl824hd7lw5j1" path="res://scenes/ui/CombatPerformanceHUD.gd" id="1_script"]
-[ext_resource type="Theme" path="res://assets/ui/power_fantasy_theme.theme" id="power_theme"]
 [ext_resource type="Shader" uid="uid://c5m6wmsoe4qoq" path="res://assets/ui/shaders/energy_border_shader.gdshader" id="energy_shader"]
 
 
 [node name="PowerFantasyCombatHUD" type="Control"]
 layout_mode = 3
 anchors_preset = 0
-theme = ExtResource("power_theme")
 script = ExtResource("1_script")
 
 [node name="PerformancePanel" type="Panel" parent="."]
@@ -16,7 +14,6 @@ unique_name_in_owner = true
 layout_mode = 0
 offset_right = 200.0
 offset_bottom = 80.0
-material = SubResource("ShaderMaterial_energy_border")
 
 [node name="PanelStyle" type="StyleBoxFlat" parent="PerformancePanel"]
 bg_color = Color(0.05, 0.05, 0.05, 0.95)
@@ -46,22 +43,18 @@ offset_bottom = -10.0
 [node name="Caption" type="Label" parent="PerformancePanel/PerformanceContainer"]
 layout_mode = 2
 text = "POWER METER"
-label_settings = SubResource("LabelSettings_dominant_header")
 
 [node name="PowerLevel" type="Label" parent="PerformancePanel/PerformanceContainer"]
 layout_mode = 2
 text = "AWAKENING"
-label_settings = SubResource("LabelSettings_power_stage")
 
 [node name="ComboDisplay" type="Label" parent="PerformancePanel/PerformanceContainer"]
 layout_mode = 2
 text = "0x DOMINANCE"
-label_settings = SubResource("LabelSettings_combo")
 
 [node name="StatusLabel" type="Label" parent="PerformancePanel/PerformanceContainer"]
 layout_mode = 2
 text = "PREDATOR'S RISE"
-label_settings = SubResource("LabelSettings_status")
 
 [node name="OfferPanel" type="Panel" parent="."]
 unique_name_in_owner = true
@@ -69,7 +62,6 @@ layout_mode = 0
 offset_left = 220.0
 offset_right = 620.0
 offset_bottom = 120.0
-material = SubResource("ShaderMaterial_mutation_border")
 
 [node name="OfferPanelStyle" type="StyleBoxFlat" parent="OfferPanel"]
 bg_color = Color(0.05, 0.03, 0.05, 0.95)

@@ -1,12 +1,10 @@
 [gd_scene format=3 uid="uid://b8m7f5j2k3l2"]
 
 [ext_resource type="Script" path="res://scenes/ui/CombatPerformanceHUD.gd" id="1_script"]
-[ext_resource type="Theme" uid="uid://premium_ui_theme" path="res://assets/ui/premium_theme.theme" id="premium_theme"]
 
 [node name="PremiumCombatHUD" type="Control"]
 layout_mode = 3
 anchors_preset = 0
-theme = ExtResource("premium_theme")
 script = ExtResource("1_script")
 
 [node name="PerformancePanel" type="Panel" parent="."]

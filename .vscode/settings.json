@@ -1,0 +1,31 @@
+{
+  "files.trimTrailingWhitespace": true,
+  "files.insertFinalNewline": true,
+  "files.autoSave": "afterDelay",
+  "editor.formatOnSave": false,
+  "editor.minimap.enabled": false,
+  "editor.renderWhitespace": "selection",
+  "editor.wordWrap": "off",
+  "editor.rulers": [100, 140],
+  "editor.tabSize": 4,
+  "editor.detectIndentation": true,
+  "explorer.confirmDelete": false,
+  "search.exclude": {
+    ".godot": true,
+    ".import": true,
+    "build": true,
+    "dist": true,
+    "art": true,
+    "audio": true,
+    "music": true,
+    "sfx": true
+  },
+  "files.watcherExclude": {
+    "**/.godot/**": true,
+    "**/.import/**": true,
+    "**/build/**": true,
+    "**/dist/**": true
+  },
+  "git.enableSmartCommit": false,
+  "git.confirmSync": true
+}

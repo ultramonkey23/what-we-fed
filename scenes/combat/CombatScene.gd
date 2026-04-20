@@ -119,6 +119,7 @@ var _timing_debug_label: Label = null
 
 # ─── REWARD OVERLAY ELEMENTS ─────────────────────────────────────────────────
 var _reward_overlay: ColorRect = null
+var _reward_wrapper_shell: PanelContainer = null
 var _reward_panel: ColorRect = null
 var _reward_title_label: Label = null
 var _reward_body_label: Label = null
@@ -1111,7 +1112,8 @@ func _build_hud_containers() -> void:
 	var hud_ty: float = COMBAT_FEEL_CONTENT.HUD_TOP_BAND_Y
 	var hud_th: float = COMBAT_FEEL_CONTENT.HUD_TOP_BAND_HEIGHT
 	var hud_tw: float = COMBAT_FEEL_CONTENT.HUD_TOP_PANEL_WIDTH
-	var hud_rw: float = COMBAT_FEEL_CONTENT.HUD_RIGHT_RAIL_WIDTH
+	var right_stack_min_h: float = 258.0
+	var tr_height: float = hud_th + COMBAT_FEEL_CONTENT.HUD_GAP_BELOW_TOP_BAND + right_stack_min_h
 	# Top Left Stack
 	var tl_panel := PanelContainer.new()
 	tl_panel.name = "TopLeftPanel"
@@ -1154,19 +1156,13 @@ func _build_hud_containers() -> void:
 	_hud_top_left_container.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	tl_body.add_child(_hud_top_left_container)
 
-	# Top Right Stack (anchors only — explicit size fights anchor layout and can zero the panel)
+	# Top Right Stack wrapper now owns both top metrics and persistent right-column readouts.
 	var tr_panel := PanelContainer.new()
 	tr_panel.name = "TopRightPanel"
 	tr_panel.z_index = 40
-	tr_panel.anchor_left = 1.0
-	tr_panel.anchor_top = 0.0
-	tr_panel.anchor_right = 1.0
-	tr_panel.anchor_bottom = 0.0
-	tr_panel.offset_right = -hud_m
-	tr_panel.offset_left = -(hud_m + hud_tw)
-	tr_panel.offset_top = hud_ty
-	tr_panel.offset_bottom = hud_ty + hud_th
-	tr_panel.custom_minimum_size = Vector2(hud_tw, hud_th)
+	tr_panel.position = Vector2(COMBAT_FEEL_CONTENT.HUD_VIEWPORT_WIDTH - hud_m - hud_tw, hud_ty)
+	tr_panel.size = Vector2(hud_tw, tr_height)
+	tr_panel.custom_minimum_size = Vector2(hud_tw, tr_height)
 	var tr_tex: String = COMBAT_FEEL_CONTENT.resolved_hud_top_right_panel_path()
 	if tr_tex.is_empty():
 		UI_STYLE.apply_shell_style(tr_panel, "hud_right", "")
@@ -1195,25 +1191,28 @@ func _build_hud_containers() -> void:
 	tr_body.offset_bottom = -6.0
 	tr_panel.add_child(tr_body)
 
+	var tr_stack := VBoxContainer.new()
+	tr_stack.name = "TopRightStack"
+	tr_stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	tr_stack.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	tr_stack.add_theme_constant_override("separation", COMBAT_FEEL_CONTENT.HUD_GAP_BELOW_TOP_BAND)
+	tr_body.add_child(tr_stack)
+
 	_hud_top_right_container = VBoxContainer.new()
 	_hud_top_right_container.name = "TopRightVBox"
 	_hud_top_right_container.add_theme_constant_override("separation", 3)
 	_hud_top_right_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_hud_top_right_container.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	tr_body.add_child(_hud_top_right_container)
+	_hud_top_right_container.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	tr_stack.add_child(_hud_top_right_container)
 
 	_hud_right_stack = VBoxContainer.new()
 	_hud_right_stack.name = "RightStackContainer"
-	_hud_right_stack.anchor_left = 1.0
-	_hud_right_stack.anchor_right = 1.0
-	_hud_right_stack.offset_right = -hud_m
-	_hud_right_stack.offset_left = -(hud_m + hud_rw)
-	_hud_right_stack.offset_top = hud_ty + hud_th + COMBAT_FEEL_CONTENT.HUD_GAP_BELOW_TOP_BAND
-	_hud_right_stack.size = Vector2(hud_rw, 500.0)
+	_hud_right_stack.custom_minimum_size = Vector2(0.0, right_stack_min_h)
+	_hud_right_stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_hud_right_stack.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_hud_right_stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_hud_right_stack.add_theme_constant_override("separation", 8)
-	_hud_right_stack.z_index = 36
-	ui_layer.add_child(_hud_right_stack)
+	tr_stack.add_child(_hud_right_stack)
 
 	var bottom_panel := PanelContainer.new()
 	bottom_panel.name = "BottomHudPanel"
@@ -1824,13 +1823,12 @@ func _build_song_hud() -> void:
 	_beat_feedback_label = Label.new()
 	_beat_feedback_label.name = "BeatFeedbackLabel"
 	_beat_feedback_label.text = ""
-	_apply_text_role(_beat_feedback_label, "alert_value", HORIZONTAL_ALIGNMENT_CENTER)
-	_beat_feedback_label.add_theme_font_size_override("font_size", 22)
-	_beat_feedback_label.size = Vector2(280.0, 40.0)
-	_beat_feedback_label.position = Vector2(308.0, 334.0)
+	_beat_feedback_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_beat_feedback_label.custom_minimum_size = Vector2(0.0, 20.0)
+	_apply_text_role(_beat_feedback_label, "alert_value", HORIZONTAL_ALIGNMENT_RIGHT)
+	_beat_feedback_label.add_theme_font_size_override("font_size", 16)
 	_beat_feedback_label.visible = false
-	_beat_feedback_label.z_index = 6
-	ui_layer.add_child(_beat_feedback_label)
+	_hud_top_left_container.add_child(_beat_feedback_label)
 
 
 func _build_quig_anchor() -> void:
@@ -2031,12 +2029,38 @@ func _create_reward_overlay() -> void:
 	_reward_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	ui_layer.add_child(_reward_overlay)
 
+	_reward_wrapper_shell = PanelContainer.new()
+	_reward_wrapper_shell.name = "RewardWrapperShell"
+	_reward_wrapper_shell.position = Vector2(160.0, 88.0)
+	_reward_wrapper_shell.size = Vector2(960.0, 452.0)
+	var reward_tex: String = COMBAT_FEEL_CONTENT.resolved_hud_reward_panel_path()
+	if reward_tex.is_empty():
+		UI_STYLE.apply_shell_style(_reward_wrapper_shell, "live_reward")
+	else:
+		UI_STYLE.apply_shell_style(
+			_reward_wrapper_shell,
+			"live_reward",
+			"",
+			Color(),
+			Color(),
+			Rect2(),
+			Vector4.ZERO,
+			Vector4.ZERO,
+			Color(),
+			true
+		)
+	_hud_attach_combat_panel_art(_reward_wrapper_shell, reward_tex, COMBAT_FEEL_CONTENT.hud_reward_texture_region())
+	_reward_overlay.add_child(_reward_wrapper_shell)
+
 	_reward_panel = ColorRect.new()
 	_reward_panel.name = "RewardPanel"
-	_set_shell_treatment(_reward_panel, Color(0.09, 0.07, 0.08, 0.98), Color(0.26, 0.20, 0.18, 0.94))
-	_reward_panel.position = Vector2(160.0, 88.0)
-	_reward_panel.size = Vector2(960.0, 452.0)
-	_reward_overlay.add_child(_reward_panel)
+	_set_shell_treatment(_reward_panel, Color(0.09, 0.07, 0.08, 0.86), Color(0.26, 0.20, 0.18, 0.42))
+	_reward_panel.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_reward_panel.offset_left = 0.0
+	_reward_panel.offset_top = 0.0
+	_reward_panel.offset_right = 0.0
+	_reward_panel.offset_bottom = 0.0
+	_reward_wrapper_shell.add_child(_reward_panel)
 
 	# Creature portrait — shown when a sprite_path is available for the offered creature.
 	# Positioned in the left column; text labels shift right to accommodate it.
@@ -2490,14 +2514,11 @@ func _create_live_reward_shell() -> void:
 	_live_reward_shell.name = "LiveRewardShell"
 	_live_reward_shell.visible = false
 	_live_reward_shell.z_index = 38
-	_live_reward_shell.anchor_left = 1.0
-	_live_reward_shell.anchor_top = 1.0
-	_live_reward_shell.anchor_right = 1.0
-	_live_reward_shell.anchor_bottom = 1.0
-	_live_reward_shell.offset_left = -264.0
-	_live_reward_shell.offset_top = -120.0
-	_live_reward_shell.offset_right = -24.0
-	_live_reward_shell.offset_bottom = -58.0
+	_live_reward_shell.anchor_left = 0.0
+	_live_reward_shell.anchor_top = 0.0
+	_live_reward_shell.anchor_right = 0.0
+	_live_reward_shell.anchor_bottom = 0.0
+	_live_reward_shell.position = COMBAT_FEEL_CONTENT.COMPACT_LIVE_REWARD_POS
 	_live_reward_shell.size = COMBAT_FEEL_CONTENT.COMPACT_LIVE_REWARD_SIZE
 	var reward_tex: String = COMBAT_FEEL_CONTENT.resolved_hud_reward_panel_path()
 	if reward_tex.is_empty():
@@ -2657,9 +2678,15 @@ func _setup_performance_hud() -> void:
 			inst.queue_free()
 		return
 	_performance_hud = inst as Control
-	ui_layer.add_child(_performance_hud)
-	_performance_hud.set_anchors_preset(Control.PRESET_TOP_LEFT)
-	_performance_hud.position = Vector2(COMBAT_FEEL_CONTENT.RIGHT_HUD_STACK_X - 14.0, 238.0)
+	if _hud_right_stack != null and is_instance_valid(_hud_right_stack):
+		_hud_right_stack.add_child(_performance_hud)
+		_performance_hud.set_anchors_preset(Control.PRESET_TOP_LEFT)
+		_performance_hud.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_performance_hud.position = Vector2.ZERO
+	else:
+		ui_layer.add_child(_performance_hud)
+		_performance_hud.set_anchors_preset(Control.PRESET_TOP_LEFT)
+		_performance_hud.position = Vector2(COMBAT_FEEL_CONTENT.RIGHT_HUD_STACK_X - 14.0, 238.0)
 	if _performance_reward_director != null and _performance_hud.has_method("bind_runtime"):
 		_performance_hud.bind_runtime(_performance_reward_director)
 	if not get_viewport().size_changed.is_connected(_center_performance_offer_shell):

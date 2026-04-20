@@ -141,7 +141,7 @@ var _awaiting_upgrade_choice: bool = false
 var _pending_upgrades: Array[Dictionary] = []
 
 # ─── LIVE REWARD ELEMENTS ────────────────────────────────────────────────────
-var _live_reward_shell: ColorRect = null
+var _live_reward_shell: PanelContainer = null
 var _live_reward_title_label: Label = null
 var _live_reward_body_label: Label = null
 var _live_reward_hint_label: Label = null
@@ -1005,7 +1005,17 @@ func _build_hud_containers() -> void:
 	tl_panel.name = "TopLeftPanel"
 	tl_panel.position = Vector2(8.0, 4.0)
 	tl_panel.size = Vector2(300.0, 108.0)
-	UI_STYLE.apply_shell_style(tl_panel, "hud_left", COMBAT_FEEL_CONTENT.COMBAT_PANEL_TOP_LEFT_PATH)
+	UI_STYLE.apply_shell_style(
+		tl_panel,
+		"hud_left",
+		COMBAT_FEEL_CONTENT.resolved_hud_top_left_panel_path(),
+		Color(),
+		Color(),
+		COMBAT_FEEL_CONTENT.hud_top_left_texture_region(),
+		COMBAT_FEEL_CONTENT.HUD_TOP_LEFT_NINE_SLICE,
+		COMBAT_FEEL_CONTENT.HUD_TOP_LEFT_CONTENT_MARGIN,
+		Color()
+	)
 	ui_layer.add_child(tl_panel)
 	
 	_hud_top_left_container = VBoxContainer.new()
@@ -1015,16 +1025,28 @@ func _build_hud_containers() -> void:
 	_hud_top_left_container.add_theme_constant_override("margin_top", 10)
 	tl_panel.add_child(_hud_top_left_container)
 
-	# Top Right Stack
+	# Top Right Stack (anchors only — explicit size fights anchor layout and can zero the panel)
 	var tr_panel := PanelContainer.new()
 	tr_panel.name = "TopRightPanel"
 	tr_panel.anchor_left = 1.0
+	tr_panel.anchor_top = 0.0
 	tr_panel.anchor_right = 1.0
+	tr_panel.anchor_bottom = 0.0
 	tr_panel.offset_left = -212.0
 	tr_panel.offset_top = 4.0
 	tr_panel.offset_right = -8.0
-	tr_panel.size = Vector2(212.0, 88.0)
-	UI_STYLE.apply_shell_style(tr_panel, "hud_right", COMBAT_FEEL_CONTENT.COMBAT_PANEL_TOP_RIGHT_PATH)
+	tr_panel.offset_bottom = 92.0
+	UI_STYLE.apply_shell_style(
+		tr_panel,
+		"hud_right",
+		COMBAT_FEEL_CONTENT.resolved_hud_top_right_panel_path(),
+		Color(),
+		Color(),
+		COMBAT_FEEL_CONTENT.hud_top_right_texture_region(),
+		COMBAT_FEEL_CONTENT.HUD_TOP_RIGHT_NINE_SLICE,
+		COMBAT_FEEL_CONTENT.HUD_TOP_RIGHT_CONTENT_MARGIN,
+		Color()
+	)
 	ui_layer.add_child(tr_panel)
 
 	_hud_top_right_container = VBoxContainer.new()
@@ -1046,18 +1068,44 @@ func _build_hud_containers() -> void:
 	_hud_right_stack.add_theme_constant_override("separation", 6)
 	ui_layer.add_child(_hud_right_stack)
 
+	var bottom_panel := PanelContainer.new()
+	bottom_panel.name = "BottomHudPanel"
+	bottom_panel.anchor_left = 0.0
+	bottom_panel.anchor_top = 1.0
+	bottom_panel.anchor_right = 1.0
+	bottom_panel.anchor_bottom = 1.0
+	bottom_panel.offset_left = 28.0
+	bottom_panel.offset_top = -52.0
+	bottom_panel.offset_right = -28.0
+	bottom_panel.offset_bottom = -8.0
+	var bottom_tex: String = COMBAT_FEEL_CONTENT.resolved_hud_bottom_panel_path()
+	if bottom_tex.is_empty():
+		UI_STYLE.apply_shell_style(bottom_panel, "hud_accent")
+	else:
+		UI_STYLE.apply_shell_style(
+			bottom_panel,
+			"hud_left",
+			bottom_tex,
+			Color(),
+			Color(),
+			COMBAT_FEEL_CONTENT.hud_bottom_texture_region(),
+			COMBAT_FEEL_CONTENT.HUD_BOTTOM_NINE_SLICE,
+			COMBAT_FEEL_CONTENT.HUD_BOTTOM_CONTENT_MARGIN,
+			Color()
+		)
+	ui_layer.add_child(bottom_panel)
+
 	_hud_bottom_container = HBoxContainer.new()
 	_hud_bottom_container.name = "BottomContainer"
-	_hud_bottom_container.anchor_top = 1.0
-	_hud_bottom_container.anchor_bottom = 1.0
-	_hud_bottom_container.anchor_right = 1.0
-	_hud_bottom_container.offset_left = 32.0
-	_hud_bottom_container.offset_top = -48.0
-	_hud_bottom_container.offset_right = -32.0
-	_hud_bottom_container.offset_bottom = -12.0
+	_hud_bottom_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_hud_bottom_container.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_hud_bottom_container.add_theme_constant_override("margin_left", 8)
+	_hud_bottom_container.add_theme_constant_override("margin_top", 4)
+	_hud_bottom_container.add_theme_constant_override("margin_right", 8)
+	_hud_bottom_container.add_theme_constant_override("margin_bottom", 4)
 	_hud_bottom_container.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_hud_bottom_container.alignment = BoxContainer.ALIGNMENT_CENTER
-	ui_layer.add_child(_hud_bottom_container)
+	bottom_panel.add_child(_hud_bottom_container)
 
 
 func _build_meter_shell() -> void:
@@ -1369,6 +1417,37 @@ func _style_progress_bar(bar: ProgressBar, under_color: Color, fill_color: Color
 		UI_STYLE.apply_bar_style(bar, role)
 		return
 
+	var track_path: String = COMBAT_FEEL_CONTENT.resolved_bar_track_path()
+	var under: StyleBox
+	if not track_path.is_empty():
+		var sb_tex: StyleBoxTexture = (
+			UI_STYLE.stylebox_texture_from_path(
+				track_path,
+				COMBAT_FEEL_CONTENT.hud_bar_track_texture_region(),
+				COMBAT_FEEL_CONTENT.HUD_BAR_TRACK_NINE_SLICE,
+				Vector4.ZERO,
+				Color(1.0, 1.0, 1.0, 1.0)
+			) as StyleBoxTexture
+		)
+		if sb_tex != null:
+			under = sb_tex
+		else:
+			under = _style_progress_bar_flat_under(under_color, corner_radius)
+	else:
+		under = _style_progress_bar_flat_under(under_color, corner_radius)
+
+	var fill := StyleBoxFlat.new()
+	fill.bg_color = fill_color
+	fill.corner_radius_top_left = corner_radius
+	fill.corner_radius_top_right = corner_radius
+	fill.corner_radius_bottom_left = corner_radius
+	fill.corner_radius_bottom_right = corner_radius
+
+	bar.add_theme_stylebox_override("background", under)
+	bar.add_theme_stylebox_override("fill", fill)
+
+
+func _style_progress_bar_flat_under(under_color: Color, corner_radius: int) -> StyleBoxFlat:
 	var under := StyleBoxFlat.new()
 	under.bg_color = under_color
 	under.corner_radius_top_left = corner_radius
@@ -1380,16 +1459,7 @@ func _style_progress_bar(bar: ProgressBar, under_color: Color, fill_color: Color
 	under.border_width_right = 1
 	under.border_width_bottom = 1
 	under.border_color = Color(0.17, 0.16, 0.16, 0.94)
-
-	var fill := StyleBoxFlat.new()
-	fill.bg_color = fill_color
-	fill.corner_radius_top_left = corner_radius
-	fill.corner_radius_top_right = corner_radius
-	fill.corner_radius_bottom_left = corner_radius
-	fill.corner_radius_bottom_right = corner_radius
-
-	bar.add_theme_stylebox_override("background", under)
-	bar.add_theme_stylebox_override("fill", fill)
+	return under
 
 
 func _create_panel_backing(
@@ -1883,8 +1953,7 @@ func _create_upgrade_overlay() -> void:
 
 
 func _create_live_reward_shell() -> void:
-	var _live_reward_art: TextureRect = null
-	_live_reward_shell = ColorRect.new()
+	_live_reward_shell = PanelContainer.new()
 	_live_reward_shell.name = "LiveRewardShell"
 	_live_reward_shell.visible = false
 	_live_reward_shell.anchor_left = 1.0
@@ -1896,30 +1965,53 @@ func _create_live_reward_shell() -> void:
 	_live_reward_shell.offset_right = -24.0
 	_live_reward_shell.offset_bottom = -58.0
 	_live_reward_shell.size = COMBAT_FEEL_CONTENT.COMPACT_LIVE_REWARD_SIZE
-	UI_STYLE.apply_shell_style(_live_reward_shell, "live_reward")
+	var reward_tex: String = COMBAT_FEEL_CONTENT.resolved_hud_reward_panel_path()
+	if reward_tex.is_empty():
+		UI_STYLE.apply_shell_style(_live_reward_shell, "live_reward")
+	else:
+		UI_STYLE.apply_shell_style(
+			_live_reward_shell,
+			"live_reward",
+			reward_tex,
+			Color(),
+			Color(),
+			COMBAT_FEEL_CONTENT.hud_reward_texture_region(),
+			COMBAT_FEEL_CONTENT.HUD_REWARD_NINE_SLICE,
+			COMBAT_FEEL_CONTENT.HUD_REWARD_CONTENT_MARGIN,
+			Color()
+		)
 	ui_layer.add_child(_live_reward_shell)
 
+	var reward_body := VBoxContainer.new()
+	reward_body.name = "LiveRewardVBox"
+	reward_body.add_theme_constant_override("separation", 4)
+	reward_body.add_theme_constant_override("margin_left", 12)
+	reward_body.add_theme_constant_override("margin_top", 6)
+	reward_body.add_theme_constant_override("margin_right", 12)
+	reward_body.add_theme_constant_override("margin_bottom", 8)
+	_live_reward_shell.add_child(reward_body)
+
 	_live_reward_title_label = Label.new()
-	_live_reward_title_label.position = Vector2(12.0, 6.0)
-	_live_reward_title_label.size = Vector2(214.0, 20.0)
+	_live_reward_title_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_live_reward_title_label.custom_minimum_size = Vector2(0.0, 22.0)
 	_apply_text_role(_live_reward_title_label, "subheading")
 	_live_reward_title_label.add_theme_font_size_override("font_size", 22)
-	_live_reward_shell.add_child(_live_reward_title_label)
+	reward_body.add_child(_live_reward_title_label)
 
 	_live_reward_body_label = Label.new()
-	_live_reward_body_label.position = Vector2(12.0, 26.0)
-	_live_reward_body_label.size = Vector2(216.0, 20.0)
+	_live_reward_body_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_live_reward_body_label.custom_minimum_size = Vector2(0.0, 22.0)
 	_live_reward_body_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_apply_text_role(_live_reward_body_label, "body")
 	_live_reward_body_label.add_theme_font_size_override("font_size", 19)
-	_live_reward_shell.add_child(_live_reward_body_label)
+	reward_body.add_child(_live_reward_body_label)
 
 	_live_reward_hint_label = Label.new()
-	_live_reward_hint_label.position = Vector2(12.0, 46.0)
-	_live_reward_hint_label.size = Vector2(216.0, 14.0)
+	_live_reward_hint_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_live_reward_hint_label.custom_minimum_size = Vector2(0.0, 18.0)
 	_apply_text_role(_live_reward_hint_label, "hint")
 	_live_reward_hint_label.add_theme_font_size_override("font_size", 17)
-	_live_reward_shell.add_child(_live_reward_hint_label)
+	reward_body.add_child(_live_reward_hint_label)
 
 
 func _create_hud_presenter() -> void:

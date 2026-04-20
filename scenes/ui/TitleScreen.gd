@@ -55,14 +55,17 @@ func _set_controls_panel_visible(visible_state: bool) -> void:
 
 
 func _build_ui() -> void:
-	var bg: ColorRect = ColorRect.new()
-	bg.color = Color(0.06, 0.03, 0.04, 1.0)
-	bg.size = Vector2(1280.0, 720.0)
-	bg.position = Vector2.ZERO
-	add_child(bg)
+	UI_STYLE.attach_shell_backdrop(self)
 
 	var canvas: CanvasLayer = CanvasLayer.new()
 	add_child(canvas)
+
+	var title_rail := Panel.new()
+	title_rail.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	title_rail.position = Vector2(200.0, 198.0)
+	title_rail.size = Vector2(880.0, 188.0)
+	UI_STYLE.apply_shell_style(title_rail, "hud_accent")
+	canvas.add_child(title_rail)
 
 	var title_label: Label = Label.new()
 	title_label.text = "WHAT WE FED"

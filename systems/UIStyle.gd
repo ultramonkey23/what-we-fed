@@ -4,12 +4,81 @@ const DISPLAY_FONT = preload("res://assets/fonts/display/This Night.ttf")
 const UI_FONT = preload("res://assets/fonts/ui/WereWolf.ttf")
 
 
+## Full-screen menu shell: subtle vertical gradient plus a thin warm frame (matches HUD border tones).
+static func attach_shell_backdrop(root: Node2D, size: Vector2 = Vector2(1280.0, 720.0)) -> void:
+	if root == null:
+		return
+
+	var layer := Node2D.new()
+	layer.name = "ShellBackdrop"
+	root.add_child(layer)
+	root.move_child(layer, 0)
+
+	var gradient := Gradient.new()
+	gradient.colors = PackedColorArray([
+		Color(0.038, 0.018, 0.026, 1.0),
+		Color(0.052, 0.026, 0.034, 1.0),
+		Color(0.078, 0.034, 0.048, 1.0)
+	])
+	gradient.offsets = PackedFloat32Array([0.0, 0.52, 1.0])
+
+	var gt := GradientTexture2D.new()
+	gt.gradient = gradient
+	gt.width = 8
+	gt.height = 512
+	gt.fill = GradientTexture2D.FILL_LINEAR
+	gt.fill_from = Vector2(0.5, 0.0)
+	gt.fill_to = Vector2(0.5, 1.0)
+
+	var bg := TextureRect.new()
+	bg.texture = gt
+	bg.position = Vector2.ZERO
+	bg.size = size
+	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bg.stretch_mode = TextureRect.STRETCH_SCALE
+	layer.add_child(bg)
+
+	var edge := Color(0.34, 0.26, 0.20, 0.55)
+	var t := 2
+	var top := ColorRect.new()
+	top.color = edge
+	top.position = Vector2.ZERO
+	top.size = Vector2(size.x, float(t))
+	top.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.add_child(top)
+
+	var bottom := ColorRect.new()
+	bottom.color = edge
+	bottom.position = Vector2(0.0, size.y - float(t))
+	bottom.size = Vector2(size.x, float(t))
+	bottom.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.add_child(bottom)
+
+	var left := ColorRect.new()
+	left.color = edge
+	left.position = Vector2.ZERO
+	left.size = Vector2(float(t), size.y)
+	left.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.add_child(left)
+
+	var right := ColorRect.new()
+	right.color = edge
+	right.position = Vector2(size.x - float(t), 0.0)
+	right.size = Vector2(float(t), size.y)
+	right.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.add_child(right)
+
+
 static func apply_shell_style(
 	control: Control,
 	role: String,
 	texture_path: String = "",
 	override_bg: Color = Color(0.0, 0.0, 0.0, 0.0),
-	override_border: Color = Color(0.0, 0.0, 0.0, 0.0)
+	override_border: Color = Color(0.0, 0.0, 0.0, 0.0),
+	texture_region: Rect2 = Rect2(),
+	texture_expand_margin: Vector4 = Vector4.ZERO,
+	shell_content_margin: Vector4 = Vector4.ZERO,
+	texture_modulate: Color = Color(0.0, 0.0, 0.0, 0.0)
 ) -> void:
 	if control == null:
 		return
@@ -26,9 +95,13 @@ static func apply_shell_style(
 
 	var texture: Texture2D = _load_texture(texture_path)
 	if texture != null:
-		var panel_tex := StyleBoxTexture.new()
-		panel_tex.texture = texture
-		panel_tex.modulate_color = bg_color
+		var panel_tex := _stylebox_texture_from_source(
+			texture,
+			texture_region,
+			texture_expand_margin,
+			shell_content_margin,
+			texture_modulate if texture_modulate.a > 0.0 else Color(0.96, 0.94, 0.92, 1.0)
+		)
 		control.add_theme_stylebox_override("panel", panel_tex)
 		control.add_theme_stylebox_override("background", panel_tex)
 		control.add_theme_stylebox_override("fill", panel_tex)
@@ -61,7 +134,9 @@ static func apply_bar_style(
 	bar: ProgressBar,
 	role: String,
 	background_texture_path: String = "",
-	fill_texture_path: String = ""
+	fill_texture_path: String = "",
+	background_texture_region: Rect2 = Rect2(),
+	background_expand_margin: Vector4 = Vector4.ZERO
 ) -> void:
 	if bar == null:
 		return
@@ -72,14 +147,18 @@ static func apply_bar_style(
 		Color(palette.get("under_color", Color(0.08, 0.08, 0.09, 0.90))),
 		Color(palette.get("border_color", Color(0.22, 0.20, 0.18, 0.94))),
 		int(palette.get("corner_radius", 5)),
-		int(palette.get("border_width", 1))
+		int(palette.get("border_width", 1)),
+		background_texture_region,
+		background_expand_margin
 	)
 	var fill := _make_box_or_texture(
 		fill_texture_path,
 		Color(palette.get("fill_color", Color(0.80, 0.62, 0.28, 0.98))),
 		Color(palette.get("fill_border_color", Color(0.0, 0.0, 0.0, 0.0))),
 		int(palette.get("corner_radius", 5)),
-		0
+		0,
+		Rect2(),
+		Vector4.ZERO
 	)
 
 	bar.add_theme_stylebox_override("background", under)
@@ -91,14 +170,14 @@ static func _make_box_or_texture(
 	bg_color: Color,
 	border_color: Color,
 	corner_radius: int,
-	border_width: int
+	border_width: int,
+	texture_region: Rect2 = Rect2(),
+	texture_expand_margin: Vector4 = Vector4.ZERO
 ) -> StyleBox:
 	var texture: Texture2D = _load_texture(texture_path)
 	if texture != null:
-		var panel_tex := StyleBoxTexture.new()
-		panel_tex.texture = texture
-		panel_tex.modulate_color = bg_color
-		return panel_tex
+		var mod: Color = Color(1.0, 1.0, 1.0, 1.0)
+		return _stylebox_texture_from_source(texture, texture_region, texture_expand_margin, Vector4.ZERO, mod)
 
 	var panel := StyleBoxFlat.new()
 	panel.bg_color = bg_color
@@ -113,6 +192,48 @@ static func _make_box_or_texture(
 		panel.border_width_bottom = border_width
 		panel.border_color = border_color
 	return panel
+
+
+static func _stylebox_texture_from_source(
+	source: Texture2D,
+	texture_region: Rect2,
+	texture_expand_margin: Vector4,
+	shell_content_margin: Vector4,
+	modulate: Color
+) -> StyleBoxTexture:
+	var panel_tex := StyleBoxTexture.new()
+	panel_tex.texture = source
+	panel_tex.modulate_color = modulate
+	panel_tex.axis_stretch_horizontal = StyleBoxTexture.AXIS_STRETCH_MODE_STRETCH
+	panel_tex.axis_stretch_vertical = StyleBoxTexture.AXIS_STRETCH_MODE_STRETCH
+	if texture_region.size.x > 0.0 and texture_region.size.y > 0.0:
+		panel_tex.region_rect = texture_region
+	if texture_expand_margin != Vector4.ZERO:
+		panel_tex.expand_margin_left = texture_expand_margin.x
+		panel_tex.expand_margin_top = texture_expand_margin.y
+		panel_tex.expand_margin_right = texture_expand_margin.z
+		panel_tex.expand_margin_bottom = texture_expand_margin.w
+	if shell_content_margin != Vector4.ZERO:
+		panel_tex.content_margin_left = shell_content_margin.x
+		panel_tex.content_margin_top = shell_content_margin.y
+		panel_tex.content_margin_right = shell_content_margin.z
+		panel_tex.content_margin_bottom = shell_content_margin.w
+	return panel_tex
+
+
+static func stylebox_texture_from_path(
+	texture_path: String,
+	texture_region: Rect2 = Rect2(),
+	texture_expand_margin: Vector4 = Vector4.ZERO,
+	shell_content_margin: Vector4 = Vector4.ZERO,
+	modulate: Color = Color(1.0, 1.0, 1.0, 1.0)
+) -> Variant:
+	var texture: Texture2D = _load_texture(texture_path)
+	if texture == null:
+		return null
+	return _stylebox_texture_from_source(
+		texture, texture_region, texture_expand_margin, shell_content_margin, modulate
+	)
 
 
 static func _load_texture(texture_path: String) -> Texture2D:

@@ -31,12 +31,116 @@ const TENDENCY_ANCHOR_FADE_TIME: float = 0.26
 const DAMAGE_NUMBER_FLOAT_TIME: float = 0.85
 
 # ─── HUD LAYOUT & ASSETS ─────────────────────────────────────────────────────
-const COMBAT_PANEL_TOP_LEFT_PATH: String = "res://assets/ui/combat/panels/combat_panel_top_left.png.png"
-const COMBAT_PANEL_TOP_RIGHT_PATH: String = "res://assets/ui/combat/panels/combat_panel_top_right.png.png"
-const COMBAT_PANEL_REWARD_CLAIM_PATH: String = "res://assets/ui/combat/panels/combat_panel_reward_claim.png.png"
-const COMBAT_PANEL_TOP_LEFT_REGION: Rect2 = Rect2(101.0, 272.0, 1331.0, 372.0)
-const COMBAT_PANEL_TOP_RIGHT_REGION: Rect2 = Rect2(138.0, 262.0, 1290.0, 360.0)
-const COMBAT_PANEL_REWARD_CLAIM_REGION: Rect2 = Rect2(82.0, 160.0, 1387.0, 430.0)
+# Shipped combat panels live under res://assets/ui/combat/panels/ (names match *.import source_file).
+const _HUD_TOP_LEFT_PANEL_PATHS: Array[String] = [
+	"res://assets/ui/combat/panels/combat_panel_top_left.png.png",
+	"res://assets/ui/combat/panels/combat_panel_top_left.png",
+	"res://assets/ui/combat/panels/combat_panel_premium_top_left.png",
+]
+const _HUD_TOP_RIGHT_PANEL_PATHS: Array[String] = [
+	"res://assets/ui/combat/panels/combat_panel_top_right.png.png",
+	"res://assets/ui/combat/panels/combat_panel_top_right.png",
+	"res://assets/ui/combat/panels/combat_panel_premium_top_right.png",
+]
+const _HUD_REWARD_PANEL_PATHS: Array[String] = [
+	"res://assets/ui/combat/panels/combat_panel_reward_claim.png.png",
+	"res://assets/ui/combat/panels/combat_panel_reward_claim.png",
+	"res://assets/ui/combat/panels/combat_panel_premium_reward.png",
+]
+const _HUD_BOTTOM_PANEL_PATHS: Array[String] = [
+	"res://assets/ui/combat/panels/combat_panel_bottom.png.png",
+	"res://assets/ui/combat/panels/combat_panel_bottom.png",
+]
+## Atlas slice in **texture pixel space** (Rect2() = use full image). Set when a sheet packs multiple panels.
+const HUD_TOP_LEFT_ATLAS_REGION: Rect2 = Rect2()
+const HUD_TOP_RIGHT_ATLAS_REGION: Rect2 = Rect2()
+const HUD_REWARD_ATLAS_REGION: Rect2 = Rect2()
+const HUD_BOTTOM_ATLAS_REGION: Rect2 = Rect2()
+## Nine-slice expand margins (texture px): left, top, right, bottom. Keep ZERO for full-bleed panels; set when art is a 9-slice sheet.
+const HUD_TOP_LEFT_NINE_SLICE: Vector4 = Vector4.ZERO
+const HUD_TOP_RIGHT_NINE_SLICE: Vector4 = Vector4.ZERO
+const HUD_REWARD_NINE_SLICE: Vector4 = Vector4.ZERO
+## Optional inset for PanelContainer content (screen px).
+const HUD_TOP_LEFT_CONTENT_MARGIN: Vector4 = Vector4.ZERO
+const HUD_TOP_RIGHT_CONTENT_MARGIN: Vector4 = Vector4.ZERO
+const HUD_REWARD_CONTENT_MARGIN: Vector4 = Vector4.ZERO
+const HUD_BOTTOM_NINE_SLICE: Vector4 = Vector4.ZERO
+const HUD_BOTTOM_CONTENT_MARGIN: Vector4 = Vector4.ZERO
+## Progress bar track (shared underlay for HP / stamina when present).
+const _HUD_BAR_TRACK_PATHS: Array[String] = [
+	"res://assets/ui/combat/bars/combat_bar_track.png",
+	"res://assets/ui/combat/bars/combat_bar_track.png.png",
+	"res://assets/ui/combat/bars/combat_bar_hp_track.png",
+	"res://assets/ui/combat/panels/combat_bar_track.png",
+]
+const HUD_BAR_TRACK_ATLAS_REGION: Rect2 = Rect2()
+const HUD_BAR_TRACK_NINE_SLICE: Vector4 = Vector4(6.0, 4.0, 6.0, 4.0)
+
+
+static func _first_existing_texture_path(paths: Array[String]) -> String:
+	for p in paths:
+		if ResourceLoader.exists(p):
+			return p
+		var abs_path: String = ProjectSettings.globalize_path(p)
+		if FileAccess.file_exists(abs_path):
+			return p
+	return ""
+
+
+static func resolved_hud_top_left_panel_path() -> String:
+	return _first_existing_texture_path(_HUD_TOP_LEFT_PANEL_PATHS)
+
+
+static func resolved_hud_top_right_panel_path() -> String:
+	return _first_existing_texture_path(_HUD_TOP_RIGHT_PANEL_PATHS)
+
+
+static func resolved_hud_reward_panel_path() -> String:
+	return _first_existing_texture_path(_HUD_REWARD_PANEL_PATHS)
+
+
+static func resolved_bar_track_path() -> String:
+	return _first_existing_texture_path(_HUD_BAR_TRACK_PATHS)
+
+
+static func resolved_hud_bottom_panel_path() -> String:
+	return _first_existing_texture_path(_HUD_BOTTOM_PANEL_PATHS)
+
+
+static func hud_bottom_texture_region() -> Rect2:
+	return _texture_region_or_full(resolved_hud_bottom_panel_path(), HUD_BOTTOM_ATLAS_REGION)
+
+
+static func hud_top_left_texture_region() -> Rect2:
+	return _texture_region_or_full(resolved_hud_top_left_panel_path(), HUD_TOP_LEFT_ATLAS_REGION)
+
+
+static func hud_top_right_texture_region() -> Rect2:
+	return _texture_region_or_full(resolved_hud_top_right_panel_path(), HUD_TOP_RIGHT_ATLAS_REGION)
+
+
+static func hud_reward_texture_region() -> Rect2:
+	return _texture_region_or_full(resolved_hud_reward_panel_path(), HUD_REWARD_ATLAS_REGION)
+
+
+static func hud_bar_track_texture_region() -> Rect2:
+	var p: String = resolved_bar_track_path()
+	return _texture_region_or_full(p, HUD_BAR_TRACK_ATLAS_REGION)
+
+
+static func _texture_region_or_full(texture_path: String, atlas_region: Rect2) -> Rect2:
+	if texture_path.is_empty():
+		return Rect2()
+	if atlas_region.size.x <= 0.0 or atlas_region.size.y <= 0.0:
+		return Rect2()
+	var tex: Texture2D = load(texture_path) as Texture2D
+	if tex == null:
+		return Rect2()
+	var bounds: Rect2 = Rect2(Vector2.ZERO, Vector2(tex.get_size()))
+	var inter: Rect2 = atlas_region.intersection(bounds)
+	if inter.size.x <= 0.0 or inter.size.y <= 0.0:
+		return Rect2()
+	return inter
 
 const RIGHT_HUD_STACK_X: float = 1172.0
 const RIGHT_HUD_STACK_WIDTH: float = 96.0

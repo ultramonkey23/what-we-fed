@@ -94,6 +94,9 @@ func update_song_time(elapsed: float) -> void:
 
 
 func _tick_phase_logic() -> void:
+	if _phases.is_empty():
+		return
+		
 	# Use while loop so we can skip through multiple phases if song time jumps.
 	while _current_phase_index + 1 < _phases.size():
 		var next_idx: int = _current_phase_index + 1

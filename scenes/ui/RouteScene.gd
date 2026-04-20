@@ -66,6 +66,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 
 	if key_event.keycode == KEY_ESCAPE:
+		GameState.run_in_progress = false
 		get_tree().change_scene_to_file(LAIR_SCENE_PATH)
 		return
 

@@ -732,7 +732,7 @@ func _return_to_neutral_state(immediate: bool = false) -> void:
 	current_lane = NEUTRAL_LANE
 
 	var vis_node = _player_sprite if _player_sprite != null else sprite
-	var neutral_s: Vector2 = NEUTRAL_SPRITE_SCALE * PLAYER_SPRITE_SCALE_BASE if _player_sprite != null else NEUTRAL_SPRITE_SCALE
+	var neutral_s: Vector2 = NEUTRAL_SPRITE_SCALE * (PLAYER_SPRITE_SCALE_BASE if _player_sprite != null else 1.0)
 
 	if immediate:
 		position = _neutral_world_position()
@@ -792,8 +792,8 @@ func _play_sprite_pose(target_position: Vector2, target_scale: Vector2, return_t
 	var vis_node = _player_sprite if _player_sprite != null else sprite
 	# Scale constants are squash-stretch multipliers; apply PLAYER_SPRITE_SCALE_BASE
 	# so the Sprite2D stays at the right display size through the pose animation.
-	var action_s: Vector2 = target_scale * PLAYER_SPRITE_SCALE_BASE if _player_sprite != null else target_scale
-	var neutral_s: Vector2 = NEUTRAL_SPRITE_SCALE * PLAYER_SPRITE_SCALE_BASE if _player_sprite != null else NEUTRAL_SPRITE_SCALE
+	var action_s: Vector2 = target_scale * (PLAYER_SPRITE_SCALE_BASE if _player_sprite != null else 1.0)
+	var neutral_s: Vector2 = NEUTRAL_SPRITE_SCALE * (PLAYER_SPRITE_SCALE_BASE if _player_sprite != null else 1.0)
 
 	_sprite_pose_tween = create_tween()
 	_sprite_pose_tween.tween_property(vis_node, "position", target_position, 0.03)
@@ -853,3 +853,4 @@ func _on_projectile_player_contact(projectile: Node) -> void:
 	
 	projectile.call("resolve", "miss")
 	lane_manager.call("clear_slot", proj_lane)
+lear_slot", proj_lane)

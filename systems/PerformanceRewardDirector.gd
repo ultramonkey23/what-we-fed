@@ -27,6 +27,9 @@ var _boss_awards_fired: Dictionary = {}
 var _phase_clutch_spent: bool = false
 var _exhaustion_announced: bool = false
 
+var offers_enabled: bool = true
+var banked_reward_count: int = 0
+
 var _active_offer: Dictionary = {}
 var _offer_timer: float = 0.0
 var _queued_offer_ids: Array[String] = []
@@ -66,16 +69,28 @@ func start_song_run(_phases: Array) -> void:
 	_active_offer.clear()
 	_offer_timer = 0.0
 	_queued_offer_ids.clear()
-	_reserved_reward_ids.clear()
-	_claimed_reward_ids.clear()
-	_claimed_rewards.clear()
-	_runtime_effects.clear()
+	
+	# These now persist across levels in a multi-level run.
+	# Call reset_full_run_data() to clear them.
+	# _reserved_reward_ids.clear()
+	# _claimed_reward_ids.clear()
+	# _claimed_rewards.clear()
+	# _runtime_effects.clear()
+	
 	_kill_chain_count = 0
 	_kill_chain_heavy_count = 0
 	_perfect_strike_streak = 0
 	_eat_ratchet_stacks = 0
 	_wound_hunger_cooldown = 0.0
 	_emit_state_changed()
+
+
+func reset_full_run_data() -> void:
+	_reserved_reward_ids.clear()
+	_claimed_reward_ids.clear()
+	_claimed_rewards.clear()
+	_runtime_effects.clear()
+	banked_reward_count = 0
 
 
 func enter_song_phase(index: int, _phase_data: Dictionary) -> void:
@@ -115,8 +130,11 @@ func claim_active_offer(source: String = "manual") -> void:
 	if not effect_type.is_empty():
 		_runtime_effects[effect_type] = effect.duplicate(true)
 	var reward_id: String = String(reward_data.get("id", ""))
-	if not reward_id.is_empty() and not _claimed_reward_ids.has(reward_id):
-		_claimed_reward_ids.append(reward_id)
+	if not reward_id.is_empty():
+		if GameState.has_method("add_upgrade"):
+			GameState.add_upgrade(reward_id)
+		if not _claimed_reward_ids.has(reward_id):
+			_claimed_reward_ids.append(reward_id)
 	_claimed_rewards.append(reward_data)
 	_active_offer.clear()
 	_offer_timer = 0.0
@@ -125,6 +143,27 @@ func claim_active_offer(source: String = "manual") -> void:
 	_emit_state_changed()
 	emit_signal("offer_ended")
 	_show_next_queued_offer()
+
+
+func sync_from_gamestate() -> void:
+	# Restores runtime effects and claimed status from persistent GameState upgrades.
+	# Essential for multi-level runs where the director is re-instantiated.
+	if not GameState.has_method("has_upgrade"):
+		return
+		
+	for reward_id in PERFORMANCE_REWARD_CONTENT.REWARD_ORDER:
+		if GameState.call("has_upgrade", reward_id):
+			var reward_data: Dictionary = PERFORMANCE_REWARD_CONTENT.get_reward(reward_id)
+			if not reward_data.is_empty():
+				var effect: Dictionary = reward_data.get("effect", {})
+				var effect_type: String = String(effect.get("type", ""))
+				if not effect_type.is_empty():
+					_runtime_effects[effect_type] = effect.duplicate(true)
+				if not _claimed_reward_ids.has(reward_id):
+					_claimed_reward_ids.append(reward_id)
+				if not _reserved_reward_ids.has(reward_id):
+					_reserved_reward_ids.append(reward_id)
+	_emit_state_changed()
 
 
 func get_active_offer() -> Dictionary:
@@ -259,6 +298,10 @@ func _check_thresholds() -> void:
 
 
 func _queue_reward_offer() -> void:
+	if not offers_enabled:
+		banked_reward_count += 1
+		return
+		
 	var reward_id: String = _pick_next_reward_id()
 	if reward_id.is_empty():
 		if not _exhaustion_announced:
@@ -270,6 +313,31 @@ func _queue_reward_offer() -> void:
 		_start_offer(reward_id)
 	else:
 		_queued_offer_ids.append(reward_id)
+
+
+func get_upgrade_choices(count: int = 3) -> Array[Dictionary]:
+	var choices: Array[Dictionary] = []
+	var pool: Array[String] = []
+	
+	# Priority 1: Current phase mix
+	for id in _phase_reward_mix:
+		if not _claimed_reward_ids.has(id):
+			pool.append(id)
+	
+	# Priority 2: Full reward order
+	for id in PERFORMANCE_REWARD_CONTENT.REWARD_ORDER:
+		if not _claimed_reward_ids.has(id) and not pool.has(id):
+			pool.append(id)
+			
+	# Pick top N
+	for i in range(min(count, pool.size())):
+		choices.append(PERFORMANCE_REWARD_CONTENT.get_reward(pool[i]))
+		
+	return choices
+
+
+func consume_banked_reward() -> void:
+	banked_reward_count = max(banked_reward_count - 1, 0)
 
 
 func _pick_next_reward_id() -> String:

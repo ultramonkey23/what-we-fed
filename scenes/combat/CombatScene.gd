@@ -131,6 +131,14 @@ var _reward_eat_effect_label: Label = null
 var _reward_creature_tag_label: Label = null
 var _reward_creature_portrait: TextureRect = null
 
+# ─── UPGRADE CHOICE ELEMENTS ─────────────────────────────────────────────────
+var _upgrade_overlay: ColorRect = null
+var _upgrade_panel: ColorRect = null
+var _upgrade_card_nodes: Array[ColorRect] = []
+var _upgrade_choice_labels: Array[Label] = []
+var _awaiting_upgrade_choice: bool = false
+var _pending_upgrades: Array[Dictionary] = []
+
 # ─── LIVE REWARD ELEMENTS ────────────────────────────────────────────────────
 var _live_reward_shell: ColorRect = null
 var _live_reward_title_label: Label = null
@@ -377,6 +385,7 @@ func _initialize_ui() -> void:
 	_create_attack_fx_container()
 	_setup_presentation_runtime()
 	_create_reward_overlay()
+	_create_upgrade_overlay()
 	_create_live_reward_shell()
 	_create_hud_presenter()
 	_refresh_hud_snapshot(0, 0.0, "stirring")
@@ -719,6 +728,18 @@ func _unhandled_input(event: InputEvent) -> void:
 		if key_event.keycode == KEY_N:
 			_pass_reward()
 			return
+
+	if _awaiting_upgrade_choice:
+		if key_event.keycode == KEY_1:
+			_choose_upgrade(0)
+			return
+		if key_event.keycode == KEY_2:
+			_choose_upgrade(1)
+			return
+		if key_event.keycode == KEY_3:
+			_choose_upgrade(2)
+			return
+			
 	if _performance_reward_director != null and is_instance_valid(_performance_reward_director) and _performance_reward_director.call("has_active_offer"):
 		if key_event.keycode == KEY_F:
 			_performance_reward_director.call("claim_active_offer", "manual")
@@ -1729,6 +1750,95 @@ func _create_reward_overlay() -> void:
 	_reward_panel.add_child(_reward_hint_label)
 
 
+func _create_upgrade_overlay() -> void:
+	_upgrade_overlay = ColorRect.new()
+	_upgrade_overlay.name = "UpgradeOverlay"
+	_upgrade_overlay.visible = false
+	_upgrade_overlay.color = Color(0.01, 0.01, 0.02, 0.90)
+	_upgrade_overlay.anchor_right = 1.0
+	_upgrade_overlay.anchor_bottom = 1.0
+	_upgrade_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ui_layer.add_child(_upgrade_overlay)
+
+	_upgrade_panel = ColorRect.new()
+	_upgrade_panel.name = "UpgradePanel"
+	_set_shell_treatment(_upgrade_panel, Color(0.08, 0.06, 0.07, 0.98), Color(0.24, 0.18, 0.16, 0.94))
+	_upgrade_panel.position = Vector2(120.0, 140.0)
+	_upgrade_panel.size = Vector2(1040.0, 440.0)
+	_upgrade_overlay.add_child(_upgrade_panel)
+
+	var header := Label.new()
+	header.text = "CHOOSE YOUR GROWTH"
+	header.position = Vector2(0.0, 24.0)
+	header.size = Vector2(1040.0, 40.0)
+	_apply_text_role(header, "heading", HORIZONTAL_ALIGNMENT_CENTER)
+	_upgrade_panel.add_child(header)
+
+	var sub := Label.new()
+	sub.text = "Select one evolution to anchor before the next leg"
+	sub.position = Vector2(0.0, 68.0)
+	sub.size = Vector2(1040.0, 24.0)
+	_apply_text_role(sub, "screen_subtitle", HORIZONTAL_ALIGNMENT_CENTER)
+	_upgrade_panel.add_child(sub)
+
+	var card_w: float = 300.0
+	var card_h: float = 280.0
+	var gap: float = 32.0
+	var start_x: float = (1040.0 - (card_w * 3 + gap * 2)) * 0.5
+
+	for i in range(3):
+		var card := ColorRect.new()
+		card.name = "UpgradeCard_%d" % i
+		card.position = Vector2(start_x + i * (card_w + gap), 110.0)
+		card.size = Vector2(card_w, card_h)
+		_set_shell_treatment(card, Color(0.12, 0.09, 0.10, 0.96), Color(0.30, 0.22, 0.20, 0.88))
+		_upgrade_panel.add_child(card)
+		_upgrade_card_nodes.append(card)
+
+		var index_label := Label.new()
+		index_label.text = str(i + 1)
+		index_label.position = Vector2(14.0, 14.0)
+		index_label.size = Vector2(24.0, 24.0)
+		_apply_text_role(index_label, "card_index")
+		card.add_child(index_label)
+
+		var cat_label := Label.new()
+		cat_label.name = "Category"
+		cat_label.position = Vector2(14.0, 42.0)
+		cat_label.size = Vector2(card_w - 28.0, 18.0)
+		_apply_text_role(cat_label, "caption_strong")
+		card.add_child(cat_label)
+
+		var title_label := Label.new()
+		title_label.name = "Title"
+		title_label.position = Vector2(14.0, 64.0)
+		title_label.size = Vector2(card_w - 28.0, 48.0)
+		title_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		_apply_text_role(title_label, "card_title")
+		card.add_child(title_label)
+
+		var sep := ColorRect.new()
+		sep.position = Vector2(14.0, 120.0)
+		sep.size = Vector2(card_w - 28.0, 1.0)
+		sep.color = Color(0.28, 0.20, 0.18, 0.50)
+		card.add_child(sep)
+
+		var body_label := Label.new()
+		body_label.name = "Body"
+		body_label.position = Vector2(14.0, 134.0)
+		body_label.size = Vector2(card_w - 28.0, 120.0)
+		body_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		_apply_text_role(body_label, "body")
+		card.add_child(body_label)
+
+	var hint := Label.new()
+	hint.text = "1 / 2 / 3 - Select Upgrade"
+	hint.position = Vector2(0.0, 400.0)
+	hint.size = Vector2(1040.0, 24.0)
+	_apply_text_role(hint, "hint", HORIZONTAL_ALIGNMENT_CENTER)
+	_upgrade_panel.add_child(hint)
+
+
 func _create_live_reward_shell() -> void:
 	var live_reward_art: TextureRect = null
 	_live_reward_shell = ColorRect.new()
@@ -1865,7 +1975,9 @@ func _setup_performance_rewards() -> void:
 
 	if _performance_reward_director.has_method("bind_runtime"):
 		_performance_reward_director.call("bind_runtime", combat_meter, _run_growth, _run_stats)
-	
+		_performance_reward_director.set("offers_enabled", false)
+		if _performance_reward_director.has_method("sync_from_gamestate"):
+			_performance_reward_director.call("sync_from_gamestate")
 	_performance_hud.bind_runtime(_performance_reward_director)
 
 	if _performance_reward_director.has_signal("reward_claimed"):
@@ -2206,9 +2318,9 @@ func _trigger_boss_final_movement() -> void:
 	_load_encounter_payload(boss_encounter, false)
 
 	if _escalation_director != null:
-		var boss_phases: Array = boss_encounter.get("phases", [])
-		_escalation_director.setup(_region_id, boss_phases, _song_rng)
-		_escalation_director.start(0.0)
+		# Authored boss encounters use their own phase logic in _start_current_phase;
+		# clearing phases here prevents the director from trying to process them as Song phases.
+		_escalation_director.setup(_region_id, [], _song_rng)
 
 
 func _update_song_hud() -> void:
@@ -2392,18 +2504,22 @@ func _start_mini_run() -> void:
 	)
 
 	# Resets shared run state then launches in song mode.
-	GameState.run_number += 1
-	_texture_cache.clear()
+	if not GameState.run_in_progress:
+		GameState.run_number += 1
+		_texture_cache.clear()
+		_apply_dev_harness_region_override()
+		if GameState.has_method("reset_run_state"):
+			GameState.reset_run_state()
+		if _performance_reward_director != null and _performance_reward_director.has_method("reset_full_run_data"):
+			_performance_reward_director.call("reset_full_run_data")
+		GameState.run_in_progress = true
+		
 	_run_finished = false
 	_is_boss_encounter = false
 	_boss_total_hp = 0.0
 	_boss_current_hp = 0.0
 	_hide_boss_bar()
 	_hide_reward_overlay()
-
-	_apply_dev_harness_region_override()
-	if GameState.has_method("reset_run_state"):
-		GameState.reset_run_state()
 	_apply_dev_harness_pre_run_state()
 
 	EventBus.emit_signal("run_started", int(GameState.run_number))
@@ -3067,7 +3183,63 @@ func _complete_current_encounter() -> void:
 		return
 
 	_refresh_run_build_readout()
-	_finish_run(true)
+	_check_for_upgrade_choices()
+
+
+func _check_for_upgrade_choices() -> void:
+	var banked: int = 0
+	if _performance_reward_director != null and is_instance_valid(_performance_reward_director):
+		banked = int(_performance_reward_director.get("banked_reward_count"))
+	
+	if banked > 0:
+		_show_upgrade_choices()
+	else:
+		_advance_to_next_stage()
+
+
+func _show_upgrade_choices() -> void:
+	_hide_reward_overlay()
+	_awaiting_upgrade_choice = true
+	_pending_upgrades = _performance_reward_director.call("get_upgrade_choices", 3)
+	
+	for i in range(3):
+		var card := _upgrade_card_nodes[i] as ColorRect
+		if i < _pending_upgrades.size():
+			var up: Dictionary = _pending_upgrades[i]
+			card.visible = true
+			card.get_node("Category").text = String(up.get("tag", "UPGRADE"))
+			card.get_node("Title").text = String(up.get("title", "Unknown"))
+			card.get_node("Body").text = String(up.get("summary", ""))
+		else:
+			card.visible = false
+			
+	_upgrade_overlay.visible = true
+	controls_label.text = "1 / 2 / 3 - Select Evolution"
+
+
+func _choose_upgrade(index: int) -> void:
+	if index < 0 or index >= _pending_upgrades.size():
+		return
+	
+	var up: Dictionary = _pending_upgrades[index]
+	_performance_reward_director.set("_active_offer", up)
+	_performance_reward_director.call("claim_active_offer", "manual")
+	_performance_reward_director.call("consume_banked_reward")
+	
+	_awaiting_upgrade_choice = false
+	_upgrade_overlay.visible = false
+	
+	# After choosing, we move to next stage. 
+	# (Banked rewards are consumed one per level in this v1 pass)
+	_advance_to_next_stage()
+
+
+func _advance_to_next_stage() -> void:
+	if _is_boss_encounter:
+		_finish_run(true)
+	else:
+		# Transition back to RouteScene to choose next level
+		get_tree().change_scene_to_file("res://scenes/ui/RouteScene.tscn")
 
 
 func _finish_run(victory: bool) -> void:
@@ -3075,6 +3247,7 @@ func _finish_run(victory: bool) -> void:
 	_run_finished = true
 	_combat_finished = true
 	_phase_transitioning = false
+	GameState.run_in_progress = false
 
 	_stop_boss_music()
 	_stop_song_conductor()
@@ -3517,9 +3690,9 @@ func _choose_bond() -> void:
 	if _song_reward_pending:
 		_resume_song_after_reward()
 	else:
-		_reward_hint_label.text = PRESENTATION_TEXT.REWARD_HINT_RESTART
-		controls_label.text = PRESENTATION_TEXT.REWARD_CONTROLS_RESTART
-		_finish_run(true)
+		_reward_hint_label.text = PRESENTATION_TEXT.REWARD_HINT_WAIT
+		controls_label.text = ""
+		_check_for_upgrade_choices()
 
 
 func _choose_eat() -> void:
@@ -3612,9 +3785,9 @@ func _choose_eat() -> void:
 		_show_feedback("REWARD PASSED", Color(0.76, 0.60, 0.42, 1.0), 0.24)
 		_resume_song_after_reward()
 	else:
-		_reward_hint_label.text = PRESENTATION_TEXT.REWARD_HINT_RESTART
-		controls_label.text = PRESENTATION_TEXT.REWARD_CONTROLS_RESTART
-		_finish_run(true)
+		_reward_hint_label.text = PRESENTATION_TEXT.REWARD_HINT_WAIT
+		controls_label.text = ""
+		_check_for_upgrade_choices()
 
 
 func _pass_reward() -> void:
@@ -3644,9 +3817,9 @@ func _pass_reward() -> void:
 		_show_feedback("REWARD PASSED", Color(0.76, 0.60, 0.42, 1.0), 0.24)
 		_resume_song_after_reward()
 	else:
-		_reward_hint_label.text = PRESENTATION_TEXT.REWARD_HINT_RESTART
-		controls_label.text = PRESENTATION_TEXT.REWARD_CONTROLS_RESTART
-		_finish_run(true)
+		_reward_hint_label.text = PRESENTATION_TEXT.REWARD_HINT_WAIT
+		controls_label.text = ""
+		_check_for_upgrade_choices()
 
 
 func _on_combo_changed(count: int, tier: String) -> void:

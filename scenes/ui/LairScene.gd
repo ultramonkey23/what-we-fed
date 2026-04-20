@@ -63,6 +63,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 
 	if key_event.keycode == KEY_SPACE or key_event.keycode == KEY_ENTER:
+		GameState.run_in_progress = false
 		get_tree().change_scene_to_file(ROUTE_SCENE_PATH)
 		return
 

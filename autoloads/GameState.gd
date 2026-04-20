@@ -4,6 +4,7 @@ extends Node
 # It supports current combat plus the first post-fight reward choice.
 
 var run_number: int = 1
+var run_in_progress: bool = false
 
 var player_hp: float = 100.0
 var player_max_hp: float = 100.0

@@ -1,147 +1,64 @@
-[gd_scene load_steps=14 format=3 uid="uid://b8m7f5j2k3l4"]
+[gd_scene format=3 uid="uid://b8m7f5j2k3l4"]
 
 [ext_resource type="Script" uid="uid://dl824hd7lw5j1" path="res://scenes/ui/CombatPerformanceHUD.gd" id="1_script"]
-[ext_resource type="Shader" uid="uid://c5m6wmsoe4qoq" path="res://assets/ui/shaders/energy_border_shader.gdshader" id="energy_shader"]
 
-
-[node name="PowerFantasyCombatHUD" type="Control"]
+[node name="CombatPerformanceHUD" type="Control"]
 layout_mode = 3
 anchors_preset = 0
 script = ExtResource("1_script")
 
-[node name="PerformancePanel" type="Panel" parent="."]
+[node name="PerformanceShell" type="Panel" parent="."]
 unique_name_in_owner = true
 layout_mode = 0
-offset_right = 200.0
+offset_right = 156.0
+offset_bottom = 60.0
+
+[node name="PerformanceContainer" type="VBoxContainer" parent="PerformanceShell"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_top = 6.0
+offset_right = -8.0
+offset_bottom = -6.0
+
+[node name="Caption" type="Label" parent="PerformanceShell/PerformanceContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "PERFORMANCE"
+
+[node name="ProgressLabel" type="Label" parent="PerformanceShell/PerformanceContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "0 / 0"
+
+[node name="StatusLabel" type="Label" parent="PerformanceShell/PerformanceContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "FLOWING"
+
+[node name="ClaimsLabel" type="Label" parent="PerformanceShell/PerformanceContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "CLAIMS: 0"
+
+[node name="ProcChipLabel" type="Label" parent="PerformanceShell/PerformanceContainer"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+text = ""
+size_flags_horizontal = 3
+horizontal_alignment = 2
+
+[node name="OfferShell" type="Panel" parent="."]
+unique_name_in_owner = true
+layout_mode = 0
+offset_left = 164.0
+offset_right = 484.0
 offset_bottom = 80.0
 
-[node name="PanelStyle" type="StyleBoxFlat" parent="PerformancePanel"]
-bg_color = Color(0.05, 0.05, 0.05, 0.95)
-border_width_left = 4
-border_width_top = 4
-border_width_right = 4
-border_width_bottom = 4
-border_color = Color(0, 1, 1, 0.8)
-corner_radius_top_left = 8
-corner_radius_top_right = 8
-corner_radius_bottom_right = 8
-corner_radius_bottom_left = 8
-shadow_color = Color(0, 1, 1, 0.3)
-shadow_size = 8
-anti_aliasing = true
-
-[node name="PerformanceContainer" type="VBoxContainer" parent="PerformancePanel"]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = 12.0
-offset_top = 10.0
-offset_right = -12.0
-offset_bottom = -10.0
-
-[node name="Caption" type="Label" parent="PerformancePanel/PerformanceContainer"]
-layout_mode = 2
-text = "POWER METER"
-
-[node name="PowerLevel" type="Label" parent="PerformancePanel/PerformanceContainer"]
-layout_mode = 2
-text = "AWAKENING"
-
-[node name="ComboDisplay" type="Label" parent="PerformancePanel/PerformanceContainer"]
-layout_mode = 2
-text = "0x DOMINANCE"
-
-[node name="StatusLabel" type="Label" parent="PerformancePanel/PerformanceContainer"]
-layout_mode = 2
-text = "PREDATOR'S RISE"
-
-[node name="OfferPanel" type="Panel" parent="."]
-unique_name_in_owner = true
-layout_mode = 0
-offset_left = 220.0
-offset_right = 620.0
-offset_bottom = 120.0
-
-[node name="OfferPanelStyle" type="StyleBoxFlat" parent="OfferPanel"]
-bg_color = Color(0.05, 0.03, 0.05, 0.95)
-border_width_left = 4
-border_width_top = 4
-border_width_right = 4
-border_width_bottom = 4
-border_color = Color(1, 0, 1, 0.8)
-corner_radius_top_left = 8
-corner_radius_top_right = 8
-corner_radius_bottom_right = 8
-corner_radius_bottom_left = 8
-shadow_color = Color(1, 0, 1, 0.3)
-shadow_size = 8
-
-[node name="OfferContainer" type="VBoxContainer" parent="OfferPanel"]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = 16.0
-offset_top = 12.0
-offset_right = -16.0
-offset_bottom = -12.0
-
-[node name="CreatureSilhouette" type="ColorRect" parent="OfferPanel/OfferContainer"]
-layout_mode = 2
-custom_minimum_size = Vector2(384, 60)
-color = Color(0.2, 0.1, 0.2, 0.8)
-
-[node name="OfferTitleLabel" type="Label" parent="OfferPanel/OfferContainer"]
-layout_mode = 2
-text = "ASHCLAW DEMANDS CHOICE"
-label_settings = SubResource("LabelSettings_offer_title")
-
-[node name="OfferBodyLabel" type="Label" parent="OfferPanel/OfferContainer"]
-layout_mode = 2
-text = "BOND FOR SHARED POWER  OR  CONSUME FOR SOLO DOMINANCE"
-autowrap_mode = 3
-label_settings = SubResource("LabelSettings_offer_body")
-
-[node name="ChoiceContainer" type="HBoxContainer" parent="OfferPanel/OfferContainer"]
-layout_mode = 2
-
-[node name="BondChoice" type="Label" parent="OfferPanel/OfferContainer/ChoiceContainer"]
-layout_mode = 2
-text = "[Q] BOND"
-label_settings = SubResource("LabelSettings_bond_choice")
-
-[node name="EatChoice" type="Label" parent="OfferPanel/OfferContainer/ChoiceContainer"]
-layout_mode = 2
-text = "[E] CONSUME"
-label_settings = SubResource("LabelSettings_eat_choice")
-
-[node name="UltimateGauge" type="Panel" parent="."]
-unique_name_in_owner = true
-layout_mode = 0
-anchors_preset = 12
-anchor_top = 1.0
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_top = -60.0
-offset_bottom = 0.0
-material = SubResource("ShaderMaterial_ultimate_border")
-
-[node name="UltimateStyle" type="StyleBoxFlat" parent="UltimateGauge"]
-bg_color = Color(0.05, 0.05, 0.02, 0.95)
-border_width_left = 4
-border_width_top = 4
-border_width_right = 4
-border_width_bottom = 4
-border_color = Color(1, 1, 0, 0.8)
-corner_radius_top_left = 8
-corner_radius_top_right = 8
-corner_radius_bottom_right = 8
-corner_radius_bottom_left = 8
-shadow_color = Color(1, 1, 0, 0.3)
-shadow_size = 8
-
-[node name="UltimateContainer" type="HBoxContainer" parent="UltimateGauge"]
+[node name="OfferContainer" type="VBoxContainer" parent="OfferShell"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -151,70 +68,32 @@ offset_top = 8.0
 offset_right = -12.0
 offset_bottom = -8.0
 
-[node name="UltimateLabel" type="Label" parent="UltimateGauge/UltimateContainer"]
+[node name="OfferTitleLabel" type="Label" parent="OfferShell/OfferContainer"]
+unique_name_in_owner = true
 layout_mode = 2
-text = "APEX POWER"
-label_settings = SubResource("LabelSettings_ultimate")
+text = "ASHCLAW APPEARS"
 
-[node name="UltimateProgressBar" type="ProgressBar" parent="UltimateGauge/UltimateContainer"]
+[node name="OfferBodyLabel" type="Label" parent="OfferShell/OfferContainer"]
+unique_name_in_owner = true
 layout_mode = 2
-size_flags_horizontal = 3
-custom_minimum_size = Vector2(400, 0)
-max_value = 100.0
-value = 0.0
+text = "Bond for support, or consume for power?"
+autowrap_mode = 3
+
+[node name="OfferHintLabel" type="Label" parent="OfferShell/OfferContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "[Q] Bond  [E] Consume"
+
+[node name="OfferProgressBar" type="ProgressBar" parent="OfferShell"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -4.0
+offset_bottom = 0.0
+max_value = 1.0
+value = 0.5
 show_percentage = false
-tint_progress = Color(1, 1, 0, 0.9)
-
-[SubResource type="ShaderMaterial" id="ShaderMaterial_energy_border"]
-shader = ExtResource("energy_shader")
-shader_parameter/energy_color = Color(0, 1, 1, 1)
-shader_parameter/energy_intensity = 1.0
-shader_parameter/pulse_speed = 2.0
-
-[SubResource type="ShaderMaterial" id="ShaderMaterial_mutation_border"]
-shader = ExtResource("energy_shader")
-shader_parameter/energy_color = Color(1, 0, 1, 1)
-shader_parameter/energy_intensity = 1.2
-shader_parameter/pulse_speed = 1.5
-
-[SubResource type="ShaderMaterial" id="ShaderMaterial_ultimate_border"]
-shader = ExtResource("energy_shader")
-shader_parameter/energy_color = Color(1, 1, 0, 1)
-shader_parameter/energy_intensity = 1.5
-shader_parameter/pulse_speed = 1.0
-
-[SubResource type="LabelSettings" id="LabelSettings_dominant_header"]
-font_size = 12
-font_color = Color(0, 1, 1, 1)
-
-[SubResource type="LabelSettings" id="LabelSettings_power_stage"]
-font_size = 10
-font_color = Color(0.8, 0.8, 0.8, 1)
-
-[SubResource type="LabelSettings" id="LabelSettings_combo"]
-font_size = 16
-font_color = Color(1, 1, 1, 1)
-
-[SubResource type="LabelSettings" id="LabelSettings_status"]
-font_size = 12
-font_color = Color(0.9, 0.9, 0.9, 1)
-
-[SubResource type="LabelSettings" id="LabelSettings_offer_title"]
-font_size = 14
-font_color = Color(1, 0, 1, 1)
-
-[SubResource type="LabelSettings" id="LabelSettings_offer_body"]
-font_size = 12
-font_color = Color(0.95, 0.95, 0.95, 1)
-
-[SubResource type="LabelSettings" id="LabelSettings_bond_choice"]
-font_size = 11
-font_color = Color(0, 0.8, 1, 1)
-
-[SubResource type="LabelSettings" id="LabelSettings_eat_choice"]
-font_size = 11
-font_color = Color(1, 0.2, 0.2, 1)
-
-[SubResource type="LabelSettings" id="LabelSettings_ultimate"]
-font_size = 12
-font_color = Color(1, 1, 0, 1)
+tint_progress = Color(1, 0, 1, 0.8)

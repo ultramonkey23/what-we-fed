@@ -197,10 +197,7 @@ func _resolve_support_species_id(preset: Dictionary) -> String:
 
 
 func _build_ui() -> void:
-	var bg: ColorRect = ColorRect.new()
-	bg.color = Color(0.05, 0.03, 0.04, 1.0)
-	bg.size = Vector2(1280.0, 720.0)
-	add_child(bg)
+	UI_STYLE.attach_shell_backdrop(self)
 
 	var canvas: CanvasLayer = CanvasLayer.new()
 	add_child(canvas)

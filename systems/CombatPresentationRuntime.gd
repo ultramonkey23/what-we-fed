@@ -231,7 +231,7 @@ func spawn_creature_intervention(
 	if texture_path.is_empty() or _player_combat == null or _lane_manager == null:
 		return
 
-	var tex: Texture2D = load(texture_path)
+	var tex: Texture2D = load(texture_path) as Texture2D
 	if tex == null:
 		return
 

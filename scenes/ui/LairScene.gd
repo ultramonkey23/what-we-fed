@@ -204,7 +204,7 @@ func _reflow_lair_desc_scroll(scroll: ScrollContainer, label: Label) -> void:
 		return
 	var inner_w: float = maxf(1.0, scroll.size.x - 10.0)
 	label.custom_minimum_size.x = inner_w
-	var content_h: float = label.get_content_height()
+	var content_h: float = label.get_minimum_size().y
 	label.custom_minimum_size.y = maxf(scroll.size.y, content_h)
 
 

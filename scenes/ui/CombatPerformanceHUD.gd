@@ -7,14 +7,14 @@ var _director: Node = null
 var _proc_chip_timer: float = 0.0
 var _proc_tween: Tween = null
 
-@onready var _shell: ColorRect = %PerformanceShell
+@onready var _shell: Control = %PerformanceShell
 @onready var _caption: Label = %Caption
 @onready var _progress_label: Label = %ProgressLabel
 @onready var _status_label: Label = %StatusLabel
 @onready var _claims_label: Label = %ClaimsLabel
 @onready var _proc_chip_label: Label = %ProcChipLabel
 
-@onready var _offer_shell: ColorRect = %OfferShell
+@onready var _offer_shell: Control = %OfferShell
 @onready var _offer_title_label: Label = %OfferTitleLabel
 @onready var _offer_body_label: Label = %OfferBodyLabel
 @onready var _offer_hint_label: Label = %OfferHintLabel
@@ -24,6 +24,8 @@ var _proc_tween: Tween = null
 func _ready() -> void:
 	_shell.visible = false
 	_offer_shell.visible = false
+	if _proc_chip_label != null:
+		_proc_chip_label.visible = false
 	_apply_styles()
 
 

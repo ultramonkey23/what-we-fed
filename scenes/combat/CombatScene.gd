@@ -41,7 +41,8 @@ const SUPPORT_EFFECT_RESOLVER = preload("res://systems/SupportEffectResolver.gd"
 const RUN_GROWTH_SCRIPT_PATH: String = "res://systems/RunGrowth.gd"
 const PERFORMANCE_REWARD_DIRECTOR_SCRIPT_PATH: String = "res://systems/PerformanceRewardDirector.gd"
 const RUN_STATS_SCRIPT_PATH: String = "res://systems/RunStats.gd"
-# const COMBAT_PERFORMANCE_HUD_SCENE: PackedScene = preload("res://scenes/ui/CombatPerformanceHUD.tscn")
+const COMBAT_PERFORMANCE_HUD_SCENE: PackedScene = preload("res://scenes/ui/CombatPerformanceHUD.tscn")
+const RUN_SPINE_SCENE: PackedScene = preload("res://scenes/ui/RunSpineScene.tscn")
 const ENEMY_LOW_HP_THRESHOLD: float = 0.25
 const SUPPORT_MASTERY_CONTEXT_TIMEOUT: float = 1.75
 const LIVE_REWARD_WINDOW: float = 10.0
@@ -143,7 +144,8 @@ var _upgrade_choice_labels: Array[Label] = []
 var _awaiting_upgrade_choice: bool = false
 var _pending_upgrades: Array[Dictionary] = []
 
-# Between regular song levels: inventory / resource readout (authored run cadence).
+var _run_spine_surface: Node = null
+# Legacy between-level overlay vars retained for non-song upgrade flow compatibility.
 var _run_prep_overlay: ColorRect = null
 var _run_prep_panel: ColorRect = null
 var _run_prep_scroll: ScrollContainer = null
@@ -257,6 +259,12 @@ func _ready() -> void:
 
 
 func _exit_tree() -> void:
+	var vp: Viewport = get_viewport()
+	if vp.size_changed.is_connected(_sync_fullscreen_underlay_controls):
+		vp.size_changed.disconnect(_sync_fullscreen_underlay_controls)
+	if vp.size_changed.is_connected(_center_performance_offer_shell):
+		vp.size_changed.disconnect(_center_performance_offer_shell)
+
 	# Disconnect all EventBus signals to prevent memory leaks and desync.
 	if EventBus.combo_changed.is_connected(_on_combo_changed):
 		EventBus.combo_changed.disconnect(_on_combo_changed)
@@ -390,6 +398,8 @@ func _on_escalation_feedback_requested(text: String, color: Color, duration: flo
 
 func _initialize_ui() -> void:
 	_setup_visuals()
+	if not get_viewport().size_changed.is_connected(_sync_fullscreen_underlay_controls):
+		get_viewport().size_changed.connect(_sync_fullscreen_underlay_controls)
 	_setup_ui()
 	_setup_ui_pivots()
 	_create_feedback_label()
@@ -399,9 +409,10 @@ func _initialize_ui() -> void:
 	_setup_presentation_runtime()
 	_create_reward_overlay()
 	_create_upgrade_overlay()
-	_create_run_prep_overlay()
+	_create_run_spine_surface()
 	_create_live_reward_shell()
 	_create_hud_presenter()
+	_setup_performance_hud()
 	_refresh_hud_snapshot(0, 0.0, "stirring")
 
 
@@ -452,14 +463,14 @@ func _update_presentation_layers() -> void:
 
 func _update_performance_systems(delta: float) -> void:
 	if _performance_reward_director != null and is_instance_valid(_performance_reward_director) and _performance_reward_director.has_method("process_tick"):
-		if not _awaiting_reward_choice and not _awaiting_run_prep:
+		if not _awaiting_reward_choice and not _is_run_spine_active():
 			_performance_reward_director.call("process_tick", delta)
 			if _performance_hud != null and _performance_hud.has_method("process_tick"):
 				_performance_hud.process_tick(
 					delta,
 					_song_mode,
 					_run_finished,
-					_awaiting_reward_choice or _awaiting_run_prep
+					_awaiting_reward_choice or _is_run_spine_active()
 				)
 
 
@@ -761,19 +772,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			_choose_upgrade(2)
 			return
 
-	if _awaiting_run_prep:
-		if (
-			key_event.keycode == KEY_SPACE
-			or key_event.keycode == KEY_ENTER
-			or key_event.keycode == KEY_KP_ENTER
-		):
-			_continue_song_after_run_prep()
-			return
-		if key_event.is_action_pressed("toggle_dna_route"):
-			if _run_growth != null and is_instance_valid(_run_growth) and _run_growth.has_method("toggle_dna_routing_preference"):
-				_run_growth.call("toggle_dna_routing_preference")
-			_refresh_run_prep_body()
-			return
+	if _is_run_spine_active():
 		return
 
 	if _performance_reward_director != null and is_instance_valid(_performance_reward_director) and _performance_reward_director.call("has_active_offer"):
@@ -806,8 +805,6 @@ func _set_shell_treatment(shell: ColorRect, color: Color, border_color: Color) -
 
 
 func _setup_visuals() -> void:
-	background.anchor_right = 1.0
-	background.anchor_bottom = 1.0
 	background.z_index = -10
 	background.color = Color(0.05, 0.04, 0.05, 1.0)
 
@@ -858,11 +855,34 @@ func _setup_visuals() -> void:
 	_battlefield_bottom_trim.z_index = -5
 	add_child(_battlefield_bottom_trim)
 
-	flash_overlay.anchor_right = 1.0
-	flash_overlay.anchor_bottom = 1.0
 	flash_overlay.color = Color(1.0, 1.0, 1.0, 0.0)
 	flash_overlay.z_index = 100
 	flash_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	_sync_fullscreen_underlay_controls()
+
+
+func _sync_fullscreen_underlay_controls() -> void:
+	# ColorRect / TextureRect children of Node2D do not get a meaningful anchor parent rect;
+	# match full viewport explicitly (see _apply_combat_background for TextureRect).
+	var vp: Vector2 = get_viewport_rect().size
+	if vp.x <= 0.0 or vp.y <= 0.0:
+		return
+	if is_instance_valid(background):
+		background.set_anchors_preset(Control.PRESET_TOP_LEFT)
+		background.position = Vector2.ZERO
+		background.size = vp
+	if is_instance_valid(flash_overlay):
+		flash_overlay.set_anchors_preset(Control.PRESET_TOP_LEFT)
+		flash_overlay.position = Vector2.ZERO
+		flash_overlay.size = vp
+	if _bg_sprite != null and is_instance_valid(_bg_sprite):
+		_bg_sprite.position = Vector2.ZERO
+		_bg_sprite.size = vp
+	var vignette: Node = get_node_or_null("CombatVignette")
+	if vignette is TextureRect and is_instance_valid(vignette):
+		(vignette as TextureRect).position = Vector2.ZERO
+		(vignette as TextureRect).size = vp
 
 
 func _apply_combat_background(override_path: String = "") -> void:
@@ -931,6 +951,8 @@ func _apply_combat_background(override_path: String = "") -> void:
 	grad_tex.height = 512
 	vignette.texture = grad_tex
 	add_child(vignette)
+
+	_sync_fullscreen_underlay_controls()
 
 
 func _setup_ui_pivots() -> void:
@@ -2026,7 +2048,7 @@ func _reflow_scroll_label_pair(scroll: ScrollContainer, label: Label) -> void:
 		return
 	var inner_w: float = maxf(1.0, scroll.size.x - 10.0)
 	label.custom_minimum_size.x = inner_w
-	var content_h: float = label.get_content_height()
+	var content_h: float = label.get_minimum_size().y
 	label.custom_minimum_size.y = maxf(scroll.size.y, content_h)
 
 
@@ -2462,28 +2484,50 @@ func _setup_performance_rewards() -> void:
 	_performance_reward_director.set_script(script)
 	add_child(_performance_reward_director)
 
-	# _performance_hud = COMBAT_PERFORMANCE_HUD_SCENE.instantiate()
-	# _performance_hud.position = Vector2(COMBAT_FEEL_CONTENT.RIGHT_HUD_STACK_X - 14.0, 238.0)
-	# ui_layer.add_child(_performance_hud)
-
-	# Center the OfferShell on the screen.
-	# The HUD Control itself is at (X-14, 268), so we need to offset back.
-	# var offer_shell: Control = _performance_hud.get_node_or_null("OfferShell")
-	# if offer_shell != null:
-	# 	var screen_center_x: float = get_viewport_rect().size.x * 0.5
-	# 	offer_shell.global_position = Vector2(screen_center_x - 160.0, 580.0)
-
 	if _performance_reward_director.has_method("bind_runtime"):
 		_performance_reward_director.call("bind_runtime", combat_meter, _run_growth, _run_stats)
 		_performance_reward_director.set("offers_enabled", false)
 		if _performance_reward_director.has_method("sync_from_gamestate"):
 			_performance_reward_director.call("sync_from_gamestate")
-	# _performance_hud.bind_runtime(_performance_reward_director)
 
 	if _performance_reward_director.has_signal("reward_claimed"):
 		_performance_reward_director.connect("reward_claimed", Callable(self, "_on_performance_reward_claimed"))
 	if _performance_reward_director.has_signal("proc_feedback"):
 		_performance_reward_director.connect("proc_feedback", Callable(self, "_on_performance_reward_feedback"))
+
+
+func _setup_performance_hud() -> void:
+	if _performance_hud != null and is_instance_valid(_performance_hud):
+		return
+	if COMBAT_PERFORMANCE_HUD_SCENE == null:
+		return
+	var inst: Node = COMBAT_PERFORMANCE_HUD_SCENE.instantiate()
+	if inst == null or not (inst is Control):
+		if inst != null:
+			inst.queue_free()
+		return
+	_performance_hud = inst as Control
+	ui_layer.add_child(_performance_hud)
+	_performance_hud.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	_performance_hud.position = Vector2(COMBAT_FEEL_CONTENT.RIGHT_HUD_STACK_X - 14.0, 238.0)
+	if _performance_reward_director != null and _performance_hud.has_method("bind_runtime"):
+		_performance_hud.bind_runtime(_performance_reward_director)
+	if not get_viewport().size_changed.is_connected(_center_performance_offer_shell):
+		get_viewport().size_changed.connect(_center_performance_offer_shell)
+	call_deferred("_center_performance_offer_shell")
+
+
+func _center_performance_offer_shell() -> void:
+	if not is_instance_valid(_performance_hud):
+		return
+	var offer_shell: Control = _performance_hud.get_node_or_null("%OfferShell") as Control
+	if offer_shell == null:
+		return
+	var cx: float = get_viewport_rect().size.x * 0.5
+	var w: float = maxf(offer_shell.size.x, 1.0)
+	if w <= 1.0:
+		w = 320.0
+	offer_shell.global_position = Vector2(cx - w * 0.5, 580.0)
 
 
 func _on_performance_reward_claimed(_reward_data: Dictionary, _source: String) -> void:
@@ -2569,10 +2613,11 @@ func _start_song_run() -> void:
 	_region_id = region_id if not region_id.is_empty() else "feeding_hollow"
 	_active_song_data = AUDIO_CONTENT.get_region_main_run_song(_region_id)
 	_active_song_map = AUDIO_CONTENT.get_region_song_map(_region_id)
-	print("CombatScene: region song route -> %s / %s" % [
-		_region_id,
-		String(_active_song_data.get("display_name", "Unknown"))
-	])
+	if OS.is_debug_build():
+		print("CombatScene: region song route -> %s / %s" % [
+			_region_id,
+			String(_active_song_data.get("display_name", "Unknown"))
+		])
 
 	var song_duration: float = _resolve_active_song_duration()
 	_regular_level_windows = RUN_PACING_CONTENT.build_regular_level_windows(_region_id, song_duration)
@@ -2698,26 +2743,63 @@ func _on_regular_level_complete() -> void:
 
 func _show_level_completion_rewards() -> void:
 	_hide_reward_overlay()
-	_awaiting_upgrade_choice = true
-	
-	# Request structural choices from the director.
+	_hide_run_spine_surface()
+
+	_pending_upgrades.clear()
 	if _performance_reward_director != null and is_instance_valid(_performance_reward_director):
 		_pending_upgrades = _performance_reward_director.call("get_level_completion_choices", 3)
-	
-	for i in range(3):
-		var card := _upgrade_card_nodes[i] as ColorRect
-		if i < _pending_upgrades.size():
-			var up: Dictionary = _pending_upgrades[i]
-			card.visible = true
-			card.get_node("Category").text = String(up.get("tag", "EVOLUTION"))
-			card.get_node("Title").text = String(up.get("title", "Unknown"))
-			card.get_node("Body").text = String(up.get("summary", ""))
-		else:
-			card.visible = false
-			
-	_upgrade_overlay.visible = true
+
+	var advancing_to_boss: bool = _regular_level_index + 1 >= _regular_level_windows.size()
+	if _run_spine_surface != null and _run_spine_surface.has_method("present_level_completion"):
+		_run_spine_surface.call("present_level_completion", _pending_upgrades, _run_growth, advancing_to_boss)
 	_show_feedback("LEVEL COMPLETE", Color(0.85, 0.95, 0.75, 1.0), 0.60)
-	controls_label.text = "1 / 2 / 3 - Select Evolution to continue"
+	controls_label.text = ""
+
+
+func _create_run_spine_surface() -> void:
+	if _run_spine_surface != null and is_instance_valid(_run_spine_surface):
+		return
+	_run_spine_surface = RUN_SPINE_SCENE.instantiate()
+	_run_spine_surface.name = "RunSpineSurface"
+	_run_spine_surface.visible = false
+	add_child(_run_spine_surface)
+	if _run_spine_surface.has_signal("upgrade_selected"):
+		_run_spine_surface.connect("upgrade_selected", Callable(self, "_on_run_spine_upgrade_selected"))
+	if _run_spine_surface.has_signal("continue_requested"):
+		_run_spine_surface.connect("continue_requested", Callable(self, "_on_run_spine_continue_requested"))
+
+
+func _is_run_spine_active() -> bool:
+	return _run_spine_surface != null and is_instance_valid(_run_spine_surface) and _run_spine_surface.visible
+
+
+func _hide_run_spine_surface() -> void:
+	if _run_spine_surface != null and is_instance_valid(_run_spine_surface) and _run_spine_surface.has_method("hide_surface"):
+		_run_spine_surface.call("hide_surface")
+
+
+func _on_run_spine_upgrade_selected(index: int) -> void:
+	if index < 0 or index >= _pending_upgrades.size():
+		return
+	if _performance_reward_director == null or not is_instance_valid(_performance_reward_director):
+		return
+
+	var upgrade: Dictionary = _pending_upgrades[index]
+	_performance_reward_director.set("_active_offer", upgrade)
+	_performance_reward_director.call("claim_active_offer", "manual")
+	_performance_reward_director.call("consume_banked_reward")
+	_refresh_run_build_readout()
+
+	if _run_spine_surface != null and _run_spine_surface.has_method("notify_upgrade_committed"):
+		_run_spine_surface.call("notify_upgrade_committed", index)
+
+
+func _on_run_spine_continue_requested(advance_to_boss: bool) -> void:
+	_hide_run_spine_surface()
+	if advance_to_boss:
+		_trigger_boss_final_movement()
+	else:
+		_advance_to_next_regular_level()
 
 
 func _enter_song_phase(new_idx: int) -> void:
@@ -3064,7 +3146,7 @@ func _start_mini_run() -> void:
 	_song_level_end_time = 0.0
 	_song_level_transitioning = false
 	_hide_live_reward_shell()
-	_hide_run_prep_overlay()
+	_hide_run_spine_surface()
 	_refresh_run_build_readout()
 	_start_song_run()
 
@@ -3844,7 +3926,7 @@ func _finish_run(victory: bool) -> void:
 	_run_finished = true
 	_combat_finished = true
 	_phase_transitioning = false
-	_hide_run_prep_overlay()
+	_hide_run_spine_surface()
 	GameState.run_in_progress = false
 
 	_stop_boss_music()
@@ -4505,8 +4587,8 @@ func _on_dna_routing_changed(route_id: String, label: String) -> void:
 		tween.tween_property(_dna_route_shell, "modulate", Color.WHITE, 0.25)
 	
 	_show_feedback(label, route_color, 0.20)
-	if _awaiting_run_prep:
-		_refresh_run_prep_body()
+	if _is_run_spine_active() and _run_spine_surface != null and _run_spine_surface.has_method("refresh_prep_summary"):
+		_run_spine_surface.call("refresh_prep_summary")
 
 
 func _on_stamina_changed(current: float, maximum: float) -> void:

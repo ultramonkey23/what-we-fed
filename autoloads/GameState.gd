@@ -257,7 +257,7 @@ func reset_run_state() -> void:
 			player_max_hp += float(modifier.get("value", 0.0))
 	player_hp = player_max_hp
 	absorbed_types.clear()
-	dna_by_species.clear()
+	# dna_by_species persists as it is creature-specific currency for metaprogression.
 	roster.clear()
 	taken_upgrades.clear()
 	_bond_order_counter = 0

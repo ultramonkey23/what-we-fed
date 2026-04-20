@@ -193,6 +193,33 @@ func _connect_eventbus() -> void:
 		EventBus.bonded_support_triggered.connect(_on_bonded_support_triggered)
 
 
+func _exit_tree() -> void:
+	if EventBus.enemy_defeated.is_connected(_on_enemy_defeated):
+		EventBus.enemy_defeated.disconnect(_on_enemy_defeated)
+	if EventBus.timed_attack_resolved.is_connected(_on_timed_attack_resolved):
+		EventBus.timed_attack_resolved.disconnect(_on_timed_attack_resolved)
+	if EventBus.player_parried.is_connected(_on_player_parried):
+		EventBus.player_parried.disconnect(_on_player_parried)
+	if EventBus.player_took_damage.is_connected(_on_player_took_damage):
+		EventBus.player_took_damage.disconnect(_on_player_took_damage)
+	if EventBus.combat_started.is_connected(_on_combat_started):
+		EventBus.combat_started.disconnect(_on_combat_started)
+	if EventBus.phrase_milestone.is_connected(_on_phrase_milestone):
+		EventBus.phrase_milestone.disconnect(_on_phrase_milestone)
+	if EventBus.tier_changed.is_connected(_on_tier_changed):
+		EventBus.tier_changed.disconnect(_on_tier_changed)
+	if EventBus.ultimate_fired.is_connected(_on_ultimate_fired):
+		EventBus.ultimate_fired.disconnect(_on_ultimate_fired)
+	if EventBus.creature_eaten.is_connected(_on_creature_eaten):
+		EventBus.creature_eaten.disconnect(_on_creature_eaten)
+	if EventBus.bonded_support_triggered.is_connected(_on_bonded_support_triggered):
+		EventBus.bonded_support_triggered.disconnect(_on_bonded_support_triggered)
+	
+	if _run_stats != null and is_instance_valid(_run_stats):
+		if _run_stats.has_signal("score_changed") and _run_stats.score_changed.is_connected(_on_run_score_changed):
+			_run_stats.score_changed.disconnect(_on_run_score_changed)
+
+
 func _connect_run_stats() -> void:
 	if _run_stats == null or not is_instance_valid(_run_stats):
 		return

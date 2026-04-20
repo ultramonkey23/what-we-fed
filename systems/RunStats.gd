@@ -31,9 +31,10 @@ var bonds: int = 0
 var eats: int = 0
 var dna_gained: float = 0.0
 var run_score: int = 0
-
-
 func _ready() -> void:
+	# Initial stats reset.
+	reset()
+
 	EventBus.run_started.connect(_on_run_started)
 	EventBus.enemy_defeated.connect(_on_enemy_defeated)
 	EventBus.enemy_damaged.connect(_on_enemy_damaged)
@@ -48,8 +49,34 @@ func _ready() -> void:
 	EventBus.dna_gained.connect(_on_dna_gained)
 
 
+func _exit_tree() -> void:
+	if EventBus.run_started.is_connected(_on_run_started):
+		EventBus.run_started.disconnect(_on_run_started)
+	if EventBus.enemy_defeated.is_connected(_on_enemy_defeated):
+		EventBus.enemy_defeated.disconnect(_on_enemy_defeated)
+	if EventBus.enemy_damaged.is_connected(_on_enemy_damaged):
+		EventBus.enemy_damaged.disconnect(_on_enemy_damaged)
+	if EventBus.timed_attack_resolved.is_connected(_on_timed_attack_resolved):
+		EventBus.timed_attack_resolved.disconnect(_on_timed_attack_resolved)
+	if EventBus.player_parried.is_connected(_on_player_parried):
+		EventBus.player_parried.disconnect(_on_player_parried)
+	if EventBus.ultimate_fired.is_connected(_on_ultimate_fired):
+		EventBus.ultimate_fired.disconnect(_on_ultimate_fired)
+	if EventBus.bonded_support_triggered.is_connected(_on_bonded_support_triggered):
+		EventBus.bonded_support_triggered.disconnect(_on_bonded_support_triggered)
+	if EventBus.tendency_growth_resolved.is_connected(_on_tendency_growth_resolved):
+		EventBus.tendency_growth_resolved.disconnect(_on_tendency_growth_resolved)
+	if EventBus.player_took_damage.is_connected(_on_player_took_damage):
+		EventBus.player_took_damage.disconnect(_on_player_took_damage)
+	if EventBus.creature_bonded.is_connected(_on_creature_bonded):
+		EventBus.creature_bonded.disconnect(_on_creature_bonded)
+	if EventBus.creature_eaten.is_connected(_on_creature_eaten):
+		EventBus.creature_eaten.disconnect(_on_creature_eaten)
+	if EventBus.dna_gained.is_connected(_on_dna_gained):
+		EventBus.dna_gained.disconnect(_on_dna_gained)
+
+
 func reset() -> void:
-	kills = 0
 	damage_dealt = 0.0
 	perfect_attacks = 0
 	good_attacks = 0

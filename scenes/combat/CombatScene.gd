@@ -284,6 +284,81 @@ func _ready() -> void:
 		call_deferred("_apply_dev_harness_post_boot_state")
 
 
+func _exit_tree() -> void:
+	# Disconnect all EventBus signals to prevent memory leaks and desync.
+	if EventBus.combo_changed.is_connected(_on_combo_changed):
+		EventBus.combo_changed.disconnect(_on_combo_changed)
+	if EventBus.style_changed.is_connected(_on_style_changed):
+		EventBus.style_changed.disconnect(_on_style_changed)
+	if EventBus.stamina_changed.is_connected(_on_stamina_changed):
+		EventBus.stamina_changed.disconnect(_on_stamina_changed)
+	if EventBus.player_took_damage.is_connected(_on_player_took_damage):
+		EventBus.player_took_damage.disconnect(_on_player_took_damage)
+	if EventBus.player_healed.is_connected(_on_player_healed):
+		EventBus.player_healed.disconnect(_on_player_healed)
+	if EventBus.ultimate_available.is_connected(_on_ultimate_available):
+		EventBus.ultimate_available.disconnect(_on_ultimate_available)
+	if EventBus.ultimate_fired.is_connected(_on_ultimate_fired):
+		EventBus.ultimate_fired.disconnect(_on_ultimate_fired)
+	if EventBus.combat_ended.is_connected(_on_combat_ended):
+		EventBus.combat_ended.disconnect(_on_combat_ended)
+	if EventBus.enemy_damaged.is_connected(_on_enemy_damaged):
+		EventBus.enemy_damaged.disconnect(_on_enemy_damaged)
+	if EventBus.enemy_defeated.is_connected(_on_enemy_defeated):
+		EventBus.enemy_defeated.disconnect(_on_enemy_defeated)
+	
+	if _presentation_runtime != null:
+		if EventBus.screen_flash.is_connected(_presentation_runtime.on_screen_flash):
+			EventBus.screen_flash.disconnect(_presentation_runtime.on_screen_flash)
+		if EventBus.screen_shake.is_connected(_presentation_runtime.on_screen_shake):
+			EventBus.screen_shake.disconnect(_presentation_runtime.on_screen_shake)
+		if EventBus.timing_ring_pressed.is_connected(_presentation_runtime.on_timing_ring_pressed):
+			EventBus.timing_ring_pressed.disconnect(_presentation_runtime.on_timing_ring_pressed)
+
+	if EventBus.slow_motion.is_connected(_on_slow_motion):
+		EventBus.slow_motion.disconnect(_on_slow_motion)
+	if EventBus.player_attacked.is_connected(_on_player_attacked):
+		EventBus.player_attacked.disconnect(_on_player_attacked)
+	if EventBus.timed_attack_resolved.is_connected(_on_timed_attack_resolved):
+		EventBus.timed_attack_resolved.disconnect(_on_timed_attack_resolved)
+	if EventBus.player_parried.is_connected(_on_player_parried):
+		EventBus.player_parried.disconnect(_on_player_parried)
+	if EventBus.player_dodged.is_connected(_on_player_dodged):
+		EventBus.player_dodged.disconnect(_on_player_dodged)
+	if EventBus.player_no_stamina.is_connected(_on_player_no_stamina):
+		EventBus.player_no_stamina.disconnect(_on_player_no_stamina)
+	if EventBus.combo_broken.is_connected(_on_combo_broken):
+		EventBus.combo_broken.disconnect(_on_combo_broken)
+	if EventBus.player_teleported.is_connected(_on_player_teleported):
+		EventBus.player_teleported.disconnect(_on_player_teleported)
+	if EventBus.run_growth_changed.is_connected(_on_run_growth_changed):
+		EventBus.run_growth_changed.disconnect(_on_run_growth_changed)
+	if EventBus.run_growth_level_resolved.is_connected(_on_run_growth_level_resolved):
+		EventBus.run_growth_level_resolved.disconnect(_on_run_growth_level_resolved)
+	if EventBus.tendency_growth_resolved.is_connected(_on_tendency_growth_resolved):
+		EventBus.tendency_growth_resolved.disconnect(_on_tendency_growth_resolved)
+	if EventBus.support_charge_changed.is_connected(_on_support_charge_changed):
+		EventBus.support_charge_changed.disconnect(_on_support_charge_changed)
+	if EventBus.creature_bonded.is_connected(_on_creature_bonded):
+		EventBus.creature_bonded.disconnect(_on_creature_bonded)
+	if EventBus.dna_routing_changed.is_connected(_on_dna_routing_changed):
+		EventBus.dna_routing_changed.disconnect(_on_dna_routing_changed)
+	if EventBus.bonded_support_triggered.is_connected(_on_bonded_support_triggered):
+		EventBus.bonded_support_triggered.disconnect(_on_bonded_support_triggered)
+	if EventBus.dna_gained.is_connected(_on_dna_gained):
+		EventBus.dna_gained.disconnect(_on_dna_gained)
+	if EventBus.mastery_context_updated.is_connected(_on_mastery_context_updated):
+		EventBus.mastery_context_updated.disconnect(_on_mastery_context_updated)
+	if EventBus.enemy_status_applied.is_connected(_on_enemy_status_applied):
+		EventBus.enemy_status_applied.disconnect(_on_enemy_status_applied)
+	if EventBus.enemy_status_cleared.is_connected(_on_enemy_status_cleared):
+		EventBus.enemy_status_cleared.disconnect(_on_enemy_status_cleared)
+	if EventBus.phrase_milestone.is_connected(_on_phrase_milestone):
+		EventBus.phrase_milestone.disconnect(_on_phrase_milestone)
+	if EventBus.tier_changed.is_connected(_on_tier_changed):
+		EventBus.tier_changed.disconnect(_on_tier_changed)
+
+
 func _initialize_systems() -> void:
 	_setup_lane_manager()
 	_setup_player_combat()
@@ -304,7 +379,7 @@ func _setup_support_resolver() -> void:
 		if healed > 0.0: EventBus.emit_signal("player_healed", healed)
 	)
 	_support_resolver.stamina_requested.connect(func(amt):
-		if combat_meter != null: combat_meter.restore_stamina(amt)
+		if combat_meter != null: combat_meter.call("restore_stamina", amt)
 	)
 	_support_resolver.support_charge_requested.connect(func(amt):
 		if _run_growth != null and _run_growth.has_method("gain_support_charge_direct"):
@@ -635,7 +710,7 @@ func _update_lane_visual_states() -> void:
 		var focus_scale: float = 1.0
 		var focus_color: Color = inactive_color
 
-		if lane == player_combat.current_lane:
+		if lane == int(player_combat.get("current_lane")):
 			state_alpha += 0.014
 			focus_alpha = 0.032
 
@@ -1794,7 +1869,7 @@ func _setup_run_growth() -> void:
 	_run_growth.set_script(script)
 	add_child(_run_growth)
 	if is_instance_valid(player_combat) and player_combat.has_method("set_run_growth"):
-		player_combat.set_run_growth(_run_growth)
+		player_combat.call("set_run_growth", _run_growth)
 
 
 func _setup_run_stats() -> void:
@@ -1904,7 +1979,7 @@ func _setup_lane_manager() -> void:
 
 func _setup_player_combat() -> void:
 	if player_combat.has_method("setup"):
-		player_combat.setup(lane_manager, combat_meter)
+		player_combat.call("setup", lane_manager, combat_meter)
 
 
 func _start_song_run() -> void:
@@ -2331,7 +2406,7 @@ func _on_boss_music_finished() -> void:
 	# Song ended while boss still lives — player loses.
 	lane_manager.stop()
 	if player_combat != null and player_combat.has_method("set_combat_enabled"):
-		player_combat.set_combat_enabled(false)
+		player_combat.call("set_combat_enabled", false)
 	_show_feedback("THE SONG DEVOURED YOU", Color(1.0, 0.28, 0.22, 1.0), 0.80)
 	EventBus.emit_signal("screen_flash", Color(0.55, 0.06, 0.06, 0.28), 0.40)
 	await get_tree().create_timer(0.8).timeout
@@ -2804,7 +2879,8 @@ func _draw_timing_circles() -> void:
 			lane_manager.get_lane_y(lane)
 		)
 
-		var is_active_lane: bool = lane == player_combat.current_lane
+		var player_current_lane: int = int(player_combat.get("current_lane"))
+		var is_active_lane: bool = (lane == player_current_lane)
 		var base_color: Color = active_color if is_active_lane else inactive_color
 
 		# Glow and edge rings kept at alpha 0 — they serve as structural nodes for the
@@ -2888,10 +2964,10 @@ func _prepare_for_encounter(reset_hp: bool) -> void:
 	_hud_presenter.refresh_hp(GameState.player_hp, GameState.player_max_hp)
 
 	if player_combat.has_method("set_combat_enabled"):
-		player_combat.set_combat_enabled(true)
+		player_combat.call("set_combat_enabled", true)
 
 	if combat_meter.has_method("reset"):
-		combat_meter.reset()
+		combat_meter.call("reset")
 
 	_hide_reward_overlay()
 	result_label.visible = false
@@ -2984,7 +3060,7 @@ func _complete_current_encounter() -> void:
 		lane_manager.stop()
 
 	if player_combat != null and player_combat.has_method("set_combat_enabled"):
-		player_combat.set_combat_enabled(false)
+		player_combat.call("set_combat_enabled", false)
 
 	var biome: Dictionary = _active_encounter.get("biome", {})
 	result_label.text = String(biome.get("victory_text", "VICTORY"))
@@ -3030,7 +3106,7 @@ func _finish_run(victory: bool) -> void:
 		lane_manager.stop()
 
 	if player_combat != null and player_combat.has_method("set_combat_enabled"):
-		player_combat.set_combat_enabled(false)
+		player_combat.call("set_combat_enabled", false)
 
 	if victory:
 		result_label.text = "RUN COMPLETE"
@@ -3604,19 +3680,19 @@ func _show_end_stats() -> void:
 	if _end_stats_label == null or _run_stats == null or not is_instance_valid(_run_stats):
 		return
 
-	var kills: int = int(_run_stats.kills)
-	var dmg: int = int(_run_stats.damage_dealt)
-	var p_att: int = int(_run_stats.perfect_attacks)
-	var g_att: int = int(_run_stats.good_attacks)
-	var p_par: int = int(_run_stats.perfect_parries)
-	var g_par: int = int(_run_stats.good_parries)
-	var ult: int = int(_run_stats.ultimates_fired)
-	var sup: int = int(_run_stats.support_triggers)
-	var surges: int = int(_run_stats.tendency_surges)
-	var hit: int = int(_run_stats.times_hit)
-	var bonds: int = int(_run_stats.bonds)
-	var eats: int = int(_run_stats.eats)
-	var score: int = int(_run_stats.run_score)
+	var kills: int = int(_run_stats.get("kills"))
+	var dmg: int = int(_run_stats.get("damage_dealt"))
+	var p_att: int = int(_run_stats.get("perfect_attacks"))
+	var g_att: int = int(_run_stats.get("good_attacks"))
+	var p_par: int = int(_run_stats.get("perfect_parries"))
+	var g_par: int = int(_run_stats.get("good_parries"))
+	var ult: int = int(_run_stats.get("ultimates_fired"))
+	var sup: int = int(_run_stats.get("support_triggers"))
+	var surges: int = int(_run_stats.get("tendency_surges"))
+	var hit: int = int(_run_stats.get("times_hit"))
+	var bonds: int = int(_run_stats.get("bonds"))
+	var eats: int = int(_run_stats.get("eats"))
+	var score: int = int(_run_stats.get("run_score"))
 	var grade: String = _run_stats.call("get_grade") if _run_stats.has_method("get_grade") else "—"
 
 	var growth_level: int = 1
@@ -3699,7 +3775,7 @@ func _on_ultimate_available() -> void:
 
 func _on_ultimate_fired(_power: float) -> void:
 	_hud_presenter.set_ultimate_text("0%")
-	var tier: String = combat_meter.get_current_tier()
+	var tier: String = String(combat_meter.call("get_current_tier"))
 	var ult_text: String = "DEVOUR"
 	if tier == "sovereign":
 		ult_text = "SOVEREIGN DEVOUR"
@@ -4158,7 +4234,7 @@ func _get_mastery_window() -> String:
 	# Returns the current phrase-depth tier for support mastery branching.
 	# Phrase count accumulates through consecutive quality (good/perfect) actions.
 	# "flow_state" = 8+ actions; "in_pocket" = 5+; "" = below threshold (no enhancement).
-	var count: int = combat_meter.phrase_count
+	var count: int = int(combat_meter.get("phrase_count"))
 	if count >= 8:
 		return "flow_state"
 	if count >= 5:
@@ -4221,7 +4297,7 @@ func _build_support_mastery_context(effect_id: String, lane: int) -> Dictionary:
 
 func _on_bonded_support_triggered(species_id: String, lane: int, effect_id: String) -> void:
 	var support_role: Dictionary = COMBAT_CONTENT.get_support_role(species_id)
-	var combo_mult: float = combat_meter.damage_multiplier()
+	var combo_mult: float = float(combat_meter.call("damage_multiplier"))
 	var active_creature: Dictionary = GameState.get_active_bonded_creature()
 	var bond_mult: float = GameState.get_bond_level_mult(int(active_creature.get("bond_level", 1)))
 	
@@ -4229,7 +4305,7 @@ func _on_bonded_support_triggered(species_id: String, lane: int, effect_id: Stri
 	var bond_surge: bool = false
 	var surge_mult: float = 1.0
 	if _run_growth != null and _run_growth.has_method("get_runtime_effect"):
-		var surge_effect: Dictionary = _run_growth.get_runtime_effect("bond_trigger_mult")
+		var surge_effect: Dictionary = Dictionary(_run_growth.call("get_runtime_effect", "bond_trigger_mult"))
 		surge_mult = float(surge_effect.get("value", 1.0))
 		bond_surge = surge_mult > 1.0
 

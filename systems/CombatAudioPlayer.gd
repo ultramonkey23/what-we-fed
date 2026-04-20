@@ -10,6 +10,11 @@ func _ready() -> void:
 		EventBus.play_sfx.connect(_on_play_sfx)
 
 
+func _exit_tree() -> void:
+	if EventBus.play_sfx.is_connected(_on_play_sfx):
+		EventBus.play_sfx.disconnect(_on_play_sfx)
+
+
 func _on_play_sfx(cue_id: String) -> void:
 	var sfx_path: String = COMBAT_AUDIO_CONTENT.get_sfx_path(cue_id)
 	if sfx_path.is_empty() or not ResourceLoader.exists(sfx_path):

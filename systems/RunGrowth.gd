@@ -70,6 +70,35 @@ func _ready() -> void:
 	_reset_tendencies()
 
 
+func _exit_tree() -> void:
+	if EventBus.run_started.is_connected(_on_run_started):
+		EventBus.run_started.disconnect(_on_run_started)
+	if EventBus.combat_started.is_connected(_on_combat_started):
+		EventBus.combat_started.disconnect(_on_combat_started)
+	if EventBus.enemy_defeated.is_connected(_on_enemy_defeated):
+		EventBus.enemy_defeated.disconnect(_on_enemy_defeated)
+	if EventBus.timed_attack_resolved.is_connected(_on_timed_attack_resolved):
+		EventBus.timed_attack_resolved.disconnect(_on_timed_attack_resolved)
+	if EventBus.player_parried.is_connected(_on_player_parried):
+		EventBus.player_parried.disconnect(_on_player_parried)
+	if EventBus.combo_changed.is_connected(_on_combo_changed):
+		EventBus.combo_changed.disconnect(_on_combo_changed)
+	if EventBus.ultimate_fired.is_connected(_on_ultimate_fired):
+		EventBus.ultimate_fired.disconnect(_on_ultimate_fired)
+	if EventBus.player_took_damage.is_connected(_on_player_took_damage):
+		EventBus.player_took_damage.disconnect(_on_player_took_damage)
+	if EventBus.creature_bonded.is_connected(_on_creature_bonded):
+		EventBus.creature_bonded.disconnect(_on_creature_bonded)
+	if EventBus.creature_eaten.is_connected(_on_creature_changed):
+		EventBus.creature_eaten.disconnect(_on_creature_changed)
+	if EventBus.enemy_status_applied.is_connected(_on_enemy_status_applied):
+		EventBus.enemy_status_applied.disconnect(_on_enemy_status_applied)
+	if EventBus.player_dodged.is_connected(_on_player_dodged):
+		EventBus.player_dodged.disconnect(_on_player_dodged)
+	if EventBus.bonded_support_triggered.is_connected(_on_bonded_support_triggered):
+		EventBus.bonded_support_triggered.disconnect(_on_bonded_support_triggered)
+
+
 func get_active_species_id() -> String:
 	var creature: Dictionary = GameState.get_active_bonded_creature()
 	return String(creature.get("species_id", ""))

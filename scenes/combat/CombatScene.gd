@@ -1982,10 +1982,6 @@ func _start_regular_level(level_index: int, reset_hp: bool) -> void:
 		phase["start_time"] = float(phase.get("start_time", 0.0)) + level_start
 		_song_phases[i] = phase
 
-	if _escalation_director != null:
-		_escalation_director.setup(_region_id, _song_phases, _song_rng)
-		_escalation_director.start(level_start)
-
 	if _performance_reward_director != null and is_instance_valid(_performance_reward_director):
 		if reset_hp and _performance_reward_director.has_method("start_song_run"):
 			_performance_reward_director.call("start_song_run", _song_phases)
@@ -2006,6 +2002,10 @@ func _start_regular_level(level_index: int, reset_hp: bool) -> void:
 	_draw_timing_circles()
 	_prepare_for_encounter(reset_hp)
 	_refresh_bonded_creature_render()
+
+	if _escalation_director != null:
+		_escalation_director.setup(_region_id, _song_phases, _song_rng)
+		_escalation_director.start(level_start)
 
 	lane_manager.set_song_mode_enabled(true)
 
@@ -2166,17 +2166,17 @@ func _trigger_boss_final_movement() -> void:
 	# The live boss handoff is a direct encounter payload, not a queued run step.
 	var boss_encounter: Dictionary = ENCOUNTER_IDENTITY_RUNTIME.build_live_boss_encounter()
 
-	if _escalation_director != null:
-		var boss_phases: Array = boss_encounter.get("phases", [])
-		_escalation_director.setup(_region_id, boss_phases, _song_rng)
-		_escalation_director.start(0.0)
-
 	_run_finished = false
 	_is_boss_encounter = false
 
 	_hide_song_hud()
 	_show_boss_race_hud()
 	_load_encounter_payload(boss_encounter, false)
+
+	if _escalation_director != null:
+		var boss_phases: Array = boss_encounter.get("phases", [])
+		_escalation_director.setup(_region_id, boss_phases, _song_rng)
+		_escalation_director.start(0.0)
 
 
 func _update_song_hud() -> void:

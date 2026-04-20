@@ -67,6 +67,81 @@ const SONGS_BY_ID: Dictionary = {
 		"timing_map_status": "unmapped",
 		"timing_map_path": "",
 		"draft_analysis_path": ""
+	},
+	"void_echo": {
+		"id": "void_echo",
+		"display_name": "Void Echo",
+		"file_path": "res://assets/audio/void_echo.wav",
+		"status": "parked",
+		"intended_role": "region_main_run",
+		"intended_region_id": "echoing_chasm",
+		"timing_map_status": "unmapped",
+		"timing_map_path": "",
+		"draft_analysis_path": "res://data/song_maps/drafts/void_echo_draft.json"
+	},
+	"crystal_refraction": {
+		"id": "crystal_refraction",
+		"display_name": "Crystal Refraction",
+		"file_path": "res://assets/audio/crystal_refraction.wav",
+		"status": "parked",
+		"intended_role": "region_main_run",
+		"intended_region_id": "crystalline_spire",
+		"timing_map_status": "unmapped",
+		"timing_map_path": "",
+		"draft_analysis_path": "res://data/song_maps/drafts/crystal_refraction_draft.json"
+	},
+	"marsh_whispers": {
+		"id": "marsh_whispers",
+		"display_name": "Marsh Whispers",
+		"file_path": "res://assets/audio/marsh_whispers.wav",
+		"status": "parked",
+		"intended_role": "region_main_run",
+		"intended_region_id": "whispering_marsh",
+		"timing_map_status": "unmapped",
+		"timing_map_path": "",
+		"draft_analysis_path": "res://data/song_maps/drafts/marsh_whispers_draft.json"
+	},
+	"iron_forged": {
+		"id": "iron_forged",
+		"display_name": "Iron Forged",
+		"file_path": "res://assets/audio/iron_forged.wav",
+		"status": "parked",
+		"intended_role": "region_main_run",
+		"intended_region_id": "iron_boneyard",
+		"timing_map_status": "unmapped",
+		"timing_map_path": "",
+		"draft_analysis_path": "res://data/song_maps/drafts/iron_forged_draft.json"
+	},
+	"dissolved_knowledge": {
+		"id": "dissolved_knowledge",
+		"display_name": "Dissolved Knowledge",
+		"file_path": "res://assets/audio/dissolved_knowledge.wav",
+		"status": "parked",
+		"intended_role": "region_main_run",
+		"intended_region_id": "sunken_library",
+		"timing_map_status": "unmapped",
+		"timing_map_path": "",
+		"draft_analysis_path": "res://data/song_maps/drafts/dissolved_knowledge_draft.json"
+	},
+	"boss_2": {
+		"id": "boss_2",
+		"display_name": "Boss 2",
+		"file_path": "res://assets/audio/boss_2.wav",
+		"status": "parked",
+		"intended_role": "boss",
+		"timing_map_status": "unmapped",
+		"timing_map_path": "",
+		"draft_analysis_path": "res://data/song_maps/drafts/boss_2_draft.json"
+	},
+	"boss_3": {
+		"id": "boss_3",
+		"display_name": "Boss 3",
+		"file_path": "res://assets/audio/boss_3.wav",
+		"status": "parked",
+		"intended_role": "boss",
+		"timing_map_status": "unmapped",
+		"timing_map_path": "",
+		"draft_analysis_path": "res://data/song_maps/drafts/boss_3_draft.json"
 	}
 }
 
@@ -74,7 +149,12 @@ const LIVE_MAIN_RUN_SONG_ID: String = "tricky"
 const LIVE_BOSS_SONG_ID: String = "boss_1"
 const REGION_MAIN_RUN_SONG_IDS: Dictionary = {
 	"pale_shelf": "newness",
-	"drowned_cut": "grind_the_orbit"
+	"drowned_cut": "grind_the_orbit",
+	"echoing_chasm": "void_echo",
+	"crystalline_spire": "crystal_refraction",
+	"whispering_marsh": "marsh_whispers",
+	"iron_boneyard": "iron_forged",
+	"sunken_library": "dissolved_knowledge"
 }
 
 static func get_song(song_id: String) -> Dictionary:

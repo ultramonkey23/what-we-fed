@@ -103,6 +103,18 @@ const ENEMY_TEMPLATES := {
 		"spawn_weight": 0.3,
 		"difficulty_tier": 2,
 		"behaviour_tags": ["defensive", "support", "elite"]
+	},
+	"void_stalker": {
+		"base_hp": 48.0,
+		"base_damage": 16.0,
+		"base_defense": 1.0,
+		"projectile_speed": 380.0,
+		"attack_pattern": "void_shot",
+		"telegraph_duration": 0.7,
+		"expose_duration": 1.1,
+		"spawn_weight": 0.25,
+		"difficulty_tier": 3,
+		"behaviour_tags": ["elite", "fast", "late_game"]
 	}
 }
 

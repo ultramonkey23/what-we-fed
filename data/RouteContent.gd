@@ -31,5 +31,45 @@ const REGIONS: Array[Dictionary] = [
 		"tag": "RESONANT",
 		"modifier": {"type": "starting_support_charge", "value": 30.0},
 		"modifier_label": "Bond starts 30% charged\nRequires a bonded creature to answer"
+	},
+	{
+		"id": "echoing_chasm",
+		"name": "The Echoing Chasm",
+		"flavor": "Every sound here is a memory of a sound that never stopped.",
+		"tag": "AMPLIFIED",
+		"modifier": {"type": "attack_bonus", "value": 5.0},
+		"modifier_label": "+5 attack damage\nThe chasm multiplies your voice"
+	},
+	{
+		"id": "crystalline_spire",
+		"name": "The Crystalline Spire",
+		"flavor": "Light bends wrong here. The crystals remember being alive.",
+		"tag": "REFRACTIVE",
+		"modifier": {"type": "max_hp_bonus", "value": 35.0},
+		"modifier_label": "+35 max HP\nThe spire teaches you to endure"
+	},
+	{
+		"id": "whispering_marsh",
+		"name": "The Whispering Marsh",
+		"flavor": "The fog carries words you almost remember saying.",
+		"tag": "HAUNTED",
+		"modifier": {"type": "starting_support_charge", "value": 45.0},
+		"modifier_label": "Bond starts 45% charged\nThe marsh remembers your promises"
+	},
+	{
+		"id": "iron_boneyard",
+		"name": "The Iron Boneyard",
+		"flavor": "Metal still dreams of being weapons. The ground remembers impact.",
+		"tag": "FORGED",
+		"modifier": {"type": "attack_bonus", "value": 4.0},
+		"modifier_label": "+4 attack damage\nThe boneyard sharpens your edge"
+	},
+	{
+		"id": "sunken_library",
+		"name": "The Sunken Library",
+		"flavor": "Books float like jellyfish. Knowledge dissolves in water.",
+		"tag": "DISSOLVED",
+		"modifier": {"type": "max_hp_bonus", "value": 25.0},
+		"modifier_label": "+25 max HP\nThe library preserves what matters"
 	}
 ]

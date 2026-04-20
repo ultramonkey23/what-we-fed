@@ -2509,10 +2509,13 @@ func _load_encounter_payload(encounter: Dictionary, reset_hp: bool) -> void:
 
 
 func _rebuild_enemy_lookup_tables() -> void:
+	var phases: Array = _active_encounter.get("phases", [])
+	if phases.is_empty():
+		return
+
 	_all_enemies_by_id.clear()
 	_enemy_phase_by_id.clear()
 
-	var phases: Array = _active_encounter.get("phases", [])
 	for phase_index in range(phases.size()):
 		var phase_enemies: Array = phases[phase_index]
 		for enemy in phase_enemies:
@@ -2533,7 +2536,9 @@ func _apply_encounter_presentation() -> void:
 
 
 func _build_arena_visuals() -> void:
-	_enemy_markers_by_id.clear()
+	if not _active_encounter.get("phases", []).is_empty():
+		_enemy_markers_by_id.clear()
+
 	_enemy_max_hp.clear()
 	_lane_strips.clear()
 	_lane_hit_focus.clear()

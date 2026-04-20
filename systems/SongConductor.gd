@@ -198,7 +198,7 @@ func _process(_delta: float) -> void:
 
 	# Section transition check — advance one at a time so no section is skipped.
 	var next_idx: int = _current_section_idx + 1
-	if next_idx < _sections.size():
+	while next_idx < _sections.size():
 		var next_section: Dictionary = _sections[next_idx]
 		if t >= float(next_section.get("start_time", 9999.0)):
 			_current_section_idx = next_idx
@@ -206,6 +206,9 @@ func _process(_delta: float) -> void:
 			current_spawn_mult = float(next_section.get("spawn_interval_mult", 1.0))
 			current_section_id = String(next_section.get("id", ""))
 			section_changed.emit(current_section_id, next_section)
+			next_idx += 1
+		else:
+			break
 
 	# Final movement trigger — fires once.
 	if not _final_triggered and t >= _window_end_time:

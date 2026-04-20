@@ -67,6 +67,9 @@ Future changes must not break them.
 - mutation
 - consequence
 - oppressive premium-feeling presentation
+- cool ascendant power-fantasy framing
+- transformation-forward creature identity
+- mythic strange danger, kept readable
 - authored weirdness over generic genre sludge
 
 ## 2.4 Anti-drift locks
@@ -74,6 +77,8 @@ The game must not drift into:
 - generic survivor clone
 - generic creature collector
 - generic roguelite soup
+- generic superhero gloss
+- bright clean mainstream-anime flattening
 - generic rhythm gimmick
 - stat spreadsheet sludge
 - stop-start draft/menu game
@@ -132,6 +137,7 @@ AI drift is allowed when it produces one or more of these:
 - stronger emotional contradiction
 - stranger but cleaner gameplay expression
 - better fusion of system and tone
+- clearer dark-cool ascendant identity without softening creature danger
 
 AI drift is NOT allowed when it produces one or more of these:
 
@@ -144,6 +150,7 @@ AI drift is NOT allowed when it produces one or more of these:
 - decorative abstraction that replaces mechanics
 - gameplay confusion masked as style
 - broad mutation without real improvement
+- influence-copy behavior instead of vector-based interpretation
 
 ---
 
@@ -264,4 +271,4 @@ Prefer stability **if**:
 
 # 10. ONE-SENTENCE OPERATIONAL RULE
 
-**Preserve the locked core, but allow controlled AI-driven evolution of gameplay, structure, and style whenever it makes WHAT WE FED feel more authored, more alive, more monstrous, and more itself.**
+**Preserve the locked core, but allow controlled AI-driven evolution of gameplay, structure, and style whenever it makes WHAT WE FED feel more authored, more alive, more ascendant, more monstrous, and more itself.**

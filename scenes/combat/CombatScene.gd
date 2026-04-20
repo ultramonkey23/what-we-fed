@@ -460,6 +460,8 @@ func _update_song_logic(delta: float) -> void:
 			if current_beat > _last_beat_index:
 				_last_beat_index = current_beat
 				var quality: String = _song_conductor.get_beat_quality()
+				if GameState.has_method("set_last_beat_quality"):
+					GameState.call("set_last_beat_quality", quality)
 				_presentation_runtime.on_beat_pulse(quality, 1.0)
 			elif current_beat < _last_beat_index:
 				# Handle song seeking backwards or restarts.
@@ -662,20 +664,20 @@ func _update_lane_visual_states() -> void:
 	var outer_exit: float = 1.0 + COMBAT_FEEL_CONTENT.RING_OUTER_RADIUS / intercept_dist
 
 	for lane in range(3):
-		var strip: ColorRect = _lane_strips.get(lane, null)
-		var focus: ColorRect = _lane_hit_focus.get(lane, null)
+		var strip: TextureRect = _lane_strips.get(lane, null)
+		var focus: Node2D = _lane_hit_focus.get(lane, null)
 		if strip == null or focus == null or not is_instance_valid(strip) or not is_instance_valid(focus):
 			continue
 
 		var state_color: Color = lane_color
 		var state_alpha: float = COMBAT_FEEL_CONTENT.LANE_IDLE_ALPHA
-		var focus_alpha: float = 0.015
+		var focus_alpha: float = COMBAT_FEEL_CONTENT.FOCAL_MARKER_COLOR.a
 		var focus_scale: float = 1.0
 		var focus_color: Color = inactive_color
 
 		if lane == int(player_combat.get("current_lane")):
-			state_alpha += 0.014
-			focus_alpha = 0.032
+			state_alpha += 0.02
+			focus_alpha = COMBAT_FEEL_CONTENT.FOCAL_MARKER_ACTIVE_ALPHA * 0.45
 
 		var proj = lane_manager.get_projectile(lane)
 		if proj != null and not proj.is_resolved and not proj.is_reflected:
@@ -689,9 +691,9 @@ func _update_lane_visual_states() -> void:
 				state_color = lane_color.lerp(threat_color.darkened(0.18), 0.62)
 				state_alpha = lerp(state_alpha, COMBAT_FEEL_CONTENT.LANE_THREAT_ALPHA, pressure)
 				focus_color = accent_color
-				focus_alpha = lerp(focus_alpha, COMBAT_FEEL_CONTENT.LANE_THREAT_FOCUS_ALPHA, pressure)
-				focus_scale = lerp(1.0, 1.10, pressure)
-				var pulse: float = 0.92 + (sin(time * (5.0 + warning_bias * 0.7) + lane) * 0.03 + 0.03) * pressure
+				focus_alpha = lerp(focus_alpha, COMBAT_FEEL_CONTENT.FOCAL_MARKER_ACTIVE_ALPHA, pressure)
+				focus_scale = lerp(1.0, 1.12, pressure)
+				var pulse: float = 1.0 + (sin(time * (5.0 + warning_bias * 0.7) + lane) * 0.01 + 0.01) * pressure
 				strip.scale.y = pulse
 			else:
 				strip.scale.y = 1.0
@@ -699,15 +701,15 @@ func _update_lane_visual_states() -> void:
 			if p >= outer_entry and p <= outer_exit:
 				var critical_t: float = 1.0 - clamp(abs(p - 1.0) / (outer_exit - 1.0), 0.0, 1.0)
 				state_alpha = lerp(state_alpha, COMBAT_FEEL_CONTENT.LANE_CRITICAL_ALPHA, 0.65 + critical_t * 0.35)
-				focus_alpha = lerp(focus_alpha, COMBAT_FEEL_CONTENT.LANE_IMMINENT_FOCUS_ALPHA, 0.70 + critical_t * 0.30)
-				focus_scale = lerp(focus_scale, 1.16, 0.70 + critical_t * 0.30)
-				focus_color = accent_color.lightened(0.08)
+				focus_alpha = lerp(focus_alpha, 1.0, 0.70 + critical_t * 0.30)
+				focus_scale = lerp(focus_scale, 1.18, 0.70 + critical_t * 0.30)
+				focus_color = accent_color.lightened(0.12)
 		else:
 			strip.scale.y = 1.0
 
-		strip.color = Color(state_color.r, state_color.g, state_color.b, state_alpha)
-		focus.color = Color(focus_color.r, focus_color.g, focus_color.b, focus_alpha)
-		focus.scale = Vector2(focus_scale, 1.0)
+		strip.modulate = Color(state_color.r, state_color.g, state_color.b, state_alpha)
+		focus.modulate = Color(focus_color.r, focus_color.g, focus_color.b, focus_alpha)
+		focus.scale = Vector2(focus_scale, focus_scale)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -838,6 +840,10 @@ func _apply_combat_background(override_path: String = "") -> void:
 	if _bg_sprite != null and is_instance_valid(_bg_sprite):
 		_bg_sprite.queue_free()
 		_bg_sprite = null
+	
+	var old_vignette = get_node_or_null("CombatVignette")
+	if is_instance_valid(old_vignette):
+		old_vignette.queue_free()
 
 	var path: String = override_path
 	if path.is_empty():
@@ -866,6 +872,31 @@ func _apply_combat_background(override_path: String = "") -> void:
 	_bg_sprite.z_index = -9
 	_bg_sprite.modulate = COMBAT_FEEL_CONTENT.COMBAT_BG_MODULATE
 	add_child(_bg_sprite)
+
+	# ─── BATTLEFIELD DEPTH: STATIC VIGNETTE ─────────────────────────────────────
+	# Sinks the corners and pulls focus toward the lane substrate.
+	var vignette := TextureRect.new()
+	vignette.name = "CombatVignette"
+	vignette.position = Vector2.ZERO
+	vignette.size = get_viewport_rect().size
+	vignette.stretch_mode = TextureRect.STRETCH_SCALE
+	vignette.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	vignette.z_index = -8
+	vignette.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	var grad := Gradient.new()
+	grad.colors = [Color(0.0, 0.0, 0.0, 0.0), Color(0.02, 0.02, 0.03, 0.62)]
+	grad.offsets = [0.42, 1.0]
+
+	var grad_tex := GradientTexture2D.new()
+	grad_tex.gradient = grad
+	grad_tex.fill = GradientTexture2D.FILL_RADIAL
+	grad_tex.fill_from = Vector2(0.5, 0.5)
+	grad_tex.fill_to = Vector2(1.0, 1.0)
+	grad_tex.width = 512
+	grad_tex.height = 512
+	vignette.texture = grad_tex
+	add_child(vignette)
 
 
 func _setup_ui_pivots() -> void:
@@ -1907,6 +1938,7 @@ func _create_hud_presenter() -> void:
 		"atk_value_label": _atk_value_label,
 		"def_value_label": _def_value_label,
 		"dna_route_label": _dna_route_label,
+		"mutation_value_label": _mutation_value_label,
 		# DNA HUD cluster
 		"dna_shell": _dna_shell,
 		"dna_emblem": _dna_emblem,
@@ -2007,6 +2039,9 @@ func _connect_eventbus() -> void:
 	EventBus.combat_ended.connect(_on_combat_ended)
 	EventBus.enemy_damaged.connect(_on_enemy_damaged)
 	EventBus.enemy_defeated.connect(_on_enemy_defeated)
+	EventBus.proc_feedback_requested.connect(_on_proc_feedback_requested)
+	EventBus.ultimate_power_granted.connect(_on_ultimate_power_granted)
+	EventBus.enemy_status_applied_requested.connect(_on_enemy_status_applied_requested)
 	EventBus.screen_flash.connect(_presentation_runtime.on_screen_flash)
 	EventBus.screen_shake.connect(_presentation_runtime.on_screen_shake)
 	EventBus.slow_motion.connect(_on_slow_motion)
@@ -2096,6 +2131,7 @@ func _start_regular_level(level_index: int, reset_hp: bool) -> void:
 		_trigger_boss_final_movement()
 		return
 
+	_set_song_paused(false)
 	_song_level_transitioning = false
 	_regular_level_index = level_index
 	var level_window: Dictionary = _regular_level_windows[_regular_level_index]
@@ -2180,11 +2216,40 @@ func _advance_to_next_regular_level() -> void:
 func _on_regular_level_complete() -> void:
 	if _song_boss_triggered or not _song_mode:
 		return
-	if _regular_level_index + 1 < _regular_level_windows.size():
-		_advance_to_next_regular_level()
-	else:
-		_trigger_boss_final_movement()
+	
+	# Stop all combat and pacing systems.
+	if lane_manager != null and lane_manager.has_method("stop"):
+		lane_manager.stop()
+	if _escalation_director != null:
+		_escalation_director.pause()
+	_set_song_paused(true)
+	
+	# Show structural level completion rewards.
+	_show_level_completion_rewards()
 
+
+func _show_level_completion_rewards() -> void:
+	_hide_reward_overlay()
+	_awaiting_upgrade_choice = true
+	
+	# Request structural choices from the director.
+	if _performance_reward_director != null and is_instance_valid(_performance_reward_director):
+		_pending_upgrades = _performance_reward_director.call("get_level_completion_choices", 3)
+	
+	for i in range(3):
+		var card := _upgrade_card_nodes[i] as ColorRect
+		if i < _pending_upgrades.size():
+			var up: Dictionary = _pending_upgrades[i]
+			card.visible = true
+			card.get_node("Category").text = String(up.get("tag", "EVOLUTION"))
+			card.get_node("Title").text = String(up.get("title", "Unknown"))
+			card.get_node("Body").text = String(up.get("summary", ""))
+		else:
+			card.visible = false
+			
+	_upgrade_overlay.visible = true
+	_show_feedback("LEVEL COMPLETE", Color(0.85, 0.95, 0.75, 1.0), 0.60)
+	controls_label.text = "1 / 2 / 3 - Select Evolution to continue"
 
 
 func _enter_song_phase(new_idx: int) -> void:
@@ -2715,26 +2780,86 @@ func _build_arena_visuals() -> void:
 	var inactive_enemy_color: Color = biome.get("enemy_inactive_color", Color(0.40, 0.20, 0.20, 0.5))
 
 	for lane in range(3):
-		var lane_strip := ColorRect.new()
-		lane_strip.name = "LaneStrip_%d" % lane
+		# ─── CURSED RIBBONS: PHYSICAL SUBSTRATE ───────────────────────────────
+		# Replacing the invisible math-strip with an authored runway.
+		var lane_group := Node2D.new()
+		lane_group.name = "LaneGroup_%d" % lane
+		_lane_marker_container.add_child(lane_group)
+
+		var lane_strip := TextureRect.new()
+		lane_strip.name = "Strip"
 		lane_strip.size = Vector2(760.0, COMBAT_FEEL_CONTENT.LANE_BAND_HEIGHT)
 		lane_strip.position = Vector2(208.0, lane_manager.get_lane_y(lane) - COMBAT_FEEL_CONTENT.LANE_BAND_HEIGHT * 0.5)
 		lane_strip.pivot_offset = lane_strip.size * 0.5
-		lane_strip.color = Color(lane_color.r, lane_color.g, lane_color.b, COMBAT_FEEL_CONTENT.LANE_IDLE_ALPHA)
-		_lane_marker_container.add_child(lane_strip)
+		lane_strip.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		lane_strip.stretch_mode = TextureRect.STRETCH_SCALE
+		
+		var ribbon_grad := Gradient.new()
+		ribbon_grad.colors = [Color(1.0, 1.0, 1.0, 0.42), Color(1.0, 1.0, 1.0, 1.0), Color(1.0, 1.0, 1.0, 0.42)]
+		ribbon_grad.offsets = [0.0, 0.5, 1.0]
+		var ribbon_tex := GradientTexture2D.new()
+		ribbon_tex.gradient = ribbon_grad
+		ribbon_tex.fill_from = Vector2(0.5, 0.0)
+		ribbon_tex.fill_to = Vector2(0.5, 1.0)
+		ribbon_tex.width = 16
+		ribbon_tex.height = 32
+		lane_strip.texture = ribbon_tex
+		
+		lane_strip.modulate = Color(lane_color.r, lane_color.g, lane_color.b, COMBAT_FEEL_CONTENT.LANE_IDLE_ALPHA)
+		lane_group.add_child(lane_strip)
 		_lane_strips[lane] = lane_strip
 
-		var lane_focus := ColorRect.new()
-		lane_focus.name = "LaneFocus_%d" % lane
-		lane_focus.size = Vector2(42.0, 66.0)
-		lane_focus.position = Vector2(
-			lane_manager.get_hit_zone_x() - 21.0,
-			lane_manager.get_lane_y(lane) - 33.0
-		)
-		lane_focus.pivot_offset = lane_focus.size * 0.5
-		lane_focus.color = Color(0.78, 0.72, 0.54, 0.012)
-		_lane_marker_container.add_child(lane_focus)
-		_lane_hit_focus[lane] = lane_focus
+		# Sharp edge highlights to give the ribbon a "physical" presence.
+		var strip_top := ColorRect.new()
+		strip_top.size = Vector2(lane_strip.size.x, 1.0)
+		strip_top.color = Color(lane_color.r, lane_color.g, lane_color.b, 0.12)
+		lane_strip.add_child(strip_top)
+
+		var strip_bottom := ColorRect.new()
+		strip_bottom.size = Vector2(lane_strip.size.x, 1.0)
+		strip_bottom.position = Vector2(0.0, lane_strip.size.y - 1.0)
+		strip_bottom.color = Color(lane_color.r, lane_color.g, lane_color.b, 0.12)
+		lane_strip.add_child(strip_bottom)
+
+		# ─── MANGA-SHARP FOCAL MARKERS ────────────────────────────────────────
+		# Precise, high-contrast brackets that frame the hit zone truth.
+		var focal_root := Node2D.new()
+		focal_root.name = "FocalMarker_%d" % lane
+		focal_root.position = Vector2(lane_manager.get_hit_zone_x(), lane_manager.get_lane_y(lane))
+		_lane_marker_container.add_child(focal_root)
+		_lane_hit_focus[lane] = focal_root
+
+		var marker_size: Vector2 = COMBAT_FEEL_CONTENT.FOCAL_MARKER_SIZE
+		var half: Vector2 = marker_size * 0.5
+		var bracket_len: float = 14.0
+		var tick_len: float = 4.0
+		var marker_color: Color = COMBAT_FEEL_CONTENT.FOCAL_MARKER_COLOR
+
+		# Draw procedural brackets (Top-Left, Top-Right, Bottom-Left, Bottom-Right)
+		for quadrant in range(4):
+			var bracket := Line2D.new()
+			bracket.width = COMBAT_FEEL_CONTENT.FOCAL_MARKER_WIDTH
+			bracket.default_color = marker_color
+			bracket.begin_cap_mode = Line2D.LINE_CAP_ROUND
+			bracket.end_cap_mode = Line2D.LINE_CAP_ROUND
+			
+			var x_sign: float = -1.0 if quadrant % 2 == 0 else 1.0
+			var y_sign: float = -1.0 if quadrant < 2 else 1.0
+			
+			bracket.add_point(Vector2(x_sign * half.x, y_sign * (half.y - bracket_len)))
+			bracket.add_point(Vector2(x_sign * half.x, y_sign * half.y))
+			bracket.add_point(Vector2(x_sign * (half.x - bracket_len), y_sign * half.y))
+			focal_root.add_child(bracket)
+		
+		# Precision Ticks (Top and Bottom center)
+		for i in range(2):
+			var tick := Line2D.new()
+			tick.width = COMBAT_FEEL_CONTENT.FOCAL_MARKER_WIDTH
+			tick.default_color = marker_color
+			var y_sign: float = -1.0 if i == 0 else 1.0
+			tick.add_point(Vector2(0.0, y_sign * half.y))
+			tick.add_point(Vector2(0.0, y_sign * (half.y - tick_len)))
+			focal_root.add_child(tick)
 
 	# Clear and rebuild markers based on the current logical state.
 	# We also check _enemy_markers_by_id to see if any markers were already created
@@ -3229,9 +3354,14 @@ func _choose_upgrade(index: int) -> void:
 	_awaiting_upgrade_choice = false
 	_upgrade_overlay.visible = false
 	
-	# After choosing, we move to next stage. 
-	# (Banked rewards are consumed one per level in this v1 pass)
-	_advance_to_next_stage()
+	# After choosing, determine if we continue the song run or finish/boss.
+	if _song_mode:
+		if _regular_level_index + 1 < _regular_level_windows.size():
+			_advance_to_next_regular_level()
+		else:
+			_trigger_boss_final_movement()
+	else:
+		_advance_to_next_stage()
 
 
 func _advance_to_next_stage() -> void:
@@ -3511,9 +3641,12 @@ func _offer_victory_reward(creature_data: Dictionary) -> void:
 			PRESENTATION_TEXT.format_bond_passive_long(_pending_reward_creature.get("bond_passive", {}), level_mult)
 		)
 		_reward_eat_label.text = PRESENTATION_TEXT.reward_eat_label(false)
-		_reward_eat_effect_label.text = PRESENTATION_TEXT.reward_eat_body(
-			PRESENTATION_TEXT.format_eat_effect(_pending_reward_creature.get("eat_effect", {}))
-		)
+		var mutation_summary: String = String(_pending_reward_creature.get("mutation", {}).get("summary", ""))
+		var eat_effect_text: String = PRESENTATION_TEXT.format_eat_effect(_pending_reward_creature.get("eat_effect", {}))
+		if not mutation_summary.is_empty():
+			eat_effect_text += "\n\nMutation: %s" % mutation_summary
+			
+		_reward_eat_effect_label.text = PRESENTATION_TEXT.reward_eat_body(eat_effect_text)
 		_reward_hint_label.text = PRESENTATION_TEXT.REWARD_HINT_CHOICE
 		controls_label.text = PRESENTATION_TEXT.REWARD_CONTROLS_CHOICE
 
@@ -3739,27 +3872,34 @@ func _choose_eat() -> void:
 	_reward_bond_label.text = ""
 	_reward_bond_effect_label.text = ""
 	_reward_eat_label.text = "Absorbed"
+	var mutation_summary: String = String(_pending_reward_creature.get("mutation", {}).get("summary", ""))
+	var mutation_line: String = "\n\nMutation gained: %s" % mutation_summary if not mutation_summary.is_empty() else ""
+
 	var _eat_type_str: String = String(absorbed_entry.get("eat_type", "damage_flat"))
 	if _eat_type_str == "hp_restore":
-		_reward_eat_effect_label.text = "Type: %s\n\n+%.0f HP restored.\nNo permanent bonus." % [
+		_reward_eat_effect_label.text = "Type: %s\n\n+%.0f HP restored.\nNo permanent bonus.%s" % [
 			String(absorbed_entry.get("type", "unknown")).capitalize(),
-			float(absorbed_entry.get("heal_applied", 0.0))
+			float(absorbed_entry.get("heal_applied", 0.0)),
+			mutation_line
 		]
 	elif _eat_type_str == "max_hp_flat":
-		_reward_eat_effect_label.text = "Type: %s\n\n+%.0f max HP.\n+%.0f HP restored." % [
+		_reward_eat_effect_label.text = "Type: %s\n\n+%.0f max HP.\n+%.0f HP restored.%s" % [
 			String(absorbed_entry.get("type", "unknown")).capitalize(),
 			float(absorbed_entry.get("max_hp_bonus", 0.0)),
-			float(absorbed_entry.get("heal_applied", 0.0))
+			float(absorbed_entry.get("heal_applied", 0.0)),
+			mutation_line
 		]
 	elif _eat_type_str == "support_charge":
-		_reward_eat_effect_label.text = "Type: %s\n\n+%.0f support charge immediately." % [
+		_reward_eat_effect_label.text = "Type: %s\n\n+%.0f support charge immediately.%s" % [
 			String(absorbed_entry.get("type", "unknown")).capitalize(),
-			float(absorbed_entry.get("support_charge_bonus", 0.0))
+			float(absorbed_entry.get("support_charge_bonus", 0.0)),
+			mutation_line
 		]
 	else:
-		_reward_eat_effect_label.text = "Type: %s\n\n+%.1f permanent attack damage" % [
+		_reward_eat_effect_label.text = "Type: %s\n\n+%.1f permanent attack damage%s" % [
 			String(absorbed_entry.get("type", "unknown")).capitalize(),
-			float(absorbed_entry.get("damage_bonus", 0.0))
+			float(absorbed_entry.get("damage_bonus", 0.0)),
+			mutation_line
 		]
 	_reward_quig_label.text = PRESENTATION_TEXT.eat_result_quig(_eat_creature_name)
 	_reward_hint_label.text = PRESENTATION_TEXT.REWARD_HINT_WAIT
@@ -4019,6 +4159,20 @@ func _spawn_damage_number(enemy_id: int, damage: float) -> void:
 	tween.tween_property(lbl, "position:y", start_pos.y - 44.0, COMBAT_FEEL_CONTENT.DAMAGE_NUMBER_FLOAT_TIME)
 	tween.parallel().tween_property(lbl, "modulate:a", 0.0, COMBAT_FEEL_CONTENT.DAMAGE_NUMBER_FLOAT_TIME)
 	tween.tween_callback(lbl.queue_free)
+
+
+func _on_proc_feedback_requested(text: String, color: Color) -> void:
+	_show_feedback(text, color, 0.40)
+
+
+func _on_ultimate_power_granted(amount: float) -> void:
+	if combat_meter != null and combat_meter.has_method("gain_ultimate_power"):
+		combat_meter.call("gain_ultimate_power", amount)
+
+
+func _on_enemy_status_applied_requested(lane: int, status_id: String, params: Dictionary) -> void:
+	if lane_manager != null and lane_manager.has_method("apply_status"):
+		lane_manager.call("apply_status", lane, status_id, params)
 
 
 func _on_enemy_defeated(enemy_id: int) -> void:

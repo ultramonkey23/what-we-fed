@@ -29,6 +29,7 @@ var _exhaustion_announced: bool = false
 
 var offers_enabled: bool = true
 var banked_reward_count: int = 0
+var _is_level_completion_choice: bool = false
 
 var _active_offer: Dictionary = {}
 var _offer_timer: float = 0.0
@@ -69,6 +70,7 @@ func start_song_run(_phases: Array) -> void:
 	_active_offer.clear()
 	_offer_timer = 0.0
 	_queued_offer_ids.clear()
+	_is_level_completion_choice = false
 	
 	# These now persist across levels in a multi-level run.
 	# Call reset_full_run_data() to clear them.
@@ -91,6 +93,7 @@ func reset_full_run_data() -> void:
 	_claimed_rewards.clear()
 	_runtime_effects.clear()
 	banked_reward_count = 0
+	_is_level_completion_choice = false
 
 
 func enter_song_phase(index: int, _phase_data: Dictionary) -> void:
@@ -138,6 +141,7 @@ func claim_active_offer(source: String = "manual") -> void:
 	_claimed_rewards.append(reward_data)
 	_active_offer.clear()
 	_offer_timer = 0.0
+	_is_level_completion_choice = false
 	emit_signal("reward_claimed", reward_data, source)
 	emit_signal("proc_feedback", String(reward_data.get("claim_text", "TAKEN")), reward_data.get("feedback_color", Color(0.92, 0.76, 0.42, 1.0)))
 	_emit_state_changed()
@@ -336,7 +340,15 @@ func get_upgrade_choices(count: int = 3) -> Array[Dictionary]:
 	return choices
 
 
+func get_level_completion_choices(count: int = 3) -> Array[Dictionary]:
+	_is_level_completion_choice = true
+	return get_upgrade_choices(count)
+
+
 func consume_banked_reward() -> void:
+	if _is_level_completion_choice:
+		# Structural rewards do not consume banked performance rewards.
+		return
 	banked_reward_count = max(banked_reward_count - 1, 0)
 
 

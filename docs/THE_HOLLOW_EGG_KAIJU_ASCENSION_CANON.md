@@ -268,6 +268,8 @@ The Hollow Egg system must feel:
 - ominous
 - patient
 - terrible
+- mythic and iconic
+- premium menace over raw gore
 
 It must NOT feel:
 - random
@@ -276,6 +278,17 @@ It must NOT feel:
 - melodramatic without payoff
 - disconnected from the creature systems
 - disconnected from the player’s choices
+- like generic superhero apocalypse gloss
+- like bright-clean anime spectacle detached from predatory creature logic
+
+## Influence vectors for late-scope tone (not copy targets)
+When this system is eventually implemented, tone shaping may borrow vectors from:
+- Solo Leveling for shadowed authority and ascendant menace
+- Digimon for creature-evolution consequence and form identity
+- My Hero Academia for clear readable impact language at large scale
+- Ben 10 for distinct transformation-form identity
+
+These are direction vectors only and must remain filtered through WHAT WE FED's dark creature-consequence spine.
 
 ---
 

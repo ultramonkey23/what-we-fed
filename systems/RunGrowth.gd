@@ -179,6 +179,52 @@ func has_surge(surge_type: String) -> bool:
 	return active_surges.get(surge_type, 0.0) > 0.0
 
 
+func get_mutation_bonus(effect_type: String, context: Dictionary = {}) -> float:
+	var total: float = 0.0
+	var mutations_list: Array[Dictionary] = GameState.get_active_mutations_of_type(effect_type)
+	
+	for mut in mutations_list:
+		var charges: int = int(mut.get("current_charges", 0))
+		if charges <= 0:
+			continue
+			
+		var effect: Dictionary = mut.get("effect", {})
+		var value: float = float(effect.get("value", 0.0))
+		
+		# Some mutations might have specific context requirements.
+		# For example: only on perfect timed attacks.
+		var req_quality: String = String(effect.get("required_quality", ""))
+		if not req_quality.is_empty() and context.get("quality", "") != req_quality:
+			continue
+			
+		total += value
+		
+	return total
+
+
+func consume_mutation_charges(effect_type: String, amount: int = 1, context: Dictionary = {}) -> void:
+	var mutations_list: Array[Dictionary] = GameState.get_active_mutations_of_type(effect_type)
+	for mut in mutations_list:
+		var charges: int = int(mut.get("current_charges", 0))
+		if charges <= 0:
+			continue
+			
+		var effect: Dictionary = mut.get("effect", {})
+		var req_quality: String = String(effect.get("required_quality", ""))
+		if not req_quality.is_empty() and context.get("quality", "") != req_quality:
+			continue
+			
+		var mut_id: String = String(mut.get("id", ""))
+		var feedback_fired: bool = bool(mut.get("feedback_fired", false))
+		
+		if not feedback_fired:
+			# Visual feedback for mutation consumption - only on first use.
+			EventBus.emit_signal("proc_feedback_requested", mut.get("display_name", "MUTATION"), Color(0.85, 0.44, 0.18, 1.0))
+			GameState.set_mutation_flag(mut_id, "feedback_fired", true)
+
+		GameState.consume_mutation_charge(mut_id, amount)
+
+
 func consume_surge_hit(surge_type: String) -> void:
 	if active_surges.has(surge_type):
 		active_surges[surge_type] = max(active_surges[surge_type] - 1.0, 0.0)
@@ -296,8 +342,25 @@ func _on_combat_started(_enemy_data: Array) -> void:
 
 func _on_enemy_defeated(_enemy_id: int) -> void:
 	_grant_exp(GROWTH_CONTENT.EXP_KILL)
-	_gain_support_charge(GROWTH_CONTENT.CHARGE_ENEMY_DEFEAT)
 	
+	# Mutation Pass: Support Charge on Kill
+	var kill_charge: float = GROWTH_CONTENT.CHARGE_ENEMY_DEFEAT
+	var charge_mult: float = get_mutation_bonus("support_charge_mult_on_kill")
+	if charge_mult > 0.0:
+		kill_charge *= charge_mult
+		consume_mutation_charges("support_charge_mult_on_kill", 1)
+	
+	_gain_support_charge(kill_charge)
+	
+	# Mutation Pass: Ultimate on Kill
+	var ult_gain: float = get_mutation_bonus("ultimate_on_kill")
+	if ult_gain > 0.0:
+		if GameState.has_node("/root/CombatMeter"): # Fallback for meter lookup
+			pass # Actual meter is passed via bind_runtime in PerformanceRewardDirector
+			# Since RunGrowth doesn't always have a direct meter ref, we might need a signal
+		EventBus.emit_signal("ultimate_power_granted", ult_gain)
+		consume_mutation_charges("ultimate_on_kill", 1)
+
 	# Aggression Surge: heal on kill.
 	if active_surges.get("aggression", 0.0) > 0.0:
 		var healed: float = GameState.heal_player(4.0)
@@ -317,6 +380,27 @@ func _on_timed_attack_resolved(lane: int, quality: String, _damage: float) -> vo
 	_grant_exp(GROWTH_CONTENT.EXP_TIMED_ATTACK)
 	_gain_support_charge(GROWTH_CONTENT.CHARGE_TIMED_ATTACK)
 	
+	# Mutation Pass: Timed Hits
+	var rend_charges: float = get_mutation_bonus("rend_on_hit", {"quality": quality})
+	if rend_charges > 0.0:
+		# Use EventBus to signal status application back to LaneManager/CombatScene
+		EventBus.emit_signal("enemy_status_applied_requested", lane, "rend", {"charges": int(rend_charges)})
+		consume_mutation_charges("rend_on_hit", 1, {"quality": quality})
+		
+	var heal_val: float = get_mutation_bonus("heal_on_hit", {"quality": quality})
+	if heal_val > 0.0:
+		var healed: float = GameState.heal_player(heal_val)
+		if healed > 0.0:
+			EventBus.emit_signal("player_healed", healed)
+		consume_mutation_charges("heal_on_hit", 1, {"quality": quality})
+		
+	var beat: String = String(GameState.get("last_beat_quality")) # Assume GameState tracks this or we check conductor
+	if beat == "perfect" or beat == "good":
+		var beat_charge: float = get_mutation_bonus("support_charge_on_beat")
+		if beat_charge > 0.0:
+			_gain_support_charge(beat_charge)
+			consume_mutation_charges("support_charge_on_beat", 1)
+
 	if active_surges.get("aggression", 0.0) > 0.0:
 		consume_surge_hit("aggression")
 

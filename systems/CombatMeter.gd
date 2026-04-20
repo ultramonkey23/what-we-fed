@@ -152,6 +152,13 @@ func restore_stamina(amount: float) -> void:
 	_gain_stamina(amount)
 
 
+func gain_ultimate_power(amount: float) -> void:
+	# amount is 0.0 to 1.0 (percent of threshold)
+	var combo_gain: int = int(amount * float(ULTIMATE_THRESHOLD))
+	combo_count += combo_gain
+	_emit_meter_state()
+
+
 func record_phrase_action(quality: String) -> void:
 	# Call this after any good/perfect action to advance the phrase chain.
 	# quality: "perfect", "good" — anything else is ignored (does not break).

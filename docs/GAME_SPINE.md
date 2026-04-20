@@ -2,6 +2,7 @@
 
 ## Project identity
 This game is evolving toward a dark RPG roguelite where creature identity, predation, and no-pause lane-timing combat are deeply fused.
+The current style emphasis is shifting from brutal horror-first toward dark cool creature power fantasy, while preserving danger, readability, and predatory consequence.
 
 ## Genre hierarchy
 - RPG first
@@ -20,6 +21,8 @@ The player starts weak, incomplete, or low-status and becomes feared through ada
 - mutation
 - dread
 - domination
+- ascendance
+- iconic becoming
 
 ## Long-term flagship direction
 The larger flagship version should eventually merge:
@@ -29,6 +32,7 @@ The larger flagship version should eventually merge:
 - mutation and creature systems
 - enemy species that shape the musical/ecological identity of the battlefield
 - bosses that seize control of the arena’s vibe and force breakdowns, drones, grooves, solos, blast-beat surges, or piercing tech-riff states
+- influence vectors (not copy targets): Solo Leveling, Digimon, My Hero Academia, Ben 10, interpreted through WHAT WE FED's dark creature DNA
 
 ## Important rule
 This is a long-term direction, not a permission slip to rewrite the current prototype all at once.
@@ -42,6 +46,7 @@ Use What We Fed as the practical base:
 - reward choice foundation
 - live DNA economy
 - live tendency growth
+- preserve prototype foundation; evolve, do not discard
 
 ## Near-term priority
 Before expanding toward the full flagship vision:

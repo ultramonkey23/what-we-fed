@@ -17,6 +17,14 @@ var taken_upgrades: Array[String] = []
 #   "damage_bonus": float }  -- or "heal_applied": float for hp_restore eat types
 var absorbed_types: Array[Dictionary] = []
 
+# Mutations gained by eating creatures.
+# Each entry is a duplicate of the 'mutation' block from CombatContent.
+# Plus a 'current_charges' field to track usage.
+var active_mutations: Array[Dictionary] = []
+
+# Global beat quality for the current tick.
+var last_beat_quality: String = "off"
+
 # Per-species DNA accumulated during the current run.
 # Creature-specific — keys are species_id strings, values are accumulated float amounts.
 # Bond/eat now requires spending dna_threshold DNA for the offered creature's species.
@@ -181,7 +189,42 @@ func absorb_creature_type(creature_data: Dictionary) -> Dictionary:
 		entry["damage_bonus"] = value
 
 	absorbed_types.append(entry)
+	
+	# NEW: Identity Absorption - Gain unique run-local mutation
+	var mutation: Dictionary = creature_data.get("mutation", {})
+	if not mutation.is_empty():
+		var active_entry: Dictionary = mutation.duplicate(true)
+		var effect: Dictionary = active_entry.get("effect", {})
+		active_entry["current_charges"] = int(effect.get("charges", 0))
+		active_entry["feedback_fired"] = false
+		active_mutations.append(active_entry)
+
 	return entry
+
+
+func get_active_mutations_of_type(effect_type: String) -> Array[Dictionary]:
+	var result: Array[Dictionary] = []
+	for mut in active_mutations:
+		var effect: Dictionary = mut.get("effect", {})
+		if String(effect.get("type", "")) == effect_type:
+			result.append(mut)
+	return result
+
+
+func consume_mutation_charge(mutation_id: String, amount: int = 1) -> void:
+	for i in range(active_mutations.size()):
+		if String(active_mutations[i].get("id", "")) == mutation_id:
+			var charges: int = int(active_mutations[i].get("current_charges", 0))
+			if charges > 0:
+				active_mutations[i]["current_charges"] = max(0, charges - amount)
+				return
+
+
+func set_mutation_flag(mutation_id: String, flag: String, value: bool) -> void:
+	for i in range(active_mutations.size()):
+		if String(active_mutations[i].get("id", "")) == mutation_id:
+			active_mutations[i][flag] = value
+			return
 
 
 func add_upgrade(upgrade_id: String) -> void:
@@ -193,6 +236,14 @@ func add_upgrade(upgrade_id: String) -> void:
 
 func has_upgrade(upgrade_id: String) -> bool:
 	return taken_upgrades.has(upgrade_id)
+
+
+func set_last_beat_quality(quality: String) -> void:
+	last_beat_quality = quality
+
+
+func is_beat_active() -> bool:
+	return last_beat_quality == "perfect" or last_beat_quality == "good"
 
 
 func heal_player(amount: float) -> float:
@@ -258,6 +309,7 @@ func reset_run_state() -> void:
 			player_max_hp += float(modifier.get("value", 0.0))
 	player_hp = player_max_hp
 	absorbed_types.clear()
+	active_mutations.clear()
 	# dna_by_species persists as it is creature-specific currency for metaprogression.
 	roster.clear()
 	taken_upgrades.clear()

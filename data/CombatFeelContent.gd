@@ -8,11 +8,16 @@ const EDGE_STATE_WIDTH: float = 0.016
 
 # ─── LANE VISUALS ────────────────────────────────────────────────────────────
 const LANE_BAND_HEIGHT: float = 36.0
-const LANE_IDLE_ALPHA: float = 0.0
-const LANE_THREAT_ALPHA: float = 0.054
-const LANE_CRITICAL_ALPHA: float = 0.112
-const LANE_THREAT_FOCUS_ALPHA: float = 0.16
-const LANE_IMMINENT_FOCUS_ALPHA: float = 0.28
+const LANE_IDLE_ALPHA: float = 0.062
+const LANE_THREAT_ALPHA: float = 0.14
+const LANE_CRITICAL_ALPHA: float = 0.24
+const LANE_THREAT_FOCUS_ALPHA: float = 0.32
+const LANE_IMMINENT_FOCUS_ALPHA: float = 0.64
+
+const FOCAL_MARKER_WIDTH: float = 2.0
+const FOCAL_MARKER_SIZE: Vector2 = Vector2(48.0, 72.0)
+const FOCAL_MARKER_COLOR: Color = Color(0.92, 0.88, 0.76, 0.24)
+const FOCAL_MARKER_ACTIVE_ALPHA: float = 0.72
 
 # ─── VISUAL DURATIONS & TIMINGS ──────────────────────────────────────────────
 const COMBAT_FEEDBACK_MIN_LIFETIME: float = 0.62

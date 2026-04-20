@@ -1,7 +1,7 @@
 extends RefCounted
 
 const RUN_THRESHOLDS: Array[float] = [180.0, 430.0, 770.0, 1150.0]
-const OFFER_DURATION: float = 6.5
+const OFFER_DURATION: float = 9.5
 const PHRASE_PROGRESS_BONUS := {
 	3: 8.0,
 	5: 14.0,

@@ -2,7 +2,7 @@ extends RefCounted
 
 # Regular level pacing rules for the current run-structure pass.
 # Non-boss levels must end within this cap.
-const MAX_REGULAR_LEVEL_DURATION_SECONDS: float = 180.0
+const MAX_REGULAR_LEVEL_DURATION_SECONDS: float = 120.0
 const REGULAR_LEVEL_COUNT: int = 3
 
 # Shared five-phase arc used per regular level.

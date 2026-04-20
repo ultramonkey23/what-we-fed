@@ -16,7 +16,7 @@ Current live-build assumptions:
 - Realtime lane combat, timing truth, live DNA economy, live reward shell, live tendency growth, creature ecosystem logic
 - RPG roguelite first, with lane-timing combat as the signature expression layer
 - Ranch is deferred
-- Visual direction is Black Signal Combat Pass v1
+- Visual direction is Black Signal Combat Pass v1, evolving toward dark-cool ascendant creature power fantasy (not bright-clean anime or generic superhero gloss)
 
 Do not treat final-scope canon as permission to rewrite the live build.
 

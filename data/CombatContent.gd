@@ -55,72 +55,90 @@ const BIOME_FEEDING_HOLLOW_BOSS := {
 const CLUTCH_SPECIES := ["gruvek", "siltgrip"] # Species that help player recover when low HP
 
 const CREATURES := {
-	"ashclaw": {
-		"species_id": "ashclaw",
-		"display_name": "Ashclaw",
-		"primary_type": "predator",
-		"secondary_type": "grit",
-		"affinity": "flesh",
-		"archetypes": ["guardian", "berserker"],
-		"capture_threshold": 0.30,
-		"bond_level": 1,
-		"description": "It learned to cut before it learned the cost of stopping.",
-		"dna_threshold": 8.0,
-		"sprite_path": "res://assets/creatures/ashclaw/forms/ashclaw_baby.png",
-		"reward_portrait_path": "res://assets/creatures/ashclaw/forms/ashclaw_baby.png",
-		"support_portrait_path": "res://assets/creatures/ashclaw/forms/ashclaw_teen.png",
-		"battlefield_sprite_path": "res://assets/creatures/ashclaw/forms/ashclaw_adult.png",
-		"combat_render": {
-			"scale": 0.058,
-			"world_offset": Vector2(-116.0, 82.0),
-			"z_index": 6,
-			"modulate": Color(0.92, 0.91, 0.88, 0.90)
-		},
-		"eat_effect": {"type": "damage_flat", "value": 2.0},
-		"bond_passive": {"type": "damage_on_ultimate", "value": 5.0},
-		"support_role": {
-			"readout_name": "Ashclaw",
-			"effect_id": "ashclaw_strike",
-			"trigger_on": ["perfect_parry", "perfect_timed_attack"],
-			"effect_value": 10.0,
-			"feedback_text": "ASHCLAW"
-		},
-		"quig_offer_text": "Quig: \"Mind the claws. It only knows the part after fear.\"",
-		"wrong_detail": "claws worn completely flat but still cutting"
-	},
-	"bond_remnant": {
-		"species_id": "bond_remnant",
-		"display_name": "Bond Remnant",
-		"primary_type": "bond",
-		"secondary_type": "hollow",
-		"affinity": "hollow",
-		"archetypes": ["phantom", "anchor"],
-		"capture_threshold": 0.25,
-		"bond_level": 1,
-		"description": "It holds the shape of something that stayed after its body did not.",
-		"dna_threshold": 8.0,
-		"sprite_path": "res://assets/creatures/bond_remnant/forms/bond_remnant_idle.png",
-		"reward_portrait_path": "res://assets/creatures/bond_remnant/forms/bond_remnant_idle.png",
-		"support_portrait_path": "res://assets/creatures/bond_remnant/forms/bond_remnant_adult.png",
-		"battlefield_sprite_path": "res://assets/creatures/bond_remnant/forms/bond_remnant_adult.png",
-		"combat_render": {
-			"scale": 0.062,
-			"world_offset": Vector2(-124.0, 88.0),
-			"z_index": 6,
-			"modulate": Color(0.84, 0.88, 1.0, 0.85)
-		},
-		"eat_effect": {"type": "damage_flat", "value": 1.0},
-		"bond_passive": {"type": "damage_reduction_pct", "value": 0.08},
-		"support_role": {
-			"readout_name": "Bond Remnant",
-			"effect_id": "bond_remnant_mend",
-			"trigger_on": ["damage_taken_when_ready"],
-			"effect_value": 6.0,
-			"feedback_text": "REMNANT"
-		},
-		"quig_offer_text": "Quig: \"Do not stare. It notices being remembered.\"",
-		"wrong_detail": "teeth set in a jaw that never learned to close"
-	},
+   "ashclaw": {
+	   "species_id": "ashclaw",
+	   "display_name": "Ashclaw",
+	   "primary_type": "predator",
+	   "secondary_type": "grit",
+	   "affinity": "flesh",
+	   "archetypes": ["guardian", "berserker"],
+	   "capture_threshold": 0.30,
+	   "bond_level": 1,
+	   "base_hp": 60.0,
+	   "base_damage": 10.0,
+	   "base_defense": 2.0,
+	   "description": "It learned to cut before it learned the cost of stopping.",
+	   "dna_threshold": 8.0,
+	   "sprite_path": "res://assets/creatures/ashclaw/forms/ashclaw_baby.png",
+	   "reward_portrait_path": "res://assets/creatures/ashclaw/forms/ashclaw_baby.png",
+	   "support_portrait_path": "res://assets/creatures/ashclaw/forms/ashclaw_teen.png",
+	   "battlefield_sprite_path": "res://assets/creatures/ashclaw/forms/ashclaw_adult.png",
+	   "combat_render": {
+		   "scale": 0.058,
+		   "world_offset": Vector2(-116.0, 82.0),
+		   "z_index": 6,
+		   "modulate": Color(0.92, 0.91, 0.88, 0.90)
+	   },
+	   "eat_effect": {"type": "damage_flat", "value": 2.0},
+	   "mutation": {
+		   "id": "ashclaw_frenzy",
+		   "display_name": "Ashclaw's Frenzy",
+		   "summary": "Next 12 timed hits deal +4 damage",
+		   "effect": {"type": "timed_damage_flat", "value": 4.0, "charges": 12}
+	   },
+	   "bond_passive": {"type": "damage_on_ultimate", "value": 5.0},
+	   "support_role": {
+		   "readout_name": "Ashclaw",
+		   "effect_id": "ashclaw_strike",
+		   "trigger_on": ["perfect_parry", "perfect_timed_attack"],
+		   "effect_value": 10.0,
+		   "feedback_text": "ASHCLAW"
+	   },
+	   "quig_offer_text": "Quig: \"Mind the claws. It only knows the part after fear.\"",
+	   "wrong_detail": "claws worn completely flat but still cutting"
+   },
+	   "bond_remnant": {
+		   "species_id": "bond_remnant",
+		   "display_name": "Bond Remnant",
+		   "primary_type": "bond",
+		   "secondary_type": "hollow",
+		   "affinity": "hollow",
+		   "archetypes": ["phantom", "anchor"],
+		   "capture_threshold": 0.25,
+		   "bond_level": 1,
+		   "base_hp": 52.0,
+		   "base_damage": 7.0,
+		   "base_defense": 3.0,
+		   "description": "It holds the shape of something that stayed after its body did not.",
+		   "dna_threshold": 8.0,
+		   "sprite_path": "res://assets/creatures/bond_remnant/forms/bond_remnant_idle.png",
+		   "reward_portrait_path": "res://assets/creatures/bond_remnant/forms/bond_remnant_idle.png",
+		   "support_portrait_path": "res://assets/creatures/bond_remnant/forms/bond_remnant_adult.png",
+		   "battlefield_sprite_path": "res://assets/creatures/bond_remnant/forms/bond_remnant_adult.png",
+		   "combat_render": {
+			   "scale": 0.062,
+			   "world_offset": Vector2(-124.0, 88.0),
+			   "z_index": 6,
+			   "modulate": Color(0.84, 0.88, 1.0, 0.85)
+		   },
+		   "eat_effect": {"type": "damage_flat", "value": 1.0},
+		   "mutation": {
+			   "id": "remnant_mend",
+			   "display_name": "Remnant's Mend",
+			   "summary": "Next 4 hits taken partially mend themselves",
+			   "effect": {"type": "heal_on_hit_taken", "value": 6.0, "charges": 4}
+		   },
+		   "bond_passive": {"type": "damage_reduction_pct", "value": 0.08},
+		   "support_role": {
+			   "readout_name": "Bond Remnant",
+			   "effect_id": "bond_remnant_mend",
+			   "trigger_on": ["damage_taken_when_ready"],
+			   "effect_value": 6.0,
+			   "feedback_text": "REMNANT"
+		   },
+		   "quig_offer_text": "Quig: \"Do not stare. It notices being remembered.\"",
+		   "wrong_detail": "teeth set in a jaw that never learned to close"
+	   },
 	"gruvek": {
 		"species_id": "gruvek",
 		"display_name": "Gruvek",
@@ -133,6 +151,12 @@ const CREATURES := {
 		"description": "It keeps eating until the hunger belongs to whoever is left nearby.",
 		"dna_threshold": 10.0,
 		"eat_effect": {"type": "hp_restore", "value": 18.0},
+		"mutation": {
+			"id": "gruvek_gorge",
+			"display_name": "Gruvek's Gorge",
+			"summary": "Next 6 kills grant double support charge",
+			"effect": {"type": "support_charge_mult_on_kill", "value": 2.0, "charges": 6}
+		},
 		"bond_passive": {"type": "hp_on_kill", "value": 3.0},
 		"support_role": {
 			"readout_name": "Gruvek",
@@ -156,6 +180,12 @@ const CREATURES := {
 		"description": "It waits for one clean reason to move. The reason never survives it.",
 		"dna_threshold": 10.0,
 		"eat_effect": {"type": "damage_flat", "value": 1.0},
+		"mutation": {
+			"id": "veilskin_phase",
+			"display_name": "Veilskin's Phase",
+			"summary": "Next 6 perfect parries grant full stamina",
+			"effect": {"type": "stamina_on_perfect_parry", "value": 100.0, "charges": 6}
+		},
 		"bond_passive": {"type": "parry_reflect_mult", "value": 0.40},
 		"support_role": {
 			"readout_name": "Veilskin",
@@ -179,6 +209,12 @@ const CREATURES := {
 		"description": "Every wound it opens stays interested in widening.",
 		"dna_threshold": 12.0,
 		"eat_effect": {"type": "damage_flat", "value": 3.0},
+		"mutation": {
+			"id": "thornback_rend",
+			"display_name": "Thornback's Rend",
+			"summary": "Next 8 timed attacks apply extra bleed (Rend)",
+			"effect": {"type": "rend_on_hit", "charges": 3, "use_charges": 8}
+		},
 		"bond_passive": {"type": "timed_damage_flat", "value": 3.0},
 		"support_role": {
 			"readout_name": "Thornback",
@@ -202,6 +238,12 @@ const CREATURES := {
 		"description": "Its ribs ring when your timing is true. The note cuts after the sound is done.",
 		"dna_threshold": 6.0,
 		"eat_effect": {"type": "support_charge", "value": 35.0},
+		"mutation": {
+			"id": "knell_resonance",
+			"display_name": "Knell's Resonance",
+			"summary": "Next 10 hits on-beat grant +2 support charge",
+			"effect": {"type": "support_charge_on_beat", "value": 2.0, "charges": 10}
+		},
 		"bond_passive": {"type": "timed_damage_flat", "value": 2.0},
 		"support_role": {
 			"readout_name": "Knellspine",
@@ -225,6 +267,12 @@ const CREATURES := {
 		"description": "It protects what it keeps only so the feeding can last longer.",
 		"dna_threshold": 8.0,
 		"eat_effect": {"type": "max_hp_flat", "value": 12.0},
+		"mutation": {
+			"id": "marrow_ward",
+			"display_name": "Marrow's Ward",
+			"summary": "Next 3 hits taken deal 0 damage",
+			"effect": {"type": "invuln_hits", "charges": 3}
+		},
 		"bond_passive": {"type": "damage_reduction_pct", "value": 0.06},
 		"support_role": {
 			"readout_name": "Marrowward",
@@ -248,6 +296,12 @@ const CREATURES := {
 		"description": "It lives in the instant after the wound opens and before the body agrees.",
 		"dna_threshold": 10.0,
 		"eat_effect": {"type": "damage_flat", "value": 3.0},
+		"mutation": {
+			"id": "gore_frenzy",
+			"display_name": "Gorefane's Frenzy",
+			"summary": "Next 5 kills grant 25% ultimate power",
+			"effect": {"type": "ultimate_on_kill", "value": 0.25, "charges": 5}
+		},
 		"bond_passive": {"type": "hp_on_kill", "value": 2.5},
 		"support_role": {
 			"readout_name": "Gorefane",
@@ -271,6 +325,12 @@ const CREATURES := {
 		"description": "When it tightens, the field goes quiet enough to hear what is still hunting.",
 		"dna_threshold": 9.0,
 		"eat_effect": {"type": "hp_restore", "value": 12.0},
+		"mutation": {
+			"id": "hush_coil",
+			"display_name": "Hushcoil's Lull",
+			"summary": "Next 6 parries apply 'Pale' to all lanes",
+			"effect": {"type": "pale_on_parry", "charges": 6}
+		},
 		"bond_passive": {"type": "parry_reflect_mult", "value": 0.25},
 		"support_role": {
 			"readout_name": "Hushcoil",
@@ -294,6 +354,12 @@ const CREATURES := {
 		"description": "It holds still through your opening. The stillness moves after.",
 		"dna_threshold": 9.0,
 		"eat_effect": {"type": "max_hp_flat", "value": 14.0},
+		"mutation": {
+			"id": "cold_expose",
+			"display_name": "Coldvein's Exposure",
+			"summary": "Next 4 perfect parries apply 'Expose' to all lanes",
+			"effect": {"type": "expose_all_on_perfect_parry", "duration": 4.0, "charges": 4}
+		},
 		"bond_passive": {"type": "timed_damage_flat", "value": 2.5},
 		"support_role": {
 			"readout_name": "Coldvein",
@@ -317,6 +383,12 @@ const CREATURES := {
 		"description": "It waits below where the kills land. Something in the current marks the spot.",
 		"dna_threshold": 11.0,
 		"eat_effect": {"type": "damage_flat", "value": 2.5},
+		"mutation": {
+			"id": "silt_drag",
+			"display_name": "Siltgrip's Drag",
+			"summary": "Next 8 timed hits heal for 4",
+			"effect": {"type": "heal_on_hit", "value": 4.0, "charges": 8}
+		},
 		"bond_passive": {"type": "hp_on_kill", "value": 3.5},
 		"support_role": {
 			"readout_name": "Siltgrip",
@@ -729,8 +801,14 @@ static func build_creature_enemy(entry: Dictionary) -> Dictionary:
 	enemy["encounter_summary"] = String(profile.get("encounter_summary", ""))
 	enemy["grade"] = grade_id
 	enemy["grade_label"] = String(grade.get("label", "MATURE"))
-	enemy["hp"] = float(enemy.get("hp", 28.0)) * float(grade.get("hp_mult", 1.0))
-	enemy["damage"] = float(enemy.get("damage", 8.0)) * float(grade.get("damage_mult", 1.0))
+	# Use explicit encounter values if present, otherwise fall back to CREATURES base stat fields.
+	var base_hp = float(creature.get("base_hp", 28.0))
+	var base_damage = float(creature.get("base_damage", 8.0))
+	var base_defense = float(creature.get("base_defense", 0.0))
+
+	enemy["hp"] = float(enemy.get("hp", base_hp)) * float(grade.get("hp_mult", 1.0))
+	enemy["damage"] = float(enemy.get("damage", base_damage)) * float(grade.get("damage_mult", 1.0))
+	enemy["defense"] = float(enemy.get("defense", base_defense))
 	enemy["dna_reward"] = float(enemy.get("dna_reward", profile.get("dna_reward", 2.5))) * float(grade.get("dna_mult", 1.0))
 	return enemy
 

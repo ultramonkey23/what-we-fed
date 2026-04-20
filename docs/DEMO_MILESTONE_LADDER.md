@@ -39,6 +39,10 @@ The remaining question is whether the game can support:
 - enough clarity for a new player
 to justify public-facing demo status.
 
+Style note for this ladder:
+- demo presentation should read as dark-cool ascendant creature power fantasy, not gore-first brutality
+- influence vectors (Solo Leveling, Digimon, My Hero Academia, Ben 10) are guidance only, not copy targets
+
 ---
 
 # Milestone 1 — First Boss Vertical Slice
@@ -212,7 +216,12 @@ The game becomes a **real demo candidate** when all of the following are true:
   - timing mastery
   - bond vs eat
   - mutation / growth
+  - transformation fantasy and ascendant becoming
   - becoming feared
+- the style read is consistent:
+  - dark, mythic, premium, strange, dangerous
+  - readable lanes/support under pressure
+  - no bright-clean anime flattening or generic superhero gloss
 
 If those conditions are true, the game stops being merely promising and becomes a real demo-capable slice.
 

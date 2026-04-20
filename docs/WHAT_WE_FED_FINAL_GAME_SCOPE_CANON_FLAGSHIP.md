@@ -27,6 +27,11 @@ It should be treated as the current highest-level project spine until deliberate
 ## Final genre identity
 A dark, stylish, creature-driven **RPG roguelite** where realtime lane-timing combat is the signature expression layer for predation, build identity, and monstrous ascent.
 
+## Style evolution note
+The project direction has evolved from a more brutal horror-first emphasis toward a **dark cool creature power fantasy** emphasis.
+This is an evolution of focus, not a genre swap.
+The game must remain dangerous, strange, predatory, and readable.
+
 ## Genre hierarchy
 - RPG first
 - Roguelite second
@@ -103,11 +108,13 @@ The game should feel like:
 - dominance
 - becoming
 - consequence
+- ascendance
+- iconic authority
 
 ## Aesthetic DNA
 The game should be:
 - dark
-- oppressive
+- oppressive without leaning on gore
 - stylish
 - weird
 - memorable
@@ -115,26 +122,37 @@ The game should be:
 - premium without becoming sterile
 - readable even under pressure
 - increasingly world-scale as the player progresses
+- transformation-forward
+- mythic and dangerous
+- cool and ascendant without becoming clean or harmless
 
 ## Creative influences by feel
-Not direct copying, but the project should carry energy from:
+These are influence vectors, not copy targets.
+The project should carry energy from:
 - rhythm/timing mastery
 - action-game responsiveness
-- horror mutation fantasy
+- dark transformation fantasy
 - creature growth and creature consequence
 - long-run predatory escalation
-- death-metal intensity
+- premium menace and cool authority (Solo Leveling vector)
+- iconic creature evolution and role identity (Digimon vector)
+- readable power silhouettes and aspirational charge (My Hero Academia vector)
+- distinct form fantasy and transformation coolness (Ben 10 vector)
+- aggressive music-driven intensity
 - underground edge
-- anime/manga escalation
+- anime/manga escalation by mood, not by template
 - cult-hit game energy
 - apocalypse-scale payoff
 
 ## What it must NOT feel like
 - generic fantasy RPG
 - generic action game with monsters pasted on top
+- generic superhero gloss
+- bright, clean mainstream anime sheen
 - soft/cute pet collector
 - bland mobile game
 - random roguelite soup
+- generic action sludge
 - pure rhythm-game gimmick
 - spreadsheet-heavy management sim
 - ranch-first management game
@@ -183,7 +201,7 @@ This is one of the central identity splits of the entire game.
 - selfish mutation
 - direct body power
 - short-term escalation
-- brutal self-prioritization
+- ruthless self-prioritization
 - using life as fuel
 
 Both choices must remain valid.

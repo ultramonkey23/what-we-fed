@@ -376,6 +376,26 @@ func _try_parry() -> void:
 		reflect_mult *= 1.25
 		followup_window = 0.85
 
+	# Mutation Pass: Parry
+	if _run_growth != null:
+		if quality == "perfect":
+			var stamina_gain: float = _run_growth.get_mutation_bonus("stamina_on_perfect_parry")
+			if stamina_gain > 0.0:
+				combat_meter.call("restore_stamina", stamina_gain)
+				_run_growth.consume_mutation_charges("stamina_on_perfect_parry", 1)
+				
+			var expose_all: float = _run_growth.get_mutation_bonus("expose_all_on_perfect_parry")
+			if expose_all > 0.0:
+				for ex_lane in range(3):
+					lane_manager.call("apply_status", ex_lane, "expose", {"duration": expose_all})
+				_run_growth.consume_mutation_charges("expose_all_on_perfect_parry", 1)
+		
+		var pale_all: float = _run_growth.get_mutation_bonus("pale_on_parry")
+		if pale_all > 0.0:
+			for pa_lane in range(3):
+				lane_manager.call("apply_status", pa_lane, "pale", {})
+			_run_growth.consume_mutation_charges("pale_on_parry", 1)
+
 	var reflect_damage: float = float(projectile.get("damage")) * reflect_mult * combo_mult * (1.0 + _get_parry_reflect_bonus())
 
 	projectile.call("reflect_to_enemy", reflect_damage)
@@ -518,10 +538,19 @@ func _resolve_timed_attack(projectile, combo_mult: float, quality: String) -> vo
 			growth_mult += float(cad_effect.get("value", 0.0))
 
 	# Player attack damage (base + absorbed) now cashes out directly in timed attacks.
-	# We combine the "reflected" projectile damage with a portion of the player's own power.
+	# combine the "reflected" projectile damage with a portion of the player's own power.
 	var base_atk: float = GameState.get_attack_damage()
-	var timed_damage: float = ((float(projectile.get("damage")) * TIMED_ATTACK_DAMAGE_RATIO) + (base_atk * PLAYER_DAMAGE_TO_TIMED_RATIO)) * combo_mult * (1.0 + phrase_bonus) * beat_mult * growth_mult + _get_timed_damage_bonus()
+
+	# Mutation Pass: Timed Damage
+	var mutation_bonus: float = 0.0
+	if _run_growth != null:
+		mutation_bonus = _run_growth.get_mutation_bonus("timed_damage_flat", {"quality": quality})
+		if mutation_bonus > 0.0:
+			_run_growth.consume_mutation_charges("timed_damage_flat", 1, {"quality": quality})
+
+	var timed_damage: float = ((float(projectile.get("damage")) * TIMED_ATTACK_DAMAGE_RATIO) + (base_atk * PLAYER_DAMAGE_TO_TIMED_RATIO)) * combo_mult * (1.0 + phrase_bonus) * beat_mult * growth_mult + _get_timed_damage_bonus() + mutation_bonus
 	var recovery: float = TIMED_ATTACK_RECOVERY
+
 
 	projectile.call("resolve", "attack_%s" % quality)
 	lane_manager.call("clear_slot", current_lane)
@@ -596,6 +625,20 @@ func _take_damage(amount: float, source_lane: int) -> void:
 	if _run_growth != null and _run_growth.has_method("get_runtime_effect"):
 		var effect: Dictionary = Dictionary(_run_growth.call("get_runtime_effect", "guard_damage_reduction"))
 		surge_dr = float(effect.get("value", 0.0))
+
+	# Mutation Pass: Damage Taken
+	if _run_growth != null:
+		var invuln: float = _run_growth.get_mutation_bonus("invuln_hits")
+		if invuln > 0.0:
+			amount = 0.0
+			_run_growth.consume_mutation_charges("invuln_hits", 1)
+		else:
+			var mend: float = _run_growth.get_mutation_bonus("heal_on_hit_taken")
+			if mend > 0.0:
+				var healed: float = GameState.heal_player(mend)
+				if healed > 0.0:
+					EventBus.emit_signal("player_healed", healed)
+				_run_growth.consume_mutation_charges("heal_on_hit_taken", 1)
 
 	amount = amount * (1.0 - _get_damage_reduction()) * (1.0 - surge_dr)
 	GameState.player_hp = max(GameState.player_hp - amount, 0.0)
@@ -853,4 +896,3 @@ func _on_projectile_player_contact(projectile: Node) -> void:
 	
 	projectile.call("resolve", "miss")
 	lane_manager.call("clear_slot", proj_lane)
-lear_slot", proj_lane)

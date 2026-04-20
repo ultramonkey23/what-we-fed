@@ -33,6 +33,7 @@ var _bond_value_label: Label
 var _atk_value_label: Label
 var _def_value_label: Label
 var _dna_route_label: Label
+var _mutation_value_label: Label
 
 # DNA HUD cluster
 var _dna_shell: ColorRect
@@ -87,6 +88,7 @@ func bind_nodes(nodes: Dictionary) -> void:
 	_atk_value_label = nodes.get("atk_value_label")
 	_def_value_label = nodes.get("def_value_label")
 	_dna_route_label = nodes.get("dna_route_label")
+	_mutation_value_label = nodes.get("mutation_value_label")
 	# DNA HUD cluster
 	_dna_shell = nodes.get("dna_shell")
 	_dna_emblem = nodes.get("dna_emblem")
@@ -248,6 +250,8 @@ func refresh_run_build(run_growth: Node) -> void:
 		_eaten_value_label.text = _format_absorbed_bonus_summary()
 	if _upgrade_value_label != null:
 		_upgrade_value_label.text = _format_upgrade_summary(run_growth)
+	if _mutation_value_label != null:
+		_mutation_value_label.text = _format_mutation_summary()
 
 	if _bond_value_label != null:
 		var active: Dictionary = GameState.get_active_bonded_creature()
@@ -266,7 +270,7 @@ func refresh_run_build(run_growth: Node) -> void:
 		_dna_route_label.text = String(run_growth.call("get_dna_routing_label"))
 
 	if _run_build_shell != null:
-		var has_build: bool = not GameState.absorbed_types.is_empty()
+		var has_build: bool = not GameState.absorbed_types.is_empty() or not GameState.active_mutations.is_empty()
 		_run_build_shell.color = Color(0.08, 0.08, 0.10, 0.60) if has_build else Color(0.07, 0.07, 0.09, 0.50)
 
 
@@ -462,6 +466,38 @@ func _format_absorbed_bonus_summary() -> String:
 	var hidden_count: int = GameState.absorbed_types.size() - visible_count
 	if hidden_count > 0:
 		chips.append("+%d" % hidden_count)
+	return _join_compact_tokens(chips)
+
+
+func _format_mutation_summary() -> String:
+	if GameState.active_mutations.is_empty():
+		return "--"
+	var chips: Array[String] = []
+	var visible_count: int = 0
+	for i in range(GameState.active_mutations.size()):
+		var entry: Dictionary = GameState.active_mutations[i]
+		var charges: int = int(entry.get("current_charges", 0))
+		if charges <= 0:
+			continue
+			
+		visible_count += 1
+		if visible_count > 2:
+			continue
+
+		var display_name: String = String(entry.get("display_name", "MUTATION"))
+		var short_name: String = _compact_token(display_name, 4)
+		chips.append("[%s %d]" % [short_name, charges])
+		
+	var hidden_count: int = 0
+	if visible_count > 2:
+		hidden_count = visible_count - 2
+		
+	if hidden_count > 0:
+		chips.append("+%d" % hidden_count)
+		
+	if chips.is_empty():
+		return "--"
+		
 	return _join_compact_tokens(chips)
 
 

@@ -21,6 +21,11 @@ This is the project’s **core fantasy and design truth**.
 ## Core soul statement
 **What We Fed is a dark creature-driven RPG roguelite where the player endures the hostile song of each level by shaping a faster, stranger predator through timing mastery, feeding, bonding, and escalating run mutation until survival turns into tempo control, creature identity, and personalized domination.**
 
+## Current soul emphasis
+The tone has shifted from a more brutal horror-first emphasis toward a dark cool ascendant creature power-fantasy emphasis.
+This does not remove danger, predation, or consequence.
+It clarifies the fantasy of transformation and becoming.
+
 ## Shorter internal version
 **Build the kind of monster that can survive the song — then make the song feel like yours.**
 
@@ -50,12 +55,13 @@ Not through morality choices.
 Through mechanics.
 
 By the end of a strong run, the player should feel like they became a specific kind of monster, such as:
-- a relentless butcher
+- a relentless apex hunter
 - a precision predator
-- a kill-fed carrion engine
+- a kill-fed predation engine
 - a parry-made horror
 - a bonded war-machine
 - a glutton built from what it consumed
+- an ascendant apex form with clear creature identity
 
 The game is at its best when the player can describe the run as:
 ### “This is what I became.”
@@ -79,6 +85,8 @@ A good run should then transform them into something:
 - more oppressive
 - more efficient
 - more feared
+- more iconic
+- more ascendant
 
 The goal is not only survival.
 The goal is to become so effective that the level’s pressure starts bending around the build you created.
@@ -220,11 +228,21 @@ It should feel like:
 - more oppressive tempo
 - more visible predator identity
 - the run becoming unnatural
+- more transformation-driven authority
 
 The ideal arc is:
 - early run = weak scavenger
 - mid run = shaped predator
-- late run = customized horror machine
+- late run = customized apex monster
+
+## Influence vectors (not copy targets)
+The soul direction should borrow vector energy from:
+- Solo Leveling for cool authority and shadowy ascendance
+- Digimon for iconic creature growth and evolution identity
+- My Hero Academia for readable power expression and silhouette clarity
+- Ben 10 for distinct form fantasy and transformation coolness
+
+These are reference vectors for tone and clarity, not templates to imitate.
 
 ---
 

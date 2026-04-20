@@ -2,6 +2,9 @@
 
 ## Project Identity
 WHAT WE FED is an **RPG roguelite first**. It is a dark, oppressive, premium-feeling creature progression game where realtime lane-timing combat is the signature expression layer for species-specific DNA growth, Bond vs Eat tension, and the fantasy of starting weak and becoming feared. It is **not** a generic survivor clone, creature collector, ranch-first sim, or roguelite soup.
+Current style emphasis: less brutal-horror-forward, more dark-cool ascendant creature power fantasy, while preserving danger, readability, and predatory identity.
+
+Influence vectors (not copy targets): Solo Leveling (cool authority), Digimon (creature evolution identity), My Hero Academia (readable power silhouettes), Ben 10 (form transformation fantasy).
 
 ## The Locked Core (Do Not Break)
 - **Timing Truth**: Rhythm and input must be honest. No floaty timing.
@@ -21,6 +24,7 @@ WHAT WE FED is an **RPG roguelite first**. It is a dark, oppressive, premium-fee
 ## Anti-Drift Bans
 - **NO** generic survivor/bullet-heaven mechanics (unless they fit the lane/timing core).
 - **NO** generic RPG stat sludge or flat spreadsheet progression.
+- **NO** generic superhero gloss or bright-clean anime flattening.
 - **NO** sterile/safe UI. The game has "teeth."
 - **NO** speculative automation or machine-wide dependencies. Use repo-local tools.
 

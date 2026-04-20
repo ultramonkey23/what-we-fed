@@ -15,6 +15,7 @@ Focus on:
 - improving readability of hardcoded encounter content
 - centralizing repeated feel/timing values (slow-motion, hitstop)
 - adding clearer comments around lane/timing rules
+- keeping the style direction aligned with dark-cool ascendant creature power fantasy
 
 ## Not yet
 Do not do these yet unless explicitly requested:
@@ -23,6 +24,7 @@ Do not do these yet unless explicitly requested:
 - add giant systems all at once
 - merge in every survivor-like idea immediately
 - rebuild the prototype from scratch
+- soften the game into harmless anime-clean gloss or generic superhero tone
 
 ## Good next tasks
 - move creature and encounter data out of `CombatScene.gd`
@@ -36,3 +38,4 @@ Later, after the current prototype is better understood and stabilized, begin me
 - boss performance states
 - Quig commentary
 - mutation and cadence-based authorship
+- influence-vector alignment (Solo Leveling, Digimon, My Hero Academia, Ben 10) as direction cues, not copy templates

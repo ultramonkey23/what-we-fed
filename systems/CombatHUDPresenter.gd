@@ -141,13 +141,13 @@ func set_ultimate_text(text: String) -> void:
 		_ultimate_label.text = text
 
 
-func set_exp_text(level: int, exp: float, exp_to_next: float = -1.0) -> void:
+func set_exp_text(level: int, current_exp: float, exp_to_next: float = -1.0) -> void:
 	if _exp_value_label == null:
 		return
 	if exp_to_next >= 0.0:
-		_exp_value_label.text = "L%d  %.0f/%.0f" % [level, exp, exp_to_next]
+		_exp_value_label.text = "L%d  %.0f/%.0f" % [level, current_exp, exp_to_next]
 	else:
-		_exp_value_label.text = "L%d  %.0f" % [level, exp]
+		_exp_value_label.text = "L%d  %.0f" % [level, current_exp]
 
 
 func set_controls_text(text: String) -> void:

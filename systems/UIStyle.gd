@@ -262,7 +262,7 @@ static func apply_label(label: Label, role: String, align: int = -1) -> void:
 	label.add_theme_constant_override("line_spacing", int(style.get("line_spacing", 0)))
 
 	if align >= 0:
-		label.horizontal_alignment = align
+		label.horizontal_alignment = align as HorizontalAlignment
 
 
 static func _style_for_role(role: String) -> Dictionary:

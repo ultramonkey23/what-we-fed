@@ -197,9 +197,13 @@ func set_enemy(lane: int, enemy_data: Dictionary) -> void:
 	while _enemies.size() < LANE_COUNT:
 		_enemies.append({})
 	_enemies[lane] = enemy_data.duplicate(true)
-	if _song_mode and _combat_running and _cycle_stalled:
-		_cycle_stalled = false
-		_run_fire_cycle(_cycle_task_id)
+	
+	if _song_mode:
+		if not _combat_running:
+			start_song_cycle()
+		elif _cycle_stalled:
+			_cycle_stalled = false
+			_run_fire_cycle(_cycle_task_id)
 
 
 func damage_enemy(lane: int, amount: float) -> void:
@@ -353,22 +357,35 @@ func _get_status_damage_mult(lane: int) -> float:
 func _run_fire_cycle(task_id: int) -> void:
 	if not _combat_running or task_id != _cycle_task_id:
 		return
+	
+	_cycle_stalled = false
 
-	for lane in range(LANE_COUNT):
-		if not _combat_running or task_id != _cycle_task_id:
-			return
+	# Pause-aware firing: if the song is paused (e.g. reward screen), skip this cycle's 
+	# firing but keep the recursion alive.
+	var paused: bool = false
+	if combat_scene != null and combat_scene.has_method("is_song_paused"):
+		paused = combat_scene.is_song_paused()
 
-		var enemy: Dictionary = get_enemy(lane)
-		if enemy.has("hp") and float(enemy["hp"]) > 0.0:
-			_fire_lane(lane)
+	if not paused:
+		for lane in range(LANE_COUNT):
+			if not _combat_running or task_id != _cycle_task_id:
+				return
 
-		if lane < LANE_COUNT - 1:
-			var offset_timer: SceneTreeTimer = get_tree().create_timer(fire_stagger)
-			await offset_timer.timeout
+			var enemy: Dictionary = get_enemy(lane)
+			if enemy.has("hp") and float(enemy["hp"]) > 0.0:
+				_fire_lane(lane)
+
+			if lane < LANE_COUNT - 1:
+				var offset_timer: SceneTreeTimer = get_tree().create_timer(fire_stagger)
+				await offset_timer.timeout
 
 	if not _combat_running or task_id != _cycle_task_id:
 		return
-	if alive_count() <= 0:
+		
+	# Stalling only occurs if there are truly no enemies left to fire from.
+	# If paused, we keep the cycle alive (recursion) even if count is 0,
+	# so that it immediately starts firing once unpaused and enemies are added.
+	if alive_count() <= 0 and not paused:
 		if _song_mode:
 			_cycle_stalled = true
 		return

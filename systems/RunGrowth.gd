@@ -9,7 +9,7 @@ const PRESENTATION_TEXT = preload("res://data/PresentationTextContent.gd")
 # stale taken_upgrades data until that state is fully retired.
 
 var level: int = 1
-var exp: float = 0.0
+var current_exp: float = 0.0
 var exp_to_next: float = GROWTH_CONTENT.LEVEL_THRESHOLDS[0]
 var support_charge: float = 0.0
 var tendency_points: Dictionary = {}
@@ -189,7 +189,7 @@ func get_growth_snapshot() -> Dictionary:
 	var bond_level: int = int(tendency_levels.get("bond", 0))
 	return {
 		"level": level,
-		"exp": exp,
+		"exp": current_exp,
 		"exp_to_next": exp_to_next,
 		"base_damage": GameState.player_base_damage,
 		"attack_damage": GameState.get_attack_damage(),
@@ -268,7 +268,7 @@ func process_dna_gain(species_id: String, amount: float) -> Dictionary:
 
 func _on_run_started(_run_number: int) -> void:
 	level = 1
-	exp = 0.0
+	current_exp = 0.0
 	exp_to_next = GROWTH_CONTENT.LEVEL_THRESHOLDS[0]
 	support_charge = 0.0
 	dna_routing_preference = "bond"
@@ -421,9 +421,9 @@ func _grant_exp(amount: float) -> void:
 	if amount <= 0.0:
 		return
 
-	exp += amount
-	while level - 1 < GROWTH_CONTENT.LEVEL_THRESHOLDS.size() and exp >= exp_to_next:
-		exp -= exp_to_next
+	current_exp += amount
+	while level - 1 < GROWTH_CONTENT.LEVEL_THRESHOLDS.size() and current_exp >= exp_to_next:
+		current_exp -= exp_to_next
 		level += 1
 		_apply_real_time_growth_pulse()
 		if level - 1 < GROWTH_CONTENT.LEVEL_THRESHOLDS.size():
@@ -568,7 +568,7 @@ func _apply_hp_on_kill_passive() -> void:
 
 
 func _emit_growth_state() -> void:
-	EventBus.emit_signal("run_growth_changed", level, exp, exp_to_next)
+	EventBus.emit_signal("run_growth_changed", level, current_exp, exp_to_next)
 
 
 func _emit_support_state() -> void:
@@ -608,7 +608,7 @@ func apply_debug_state(state: Dictionary) -> void:
 		return
 
 	level = max(int(state.get("level", level)), 1)
-	exp = max(float(state.get("exp", exp)), 0.0)
+	current_exp = max(float(state.get("exp", current_exp)), 0.0)
 	exp_to_next = _get_exp_threshold_for_level(level)
 
 	var seeded_points: Dictionary = state.get("tendency_points", {})

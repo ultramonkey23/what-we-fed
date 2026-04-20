@@ -61,19 +61,20 @@ func stop() -> void:
 
 func pause() -> void:
 	_paused = true
-	for timer in _pending_spawn_timers:
-		if is_instance_valid(timer): timer.paused = true
 
 func resume() -> void:
 	_paused = false
-	for timer in _pending_spawn_timers:
-		if is_instance_valid(timer): timer.paused = false
+	if _running:
+		_tick_phase_logic()
+		if _current_phase_index >= 0:
+			_seed_initial_phase_enemies(_phases[_current_phase_index])
 
 func _clear_spawn_timers() -> void:
-	for timer in _pending_spawn_timers:
-		if is_instance_valid(timer):
-			timer.queue_free()
+	# SceneTreeTimer is RefCounted, not a Node; it has no queue_free().
+	# Just clearing the array is sufficient as the timer's timeout lambda 
+	# already checks _running before spawning.
 	_pending_spawn_timers.clear()
+
 
 func _prune_finished_timers() -> void:
 	var to_remove = []
@@ -84,20 +85,26 @@ func _prune_finished_timers() -> void:
 	for i in to_remove:
 		_pending_spawn_timers.remove_at(i)
 
+
 func update_song_time(elapsed: float) -> void:
-	if not _running:
+	if not _running or _paused:
 		return
 	_song_elapsed = elapsed
 	_tick_phase_logic()
 
+
 func _tick_phase_logic() -> void:
-	var next_idx: int = _current_phase_index + 1
-	if next_idx >= _phases.size():
-		return
-	
-	var next_phase: Dictionary = _phases[next_idx]
-	if _song_elapsed >= float(next_phase.get("start_time", 9999.0)):
-		_enter_phase(next_idx)
+	# Use while loop so we can skip through multiple phases if song time jumps.
+	while _current_phase_index + 1 < _phases.size():
+		var next_idx: int = _current_phase_index + 1
+		var next_phase = _phases[next_idx]
+		if typeof(next_phase) != TYPE_DICTIONARY:
+			push_error("Phase at index %d is not a Dictionary!" % next_idx)
+			break
+		if _song_elapsed >= float(next_phase.get("start_time", 9999.0)):
+			_enter_phase(next_idx)
+		else:
+			break
 
 func _enter_phase(new_idx: int) -> void:
 	_current_phase_index = new_idx
@@ -109,7 +116,7 @@ func _enter_phase(new_idx: int) -> void:
 	if not intro_text.is_empty():
 		feedback_requested.emit(intro_text, Color(0.92, 0.88, 0.74, 1.0), 0.55)
 	
-	if _escalation_rules.get("surge_on_phase_start", true):
+	if _escalation_rules.get("surge_on_phase_start", true) or lane_manager.alive_count() == 0:
 		_seed_initial_phase_enemies(phase)
 
 func _seed_initial_phase_enemies(phase: Dictionary) -> void:

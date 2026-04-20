@@ -250,7 +250,7 @@ func _flash_sprite_color(tint: Color, duration: float) -> void:
 	if _sprite_color_tween != null:
 		_sprite_color_tween.kill()
 	# Sprite2D uses modulate (not color). Base is Color.WHITE = no tint.
-	var vis_node: CanvasItem = _player_sprite if _player_sprite != null else sprite
+	var vis_node: CanvasItem = (_player_sprite as CanvasItem) if _player_sprite != null else (sprite as CanvasItem)
 	var prop: String = "modulate" if _player_sprite != null else "color"
 	var base: Color = Color.WHITE if _player_sprite != null else Color(0.25, 0.55, 0.95, 1.0)
 	_sprite_color_tween = create_tween()
@@ -842,15 +842,14 @@ func _connect_projectile_signals(projectile) -> void:
 
 
 func _on_projectile_player_contact(projectile: Node) -> void:
-	if not combat_enabled:
-		return
-
 	if not is_instance_valid(projectile) or bool(projectile.get("is_resolved")):
 		return
 
 	var proj_damage: float = float(projectile.get("damage"))
 	var proj_lane: int = int(projectile.get("lane"))
 
-	_take_damage(proj_damage, proj_lane)
+	if combat_enabled:
+		_take_damage(proj_damage, proj_lane)
+	
 	projectile.call("resolve", "miss")
 	lane_manager.call("clear_slot", proj_lane)

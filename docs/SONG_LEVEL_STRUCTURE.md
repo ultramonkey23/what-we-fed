@@ -18,7 +18,7 @@ This file defines:
 
 # 1. Core Rule
 
-A level is a **song-duration survival sequence**.
+A level is a **song-duration survival sequence**—during **active combat**, timing stays honest and the performance is **not** interrupted by menus.
 
 Enemies do **not** stop spawning when defeated.
 The player is trying to:
@@ -32,6 +32,12 @@ The player is trying to:
 ### **The level ends because the song is over.**
 
 This is one of the defining structural rules of the game.
+
+## 1b Run cadence (design target)
+- **One run** = **9 regular levels** + **1 boss level**.
+- **Regular levels**: use an **authored segment under ~2 minutes** of the track (a slice, not the full song). After each: **reward selection** → **inventory / resource management** → next level.
+- **Boss (10th encounter)**: plays to the **full song** for that fight (not the short slice), still lane-timing combat with the same truth locks.
+- **No-pause** applies **inside** the active combat window for that level, not during intentional **between-level** menus.
 
 ---
 
@@ -57,10 +63,12 @@ A good level ends with:
 
 # 3. Recommended First Song Length
 
-## First target duration
+**Note:** Section **1b** defines **regular** levels as **under ~2 minutes** of authored slice and the **boss** as a **full-track** fight. The **4 minute** arc below remains useful as a **reference tension curve** (especially for boss-scale or legacy pacing); future passes may add a dedicated sub-2-minute phase template for regular levels.
+
+## First target duration (reference arc)
 **4 minutes**
 
-This is the recommended first serious level length because it is long enough to show:
+This is a recommended serious **full-track** arc length because it is long enough to show:
 - early weakness
 - mid-level adaptation
 - power ramp

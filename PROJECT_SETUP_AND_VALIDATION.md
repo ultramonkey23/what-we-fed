@@ -15,6 +15,7 @@ Current live-build assumptions:
 - Playable pre-alpha vertical-slice foundation
 - Realtime lane combat, timing truth, live DNA economy, live reward shell, live tendency growth, creature ecosystem logic
 - RPG roguelite first, with lane-timing combat as the signature expression layer
+- **Design target run cadence** (see [docs/GAME_SPINE.md](docs/GAME_SPINE.md), [docs/SONG_LEVEL_STRUCTURE.md](docs/SONG_LEVEL_STRUCTURE.md)): **9 regular levels** (each under ~2 min of authored song slice) + **1 boss** (full song); **menus between** regular levels for rewards and inventory/resources
 - Ranch is deferred
 - Visual direction is Black Signal Combat Pass v1, evolving toward dark-cool ascendant creature power fantasy (not bright-clean anime or generic superhero gloss)
 

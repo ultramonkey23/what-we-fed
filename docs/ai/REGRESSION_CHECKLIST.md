@@ -21,5 +21,5 @@
 ## 4. Identity Check
 - [ ] Lane indicators are clearly visible.
 - [ ] Timing feel matches the beat.
-- [ ] No "pause-era" menu interruptions during the run.
+- [ ] No pausing or menu interruption **during** an active combat level (between-level reward/inventory menus are OK by design).
 - [ ] Atmosphere feels dark/oppressive, not "safe."

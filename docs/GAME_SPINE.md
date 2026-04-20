@@ -1,8 +1,13 @@
 # GAME SPINE
 
 ## Project identity
-This game is evolving toward a dark RPG roguelite where creature identity, predation, and no-pause lane-timing combat are deeply fused.
+This game is evolving toward a dark RPG roguelite where creature identity, predation, and **no-pause lane-timing combat during active levels** are deeply fused. **Between levels**, the run uses intentional menus (reward choice, inventory / resource management) before the next song—this is authored pacing, not drift into generic menu soup.
 The current style emphasis is shifting from brutal horror-first toward dark cool creature power fantasy, while preserving danger, readability, and predatory consequence.
+
+## Run cadence (design target)
+- **One run** = **9 regular levels** + **1 boss level** (10 combat encounters).
+- **Regular levels**: lane combat plays to an **authored segment under ~2 minutes** (a slice of the track, not the full song). Flow after each: **reward selection** → **inventory / resource management** → next level’s song.
+- **Boss level (10th)**: uses the **full song** for that fight (not the short slice), still real-time lane combat with timing truth for the whole performance.
 
 ## Genre hierarchy
 - RPG first

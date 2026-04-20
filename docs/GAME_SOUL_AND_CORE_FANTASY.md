@@ -135,6 +135,12 @@ It owns:
 - failure-driven learning
 - replayable variation without kitchen-sink sprawl
 
+### Run cadence (design target)
+- **9 regular levels + 1 boss** per run.
+- **Regular levels**: hostile song performance capped around **under two minutes** of authored track; **no pause** inside that active combat slice.
+- **Between regular levels**: **menus on purpose**—reward picks, then **inventory / resource management**, then the next song.
+- **Boss**: **full-length song** for that encounter (not the short regular-level slice); still the same lane-timing battle language, at flagship pressure.
+
 ## What the creature layer is for
 
 The creature layer gives progression a body, appetite, and consequence.

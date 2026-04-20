@@ -55,8 +55,8 @@ Future changes must not break them.
 ## 2.2 System identity locks
 - DNA as species-specific predation economy
 - bond vs eat as a meaningful identity split
-- realtime song-run flow
-- no repeated stop-start menu interruption as the main progression spine
+- realtime lane combat during each active level (no pausing the song mid-fight)
+- between-level menus for rewards and inventory/resources are **allowed by design**; reject **mid-combat** menu interruption and **draft / filler** menu churn as the main spine
 - behavior-shaped growth
 - creatures as meaningful ecosystem units, not detached tokens
 
@@ -81,7 +81,7 @@ The game must not drift into:
 - bright clean mainstream-anime flattening
 - generic rhythm gimmick
 - stat spreadsheet sludge
-- stop-start draft/menu game
+- sterile pause-heavy combat or draft menu filler that replaces honest lane pressure
 - pretty but unreadable action slop
 - random “cool” with no gameplay truth
 
@@ -171,7 +171,7 @@ Does this strengthen creatures as enemies, DNA sources, bond/eat choices, and su
 Does this preserve or deepen the tension between bonding and consuming?
 
 ## 5.5 No-pause test
-Does this preserve the live song-run identity?
+Does this preserve **realtime combat during the active level** (honest timing, uninterrupted song segment for that fight)? Between-level menus are fine if they stay purposeful.
 
 ## 5.6 Practicality test
 Can this be implemented without bloating the repo or muddying the player read?
@@ -190,7 +190,7 @@ Future evolution should favor:
 - moderate structural mutation over total redesign
 - stronger hooks over more systems
 - deeper roles over more filler
-- live-feel improvements over menu complexity
+- live combat feel over mid-fight menu band-aids (structured between-level menus are OK)
 - meaningful weirdness over generic polish
 - clean surprising synergies over random novelty
 - sharper run identity over broader but flatter content

@@ -11,7 +11,7 @@ Influence vectors (not copy targets): Solo Leveling (cool authority), Digimon (c
 - **Lane Readability**: Players must clearly see what is coming in which lane. No VFX clutter.
 - **DNA Economy**: DNA is species-specific. Predation is the engine.
 - **Bond vs Eat**: This choice must remain a meaningful identity split with consequences.
-- **No-Pause Flow**: The game is a realtime song-run. Avoid stop-start menu interruptions.
+- **No-Pause In Active Levels**: Each combat level is a realtime lane-timing performance—no pausing the song mid-fight. **Between** levels, use menus for **reward selection** and **inventory / resource management** before the next track. Target run shape: **9 regular levels** (each under ~2 minutes of authored song slice) + **1 boss** (full song for that fight).
 - **Start Weak, Become Feared**: Progression must feel like becoming a monster.
 
 ## Authority Hierarchy

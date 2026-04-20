@@ -1,0 +1,14 @@
+---
+description: GDScript change validation and honest verification reporting for What We Fed
+globs: "**/*.gd"
+alwaysApply: false
+---
+
+# GDScript — validate and report
+
+- Repo root is the folder containing `project.godot` and the `*.bat` wrappers (see `PROJECT_SETUP_AND_VALIDATION.md`).
+- After **non-trivial** `.gd` edits: run `smoke_project.bat` from that root when possible.
+- If **assets, imports, or large `data/` tables** changed: prefer `validate_project.bat`.
+- For **combat-only** iteration: `debug_harness.bat` is allowed but **not** sufficient for full-flow claims.
+- In the final message, **list what was verified** and **what was not** (timing feel, HUD stress, boss flow, etc.).
+- Prefer **surgical** diffs; do not touch unrelated systems. Use `EventBus.gd` for cross-cutting signals; check `REPO_SYSTEM_MAP.md` for ownership.

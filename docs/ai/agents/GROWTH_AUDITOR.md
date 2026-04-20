@@ -7,7 +7,7 @@ Verify that the growth, DNA, and reward systems remain non-generic and aligned w
 1. **DNA Integrity**: Ensure DNA is species-specific and predation-driven.
 2. **Economy Check**: Find and remove "stat-sludge" (meaningless numbers).
 3. **Identity Verification**: Ensure upgrades reflect player choices (bonding vs predation).
-4. **No-Pause Flow**: Verify that growth choices do not interrupt the realtime run.
+4. **Active-Level Flow**: Growth and reward resolution must not force **mid-fight** pauses; between-level menu choices are valid when they stay readable and authored.
 
 ## Mandate
 - No generic XP/Levels.

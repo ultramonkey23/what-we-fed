@@ -37,5 +37,5 @@ Before completing the task, you must:
 ## Validation Checklist (To be completed by human/agent)
 - [ ] Code passes `smoke_project.bat` without parse errors.
 - [ ] Feature tested in `debug_harness.bat`.
-- [ ] Timing and lane honesty preserved in realtime flow.
+- [ ] Timing and lane honesty preserved in **realtime during active combat** (between-level menus are out of scope for this checkbox).
 ```

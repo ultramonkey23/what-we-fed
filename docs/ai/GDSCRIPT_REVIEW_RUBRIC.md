@@ -30,7 +30,7 @@ Before reviewing code, explicitly state:
 
 ## 6. UI & Readability Risk
 - [ ] Does it introduce screen clutter (excessive particles, screen shakes) that hides threats?
-- [ ] Does it implement safe, sterile "pause menu" UI instead of realtime, oppressive integration?
+- [ ] Does it replace **active combat** with sterile pause-menu flow? (Structured **between-level** menus for rewards/inventory are intentional; mid-fight song pauses are not.)
 
 ## 7. Upgrade vs. Vanity Churn
 - [ ] **Rule:** Is this a tangible fix/feature, or is it "clean code" restructuring that offers no runtime value?

@@ -76,6 +76,12 @@ A weak, hungry being survives a hostile world through timing mastery, predation,
 - decide bond or eat when creature offers appear
 - steer the creature toward a recognizable role before the song ends
 
+### Between-level loop (within a run)
+- **Run shape:** **9 regular levels** + **1 boss level**.
+- **Regular levels:** realtime lane combat for an **authored segment under ~2 minutes** of the track (slice, not full song), then **menus**: reward selection → inventory / resource management → next level.
+- **Boss level:** **full song** for that fight (not the short slice), same combat truth locks.
+- **No-pause** applies **during** each active combat level, not during these intentional between-level beats.
+
 ### Between-run loop
 - retain meaningful growth
 - reinforce identity direction

@@ -24,9 +24,9 @@ Combat in WHAT WE FED is about **timing honesty** and **lane integrity**. Every 
 - [ ] Are lanes 0, 1, and 2 still clearly distinguishable?
 - [ ] Does the `SongConductor` beat signal remain accurate?
 - [ ] Did you test with `debug_harness.bat`?
-- [ ] Is the "No-Pause" flow preserved?
+- [ ] Is **no-pause during this level’s active song combat** preserved (no mid-fight menu/song freeze)?
 
 ## Anti-Drift: Combat
 - **NO** auto-aim or auto-lane snapping that removes player agency.
 - **NO** screen-filling particle explosions that hide the lanes.
-- **NO** stop-start interruptions during the song-run.
+- **NO** mid-level stop-start that breaks realtime lane combat; **between-level** reward/inventory flow is separate and intentional at run scope.

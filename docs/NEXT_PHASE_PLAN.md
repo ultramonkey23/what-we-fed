@@ -3,6 +3,8 @@
 ## Immediate goal
 Use the current What We Fed prototype as the implementation base and improve it safely.
 
+**Run shape (design target):** **9** regular levels (each **under ~2 min** of authored song slice) **+ 1** boss (full song); **menus between** regular levels for reward choice, then inventory/resource management, then the next song.
+
 ## Current Progress (Completed)
 - **Timing Truth**: Visual rings now mathematically align with combat logic.
 - **Data-Driven UI**: Reward body text, effect descriptions, and tier identities are now centralized in `PresentationTextContent.gd` and `UIStyle.gd`.

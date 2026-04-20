@@ -1,0 +1,15 @@
+---
+description: Combat lane orchestration and song timing truth — high blast radius
+globs: "scenes/combat/**/*.gd"
+alwaysApply: false
+---
+
+# Combat / timing hot path
+
+- **Scope**: No-pause applies **inside** the active level’s combat; **between-level** reward/inventory menus are by design (`docs/GAME_SPINE.md`).
+- **Orchestration hub**: `CombatScene.gd` — expect wide signal and state coupling; inspect callers/callees before editing.
+- **Input / resolution**: `PlayerCombat.gd` — keep lane honesty and player feedback aligned with mechanics.
+- **Same discipline** (even when not auto-attached): `systems/SongConductor.gd` (master clock), `systems/CombatMeter.gd` (style/combo/stamina tiers), `autoloads/EventBus.gd`, `autoloads/GameState.gd`.
+- Preserve **timing truth** and **lane readability**; reject generic survivor framing and visual clutter that hides telegraphs.
+- Do not **rename signals** or rewire major `EventBus` contracts without explicit user approval and a clear migration path.
+- Validate per `AGENTS.md` §7; combat feel requires a manual run when behavior changes.

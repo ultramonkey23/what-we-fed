@@ -424,6 +424,13 @@ func _fire_lane(lane: int) -> void:
 
 	var enemy_id: int = int(enemy.get("id", lane))
 
+	var telegraph_profile: Dictionary = COMBAT_CONTENT.get_enemy_telegraph_profile(enemy)
+	telegraph_profile["projectile_body_path"] = COMBAT_CONTENT.get_projectile_body_resource_path(enemy)
+	var section_id: String = ""
+	if combat_scene != null and combat_scene.has_method("get_current_song_section_id"):
+		section_id = String(combat_scene.get_current_song_section_id())
+	telegraph_profile["shot_modifier"] = COMBAT_CONTENT.get_shot_modifier_for_section(section_id)
+
 	combat_scene.add_child(projectile)
 	projectile.setup(
 		lane,
@@ -434,7 +441,7 @@ func _fire_lane(lane: int) -> void:
 		_hit_zone_x,
 		_player_x,
 		get_lane_y(lane),
-		COMBAT_CONTENT.get_enemy_telegraph_profile(enemy)
+		telegraph_profile
 	)
 
 	projectile.resolved.connect(_on_projectile_resolved.bind(lane))

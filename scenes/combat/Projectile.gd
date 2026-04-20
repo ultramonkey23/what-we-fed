@@ -36,19 +36,20 @@ const PARRY_GOOD_MAX: float = 1.04
 # Reflected projectiles travel back a little faster to feel punchy.
 const REFLECT_SPEED_MULT: float = 1.25
 
-# Projectile body sprite. RGBA art designed for modulate-tinting.
-# shot1.png is the default; color palette swaps on reflect via _apply_projectile_palette.
-const SHOT_SPRITE_PATH_DEFAULT: String = "res://assets/sprites/shot1.png"
-const SHOT_SPRITE_MAPPING: Dictionary = {
+# Body: per-enemy art under res://assets/sprites/projectile_bodies/<species_id or type>.png (see generator).
+# Modifier: song-section preset — grayscale overlay (shot1–6) + trail/glow tuning (shot_modifier).
+const DEFAULT_PROJECTILE_BODY_PATH: String = "res://assets/sprites/projectile_bodies/dreg.png"
+const SHOT_MODIFIER_TEXTURES: Dictionary = {
 	"fang": "res://assets/sprites/shot1.png",
 	"mass": "res://assets/sprites/shot2.png",
 	"needle": "res://assets/sprites/shot3.png",
 	"veil": "res://assets/sprites/shot4.png",
-	"chorus": "res://assets/sprites/shot1.png",
-	"sovereign": "res://assets/sprites/shot1.png"
+	"chorus": "res://assets/sprites/shot5.png",
+	"sovereign": "res://assets/sprites/shot6.png"
 }
-# Maps the 32x32 sprite to the original 24x12 body footprint.
-const SHOT_BASE_SCALE: Vector2 = Vector2(0.75, 0.375)
+const DEFAULT_SHOT_MODIFIER_PATH: String = "res://assets/sprites/shot1.png"
+# Maps the 32x32 sprite to ~24×12 world footprint (slightly larger for readability).
+const SHOT_BASE_SCALE: Vector2 = Vector2(0.82, 0.41)
 const DEFAULT_PROJECTILE_COLOR: Color = Color(0.95, 0.58, 0.22, 1.0)
 const DEFAULT_REFLECT_COLOR: Color = Color(0.55, 1.0, 0.78, 1.0)
 
@@ -71,6 +72,7 @@ var _reported_hit_zone: bool = false
 var _reported_player_contact: bool = false
 var _reported_enemy_contact: bool = false
 var _body: Sprite2D
+var _modifier: Sprite2D
 var _core: ColorRect
 var _trail: Line2D
 var _glow: Polygon2D
@@ -95,19 +97,40 @@ func _ready() -> void:
 	_trail.name = "Trail"
 	_trail.default_color = Color(0.95, 0.58, 0.22, 0.22)
 	_trail.width = 5.0
-	_trail.add_point(Vector2(-30.0, 0.0))
-	_trail.add_point(Vector2(10.0, 0.0))
+	_trail.begin_cap_mode = Line2D.LINE_CAP_ROUND
+	_trail.end_cap_mode = Line2D.LINE_CAP_ROUND
+	_trail.joint_mode = Line2D.LINE_JOINT_ROUND
+	_trail.antialiased = true
+	# Incoming moves -world X: wake extends +local X (behind), tip toward -local X.
+	_trail.add_point(Vector2(34.0, 0.0))
+	_trail.add_point(Vector2(-8.0, 0.0))
 	add_child(_trail)
 
 	_body = Sprite2D.new()
 	_body.name = "Body"
-	var _body_tex: Texture2D = load(SHOT_SPRITE_PATH_DEFAULT) as Texture2D
+	_body.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	var _body_tex: Texture2D = load(DEFAULT_PROJECTILE_BODY_PATH) as Texture2D
 	if _body_tex:
 		_body.texture = _body_tex
 	_body.position = Vector2(0.0, 0.0)
 	_body.scale = SHOT_BASE_SCALE
 	_body.modulate = Color(0.95, 0.58, 0.22, 1.0)
 	add_child(_body)
+
+	_modifier = Sprite2D.new()
+	_modifier.name = "ShotModifier"
+	_modifier.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	var _mod_mat := CanvasItemMaterial.new()
+	_mod_mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	_modifier.material = _mod_mat
+	_modifier.position = Vector2.ZERO
+	_modifier.scale = SHOT_BASE_SCALE
+	_modifier.z_index = 1
+	var _mod_tex: Texture2D = load(DEFAULT_SHOT_MODIFIER_PATH) as Texture2D
+	if _mod_tex:
+		_modifier.texture = _mod_tex
+	_modifier.modulate = Color(0.5, 0.5, 0.5, 0.5)
+	add_child(_modifier)
 
 	_core = ColorRect.new()
 	_core.name = "Core"
@@ -118,6 +141,7 @@ func _ready() -> void:
 
 	telegraph_profile = _build_telegraph_profile({})
 	_refresh_body_sprite()
+	_refresh_modifier_overlay()
 	_configure_telegraph_shape()
 
 	if DEBUG_TIMING:
@@ -167,6 +191,7 @@ func setup(
 	_reported_enemy_contact = false
 	telegraph_profile = _build_telegraph_profile(projectile_telegraph_profile)
 	_refresh_body_sprite()
+	_refresh_modifier_overlay()
 	_configure_telegraph_shape()
 
 	if _body != null:
@@ -186,6 +211,7 @@ func reflect_to_enemy(return_damage: float) -> void:
 
 	if _body != null:
 		_apply_projectile_palette(_reflected_body_color(), true)
+	_update_visual_state(true)
 
 
 func evaluate_attack_timing() -> String:
@@ -296,6 +322,8 @@ func _apply_projectile_palette(body_color: Color, reflected: bool) -> void:
 
 	if _body != null:
 		_body.modulate = body_color
+	if _modifier != null:
+		_modifier.modulate = Color(body_color.r * 0.52, body_color.g * 0.52, body_color.b * 0.52, 0.52)
 	if _core != null:
 		_core.color = body_color.lightened(0.36)
 	if _trail != null:
@@ -333,16 +361,34 @@ func _update_visual_state(reflected: bool) -> void:
 		_body.scale = SHOT_BASE_SCALE * body_scale
 		_body.modulate = base_color.lightened(pressure * 0.06 + imminent * 0.10)
 		_body.flip_h = reflected
+	if _modifier != null:
+		_modifier.scale = _body.scale
+		_modifier.flip_h = reflected
+		var mod_a: float = clampf(0.46 + pressure * 0.14 + imminent * 0.12, 0.0, 0.85)
+		_modifier.modulate = Color(
+			base_color.r * 0.52,
+			base_color.g * 0.52,
+			base_color.b * 0.52,
+			mod_a
+		)
 	if _core != null:
 		_core.scale = Vector2.ONE + core_pressure_scale * pressure + Vector2.ONE * imminent * 0.08
 		_core.color = core_color.lightened(0.18 + pressure * 0.16 + imminent * 0.10)
 	if _trail != null:
 		_trail.width = trail_width + pressure * trail_pressure_width + imminent * 0.8
 		_trail.default_color = Color(base_color.r, base_color.g, base_color.b, trail_alpha)
-		_trail.set_point_position(0, Vector2(-trail_back - pressure * trail_pressure_back - imminent * 8.0, 0.0))
-		_trail.set_point_position(1, Vector2(trail_front + pressure * trail_pressure_front + imminent * 3.0, 0.0))
+		var tb: float = trail_back + pressure * trail_pressure_back + imminent * 8.0
+		var tf: float = trail_front + pressure * trail_pressure_front + imminent * 3.0
+		if not reflected:
+			# Wake toward +local X (enemy); tip toward -local X (player / motion).
+			_trail.set_point_position(0, Vector2(tb, 0.0))
+			_trail.set_point_position(1, Vector2(-tf, 0.0))
+		else:
+			_trail.set_point_position(0, Vector2(-tb, 0.0))
+			_trail.set_point_position(1, Vector2(tf, 0.0))
 	if _glow != null:
-		_glow.scale = glow_base_scale + glow_pressure_scale * pressure + Vector2.ONE * imminent * 0.10
+		var gs: Vector2 = glow_base_scale + glow_pressure_scale * pressure + Vector2.ONE * imminent * 0.10
+		_glow.scale = Vector2(gs.x * (-1.0 if reflected else 1.0), gs.y)
 		_glow.color = Color(base_color.r, base_color.g, base_color.b, glow_alpha)
 
 
@@ -377,8 +423,8 @@ func _build_telegraph_profile(source: Dictionary) -> Dictionary:
 		"pressure_start": 0.72,
 		"pressure_gain": 1.0
 	}
-	var family: String = String(source.get("family", "fang"))
-	match family:
+	var mod_key: String = String(source.get("shot_modifier", source.get("family", "fang")))
+	match mod_key:
 		"mass":
 			profile["trail_width"] = 6.4
 			profile["trail_pressure_width"] = 2.6
@@ -456,8 +502,8 @@ func _configure_telegraph_shape() -> void:
 	if _glow == null or _trail == null or _core == null:
 		return
 
-	var family: String = String(telegraph_profile.get("family", "fang"))
-	match family:
+	var mod_key: String = String(telegraph_profile.get("shot_modifier", telegraph_profile.get("family", "fang")))
+	match mod_key:
 		"mass":
 			_glow.polygon = PackedVector2Array([
 				Vector2(-22.0, 0.0),
@@ -520,16 +566,24 @@ func _configure_telegraph_shape() -> void:
 	_core.position = -core_size * 0.5
 
 
+func _refresh_modifier_overlay() -> void:
+	if _modifier == null:
+		return
+	var mod_id: String = String(telegraph_profile.get("shot_modifier", "fang"))
+	var mod_path: String = String(SHOT_MODIFIER_TEXTURES.get(mod_id, DEFAULT_SHOT_MODIFIER_PATH))
+	if ResourceLoader.exists(mod_path):
+		_modifier.texture = load(mod_path) as Texture2D
+
+
 func _refresh_body_sprite() -> void:
 	if _body == null:
 		return
 
-	var custom_path: String = String(telegraph_profile.get("sprite_path", ""))
-	var family: String = String(telegraph_profile.get("family", "fang"))
-	var path: String = SHOT_SPRITE_MAPPING.get(family, SHOT_SPRITE_PATH_DEFAULT)
-
-	if not custom_path.is_empty() and ResourceLoader.exists(custom_path):
-		path = custom_path
+	var path: String = String(telegraph_profile.get("sprite_path", ""))
+	if path.is_empty() or not ResourceLoader.exists(path):
+		path = String(telegraph_profile.get("projectile_body_path", ""))
+	if path.is_empty() or not ResourceLoader.exists(path):
+		path = DEFAULT_PROJECTILE_BODY_PATH
 
 	if ResourceLoader.exists(path):
 		_body.texture = load(path) as Texture2D

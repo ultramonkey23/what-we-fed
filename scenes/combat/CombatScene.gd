@@ -979,10 +979,13 @@ func _setup_ui() -> void:
 
 	var hp_row := HBoxContainer.new()
 	hp_row.name = "HpRow"
+	hp_row.custom_minimum_size = Vector2(0.0, 22.0)
+	hp_row.add_theme_constant_override("separation", 6)
 	_hud_top_left_container.add_child(hp_row)
 	
 	var hp_caption := Label.new()
 	hp_caption.text = "Health"
+	hp_caption.custom_minimum_size = Vector2(64.0, 0.0)
 	_apply_text_role(hp_caption, "caption_strong")
 	hp_caption.add_theme_font_size_override("font_size", 14)
 	hp_row.add_child(hp_caption)
@@ -1004,10 +1007,13 @@ func _setup_ui() -> void:
 
 	var stamina_row := HBoxContainer.new()
 	stamina_row.name = "StaminaRow"
+	stamina_row.custom_minimum_size = Vector2(0.0, 22.0)
+	stamina_row.add_theme_constant_override("separation", 6)
 	_hud_top_left_container.add_child(stamina_row)
 	
 	var stamina_caption := Label.new()
 	stamina_caption.text = "Stamina"
+	stamina_caption.custom_minimum_size = Vector2(64.0, 0.0)
 	_apply_text_role(stamina_caption, "caption_strong")
 	stamina_caption.add_theme_font_size_override("font_size", 14)
 	stamina_row.add_child(stamina_caption)
@@ -1131,15 +1137,22 @@ func _build_hud_containers() -> void:
 		)
 	_hud_attach_combat_panel_art(tl_panel, tl_tex, COMBAT_FEEL_CONTENT.hud_top_left_texture_region())
 	ui_layer.add_child(tl_panel)
-	
+
+	var tl_body := MarginContainer.new()
+	tl_body.name = "TopLeftBody"
+	tl_body.set_anchors_preset(Control.PRESET_FULL_RECT)
+	tl_body.offset_left = 14.0
+	tl_body.offset_top = 8.0
+	tl_body.offset_right = -12.0
+	tl_body.offset_bottom = -6.0
+	tl_panel.add_child(tl_body)
+
 	_hud_top_left_container = VBoxContainer.new()
 	_hud_top_left_container.name = "TopLeftVBox"
-	_hud_top_left_container.add_theme_constant_override("separation", 3)
-	_hud_top_left_container.add_theme_constant_override("margin_left", 14)
-	_hud_top_left_container.add_theme_constant_override("margin_right", 12)
-	_hud_top_left_container.add_theme_constant_override("margin_top", 8)
-	_hud_top_left_container.add_theme_constant_override("margin_bottom", 6)
-	tl_panel.add_child(_hud_top_left_container)
+	_hud_top_left_container.add_theme_constant_override("separation", 4)
+	_hud_top_left_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_hud_top_left_container.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	tl_body.add_child(_hud_top_left_container)
 
 	# Top Right Stack (anchors only — explicit size fights anchor layout and can zero the panel)
 	var tr_panel := PanelContainer.new()
@@ -1173,14 +1186,21 @@ func _build_hud_containers() -> void:
 	_hud_attach_combat_panel_art(tr_panel, tr_tex, COMBAT_FEEL_CONTENT.hud_top_right_texture_region())
 	ui_layer.add_child(tr_panel)
 
+	var tr_body := MarginContainer.new()
+	tr_body.name = "TopRightBody"
+	tr_body.set_anchors_preset(Control.PRESET_FULL_RECT)
+	tr_body.offset_left = 12.0
+	tr_body.offset_top = 8.0
+	tr_body.offset_right = -14.0
+	tr_body.offset_bottom = -6.0
+	tr_panel.add_child(tr_body)
+
 	_hud_top_right_container = VBoxContainer.new()
 	_hud_top_right_container.name = "TopRightVBox"
-	_hud_top_right_container.add_theme_constant_override("separation", 2)
-	_hud_top_right_container.add_theme_constant_override("margin_left", 10)
-	_hud_top_right_container.add_theme_constant_override("margin_right", 14)
-	_hud_top_right_container.add_theme_constant_override("margin_top", 8)
-	_hud_top_right_container.add_theme_constant_override("margin_bottom", 6)
-	tr_panel.add_child(_hud_top_right_container)
+	_hud_top_right_container.add_theme_constant_override("separation", 3)
+	_hud_top_right_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_hud_top_right_container.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	tr_body.add_child(_hud_top_right_container)
 
 	_hud_right_stack = VBoxContainer.new()
 	_hud_right_stack.name = "RightStackContainer"
@@ -1191,7 +1211,7 @@ func _build_hud_containers() -> void:
 	_hud_right_stack.offset_top = hud_ty + hud_th + COMBAT_FEEL_CONTENT.HUD_GAP_BELOW_TOP_BAND
 	_hud_right_stack.size = Vector2(hud_rw, 500.0)
 	_hud_right_stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_hud_right_stack.add_theme_constant_override("separation", 6)
+	_hud_right_stack.add_theme_constant_override("separation", 8)
 	_hud_right_stack.z_index = 36
 	ui_layer.add_child(_hud_right_stack)
 
@@ -1225,17 +1245,22 @@ func _build_hud_containers() -> void:
 	_hud_attach_combat_panel_art(bottom_panel, bottom_tex, COMBAT_FEEL_CONTENT.hud_bottom_texture_region())
 	ui_layer.add_child(bottom_panel)
 
+	var bottom_body := MarginContainer.new()
+	bottom_body.name = "BottomBody"
+	bottom_body.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bottom_body.offset_left = 10.0
+	bottom_body.offset_top = 4.0
+	bottom_body.offset_right = -10.0
+	bottom_body.offset_bottom = -4.0
+	bottom_panel.add_child(bottom_body)
+
 	_hud_bottom_container = HBoxContainer.new()
 	_hud_bottom_container.name = "BottomContainer"
 	_hud_bottom_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_hud_bottom_container.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_hud_bottom_container.add_theme_constant_override("margin_left", 8)
-	_hud_bottom_container.add_theme_constant_override("margin_top", 4)
-	_hud_bottom_container.add_theme_constant_override("margin_right", 8)
-	_hud_bottom_container.add_theme_constant_override("margin_bottom", 4)
 	_hud_bottom_container.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_hud_bottom_container.alignment = BoxContainer.ALIGNMENT_CENTER
-	bottom_panel.add_child(_hud_bottom_container)
+	bottom_body.add_child(_hud_bottom_container)
 
 
 func _build_meter_shell() -> void:
@@ -1260,112 +1285,168 @@ func _build_meter_shell() -> void:
 
 	_support_shell = ColorRect.new()
 	_support_shell.name = "SupportShell"
-	_support_shell.custom_minimum_size = Vector2(COMBAT_FEEL_CONTENT.RIGHT_HUD_STACK_WIDTH, 68.0)
+	_support_shell.custom_minimum_size = Vector2(COMBAT_FEEL_CONTENT.RIGHT_HUD_STACK_WIDTH, 72.0)
 	UI_STYLE.apply_shell_style(_support_shell, "support_idle")
 	_hud_right_stack.add_child(_support_shell)
+
+	var support_body := MarginContainer.new()
+	support_body.name = "SupportBody"
+	support_body.set_anchors_preset(Control.PRESET_FULL_RECT)
+	support_body.offset_left = 8.0
+	support_body.offset_top = 4.0
+	support_body.offset_right = -8.0
+	support_body.offset_bottom = -6.0
+	_support_shell.add_child(support_body)
+
+	var support_vbox := VBoxContainer.new()
+	support_vbox.name = "SupportVBox"
+	support_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	support_vbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	support_vbox.add_theme_constant_override("separation", 3)
+	support_body.add_child(support_vbox)
+
+	var support_header := HBoxContainer.new()
+	support_header.name = "SupportHeader"
+	support_header.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	support_header.add_theme_constant_override("separation", 4)
+	support_vbox.add_child(support_header)
 
 	# Bonded creature portrait
 	_support_creature_portrait = TextureRect.new()
 	_support_creature_portrait.name = "SupportPortrait"
-	_support_creature_portrait.position = Vector2(8.0, 4.0)
-	_support_creature_portrait.size = Vector2(20.0, 20.0)
+	_support_creature_portrait.custom_minimum_size = Vector2(20.0, 20.0)
 	_support_creature_portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	_support_creature_portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_support_creature_portrait.visible = false
-	_support_shell.add_child(_support_creature_portrait)
+	support_header.add_child(_support_creature_portrait)
 
 	_support_name_label = Label.new()
-	_support_name_label.position = Vector2(8.0, 2.0)
-	_support_name_label.size = Vector2(54.0, 20.0)
+	_support_name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_support_name_label.custom_minimum_size = Vector2(0.0, 20.0)
+	_support_name_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_support_name_label.text = PRESENTATION_TEXT.SUPPORT_EMPTY_NAME
 	_apply_text_role(_support_name_label, "secondary_value")
 	_support_name_label.add_theme_font_size_override("font_size", 18)
-	_support_shell.add_child(_support_name_label)
+	support_header.add_child(_support_name_label)
 
 	_support_value_label = Label.new()
-	_support_value_label.position = Vector2(66.0, 0.0)
-	_support_value_label.size = Vector2(COMBAT_FEEL_CONTENT.RIGHT_HUD_ROW_WIDTH, 22.0)
+	_support_value_label.custom_minimum_size = Vector2(COMBAT_FEEL_CONTENT.RIGHT_HUD_ROW_WIDTH + 12.0, 22.0)
+	_support_value_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_support_value_label.text = "--"
 	_apply_text_role(_support_value_label, "alert_value", HORIZONTAL_ALIGNMENT_RIGHT)
 	_support_value_label.add_theme_font_size_override("font_size", 20)
-	_support_shell.add_child(_support_value_label)
+	support_header.add_child(_support_value_label)
 
 	_support_bar = ProgressBar.new()
-	_support_bar.position = Vector2(8.0, 22.0)
-	_support_bar.size = Vector2(84.0, 14.0)
+	_support_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_support_bar.custom_minimum_size = Vector2(0.0, 13.0)
 	_support_bar.min_value = 0.0
 	_support_bar.max_value = 100.0
 	_support_bar.value = 0.0
 	_support_bar.show_percentage = false
-	_support_shell.add_child(_support_bar)
+	support_vbox.add_child(_support_bar)
 	UI_STYLE.apply_bar_style(_support_bar, "support_idle")
 
 	_support_trigger_label = Label.new()
 	_support_trigger_label.name = "SupportTriggerHint"
-	_support_trigger_label.position = Vector2(8.0, 38.0)
-	_support_trigger_label.size = Vector2(COMBAT_FEEL_CONTENT.RIGHT_HUD_TEXT_WIDTH, 18.0)
+	_support_trigger_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_support_trigger_label.custom_minimum_size = Vector2(COMBAT_FEEL_CONTENT.RIGHT_HUD_TEXT_WIDTH, 18.0)
 	_support_trigger_label.text = ""
 	_apply_text_role(_support_trigger_label, "status_line")
 	_support_trigger_label.add_theme_font_size_override("font_size", 17)
-	_support_shell.add_child(_support_trigger_label)
+	support_vbox.add_child(_support_trigger_label)
 
 	_run_build_shell = ColorRect.new()
 	_run_build_shell.name = "RunBuildShell"
-	_run_build_shell.custom_minimum_size = Vector2(COMBAT_FEEL_CONTENT.RIGHT_HUD_STACK_WIDTH, 22.0)
+	_run_build_shell.custom_minimum_size = Vector2(COMBAT_FEEL_CONTENT.RIGHT_HUD_STACK_WIDTH, 64.0)
 	UI_STYLE.apply_shell_style(_run_build_shell, "run_build")
 	_run_build_shell.visible = false
 	_hud_right_stack.add_child(_run_build_shell)
 
+	var run_build_body := MarginContainer.new()
+	run_build_body.name = "RunBuildBody"
+	run_build_body.set_anchors_preset(Control.PRESET_FULL_RECT)
+	run_build_body.offset_left = 8.0
+	run_build_body.offset_top = 4.0
+	run_build_body.offset_right = -8.0
+	run_build_body.offset_bottom = -4.0
+	_run_build_shell.add_child(run_build_body)
+
+	var run_build_vbox := VBoxContainer.new()
+	run_build_vbox.name = "RunBuildVBox"
+	run_build_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	run_build_vbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	run_build_vbox.add_theme_constant_override("separation", 1)
+	run_build_body.add_child(run_build_vbox)
+
+	var eaten_row := HBoxContainer.new()
+	eaten_row.name = "EatenRow"
+	eaten_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	eaten_row.add_theme_constant_override("separation", 4)
+	run_build_vbox.add_child(eaten_row)
+
 	var eaten_caption := Label.new()
-	eaten_caption.position = Vector2(8.0, 4.0)
-	eaten_caption.size = Vector2(54.0, 16.0)
+	eaten_caption.custom_minimum_size = Vector2(34.0, 16.0)
 	eaten_caption.text = PRESENTATION_TEXT.RUN_BUILD_EATEN_CAPTION
 	_apply_text_role(eaten_caption, "caption_strong")
 	eaten_caption.visible = false
-	_run_build_shell.add_child(eaten_caption)
+	eaten_row.add_child(eaten_caption)
 
 	_eaten_value_label = Label.new()
-	_eaten_value_label.position = Vector2(34.0, 4.0)
-	_eaten_value_label.size = Vector2(54.0, 16.0)
+	_eaten_value_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_eaten_value_label.custom_minimum_size = Vector2(0.0, 16.0)
+	_eaten_value_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_eaten_value_label.text = "--"
 	_apply_text_role(_eaten_value_label, "status_line")
 	_eaten_value_label.add_theme_font_size_override("font_size", 16)
 	_eaten_value_label.visible = false
-	_run_build_shell.add_child(_eaten_value_label)
+	eaten_row.add_child(_eaten_value_label)
+
+	var upgrade_row := HBoxContainer.new()
+	upgrade_row.name = "UpgradeRow"
+	upgrade_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	upgrade_row.add_theme_constant_override("separation", 4)
+	run_build_vbox.add_child(upgrade_row)
 
 	var upgrade_caption := Label.new()
-	upgrade_caption.position = Vector2(8.0, 4.0)
-	upgrade_caption.size = Vector2(54.0, 16.0)
+	upgrade_caption.custom_minimum_size = Vector2(34.0, 16.0)
 	upgrade_caption.text = PRESENTATION_TEXT.RUN_BUILD_TENDENCY_CAPTION
 	_apply_text_role(upgrade_caption, "caption_strong")
 	upgrade_caption.visible = false
-	_run_build_shell.add_child(upgrade_caption)
+	upgrade_row.add_child(upgrade_caption)
 
 	_upgrade_value_label = Label.new()
-	_upgrade_value_label.position = Vector2(34.0, 4.0)
-	_upgrade_value_label.size = Vector2(54.0, 16.0)
+	_upgrade_value_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_upgrade_value_label.custom_minimum_size = Vector2(0.0, 16.0)
+	_upgrade_value_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_upgrade_value_label.text = "--"
 	_apply_text_role(_upgrade_value_label, "alert_value")
 	_upgrade_value_label.add_theme_font_size_override("font_size", 16)
 	_upgrade_value_label.visible = false
-	_run_build_shell.add_child(_upgrade_value_label)
+	upgrade_row.add_child(_upgrade_value_label)
+
+	var bond_row := HBoxContainer.new()
+	bond_row.name = "BondRow"
+	bond_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	bond_row.add_theme_constant_override("separation", 4)
+	run_build_vbox.add_child(bond_row)
 
 	var bond_caption := Label.new()
-	bond_caption.position = Vector2(8.0, 4.0)
-	bond_caption.size = Vector2(54.0, 16.0)
+	bond_caption.custom_minimum_size = Vector2(34.0, 16.0)
 	bond_caption.text = PRESENTATION_TEXT.RUN_BUILD_BOND_CAPTION
 	_apply_text_role(bond_caption, "caption_strong")
 	bond_caption.visible = false
-	_run_build_shell.add_child(bond_caption)
+	bond_row.add_child(bond_caption)
 
 	_bond_value_label = Label.new()
-	_bond_value_label.position = Vector2(34.0, 4.0)
-	_bond_value_label.size = Vector2(54.0, 16.0)
+	_bond_value_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_bond_value_label.custom_minimum_size = Vector2(0.0, 16.0)
+	_bond_value_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_bond_value_label.text = "--"
 	_apply_text_role(_bond_value_label, "cool_value")
 	_bond_value_label.add_theme_font_size_override("font_size", 16)
 	_bond_value_label.visible = false
-	_run_build_shell.add_child(_bond_value_label)
+	bond_row.add_child(_bond_value_label)
 
 	# Top-left sub-container for secondary stats (EXP, Def, Atk) — moved to bottom of column in _setup_ui
 	var stats_row := HBoxContainer.new()
@@ -1412,10 +1493,13 @@ func _build_meter_shell() -> void:
 	# Top-Right sub-containers for readouts
 	var ult_row := HBoxContainer.new()
 	ult_row.alignment = BoxContainer.ALIGNMENT_END
+	ult_row.custom_minimum_size = Vector2(0.0, 22.0)
+	ult_row.add_theme_constant_override("separation", 6)
 	_hud_top_right_container.add_child(ult_row)
 	
 	var ultimate_caption := Label.new()
 	ultimate_caption.text = "Ult"
+	ultimate_caption.custom_minimum_size = Vector2(44.0, 0.0)
 	_apply_text_role(ultimate_caption, "caption_strong")
 	ultimate_caption.add_theme_font_size_override("font_size", 14)
 	ult_row.add_child(ultimate_caption)
@@ -1424,10 +1508,13 @@ func _build_meter_shell() -> void:
 
 	var score_row := HBoxContainer.new()
 	score_row.alignment = BoxContainer.ALIGNMENT_END
+	score_row.custom_minimum_size = Vector2(0.0, 22.0)
+	score_row.add_theme_constant_override("separation", 6)
 	_hud_top_right_container.add_child(score_row)
 
 	var score_caption := Label.new()
 	score_caption.text = "Combo"
+	score_caption.custom_minimum_size = Vector2(44.0, 0.0)
 	_apply_text_role(score_caption, "caption_strong")
 	score_caption.add_theme_font_size_override("font_size", 14)
 	score_row.add_child(score_caption)
@@ -1436,10 +1523,13 @@ func _build_meter_shell() -> void:
 
 	var style_row := HBoxContainer.new()
 	style_row.alignment = BoxContainer.ALIGNMENT_END
+	style_row.custom_minimum_size = Vector2(0.0, 22.0)
+	style_row.add_theme_constant_override("separation", 6)
 	_hud_top_right_container.add_child(style_row)
 
 	var style_caption := Label.new()
 	style_caption.text = "Style"
+	style_caption.custom_minimum_size = Vector2(44.0, 0.0)
 	_apply_text_role(style_caption, "caption_strong")
 	style_caption.add_theme_font_size_override("font_size", 14)
 	style_row.add_child(style_caption)
@@ -1448,36 +1538,56 @@ func _build_meter_shell() -> void:
 
 	_dna_route_shell = ColorRect.new()
 	_dna_route_shell.name = "DnaRouteShell"
-	_dna_route_shell.custom_minimum_size = Vector2(COMBAT_FEEL_CONTENT.RIGHT_HUD_STACK_WIDTH, 22.0)
+	_dna_route_shell.custom_minimum_size = Vector2(COMBAT_FEEL_CONTENT.RIGHT_HUD_STACK_WIDTH, 44.0)
 	UI_STYLE.apply_shell_style(_dna_route_shell, "hud_right")
 	_hud_right_stack.add_child(_dna_route_shell)
 
+	var dna_route_body := MarginContainer.new()
+	dna_route_body.name = "DnaRouteBody"
+	dna_route_body.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dna_route_body.offset_left = 8.0
+	dna_route_body.offset_top = 3.0
+	dna_route_body.offset_right = -8.0
+	dna_route_body.offset_bottom = -3.0
+	_dna_route_shell.add_child(dna_route_body)
+
+	var dna_route_vbox := VBoxContainer.new()
+	dna_route_vbox.name = "DnaRouteVBox"
+	dna_route_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	dna_route_vbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	dna_route_vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	dna_route_vbox.add_theme_constant_override("separation", 1)
+	dna_route_body.add_child(dna_route_vbox)
+
 	_dna_route_label = Label.new()
-	_dna_route_label.position = Vector2(0.0, 0.0)
-	_dna_route_label.size = Vector2(COMBAT_FEEL_CONTENT.RIGHT_HUD_STACK_WIDTH, 22.0)
+	_dna_route_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_dna_route_label.custom_minimum_size = Vector2(0.0, 22.0)
 	_dna_route_label.text = PRESENTATION_TEXT.DNA_ROUTE_BOND_LABEL
 	_apply_text_role(_dna_route_label, "status_line", HORIZONTAL_ALIGNMENT_CENTER)
 	_dna_route_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_dna_route_label.add_theme_font_size_override("font_size", 16)
-	_dna_route_shell.add_child(_dna_route_label)
+	dna_route_vbox.add_child(_dna_route_label)
 
 	# Initialize mutation value label (for enhanced mutation system)
 	_mutation_value_label = Label.new()
-	_mutation_value_label.position = Vector2(0.0, 22.0)
-	_mutation_value_label.size = Vector2(COMBAT_FEEL_CONTENT.RIGHT_HUD_STACK_WIDTH, 18.0)
+	_mutation_value_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_mutation_value_label.custom_minimum_size = Vector2(0.0, 18.0)
 	_mutation_value_label.text = ""
 	_apply_text_role(_mutation_value_label, "status_line", HORIZONTAL_ALIGNMENT_CENTER)
 	_mutation_value_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_mutation_value_label.add_theme_font_size_override("font_size", 14)
 	_mutation_value_label.visible = false
-	_dna_route_shell.add_child(_mutation_value_label)
+	dna_route_vbox.add_child(_mutation_value_label)
 
 	var run_score_row := HBoxContainer.new()
 	run_score_row.alignment = BoxContainer.ALIGNMENT_END
+	run_score_row.custom_minimum_size = Vector2(0.0, 22.0)
+	run_score_row.add_theme_constant_override("separation", 6)
 	_hud_top_right_container.add_child(run_score_row)
 
 	var run_score_caption := Label.new()
 	run_score_caption.text = "Run"
+	run_score_caption.custom_minimum_size = Vector2(44.0, 0.0)
 	_apply_text_role(run_score_caption, "caption_strong")
 	run_score_caption.add_theme_font_size_override("font_size", 14)
 	run_score_row.add_child(run_score_caption)
@@ -1504,46 +1614,59 @@ func _build_meter_shell() -> void:
 	_boss_hp_shell = ColorRect.new()
 	_boss_hp_shell.name = "BossHpShell"
 	_boss_hp_shell.position = Vector2(boss_x, boss_y)
-	_boss_hp_shell.size = Vector2(boss_w, 48.0)
+	_boss_hp_shell.size = Vector2(boss_w, 52.0)
 	_boss_hp_shell.z_index = 38
 	UI_STYLE.apply_shell_style(_boss_hp_shell, "boss_shell")
 	_boss_hp_shell.visible = false
 	ui_layer.add_child(_boss_hp_shell)
 
+	var boss_body := MarginContainer.new()
+	boss_body.name = "BossBody"
+	boss_body.set_anchors_preset(Control.PRESET_FULL_RECT)
+	boss_body.offset_left = 12.0
+	boss_body.offset_top = 3.0
+	boss_body.offset_right = -12.0
+	boss_body.offset_bottom = -3.0
+	_boss_hp_shell.add_child(boss_body)
+
+	var boss_vbox := VBoxContainer.new()
+	boss_vbox.name = "BossVBox"
+	boss_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	boss_vbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	boss_vbox.add_theme_constant_override("separation", 1)
+	boss_body.add_child(boss_vbox)
+
 	_boss_name_label = Label.new()
 	_boss_name_label.name = "BossNameLabel"
-	_boss_name_label.position = Vector2(boss_x + 14.0, boss_y + 2.0)
-	_boss_name_label.size = Vector2(boss_w - 28.0, 22.0)
+	_boss_name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_boss_name_label.custom_minimum_size = Vector2(0.0, 22.0)
 	_boss_name_label.text = ""
 	_apply_text_role(_boss_name_label, "boss", HORIZONTAL_ALIGNMENT_CENTER)
 	_boss_name_label.add_theme_font_size_override("font_size", 26)
-	_boss_name_label.z_index = 38
 	_boss_name_label.visible = false
-	ui_layer.add_child(_boss_name_label)
+	boss_vbox.add_child(_boss_name_label)
 
 	_boss_state_label = Label.new()
 	_boss_state_label.name = "BossStateLabel"
-	_boss_state_label.position = Vector2(boss_x + 14.0, boss_y + 22.0)
-	_boss_state_label.size = Vector2(boss_w - 28.0, 14.0)
+	_boss_state_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_boss_state_label.custom_minimum_size = Vector2(0.0, 14.0)
 	_boss_state_label.text = ""
 	_apply_text_role(_boss_state_label, "body", HORIZONTAL_ALIGNMENT_CENTER)
 	_boss_state_label.add_theme_font_size_override("font_size", 14)
 	_boss_state_label.add_theme_color_override("font_color", Color(0.82, 0.72, 0.58, 0.96))
-	_boss_state_label.z_index = 38
 	_boss_state_label.visible = false
-	ui_layer.add_child(_boss_state_label)
+	boss_vbox.add_child(_boss_state_label)
 
 	_boss_hp_bar = ProgressBar.new()
 	_boss_hp_bar.name = "BossHpBar"
-	_boss_hp_bar.position = Vector2(boss_x + 14.0, boss_y + 36.0)
-	_boss_hp_bar.size = Vector2(boss_w - 28.0, 12.0)
-	_boss_hp_bar.z_index = 38
+	_boss_hp_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_boss_hp_bar.custom_minimum_size = Vector2(0.0, 12.0)
 	_boss_hp_bar.min_value = 0.0
 	_boss_hp_bar.max_value = 100.0
 	_boss_hp_bar.value = 100.0
 	_boss_hp_bar.show_percentage = false
 	_boss_hp_bar.visible = false
-	ui_layer.add_child(_boss_hp_bar)
+	boss_vbox.add_child(_boss_hp_bar)
 	UI_STYLE.apply_bar_style(_boss_hp_bar, "boss")
 
 
@@ -1751,40 +1874,65 @@ func _build_quig_anchor() -> void:
 func _build_dna_shell() -> void:
 	_dna_shell = ColorRect.new()
 	_dna_shell.name = "DnaShell"
-	_dna_shell.custom_minimum_size = Vector2(COMBAT_FEEL_CONTENT.RIGHT_HUD_STACK_WIDTH, 46.0)
+	_dna_shell.custom_minimum_size = Vector2(COMBAT_FEEL_CONTENT.RIGHT_HUD_STACK_WIDTH, 52.0)
 	UI_STYLE.apply_shell_style(_dna_shell, "dna")
 	_dna_shell.visible = false
 	_hud_right_stack.add_child(_dna_shell)
 
+	var dna_body := MarginContainer.new()
+	dna_body.name = "DnaBody"
+	dna_body.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dna_body.offset_left = 8.0
+	dna_body.offset_top = 5.0
+	dna_body.offset_right = -8.0
+	dna_body.offset_bottom = -5.0
+	_dna_shell.add_child(dna_body)
+
+	var dna_vbox := VBoxContainer.new()
+	dna_vbox.name = "DnaVBox"
+	dna_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	dna_vbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	dna_vbox.add_theme_constant_override("separation", 1)
+	dna_body.add_child(dna_vbox)
+
+	var dna_header := HBoxContainer.new()
+	dna_header.name = "DnaHeader"
+	dna_header.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	dna_header.add_theme_constant_override("separation", 3)
+	dna_vbox.add_child(dna_header)
+
 	var dna_caption := Label.new()
-	dna_caption.position = Vector2(8.0, 4.0)
-	dna_caption.size = Vector2(42.0, 16.0)
+	dna_caption.custom_minimum_size = Vector2(42.0, 16.0)
 	dna_caption.text = "DNA"
 	_apply_text_role(dna_caption, "caption_strong")
 	dna_caption.add_theme_font_size_override("font_size", 16)
-	_dna_shell.add_child(dna_caption)
+	dna_header.add_child(dna_caption)
+
+	var dna_header_spacer := Control.new()
+	dna_header_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	dna_header.add_child(dna_header_spacer)
 
 	_dna_emblem = _build_strip_sprite(
 		"DnaEmblem",
 		COMBAT_FEEL_CONTENT.DNA_SPRITE_PATH,
 		COMBAT_FEEL_CONTENT.DNA_FRAME_SIZE,
 		0,
-		Vector2(COMBAT_FEEL_CONTENT.RIGHT_HUD_STACK_WIDTH - 24.0, 4.0),
+		Vector2.ZERO,
 		Vector2(16.0, 16.0)
 	)
 	if _dna_emblem != null:
 		_dna_emblem.modulate = Color(1.0, 1.0, 1.0, 0.82)
-		_dna_shell.add_child(_dna_emblem)
+		dna_header.add_child(_dna_emblem)
 
 	_dna_slot_labels.clear()
 	for i in range(DNA_HUD_VISIBLE_SLOTS):
 		var label := Label.new()
-		label.position = Vector2(8.0, 16.0 + i * 12.0)
-		label.size = Vector2(COMBAT_FEEL_CONTENT.RIGHT_HUD_STACK_WIDTH - 16.0, 14.0)
+		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		label.custom_minimum_size = Vector2(0.0, 14.0)
 		label.text = "--"
 		_apply_text_role(label, "secondary_value")
 		label.add_theme_font_size_override("font_size", 14)
-		_dna_shell.add_child(label)
+		dna_vbox.add_child(label)
 		_dna_slot_labels.append(label)
 
 
@@ -3130,6 +3278,13 @@ func _on_boss_music_finished() -> void:
 	await get_tree().create_timer(0.8).timeout
 	if not _run_finished:
 		_finish_run(false)
+
+
+func get_current_song_section_id() -> String:
+	# Used by LaneManager to stamp shot_modifier onto each fired projectile.
+	if _song_conductor == null or not is_instance_valid(_song_conductor):
+		return ""
+	return String(_song_conductor.current_section_id)
 
 
 func _stop_song_conductor() -> void:

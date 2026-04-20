@@ -450,6 +450,57 @@ const DEFAULT_ENEMY_TELEGRAPH_PROFILE := {
 	"warning_bias": 1.0
 }
 
+# Song section → shot modifier preset (Projectile: overlay texture shot1–6 + trail/glow tuning).
+# Enemy-specific art lives under res://assets/sprites/projectile_bodies/<species_id or type>.png
+const SECTION_SHOT_MODIFIER := {
+	"opening": "fang",
+	"intro": "fang",
+	"verse": "needle",
+	"verse_1": "needle",
+	"verse_2": "needle",
+	"rising": "mass",
+	"pre_chorus": "needle",
+	"pre_chorus_1": "needle",
+	"pre_chorus_2": "needle",
+	"chorus": "chorus",
+	"chorus_1": "chorus",
+	"chorus_2": "chorus",
+	"final_chorus": "chorus",
+	"boss_chorus": "chorus",
+	"bridge": "veil",
+	"breakdown": "veil",
+	"final": "sovereign",
+	"full_song": "sovereign"
+}
+
+const DEFAULT_PROJECTILE_BODY_PATH: String = "res://assets/sprites/projectile_bodies/dreg.png"
+
+
+static func get_shot_modifier_for_section(section_id: String) -> String:
+	if section_id.is_empty():
+		return "fang"
+	if SECTION_SHOT_MODIFIER.has(section_id):
+		return String(SECTION_SHOT_MODIFIER[section_id])
+	return "fang"
+
+
+static func get_projectile_body_resource_path(enemy: Dictionary) -> String:
+	var key: String = String(enemy.get("species_id", ""))
+	if key.is_empty():
+		key = String(enemy.get("type", "dreg"))
+	if key.is_empty():
+		key = "dreg"
+	var path: String = "res://assets/sprites/projectile_bodies/%s.png" % key
+	if ResourceLoader.exists(path):
+		return path
+	var lower: String = key.to_lower()
+	if lower != key:
+		path = "res://assets/sprites/projectile_bodies/%s.png" % lower
+		if ResourceLoader.exists(path):
+			return path
+	return DEFAULT_PROJECTILE_BODY_PATH
+
+
 const ENEMY_TELEGRAPH_PROFILES := {
 	"dreg": {
 		"family": "fang",

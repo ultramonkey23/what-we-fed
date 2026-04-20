@@ -12,21 +12,27 @@ const DEBUG_TIMING: bool = false
 # Timing is based on projectile progress: a float from 0.0 (just fired at enemy_x)
 # to 1.0 (reached hit_zone_x). Progress continues past 1.0 as the projectile travels
 # toward the player. All timing windows are thresholds against this progress value.
+#
+# Progress is distance-based, not time-based:
+#   progress = (enemy_x - position.x) / (enemy_x - hit_zone_x)
+#
 # "early" = before GOOD_MIN  |  "good" = GOOD_MIN..PERFECT_MIN or PERFECT_MAX..GOOD_MAX
 # "perfect" = PERFECT_MIN..PERFECT_MAX  |  "miss" = beyond
 #
-# Timing Truth Bundle:
-# - outer ring = success boundary (0.96..1.04)
-# - inner ring = perfect boundary (0.98..1.02)
-# - beat mark at progress 1.0 = center of perfect truth
-# There is no hidden late grace zone outside the visible ring truth.
+# Timing Truth Contract:
+# - Perfect zone (0.98..1.02) centered at beat mark (1.0)
+# - Good zone (0.96..1.04) maps to visible outer ring
+# - No hidden grace zones beyond visible rings
+# - Visual rings are rendered based on ring-to-progress conversion in CombatScene.gd
+# - See docs/TIMING_CONSTANTS_REFERENCE.md for complete constant documentation
 const ATTACK_GOOD_MIN: float = 0.96
 const ATTACK_PERFECT_MIN: float = 0.98
 const ATTACK_PERFECT_MAX: float = 1.02
 const ATTACK_GOOD_MAX: float = 1.04
 
-# Parry timing bands: ring-exact. Good = inside the outer ring. Perfect = inner ring only.
-# Outside all rings = failed parry. No hidden timing beyond what the circles show.
+# Parry timing bands: identical to attack. Good = inside the outer ring.
+# Perfect = inner ring only. Outside all rings = failed parry.
+# No hidden timing windows beyond what the visible circles show.
 const PARRY_GOOD_MIN: float = 0.96
 const PARRY_PERFECT_MIN: float = 0.98
 const PARRY_PERFECT_MAX: float = 1.02
@@ -100,7 +106,11 @@ func _ready() -> void:
 		debug_label.name = "DebugLabel"
 		debug_label.position = Vector2(-22.0, -52.0)
 		debug_label.add_theme_font_size_override("font_size", 10)
+		debug_label.add_theme_color_override("font_color", Color.WHITE)
 		add_child(debug_label)
+		
+		# Zone boundary markers for visual calibration.
+		_create_debug_zone_markers()
 
 
 func _process(delta: float) -> void:
@@ -237,16 +247,8 @@ func _process_incoming(delta: float) -> void:
 		player_contact.emit(self)
 
 	_update_visual_state(false)
+	_update_debug_display()
 
-	if DEBUG_TIMING:
-		var _dbg: Label = get_node_or_null("DebugLabel") as Label
-		if _dbg != null:
-			_dbg.text = "%.3f\nA:%s\nP:%s\nHZ:%+.3f" % [
-				progress,
-				evaluate_attack_timing(),
-				evaluate_parry_timing(),
-				progress - 1.0
-			]
 
 
 func _process_reflected(delta: float) -> void:
@@ -299,3 +301,64 @@ func _update_visual_state(reflected: bool) -> void:
 	if _glow != null:
 		_glow.scale = Vector2(1.0 + pressure * 0.16, 1.0 + pressure * 0.08)
 		_glow.color = Color(base_color.r, base_color.g, base_color.b, glow_alpha)
+
+
+func _create_debug_zone_markers() -> void:
+	# Optional debug visualization: draw zone boundaries as vertical indicators
+	# relative to the projectile's expected hit point. This helps verify that
+	# visual rings align with the actual timing windows.
+	# Only active when DEBUG_TIMING = true.
+	if not DEBUG_TIMING:
+		return
+	
+	# Assume a standard layout: hit_zone_x is where the beat mark should be.
+	# The rings expand from there based on intercept distance.
+	# This marker set is visual calibration only — not part of game logic.
+	
+	var debug_group := Node2D.new()
+	debug_group.name = "DebugZoneMarkers"
+	add_child(debug_group)
+	
+	# We'll paint zone markers as the projectile approaches.
+	# These will be updated in _process to show the active zone relative to hit.
+
+
+func _get_debug_zone_quality(p: float) -> String:
+	# Return a label for the current progress zone.
+	if p < 0.92:
+		return "→FAR"
+	elif p < ATTACK_GOOD_MIN:
+		return "EARLY"
+	elif p < ATTACK_PERFECT_MIN:
+		return "GOOD-early"
+	elif p <= ATTACK_PERFECT_MAX:
+		return "PERFECT"
+	elif p <= ATTACK_GOOD_MAX:
+		return "GOOD-late"
+	else:
+		return "LATE"
+
+
+func _update_debug_display() -> void:
+	# Enhanced debug label showing progress, timing quality, and zone indicators.
+	# This helps verify that the visual rings align with actual game logic windows.
+	if not DEBUG_TIMING or is_resolved:
+		return
+	
+	var _dbg: Label = get_node_or_null("DebugLabel") as Label
+	if _dbg == null:
+		return
+	
+	var attack_quality: String = evaluate_attack_timing()
+	var parry_quality: String = evaluate_parry_timing()
+	var zone_quality: String = _get_debug_zone_quality(progress)
+	var offset: float = progress - 1.0
+	
+	_dbg.text = "P:%.3f [%s]\nA:%s | P:%s\nZone:%s" % [
+		progress,
+		"%.2f%%" % (offset * 100.0),
+		attack_quality[0],  # First letter
+		parry_quality[0],   # First letter
+		zone_quality
+	]
+

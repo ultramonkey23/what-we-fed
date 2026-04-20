@@ -244,7 +244,7 @@ switch ($Mode) {
         $logErrors = Get-GodotLogErrors -LogPath $validateLog
         if ($logErrors.Count -gt 0) {
             Write-Host ""
-            Write-Host "VALIDATE FAILED — errors found in smoke log:" -ForegroundColor Red
+            Write-Host "VALIDATE FAILED - errors found in smoke log:" -ForegroundColor Red
             foreach ($line in $logErrors) {
                 Write-Host ("  {0}" -f $line) -ForegroundColor Red
             }

@@ -1,0 +1,24 @@
+[remap]
+
+importer="wav"
+type="AudioStreamWAV"
+uid="uid://bbrrhw77ksppa"
+path="res://.godot/imported/Drums of Despair.wav-3a09b1dc13443732264f6c6eed8d7799.sample"
+
+[deps]
+
+source_file="res://assets/audio/Drums of Despair.wav"
+dest_files=["res://.godot/imported/Drums of Despair.wav-3a09b1dc13443732264f6c6eed8d7799.sample"]
+
+[params]
+
+force/8_bit=false
+force/mono=false
+force/max_rate=false
+force/max_rate_hz=44100
+edit/trim=false
+edit/normalize=false
+edit/loop_mode=0
+edit/loop_begin=0
+edit/loop_end=-1
+compress/mode=2

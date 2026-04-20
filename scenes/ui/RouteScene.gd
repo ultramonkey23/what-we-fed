@@ -4,6 +4,7 @@ const ROUTE_CONTENT = preload("res://data/RouteContent.gd")
 const COMBAT_SCENE_PATH: String = "res://scenes/combat/CombatScene.tscn"
 const LAIR_SCENE_PATH: String = "res://scenes/ui/LairScene.tscn"
 const UI_STYLE = preload("res://systems/UIStyle.gd")
+const PRESENTATION_TEXT = preload("res://data/PresentationTextContent.gd")
 
 const CARD_WIDTH: float = 348.0
 const CARD_HEIGHT: float = 336.0
@@ -80,7 +81,7 @@ func _build_ui() -> void:
 	add_child(canvas)
 
 	var header: Label = Label.new()
-	header.text = "CHOOSE YOUR GROUND"
+	header.text = PRESENTATION_TEXT.ROUTE_HEADER
 	header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	header.size = Vector2(1280.0, 52.0)
 	header.position = Vector2(0.0, 38.0)
@@ -88,7 +89,7 @@ func _build_ui() -> void:
 	canvas.add_child(header)
 
 	var sub: Label = Label.new()
-	sub.text = "Each ground starts the run differently."
+	sub.text = PRESENTATION_TEXT.ROUTE_SUBTITLE
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	sub.size = Vector2(1280.0, 26.0)
 	sub.position = Vector2(0.0, 90.0)

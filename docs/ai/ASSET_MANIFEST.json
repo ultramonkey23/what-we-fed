@@ -1,0 +1,171 @@
+{
+  "project": "WHAT WE FED",
+  "version": "1.1",
+  "status_summary": {
+    "total_creatures": 11,
+    "integrated_sprites": 1,
+    "pending_sprites": 10,
+    "pending_projectiles": 5,
+    "pending_sfx": 12
+  },
+  "manifest": [
+    {
+      "id": "ashclaw_adult",
+      "category": "creature_sprite",
+      "species_id": "ashclaw",
+      "stage": "adult",
+      "status": "integrated",
+      "target_path": "res://assets/creatures/ashclaw/forms/ashclaw_adult.png"
+    },
+    {
+      "id": "bond_remnant_adult",
+      "category": "creature_sprite",
+      "species_id": "bond_remnant",
+      "stage": "adult",
+      "status": "pending",
+      "target_path": "res://assets/creatures/bond_remnant/forms/bond_remnant_adult.png",
+      "prompt": "bond_remnant_creature, adult_stage, bond_type, hollow_archetype, [VISUAL_ANCHOR: teeth_set_in_a_jaw_that_never_learned_to_close], body_made_of_tattered_ritual_bandages_and_dark_smoke, ethereal_silhouette, dark_fantasy_2d, high_contrast, ink_wash, sharp_silhouette, orthographic_side_view, white_background --ar 1:1"
+    },
+    {
+      "id": "gruvek_adult",
+      "category": "creature_sprite",
+      "species_id": "gruvek",
+      "stage": "adult",
+      "status": "pending",
+      "target_path": "res://assets/creatures/gruvek/forms/gruvek_adult.png",
+      "prompt": "gruvek_creature, adult_stage, predator_type, gorge_archetype, [VISUAL_ANCHOR: jaw_unhinged_past_any_angle_that_should_work], heavy_multi_limbed_bloated_bio_organic_beast, calcified_texture, dark_fantasy_2d, high_contrast, ink_wash, sharp_silhouette, orthographic_side_view, white_background --ar 1:1"
+    },
+    {
+      "id": "veilskin_adult",
+      "category": "creature_sprite",
+      "species_id": "veilskin",
+      "stage": "adult",
+      "status": "pending",
+      "target_path": "res://assets/creatures/veilskin/forms/veilskin_adult.png",
+      "prompt": "veilskin_creature, adult_stage, predator_type, reflex_archetype, [VISUAL_ANCHOR: no_visible_eyes_but_something_tracks_every_movement], slender_needle_limbs, translucent_wet_skin, sensory_pits, dark_fantasy_2d, high_contrast, ink_wash, sharp_silhouette, orthographic_side_view, white_background --ar 1:1"
+    },
+    {
+      "id": "thornback_adult",
+      "category": "creature_sprite",
+      "species_id": "thornback",
+      "stage": "adult",
+      "status": "pending",
+      "target_path": "res://assets/creatures/thornback/forms/thornback_adult.png",
+      "prompt": "thornback_creature, adult_stage, predator_type, berserker_archetype, [VISUAL_ANCHOR: spines_still_growing_some_through_the_wrong_layers], aggressive_jagged_hunchback, thick_flesh_folds, dark_fantasy_2d, high_contrast, ink_wash, sharp_silhouette, orthographic_side_view, white_background --ar 1:1"
+    },
+    {
+      "id": "knellspine_adult",
+      "category": "creature_sprite",
+      "species_id": "knellspine",
+      "stage": "adult",
+      "status": "pending",
+      "target_path": "res://assets/creatures/knellspine/forms/knellspine_adult.png",
+      "prompt": "knellspine_creature, adult_stage, cadence_type, chorister_archetype, [VISUAL_ANCHOR: vertebrae_tuned_like_bells_and_filed_to_a_point], long_ribs_vibrating, razor_sharp_spines, dark_fantasy_2d, high_contrast, ink_wash, sharp_silhouette, orthographic_side_view, white_background --ar 1:1"
+    },
+    {
+      "id": "marrowward_adult",
+      "category": "creature_sprite",
+      "species_id": "marrowward",
+      "stage": "adult",
+      "status": "pending",
+      "target_path": "res://assets/creatures/marrowward/forms/marrowward_adult.png",
+      "prompt": "marrowward_creature, adult_stage, guard_type, anchor_archetype, [VISUAL_ANCHOR: bone_plates_growing_inward_as_if_trying_to_cage_the_heart], massive_calcified_shell, protective_plated_posture, dark_fantasy_2d, high_contrast, ink_wash, sharp_silhouette, orthographic_side_view, white_background --ar 1:1"
+    },
+    {
+      "id": "gorefane_adult",
+      "category": "creature_sprite",
+      "species_id": "gorefane",
+      "stage": "adult",
+      "status": "pending",
+      "target_path": "res://assets/creatures/gorefane/forms/gorefane_adult.png",
+      "prompt": "gorefane_creature, adult_stage, predator_type, mauler_archetype, [VISUAL_ANCHOR: second_jaw_folding_out_from_under_the_first], visceral_muscle_layers, aggressive_attacking_pose, dark_fantasy_2d, high_contrast, ink_wash, sharp_silhouette, orthographic_side_view, white_background --ar 1:1"
+    },
+    {
+      "id": "hushcoil_adult",
+      "category": "creature_sprite",
+      "species_id": "hushcoil",
+      "stage": "adult",
+      "status": "pending",
+      "target_path": "res://assets/creatures/hushcoil/forms/hushcoil_adult.png",
+      "prompt": "hushcoil_creature, adult_stage, veil_type, suppressor_archetype, [VISUAL_ANCHOR: throat_lined_with_soft_tissue_that_dampens_every_sound], serpent_like_coiled_body, pressure_sensitive_skin, dark_fantasy_2d, high_contrast, ink_wash, sharp_silhouette, orthographic_side_view, white_background --ar 1:1"
+    },
+    {
+      "id": "coldvein_adult",
+      "category": "creature_sprite",
+      "species_id": "coldvein",
+      "stage": "adult",
+      "status": "pending",
+      "target_path": "res://assets/creatures/coldvein/forms/coldvein_adult.png",
+      "prompt": "coldvein_creature, adult_stage, cadence_type, counter_archetype, [VISUAL_ANCHOR: pupils_gone_but_something_colder_left_behind], frozen_ash_skin, elegant_razor_limbs, perfectly_still_posture, dark_fantasy_2d, high_contrast, ink_wash, sharp_silhouette, orthographic_side_view, white_background --ar 1:1"
+    },
+    {
+      "id": "siltgrip_adult",
+      "category": "creature_sprite",
+      "species_id": "siltgrip",
+      "stage": "adult",
+      "status": "pending",
+      "target_path": "res://assets/creatures/siltgrip/forms/siltgrip_adult.png",
+      "prompt": "siltgrip_creature, adult_stage, predator_type, lurker_archetype, [VISUAL_ANCHOR: claws_shaped_for_closing_and_not_opening_again], wet_teal_hued_skin, heavy_claws, low_lurking_posture, dark_fantasy_2d, high_contrast, ink_wash, sharp_silhouette, orthographic_side_view, white_background --ar 1:1"
+    },
+    {
+      "id": "projectile_mass",
+      "category": "projectile",
+      "family": "mass",
+      "status": "pending",
+      "target_path": "res://assets/sprites/projectiles/mass.png",
+      "prompt": "jagged_heavy_calcified_bone_projectile, asymmetric, high_inertia, debris_trail, dark_fantasy_2d, high_contrast, sharp_silhouette, horizontal_orientation, white_background"
+    },
+    {
+      "id": "projectile_needle",
+      "category": "projectile",
+      "family": "needle",
+      "status": "pending",
+      "target_path": "res://assets/sprites/projectiles/needle.png",
+      "prompt": "razor_thin_obsidian_shard_projectile, linear, vibrating_blur, zero_drag, dark_fantasy_2d, high_contrast, sharp_silhouette, horizontal_orientation, white_background"
+    },
+    {
+      "id": "projectile_veil",
+      "category": "projectile",
+      "family": "veil",
+      "status": "pending",
+      "target_path": "res://assets/sprites/projectiles/veil.png",
+      "prompt": "smoky_hollow_ring_projectile, distorted_eye_shape, blurred_edges, ethereal, dark_fantasy_2d, high_contrast, sharp_silhouette, horizontal_orientation, white_background"
+    },
+    {
+      "id": "projectile_chorus",
+      "category": "projectile",
+      "family": "chorus",
+      "status": "pending",
+      "target_path": "res://assets/sprites/projectiles/chorus.png",
+      "prompt": "circular_geometric_disc_projectile, vibrating_layers, ritual_gold, pulse_effect, dark_fantasy_2d, high_contrast, sharp_silhouette, horizontal_orientation, white_background"
+    },
+    {
+      "id": "sfx_perfect_parry",
+      "category": "sfx",
+      "status": "pending",
+      "target_path": "res://assets/audio/sfx/combat/parry_perfect.wav",
+      "prompt": "Dry foley sound effect, 44.1kHz mono, obsidian deflection, perfect quality. Glassy clink, crystalline, cold, immediate sharp ping. Sharp transient, zero-latency, resonant tail."
+    },
+    {
+      "id": "sfx_perfect_hit",
+      "category": "sfx",
+      "status": "pending",
+      "target_path": "res://assets/audio/sfx/combat/hit_perfect.wav",
+      "prompt": "Dry foley sound effect, 44.1kHz mono, steel strike, perfect quality. Deep sub-bass thump, heavy metallic ring-out, satisfying visceral crunch. Sharp transient, zero-latency, resonant tail."
+    },
+    {
+      "id": "sfx_good_hit",
+      "category": "sfx",
+      "status": "pending",
+      "target_path": "res://assets/audio/sfx/combat/hit_good.wav",
+      "prompt": "Dry foley sound effect, 44.1kHz mono, steel strike, good quality. Sharp metallic click, shorter resonance, visceral impact. Sharp transient, zero-latency, short tail."
+    },
+    {
+      "id": "sfx_good_parry",
+      "category": "sfx",
+      "status": "pending",
+      "target_path": "res://assets/audio/sfx/combat/parry_good.wav",
+      "prompt": "Dry foley sound effect, 44.1kHz mono, obsidian deflection, good quality. Sharp metallic scrape, crystalline impact, immediate. Sharp transient, zero-latency, short tail."
+    }
+  ]
+}

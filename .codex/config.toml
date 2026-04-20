@@ -1,0 +1,12 @@
+# Repo-local Codex hints for What We Fed.
+
+[project]
+entrypoint_doc = "PROJECT_SETUP_AND_VALIDATION.md"
+system_map_doc = "REPO_SYSTEM_MAP.md"
+
+[godot]
+run_script = "run_project.bat"
+smoke_script = "smoke_project.bat"
+validate_script = "validate_project.bat"
+editor_script = "editor_project.bat"
+resolve_script = "resolve_godot.bat"

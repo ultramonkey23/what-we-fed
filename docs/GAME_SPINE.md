@@ -1,10 +1,16 @@
 # GAME SPINE
 
 ## Project identity
-This game is evolving toward a dark action game where combat, timing, mutation, and world atmosphere are deeply fused.
+This game is evolving toward a dark RPG roguelite where creature identity, predation, and no-pause lane-timing combat are deeply fused.
+
+## Genre hierarchy
+- RPG first
+- Roguelite second
+- Creature-driven progression game third
+- Lane-timing action combat as the signature expression layer
 
 ## Core fantasy
-The player starts weak, incomplete, or low-status and becomes feared through adaptation, mastery, feeding, mutation, and power growth.
+The player starts weak, incomplete, or low-status and becomes feared through adaptation, mastery, feeding, mutation, and creature-shaped power growth.
 
 ## Desired long-term emotional feel
 - pressure
@@ -17,8 +23,9 @@ The player starts weak, incomplete, or low-status and becomes feared through ada
 
 ## Long-term flagship direction
 The larger flagship version should eventually merge:
+- RPG build identity and creature authorship
+- roguelite run escalation and adaptation pressure
 - timing/rhythm-based combat feel
-- survivor-like escalation and pressure
 - mutation and creature systems
 - enemy species that shape the musical/ecological identity of the battlefield
 - bosses that seize control of the arena’s vibe and force breakdowns, drones, grooves, solos, blast-beat surges, or piercing tech-riff states
@@ -33,6 +40,8 @@ Use What We Fed as the practical base:
 - EventBus pattern
 - dark creature-feeding theme
 - reward choice foundation
+- live DNA economy
+- live tendency growth
 
 ## Near-term priority
 Before expanding toward the full flagship vision:
@@ -41,6 +50,7 @@ Before expanding toward the full flagship vision:
 - preserve what already works
 - make small safe upgrades
 - learn the project structure
+- strengthen RPG-readable build identity through existing run systems instead of broad scope expansion
 
 ## Long-term build identities to preserve
 - Flesh

@@ -8,6 +8,7 @@ var run_number: int = 1
 var player_hp: float = 100.0
 var player_max_hp: float = 100.0
 var player_base_damage: float = 15.0
+var player_defense: float = 0.0
 var taken_upgrades: Array[String] = []
 
 # Each absorbed type is stored as:
@@ -47,6 +48,10 @@ var active_region: Dictionary = {}
 # to these constants before applying a region modifier, so bonuses never accumulate.
 const BASE_MAX_HP: float = 100.0
 const BASE_DAMAGE: float = 15.0
+const BASE_DEFENSE: float = 0.0
+const DEFENSE_DAMAGE_REDUCTION_PER_POINT: float = 0.02
+const DEFENSE_DAMAGE_REDUCTION_CAP: float = 0.30
+const COMBINED_DAMAGE_REDUCTION_CAP: float = 0.45
 
 
 static func get_bond_level_mult(bond_level: int) -> float:
@@ -66,11 +71,31 @@ func get_attack_damage() -> float:
 	return total_damage
 
 
+func get_defense_damage_reduction() -> float:
+	if player_defense <= 0.0:
+		return 0.0
+	return min(player_defense * DEFENSE_DAMAGE_REDUCTION_PER_POINT, DEFENSE_DAMAGE_REDUCTION_CAP)
+
+
 func get_hp_percent() -> float:
 	if player_max_hp <= 0.0:
 		return 0.0
 
 	return player_hp / player_max_hp
+
+
+func is_species_bonded(species_id: String) -> bool:
+	for creature in roster:
+		if String(creature.get("species_id", "")) == species_id:
+			return true
+	return false
+
+
+func get_bonded_creature(species_id: String) -> Dictionary:
+	for creature in roster:
+		if String(creature.get("species_id", "")) == species_id:
+			return creature.duplicate(true)
+	return {}
 
 
 func add_bonded_creature(creature_data: Dictionary) -> Dictionary:
@@ -223,6 +248,7 @@ func reset_run_state() -> void:
 	# are applied, so bonuses never accumulate across repeated runs.
 	player_max_hp = BASE_MAX_HP
 	player_base_damage = BASE_DAMAGE
+	player_defense = BASE_DEFENSE
 	var modifier: Dictionary = active_region.get("modifier", {})
 	match modifier.get("type", ""):
 		"attack_bonus":

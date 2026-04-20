@@ -4,6 +4,7 @@ const ROUTE_SCENE_PATH: String = "res://scenes/ui/RouteScene.tscn"
 const TITLE_SCENE_PATH: String = "res://scenes/ui/TitleScreen.tscn"
 const MAX_LAIR_DISPLAY: int = 5
 const UI_STYLE = preload("res://systems/UIStyle.gd")
+const PRESENTATION_TEXT = preload("res://data/PresentationTextContent.gd")
 
 var _creature_cards: Array[ColorRect] = []
 var _card_accents: Array[ColorRect] = []
@@ -89,7 +90,7 @@ func _build_ui() -> void:
 	canvas.add_child(header)
 
 	var sub: Label = Label.new()
-	sub.text = "Choose your starting support."
+	sub.text = PRESENTATION_TEXT.LAIR_SUBTITLE
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	sub.size = Vector2(1280.0, 28.0)
 	sub.position = Vector2(0.0, 98.0)
@@ -107,7 +108,7 @@ func _build_ui() -> void:
 
 func _build_empty_state(canvas: CanvasLayer) -> void:
 	var empty_label: Label = Label.new()
-	empty_label.text = "No bonds yet.\nEnter the hollow and bring something back."
+	empty_label.text = PRESENTATION_TEXT.LAIR_EMPTY
 	empty_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	empty_label.size = Vector2(1280.0, 80.0)
 	empty_label.position = Vector2(0.0, 305.0)
@@ -194,7 +195,7 @@ func _build_creature_card(canvas: CanvasLayer, creature: Dictionary, index: int,
 
 func _build_bottom_bar(canvas: CanvasLayer, lair: Array) -> void:
 	var note: Label = Label.new()
-	note.text = "Selected creature starts bonded at its current bond level. A stronger bond taken mid-run will replace it as active support."
+	note.text = PRESENTATION_TEXT.LAIR_NOTE
 	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	note.size = Vector2(1060.0, 30.0)
 	note.position = Vector2(110.0, 620.0)

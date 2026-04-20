@@ -17,8 +17,49 @@ const GORGE_MARK_BONUS_CHARGE: float = 5.0  # Extra charge granted when a GORGE-
 const CHARGE_ULTIMATE_SHARED_SURGE: float = 45.0
 const CHARGE_CADENCE_BONUS: float = 15.0
 const CHARGE_SURVIVAL_RECOVERY: float = 20.0
+const DNA_EXP_PER_POINT: float = 1.25
+const DNA_BOND_TENDENCY_PER_POINT: float = 0.18
+const DNA_BOND_SUPPORT_CHARGE_PER_POINT: float = 2.5
 
 const LEVEL_THRESHOLDS: Array[float] = [40.0, 92.0, 150.0]
+
+const TENDENCY_LEVEL_UP_OUTCOMES: Dictionary = {
+	"aggression": {
+		"title": "AGGRESSION SURGE",
+		"readout_label": "Vengeance active",
+		"effects": [
+			{"type": "base_damage_flat", "value": 2.0},
+			{"type": "surge_aggression", "value": 3.0} # Next 3 hits deal bonus damage and life-steal
+		]
+	},
+	"cadence": {
+		"title": "CADENCE SURGE",
+		"readout_label": "Flow state active",
+		"effects": [
+			{"type": "support_charge_now", "value": 15.0},
+			{"type": "good_timed_bonus_damage_per_level", "value": 0.12},
+			{"type": "surge_cadence", "value": 10.0} # 10s of double support charge gain
+		]
+	},
+	"guard": {
+		"title": "GUARD SURGE",
+		"readout_label": "Iron skin active",
+		"effects": [
+			{"type": "max_hp_flat", "value": 10.0},
+			{"type": "defense_flat", "value": 1.0},
+			{"type": "surge_guard", "value": 1.0} # Next hit taken reduced by 50%
+		]
+	},
+	"bond": {
+		"title": "BOND SURGE",
+		"readout_label": "Sync active",
+		"effects": [
+			{"type": "support_charge_now", "value": 30.0},
+			{"type": "support_charge_gain_mult_per_level", "value": 0.12},
+			{"type": "surge_bond", "value": 1.0} # Next support trigger has doubled effectiveness
+		]
+	}
+}
 
 # Deprecated compatibility pool.
 # Live run growth now comes from real-time tendency surges in RunGrowth.

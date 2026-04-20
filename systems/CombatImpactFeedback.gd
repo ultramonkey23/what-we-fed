@@ -105,7 +105,7 @@ static func build_enemy_hit_profile(damage: float, is_boss_target: bool) -> Dict
 	return profile
 
 
-static func build_support_profile(effect_id: String, cadence_surge: bool) -> Dictionary:
+static func build_support_profile(effect_id: String, cadence_surge: bool, bond_surge: bool = false) -> Dictionary:
 	var profile: Dictionary = {
 		"flash_color": Color.TRANSPARENT,
 		"flash_duration": 0.0,
@@ -147,6 +147,18 @@ static func build_support_profile(effect_id: String, cadence_surge: bool) -> Dic
 			profile["shake_intensity"] = 0.7
 			profile["shake_duration"] = 0.06
 			profile["sfx_cue"] = "support_rend"
+		"coldvein_expose":
+			# Precision parry counter — cold, sharp, immediate. Blue-white burst on the exposed enemy.
+			profile["burst_color"] = Color(0.74, 0.92, 1.0, 0.44)
+			profile["shake_intensity"] = 0.55
+			profile["shake_duration"] = 0.05
+			profile["sfx_cue"] = "support_expose"
+		"siltgrip_drag":
+			# Kill-rend — teal, wet, spreading. Rends survivors across all lanes on each kill.
+			profile["burst_color"] = Color(0.38, 0.78, 0.62, 0.40)
+			profile["shake_intensity"] = 0.65
+			profile["shake_duration"] = 0.06
+			profile["sfx_cue"] = "support_drag"
 		_:
 			pass
 
@@ -155,6 +167,12 @@ static func build_support_profile(effect_id: String, cadence_surge: bool) -> Dic
 		profile["shake_duration"] = max(float(profile["shake_duration"]), 0.06)
 		profile["burst_scale"] = float(profile["burst_scale"]) + 0.12
 		profile["sfx_cue"] = "%s_surge" % String(profile["sfx_cue"])
+
+	if bond_surge:
+		profile["flash_color"] = Color(0.44, 0.96, 0.78, 0.12)
+		profile["flash_duration"] = 0.14
+		profile["burst_scale"] = float(profile.get("burst_scale", 1.0)) + 0.25
+		profile["sfx_cue"] = "support_sync"
 
 	return profile
 

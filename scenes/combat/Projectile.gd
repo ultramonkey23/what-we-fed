@@ -1,4 +1,5 @@
 extends Node2D
+class_name Projectile
 
 signal reached_hit_zone(projectile)
 signal player_contact(projectile)
@@ -35,6 +36,22 @@ const PARRY_GOOD_MAX: float = 1.04
 # Reflected projectiles travel back a little faster to feel punchy.
 const REFLECT_SPEED_MULT: float = 1.25
 
+# Projectile body sprite. RGBA art designed for modulate-tinting.
+# shot1.png is the default; color palette swaps on reflect via _apply_projectile_palette.
+const SHOT_SPRITE_PATH_DEFAULT: String = "res://assets/sprites/shot1.png"
+const SHOT_SPRITE_MAPPING: Dictionary = {
+	"fang": "res://assets/sprites/shot1.png",
+	"mass": "res://assets/sprites/shot2.png",
+	"needle": "res://assets/sprites/shot3.png",
+	"veil": "res://assets/sprites/shot4.png",
+	"chorus": "res://assets/sprites/shot1.png",
+	"sovereign": "res://assets/sprites/shot1.png"
+}
+# Maps the 32x32 sprite to the original 24x12 body footprint.
+const SHOT_BASE_SCALE: Vector2 = Vector2(0.75, 0.375)
+const DEFAULT_PROJECTILE_COLOR: Color = Color(0.95, 0.58, 0.22, 1.0)
+const DEFAULT_REFLECT_COLOR: Color = Color(0.55, 1.0, 0.78, 1.0)
+
 var lane: int = 0
 var enemy_id: int = -1
 var damage: float = 10.0
@@ -48,11 +65,12 @@ var progress: float = 0.0
 var is_resolved: bool = false
 var is_reflected: bool = false
 var reflected_damage: float = 0.0
+var telegraph_profile: Dictionary = {}
 
 var _reported_hit_zone: bool = false
 var _reported_player_contact: bool = false
 var _reported_enemy_contact: bool = false
-var _body: ColorRect
+var _body: Sprite2D
 var _core: ColorRect
 var _trail: Line2D
 var _glow: Polygon2D
@@ -81,11 +99,14 @@ func _ready() -> void:
 	_trail.add_point(Vector2(10.0, 0.0))
 	add_child(_trail)
 
-	_body = ColorRect.new()
+	_body = Sprite2D.new()
 	_body.name = "Body"
-	_body.size = Vector2(24.0, 12.0)
-	_body.position = Vector2(-12.0, -6.0)
-	_body.color = Color(0.95, 0.58, 0.22, 1.0)
+	var _body_tex: Texture2D = load(SHOT_SPRITE_PATH_DEFAULT) as Texture2D
+	if _body_tex:
+		_body.texture = _body_tex
+	_body.position = Vector2(0.0, 0.0)
+	_body.scale = SHOT_BASE_SCALE
+	_body.modulate = Color(0.95, 0.58, 0.22, 1.0)
 	add_child(_body)
 
 	_core = ColorRect.new()
@@ -94,6 +115,10 @@ func _ready() -> void:
 	_core.position = Vector2(-5.0, -3.0)
 	_core.color = Color(1.0, 0.84, 0.58, 0.95)
 	add_child(_core)
+
+	telegraph_profile = _build_telegraph_profile({})
+	_refresh_body_sprite()
+	_configure_telegraph_shape()
 
 	if DEBUG_TIMING:
 		var debug_label := Label.new()
@@ -121,7 +146,8 @@ func setup(
 	start_x: float,
 	target_hit_zone_x: float,
 	target_player_x: float,
-	lane_y: float
+	lane_y: float,
+	projectile_telegraph_profile: Dictionary = {}
 ) -> void:
 	lane = projectile_lane
 	enemy_id = projectile_enemy_id
@@ -139,9 +165,12 @@ func setup(
 	_reported_hit_zone = false
 	_reported_player_contact = false
 	_reported_enemy_contact = false
+	telegraph_profile = _build_telegraph_profile(projectile_telegraph_profile)
+	_refresh_body_sprite()
+	_configure_telegraph_shape()
 
 	if _body != null:
-		_apply_projectile_palette(Color(0.95, 0.58, 0.22, 1.0), false)
+		_apply_projectile_palette(_incoming_body_color(), false)
 
 
 func reflect_to_enemy(return_damage: float) -> void:
@@ -156,7 +185,7 @@ func reflect_to_enemy(return_damage: float) -> void:
 	_reported_enemy_contact = false
 
 	if _body != null:
-		_apply_projectile_palette(Color(0.55, 1.0, 0.78, 1.0), true)
+		_apply_projectile_palette(_reflected_body_color(), true)
 
 
 func evaluate_attack_timing() -> String:
@@ -259,14 +288,14 @@ func _process_reflected(delta: float) -> void:
 
 
 func _apply_projectile_palette(body_color: Color, reflected: bool) -> void:
-	var trail_alpha: float = 0.24
-	var glow_alpha: float = 0.12
+	var trail_alpha: float = float(telegraph_profile.get("trail_alpha", 0.24))
+	var glow_alpha: float = float(telegraph_profile.get("glow_alpha", 0.12))
 	if reflected:
 		trail_alpha = 0.30
 		glow_alpha = 0.16
 
 	if _body != null:
-		_body.color = body_color
+		_body.modulate = body_color
 	if _core != null:
 		_core.color = body_color.lightened(0.36)
 	if _trail != null:
@@ -276,26 +305,231 @@ func _apply_projectile_palette(body_color: Color, reflected: bool) -> void:
 
 
 func _update_visual_state(reflected: bool) -> void:
-	var base_color: Color = Color(0.95, 0.58, 0.22, 1.0)
+	var base_color: Color = _incoming_body_color()
 	if reflected:
-		base_color = Color(0.55, 1.0, 0.78, 1.0)
+		base_color = _reflected_body_color()
 
-	var pressure: float = 0.85 if reflected else clamp((progress - 0.72) / 0.32, 0.0, 1.0)
-	var body_scale: Vector2 = Vector2(1.0 + pressure * 0.12, 1.0 + pressure * 0.08)
-	var trail_alpha: float = 0.24 + pressure * 0.22
-	var glow_alpha: float = 0.13 + pressure * 0.18
+	var pressure_start: float = float(telegraph_profile.get("pressure_start", 0.72))
+	var pressure_gain: float = max(float(telegraph_profile.get("pressure_gain", 1.0)), 0.6)
+	var pressure: float = 0.85 if reflected else clamp(((progress - pressure_start) / (1.0 - pressure_start)) * pressure_gain, 0.0, 1.0)
+	var imminent: float = 0.0 if reflected else clamp((progress - 0.96) / 0.08, 0.0, 1.0)
+	var body_pressure_scale: Vector2 = telegraph_profile.get("body_pressure_scale", Vector2(0.12, 0.08))
+	var base_body_scale: Vector2 = telegraph_profile.get("body_base_scale", Vector2.ONE)
+	var body_scale: Vector2 = base_body_scale + (body_pressure_scale * pressure) + Vector2.ONE * imminent * 0.04
+	var trail_alpha: float = float(telegraph_profile.get("trail_alpha", 0.24)) + pressure * 0.22 + imminent * 0.08
+	var glow_alpha: float = float(telegraph_profile.get("glow_alpha", 0.13)) + pressure * 0.18 + imminent * 0.10
+	var trail_back: float = float(telegraph_profile.get("trail_back", 34.0))
+	var trail_front: float = float(telegraph_profile.get("trail_front", 8.0))
+	var trail_pressure_back: float = float(telegraph_profile.get("trail_pressure_back", 18.0))
+	var trail_pressure_front: float = float(telegraph_profile.get("trail_pressure_front", 5.0))
+	var glow_base_scale: Vector2 = telegraph_profile.get("glow_base_scale", Vector2.ONE)
+	var glow_pressure_scale: Vector2 = telegraph_profile.get("glow_pressure_scale", Vector2(0.16, 0.08))
+	var core_pressure_scale: Vector2 = telegraph_profile.get("core_pressure_scale", Vector2(0.20, 0.10))
+	var trail_width: float = float(telegraph_profile.get("trail_width", 5.0))
+	var trail_pressure_width: float = float(telegraph_profile.get("trail_pressure_width", 2.0))
+	var core_color: Color = Color(telegraph_profile.get("accent_color", base_color.lightened(0.36)))
 
 	if _body != null:
-		_body.scale = body_scale
-		_body.color = base_color.lightened(pressure * 0.06)
+		_body.scale = SHOT_BASE_SCALE * body_scale
+		_body.modulate = base_color.lightened(pressure * 0.06 + imminent * 0.10)
+		_body.flip_h = reflected
 	if _core != null:
-		_core.scale = Vector2(1.0 + pressure * 0.20, 1.0 + pressure * 0.10)
-		_core.color = base_color.lightened(0.34 + pressure * 0.12)
+		_core.scale = Vector2.ONE + core_pressure_scale * pressure + Vector2.ONE * imminent * 0.08
+		_core.color = core_color.lightened(0.18 + pressure * 0.16 + imminent * 0.10)
 	if _trail != null:
-		_trail.width = 5.0 + pressure * 2.0
+		_trail.width = trail_width + pressure * trail_pressure_width + imminent * 0.8
 		_trail.default_color = Color(base_color.r, base_color.g, base_color.b, trail_alpha)
-		_trail.set_point_position(0, Vector2(-34.0 - pressure * 18.0, 0.0))
-		_trail.set_point_position(1, Vector2(8.0 + pressure * 5.0, 0.0))
+		_trail.set_point_position(0, Vector2(-trail_back - pressure * trail_pressure_back - imminent * 8.0, 0.0))
+		_trail.set_point_position(1, Vector2(trail_front + pressure * trail_pressure_front + imminent * 3.0, 0.0))
 	if _glow != null:
-		_glow.scale = Vector2(1.0 + pressure * 0.16, 1.0 + pressure * 0.08)
+		_glow.scale = glow_base_scale + glow_pressure_scale * pressure + Vector2.ONE * imminent * 0.10
 		_glow.color = Color(base_color.r, base_color.g, base_color.b, glow_alpha)
+
+
+func _incoming_body_color() -> Color:
+	return Color(telegraph_profile.get("projectile_color", DEFAULT_PROJECTILE_COLOR))
+
+
+func _reflected_body_color() -> Color:
+	return Color(telegraph_profile.get("reflected_color", DEFAULT_REFLECT_COLOR))
+
+
+func _build_telegraph_profile(source: Dictionary) -> Dictionary:
+	var profile: Dictionary = {
+		"family": "fang",
+		"projectile_color": DEFAULT_PROJECTILE_COLOR,
+		"reflected_color": DEFAULT_REFLECT_COLOR,
+		"accent_color": Color(1.0, 0.84, 0.58, 1.0),
+		"trail_alpha": 0.24,
+		"glow_alpha": 0.13,
+		"trail_width": 5.0,
+		"trail_pressure_width": 2.0,
+		"trail_back": 34.0,
+		"trail_front": 8.0,
+		"trail_pressure_back": 18.0,
+		"trail_pressure_front": 5.0,
+		"body_base_scale": Vector2.ONE,
+		"body_pressure_scale": Vector2(0.12, 0.08),
+		"glow_base_scale": Vector2.ONE,
+		"glow_pressure_scale": Vector2(0.16, 0.08),
+		"core_size": Vector2(10.0, 6.0),
+		"core_pressure_scale": Vector2(0.20, 0.10),
+		"pressure_start": 0.72,
+		"pressure_gain": 1.0
+	}
+	var family: String = String(source.get("family", "fang"))
+	match family:
+		"mass":
+			profile["trail_width"] = 6.4
+			profile["trail_pressure_width"] = 2.6
+			profile["trail_back"] = 26.0
+			profile["trail_front"] = 6.0
+			profile["trail_pressure_back"] = 12.0
+			profile["body_base_scale"] = Vector2(1.18, 1.08)
+			profile["body_pressure_scale"] = Vector2(0.14, 0.12)
+			profile["glow_base_scale"] = Vector2(1.10, 1.04)
+			profile["glow_pressure_scale"] = Vector2(0.22, 0.12)
+			profile["core_size"] = Vector2(12.0, 8.0)
+			profile["pressure_start"] = 0.68
+			profile["pressure_gain"] = 0.92
+		"needle":
+			profile["trail_width"] = 4.0
+			profile["trail_pressure_width"] = 1.6
+			profile["trail_back"] = 42.0
+			profile["trail_front"] = 12.0
+			profile["trail_pressure_back"] = 22.0
+			profile["trail_pressure_front"] = 6.0
+			profile["body_base_scale"] = Vector2(0.84, 0.82)
+			profile["body_pressure_scale"] = Vector2(0.16, 0.06)
+			profile["glow_base_scale"] = Vector2(0.88, 0.72)
+			profile["glow_pressure_scale"] = Vector2(0.22, 0.10)
+			profile["core_size"] = Vector2(8.0, 5.0)
+			profile["pressure_start"] = 0.76
+			profile["pressure_gain"] = 1.14
+		"veil":
+			profile["trail_width"] = 5.6
+			profile["trail_back"] = 30.0
+			profile["trail_front"] = 7.0
+			profile["glow_alpha"] = 0.16
+			profile["body_base_scale"] = Vector2(0.96, 0.92)
+			profile["body_pressure_scale"] = Vector2(0.10, 0.10)
+			profile["glow_base_scale"] = Vector2(1.26, 1.02)
+			profile["glow_pressure_scale"] = Vector2(0.18, 0.10)
+			profile["core_size"] = Vector2(9.0, 5.0)
+			profile["pressure_start"] = 0.70
+			profile["pressure_gain"] = 0.96
+		"chorus":
+			profile["trail_width"] = 4.8
+			profile["trail_back"] = 36.0
+			profile["trail_front"] = 10.0
+			profile["body_base_scale"] = Vector2(1.02, 0.88)
+			profile["body_pressure_scale"] = Vector2(0.14, 0.10)
+			profile["glow_base_scale"] = Vector2(1.12, 0.96)
+			profile["glow_pressure_scale"] = Vector2(0.18, 0.12)
+			profile["core_size"] = Vector2(8.0, 8.0)
+			profile["pressure_start"] = 0.72
+			profile["pressure_gain"] = 1.06
+		"sovereign":
+			profile["trail_width"] = 6.8
+			profile["trail_pressure_width"] = 2.8
+			profile["trail_back"] = 40.0
+			profile["trail_front"] = 12.0
+			profile["trail_pressure_back"] = 24.0
+			profile["trail_pressure_front"] = 7.0
+			profile["glow_alpha"] = 0.18
+			profile["body_base_scale"] = Vector2(1.24, 1.06)
+			profile["body_pressure_scale"] = Vector2(0.16, 0.10)
+			profile["glow_base_scale"] = Vector2(1.22, 1.02)
+			profile["glow_pressure_scale"] = Vector2(0.24, 0.14)
+			profile["core_size"] = Vector2(12.0, 8.0)
+			profile["pressure_start"] = 0.70
+			profile["pressure_gain"] = 1.12
+		_:
+			pass
+
+	for key in source.keys():
+		profile[key] = source[key]
+	return profile
+
+
+func _configure_telegraph_shape() -> void:
+	if _glow == null or _trail == null or _core == null:
+		return
+
+	var family: String = String(telegraph_profile.get("family", "fang"))
+	match family:
+		"mass":
+			_glow.polygon = PackedVector2Array([
+				Vector2(-22.0, 0.0),
+				Vector2(-14.0, -12.0),
+				Vector2(6.0, -12.0),
+				Vector2(20.0, -4.0),
+				Vector2(20.0, 4.0),
+				Vector2(6.0, 12.0),
+				Vector2(-14.0, 12.0)
+			])
+		"needle":
+			_glow.polygon = PackedVector2Array([
+				Vector2(-26.0, 0.0),
+				Vector2(-6.0, -6.0),
+				Vector2(20.0, 0.0),
+				Vector2(-6.0, 6.0)
+			])
+		"veil":
+			_glow.polygon = PackedVector2Array([
+				Vector2(-24.0, 0.0),
+				Vector2(-12.0, -12.0),
+				Vector2(8.0, -14.0),
+				Vector2(18.0, 0.0),
+				Vector2(8.0, 14.0),
+				Vector2(-12.0, 12.0)
+			])
+		"chorus":
+			_glow.polygon = PackedVector2Array([
+				Vector2(-22.0, 0.0),
+				Vector2(-10.0, -10.0),
+				Vector2(4.0, -6.0),
+				Vector2(20.0, -2.0),
+				Vector2(20.0, 2.0),
+				Vector2(4.0, 6.0),
+				Vector2(-10.0, 10.0)
+			])
+		"sovereign":
+			_glow.polygon = PackedVector2Array([
+				Vector2(-24.0, 0.0),
+				Vector2(-14.0, -12.0),
+				Vector2(0.0, -14.0),
+				Vector2(20.0, -6.0),
+				Vector2(24.0, 0.0),
+				Vector2(20.0, 6.0),
+				Vector2(0.0, 14.0),
+				Vector2(-14.0, 12.0)
+			])
+		_:
+			_glow.polygon = PackedVector2Array([
+				Vector2(-18.0, 0.0),
+				Vector2(-8.0, -10.0),
+				Vector2(12.0, -10.0),
+				Vector2(20.0, 0.0),
+				Vector2(12.0, 10.0),
+				Vector2(-8.0, 10.0)
+			])
+
+	var core_size: Vector2 = telegraph_profile.get("core_size", Vector2(10.0, 6.0))
+	_core.size = core_size
+	_core.position = -core_size * 0.5
+
+
+func _refresh_body_sprite() -> void:
+	if _body == null:
+		return
+
+	var custom_path: String = String(telegraph_profile.get("sprite_path", ""))
+	var family: String = String(telegraph_profile.get("family", "fang"))
+	var path: String = SHOT_SPRITE_MAPPING.get(family, SHOT_SPRITE_PATH_DEFAULT)
+
+	if not custom_path.is_empty() and ResourceLoader.exists(custom_path):
+		path = custom_path
+
+	if ResourceLoader.exists(path):
+		_body.texture = load(path) as Texture2D

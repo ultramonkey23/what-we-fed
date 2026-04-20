@@ -19,10 +19,16 @@ This is the project’s **core fantasy and design truth**.
 # 1. The Soul of the Game
 
 ## Core soul statement
-**What We Fed is a dark creature-buildcraft survival action game where the player endures the hostile song of each level by building a faster, stranger predator through timing mastery, feeding, bonding, and escalating run mutation until survival turns into tempo control and personalized domination.**
+**What We Fed is a dark creature-driven RPG roguelite where the player endures the hostile song of each level by shaping a faster, stranger predator through timing mastery, feeding, bonding, and escalating run mutation until survival turns into tempo control, creature identity, and personalized domination.**
 
 ## Shorter internal version
 **Build the kind of monster that can survive the song — then make the song feel like yours.**
+
+## Genre hierarchy
+- RPG first
+- Roguelite second
+- Creature-driven progression game third
+- Lane-timing action combat as the signature expression layer
 
 ---
 
@@ -85,8 +91,8 @@ Combat is not the entire soul of the game.
 
 Combat is the **delivery system** for:
 - creature identity
-- buildcraft
-- power creep
+- RPG build expression
+- run pressure
 - tempo domination
 - predator fantasy
 
@@ -96,6 +102,41 @@ Combat exists to answer:
 - can that monster impose its own logic on the battlefield?
 
 If combat is good but the build identity is weak, the soul is incomplete.
+
+## What the RPG layer is for
+
+The RPG layer decides what the creature is becoming.
+
+It owns:
+- species-specific growth identity
+- bond vs eat authorship
+- tendency direction
+- role-defining run choices
+- transformation without generic stat sludge
+
+If the player cannot say what kind of creature they are becoming, the RPG layer is failing.
+
+## What the roguelite layer is for
+
+The roguelite layer gives the creature build repeatable pressure.
+
+It owns:
+- run structure
+- escalation
+- adaptation under uncertainty
+- failure-driven learning
+- replayable variation without kitchen-sink sprawl
+
+## What the creature layer is for
+
+The creature layer gives progression a body, appetite, and consequence.
+
+It owns:
+- species meaning
+- DNA relevance
+- support identity
+- bondable life versus consumable life
+- the feeling that growth is biological and authored, not abstract
 
 ---
 

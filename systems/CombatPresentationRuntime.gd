@@ -8,6 +8,8 @@ var _player_combat: Node2D
 var _lane_manager: Node
 var _enemy_markers_by_id: Dictionary
 var _ring_highlight_timers: Array[float]
+var _bg_sprite: TextureRect = null
+var _flash_tween: Tween = null
 
 
 func _init(
@@ -18,7 +20,8 @@ func _init(
 	player_combat: Node2D,
 	lane_manager: Node,
 	enemy_markers_by_id: Dictionary,
-	ring_highlight_timers: Array[float]
+	ring_highlight_timers: Array[float],
+	bg_sprite: TextureRect = null
 ) -> void:
 	_flash_overlay = flash_overlay
 	_camera_2d = camera_2d
@@ -28,14 +31,46 @@ func _init(
 	_lane_manager = lane_manager
 	_enemy_markers_by_id = enemy_markers_by_id
 	_ring_highlight_timers = ring_highlight_timers
+	_bg_sprite = bg_sprite
+
+
+func _get_enemy_marker_root(enemy_id: int) -> Node2D:
+	var marker: Node2D = _enemy_markers_by_id.get(enemy_id, null)
+	if marker == null or not is_instance_valid(marker):
+		return null
+	return marker
+
+
+func _get_enemy_marker_body(marker: Node2D) -> ColorRect:
+	if marker == null:
+		return null
+	return marker.get_node_or_null("Body") as ColorRect
+
+
+func _get_enemy_marker_center(marker: Node2D) -> Vector2:
+	var body: ColorRect = _get_enemy_marker_body(marker)
+	if body == null:
+		return marker.position
+	return marker.position + body.position + body.size * 0.5
 
 
 func on_screen_flash(color: Color, duration: float) -> void:
+	if _flash_tween != null:
+		_flash_tween.kill()
+	
 	_flash_overlay.color = color
-	var tween := _flash_overlay.create_tween()
-	tween.tween_property(_flash_overlay, "color:a", color.a, 0.03)
-	tween.tween_interval(duration)
-	tween.tween_property(_flash_overlay, "color:a", 0.0, 0.12)
+	_flash_tween = _flash_overlay.create_tween()
+	_flash_tween.tween_property(_flash_overlay, "color:a", color.a, 0.03)
+	
+	# Simulated chromatic shift jitter: brief camera offset at the peak of the flash.
+	if color.a > 0.10:
+		var jitter_offset := Vector2(randf_range(-3.0, 3.0), randf_range(-1.0, 1.0))
+		var original_cam_offset: Vector2 = _camera_2d.offset
+		_camera_2d.offset += jitter_offset
+		_flash_tween.parallel().tween_property(_camera_2d, "offset", original_cam_offset, 0.08).set_delay(0.04)
+
+	_flash_tween.tween_interval(duration)
+	_flash_tween.tween_property(_flash_overlay, "color:a", 0.0, 0.12)
 
 
 func on_screen_shake(intensity: float, duration: float) -> void:
@@ -68,6 +103,24 @@ func on_timing_ring_pressed(lane: int) -> void:
 	spawn_attack_silhouette_to_lane(lane, Color(1.0, 1.0, 1.0, 0.18), 5.0, 0.08, 0.72)
 
 
+func on_beat_pulse(quality: String, strength: float) -> void:
+	if _bg_sprite == null or not is_instance_valid(_bg_sprite):
+		return
+
+	var original_modulate: Color = _bg_sprite.modulate
+	var pulse_color: Color = original_modulate
+	
+	match quality:
+		"perfect":
+			pulse_color = original_modulate.lightened(0.12)
+		"good":
+			pulse_color = original_modulate.lightened(0.06)
+	
+	var tween := _bg_sprite.create_tween()
+	tween.tween_property(_bg_sprite, "modulate", pulse_color, 0.05)
+	tween.tween_property(_bg_sprite, "modulate", original_modulate, 0.15)
+
+
 func highlight_timing_ring(lane: int, color: Color, width: float = 4.0) -> void:
 	var group: Node2D = _timing_circle_container.get_node_or_null("TimingRing_%d" % lane)
 	if group == null:
@@ -81,7 +134,7 @@ func highlight_timing_ring(lane: int, color: Color, width: float = 4.0) -> void:
 			if ring.name == "BeatMark":
 				continue
 			ring.default_color = color
-			ring.width = width if ring.name == "Good" else max(width - 1.0, 1.5)
+			ring.width = width if ring.name == "Perfect" else max(width - 1.2, 1.8)
 		elif child is Polygon2D and child.name == "ReceiverFill":
 			# Brief fill flash — conveys impact through the timing ring interior.
 			var fill := child as Polygon2D
@@ -149,6 +202,58 @@ func spawn_attack_silhouette_to_lane(
 	)
 
 
+func spawn_creature_intervention(
+	lane: int,
+	texture_path: String,
+	tint: Color,
+	lifetime: float = 0.45
+) -> void:
+	if texture_path.is_empty() or _player_combat == null or _lane_manager == null:
+		return
+
+	var tex: Texture2D = load(texture_path)
+	if tex == null:
+		return
+
+	var sprite := Sprite2D.new()
+	sprite.texture = tex
+	sprite.modulate = tint
+	sprite.modulate.a = 0.0
+	
+	# Start slightly behind the player, leaning into the field.
+	var start_pos: Vector2 = _player_combat.position + Vector2(-40.0, -12.0)
+	var end_pos: Vector2 = Vector2(
+		_lane_manager.get_hit_zone_x() - 20.0,
+		_lane_manager.get_lane_y(lane)
+	)
+	
+	sprite.position = start_pos
+	# Intervention scale: start large and slightly transparent, punch in.
+	sprite.scale = Vector2(0.045, 0.045)
+	sprite.z_index = 20 # High visibility
+	
+	_attack_fx_container.add_child(sprite)
+
+	var tween := sprite.create_tween()
+	tween.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUART)
+	
+	# Brief punch-in animation: silhouette appears, moves to lane, then fades.
+	tween.tween_property(sprite, "modulate:a", tint.a, 0.08)
+	tween.parallel().tween_property(sprite, "position", end_pos, 0.12)
+	tween.parallel().tween_property(sprite, "scale", Vector2(0.052, 0.052), 0.12)
+	
+	tween.tween_interval(lifetime - 0.20)
+	
+	tween.tween_property(sprite, "modulate:a", 0.0, 0.12)
+	tween.parallel().tween_property(sprite, "scale", Vector2(0.058, 0.058), 0.12)
+	tween.parallel().tween_property(sprite, "position", end_pos + Vector2(25.0, 0.0), 0.12)
+	
+	tween.tween_callback(func() -> void:
+		if is_instance_valid(sprite):
+			sprite.queue_free()
+	)
+
+
 func apply_impact_profile(profile: Dictionary, lane: int = -1, enemy_id: int = -1) -> void:
 	if profile.is_empty():
 		return
@@ -183,9 +288,9 @@ func apply_impact_profile(profile: Dictionary, lane: int = -1, enemy_id: int = -
 		)
 		# For strong hits (burst_scale >= 1.3) spawn manga-style impact lines.
 		if b_scale >= 1.3:
-			var marker: ColorRect = _enemy_markers_by_id.get(enemy_id, null)
-			if marker != null and is_instance_valid(marker):
-				var impact_center: Vector2 = marker.position + marker.size * 0.5
+			var marker: Node2D = _get_enemy_marker_root(enemy_id)
+			if marker != null:
+				var impact_center: Vector2 = _get_enemy_marker_center(marker)
 				var line_color: Color = Color(burst_color.r, burst_color.g, burst_color.b, burst_color.a * 0.55)
 				var line_count: int = 8 if b_scale >= 1.4 else 5
 				spawn_impact_lines(impact_center, line_color, line_count, 26.0, 0.13)
@@ -193,15 +298,15 @@ func apply_impact_profile(profile: Dictionary, lane: int = -1, enemy_id: int = -
 	play_combat_sfx(String(profile.get("sfx_cue", "")))
 
 
-func play_combat_sfx(_cue_id: String) -> void:
-	# No dedicated combat SFX assets are wired yet. Keep cue routing centralized
-	# here so first real SFX intake can attach to existing impact events cleanly.
-	pass
+func play_combat_sfx(cue_id: String) -> void:
+	if cue_id.is_empty():
+		return
+	EventBus.emit_signal("play_sfx", cue_id)
 
 
 func animate_enemy_damage(enemy_id: int, profile: Dictionary = {}) -> void:
-	var marker: ColorRect = _enemy_markers_by_id.get(enemy_id, null)
-	if marker == null or not is_instance_valid(marker):
+	var marker: Node2D = _get_enemy_marker_root(enemy_id)
+	if marker == null:
 		return
 
 	var original_position: Vector2 = marker.position
@@ -228,11 +333,11 @@ func animate_enemy_damage(enemy_id: int, profile: Dictionary = {}) -> void:
 
 
 func spawn_enemy_impact_burst(enemy_id: int, color: Color, burst_scale: float, lifetime: float) -> void:
-	var marker: ColorRect = _enemy_markers_by_id.get(enemy_id, null)
-	if marker == null or not is_instance_valid(marker):
+	var marker: Node2D = _get_enemy_marker_root(enemy_id)
+	if marker == null:
 		return
 
-	var center: Vector2 = marker.position + marker.size * 0.5
+	var center: Vector2 = _get_enemy_marker_center(marker)
 
 	# Spike star — 8 alternating long/short points for sharper manga-style impact reads.
 	var burst := Polygon2D.new()

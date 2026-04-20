@@ -1,5 +1,6 @@
 extends Node2D
 
+# ─── ONREADY NODES ───────────────────────────────────────────────────────────
 @onready var background: ColorRect = $Background
 @onready var flash_overlay: ColorRect = $FlashOverlay
 @onready var lane_manager: Node = $LaneManager
@@ -8,6 +9,7 @@ extends Node2D
 @onready var camera_2d: Camera2D = $Camera2D
 @onready var ui_layer: CanvasLayer = $UI
 
+# ─── UI ELEMENTS ─────────────────────────────────────────────────────────────
 @onready var combo_label: Label = $UI/ComboLabel
 @onready var style_label: Label = $UI/StyleLabel
 @onready var stamina_bar: ProgressBar = $UI/StaminaBar
@@ -16,10 +18,13 @@ extends Node2D
 @onready var result_label: Label = $UI/ResultLabel
 @onready var controls_label: Label = $UI/ControlsLabel
 
+# ─── PRELOADS ────────────────────────────────────────────────────────────────
 const COMBAT_CONTENT = preload("res://data/CombatContent.gd")
+const PRESENTATION_TEXT = preload("res://data/PresentationTextContent.gd")
 const AUDIO_CONTENT = preload("res://data/AudioContent.gd")
 const GROWTH_CONTENT = preload("res://data/RunGrowthContent.gd")
-const SONG_CONTENT = preload("res://data/SongContent.gd")
+const ROUTE_CONTENT = preload("res://data/RouteContent.gd")
+const RUN_PACING_CONTENT = preload("res://data/RunPacingContent.gd")
 const TRICKY_SONGMAP = preload("res://data/song_maps/tricky_songmap.gd")
 const SONG_CONDUCTOR_SCRIPT = preload("res://systems/SongConductor.gd")
 const COMBAT_TRANSITION_STATE = preload("res://systems/CombatTransitionState.gd")
@@ -27,43 +32,87 @@ const COMBAT_IMPACT_FEEDBACK = preload("res://systems/CombatImpactFeedback.gd")
 const COMBAT_PRESENTATION_RUNTIME = preload("res://systems/CombatPresentationRuntime.gd")
 const ENCOUNTER_IDENTITY_RUNTIME = preload("res://systems/EncounterIdentityRuntime.gd")
 const UI_STYLE = preload("res://systems/UIStyle.gd")
-const RING_OUTER_RADIUS: float = 30.0
-const RING_GOOD_RADIUS: float = 24.0
-const RING_PERFECT_RADIUS: float = 15.0
+const COMBAT_AUDIO_PLAYER = preload("res://systems/CombatAudioPlayer.gd")
+const ENCOUNTER_ESCALATION_DIRECTOR = preload("res://systems/EncounterEscalationDirector.gd")
+const SUPPORT_EFFECT_RESOLVER = preload("res://systems/SupportEffectResolver.gd")
+
+# ─── CONSTANTS ───────────────────────────────────────────────────────────────
+const RING_OUTER_RADIUS: float = 30.0 # SUCCESS: matches Projectile.ATTACK_GOOD_MIN (0.96) @ 1280 width
+const RING_PERFECT_RADIUS: float = 15.0 # PERFECT: matches Projectile.ATTACK_PERFECT_MIN (0.98) @ 1280 width
 const RING_POINT_COUNT: int = 32
 const LANE_BAND_HEIGHT: float = 36.0
 const LANE_IDLE_ALPHA: float = 0.0
 const LANE_THREAT_ALPHA: float = 0.054
 const LANE_CRITICAL_ALPHA: float = 0.112
+const LANE_THREAT_FOCUS_ALPHA: float = 0.16
+const LANE_IMMINENT_FOCUS_ALPHA: float = 0.28
 const EDGE_STATE_WIDTH: float = 0.016
 const RUN_GROWTH_SCRIPT_PATH: String = "res://systems/RunGrowth.gd"
+const PERFORMANCE_REWARD_DIRECTOR_SCRIPT_PATH: String = "res://systems/PerformanceRewardDirector.gd"
+const RUN_STATS_SCRIPT_PATH: String = "res://systems/RunStats.gd"
+const COMBAT_PERFORMANCE_HUD_SCENE: PackedScene = preload("res://scenes/ui/CombatPerformanceHUD.tscn")
 const ENEMY_LOW_HP_THRESHOLD: float = 0.25
 const SUPPORT_MASTERY_CONTEXT_TIMEOUT: float = 1.75
-const LIVE_REWARD_WINDOW: float = 8.0
+const LIVE_REWARD_WINDOW: float = 10.0
+const COMBAT_FEEDBACK_MIN_LIFETIME: float = 0.62
+const COMBAT_FEEDBACK_FADE_TIME: float = 0.24
+const BEAT_FEEDBACK_HOLD_TIME: float = 0.42
+const BEAT_FEEDBACK_FADE_TIME: float = 0.24
+const PERFORMANCE_PROC_CHIP_VISIBLE_TIME: float = 1.8
+const PERFORMANCE_PROC_CHIP_FADE_TIME: float = 1.2
+const TENDENCY_ANCHOR_HOLD_TIME: float = 2.3
+const TENDENCY_ANCHOR_FADE_TIME: float = 0.26
+const DAMAGE_NUMBER_FLOAT_TIME: float = 0.85
 const DNA_HUD_VISIBLE_SLOTS: int = 2
-# DNA economy: amount granted per enemy kill from the current phase's reward pool.
-# Phase reward_pool maps kills to creature species — accumulated DNA gates bond/eat.
+const COMBAT_PANEL_TOP_LEFT_PATH: String = "res://assets/ui/combat/panels/combat_panel_top_left.png.png"
+const COMBAT_PANEL_TOP_RIGHT_PATH: String = "res://assets/ui/combat/panels/combat_panel_top_right.png.png"
+const COMBAT_PANEL_REWARD_CLAIM_PATH: String = "res://assets/ui/combat/panels/combat_panel_reward_claim.png.png"
+const COMBAT_PANEL_TOP_LEFT_REGION: Rect2 = Rect2(101.0, 272.0, 1331.0, 372.0)
+const COMBAT_PANEL_TOP_RIGHT_REGION: Rect2 = Rect2(138.0, 262.0, 1290.0, 360.0)
+const COMBAT_PANEL_REWARD_CLAIM_REGION: Rect2 = Rect2(82.0, 160.0, 1387.0, 430.0)
+const RIGHT_HUD_STACK_X: float = 1172.0
+const RIGHT_HUD_STACK_WIDTH: float = 96.0
+const RIGHT_HUD_LABEL_X: float = 1180.0
+const RIGHT_HUD_VALUE_X: float = 1238.0
+const RIGHT_HUD_ROW_WIDTH: float = 24.0
+const RIGHT_HUD_TEXT_WIDTH: float = 80.0
+const COMPACT_LIVE_REWARD_POS: Vector2 = Vector2(520.0, 590.0)
+const COMPACT_LIVE_REWARD_SIZE: Vector2 = Vector2(240.0, 62.0)
+const COMPACT_PERFORMANCE_OFFER_POS: Vector2 = Vector2(508.0, 586.0)
+const COMPACT_PERFORMANCE_OFFER_SIZE: Vector2 = Vector2(264.0, 58.0)
+const QUIG_SPRITE_PATH: String = "res://assets/sprites/quig.png"
+const QUIG_FRAME_SIZE: Vector2i = Vector2i(32, 32)
+const QUIG_FRAME_COUNT: int = 8
+const QUIG_FRAME_DURATION: float = 0.11
+const DNA_SPRITE_PATH: String = "res://assets/sprites/dna.png"
+const DNA_FRAME_SIZE: Vector2i = Vector2i(32, 32)
+const DNA_FRAME_COUNT: int = 5
+const DNA_FRAME_DURATION: float = 0.18
 const DNA_PER_KILL: float = 2.5
 
-# Combat background images. Picked randomly at run start; expandable for
-# boss-specific or region-specific overrides via _apply_combat_background().
+const COMBAT_HUD_PRESENTER = preload("res://systems/CombatHUDPresenter.gd")
+
 const COMBAT_BG_PATHS: Array[String] = [
 	"res://assets/backgrounds/combat/cbg1.png",
 	"res://assets/backgrounds/combat/cbg2.png",
 	"res://assets/backgrounds/combat/cbg3.png",
 ]
-# Dim factor applied to all combat backgrounds.
-# Keeps images atmospheric without competing with lanes, rings, or HUD.
 const COMBAT_BG_MODULATE: Color = Color(0.78, 0.78, 0.78, 1.0)
 
+# ─── STATE VARIABLES ─────────────────────────────────────────────────────────
 var _base_time_scale: float = 1.0
-# Incremented each time _on_slow_motion fires. Each restore timer checks its
-# captured generation against this; only the latest timer restores time_scale.
 var _slow_motion_gen: int = 0
-# Per-lane suppression timer (seconds). While > 0, _update_timing_ring_proximity
-# skips that lane so a freshly-triggered flash isn't immediately overwritten.
 var _ring_highlight_timers: Array[float] = [0.0, 0.0, 0.0]
+var _surge_window_tendency: String = ""
+var _surge_window_timer: float = 0.0
+
+# ─── UI NODES (DYNAMICALLY CREATED) ──────────────────────────────────────────
+var _hud_top_left_container: VBoxContainer = null
+var _hud_top_right_container: VBoxContainer = null
+var _hud_right_stack: VBoxContainer = null
+var _hud_bottom_container: HBoxContainer = null
 var _feedback_label: Label = null
+var _feedback_backing: ColorRect = null
 var _title_card: Label = null
 var _subtitle_card: Label = null
 var _timing_circle_container: Node2D = null
@@ -79,17 +128,24 @@ var _support_bar: ProgressBar = null
 var _support_value_label: Label = null
 var _support_name_label: Label = null
 var _support_creature_portrait: TextureRect = null
-var _support_portrait_species: String = ""  # cached species_id to skip redundant texture loads
+var _support_portrait_species: String = ""
 var _run_build_shell: ColorRect = null
 var _eaten_value_label: Label = null
 var _upgrade_value_label: Label = null
 var _bond_value_label: Label = null
 var _support_trigger_label: Label = null
 var _atk_value_label: Label = null
+var _def_value_label: Label = null
 var _quig_anchor_label: Label = null
+var _quig_anchor_sprite: TextureRect = null
 var _hp_value_label: Label = null
 var _exp_value_label: Label = null
+var _dna_route_label: Label = null
+var _dna_route_shell: ColorRect = null
+var _run_score_label: Label = null
+var _end_stats_label: Label = null
 var _dna_shell: ColorRect = null
+var _dna_emblem: TextureRect = null
 var _dna_slot_labels: Array[Label] = []
 var _battlefield_panel: ColorRect = null
 var _battlefield_inner_panel: ColorRect = null
@@ -101,13 +157,17 @@ var _bg_sprite: TextureRect = null
 var _bonded_creature_sprite: Sprite2D = null
 var _bonded_creature_species: String = ""
 var _presentation_runtime: RefCounted = null
+var _hud_presenter: RefCounted = null
+var _combat_audio_player: Node = null
+var _timing_debug_label: Label = null
 
-# Reward / inter-encounter overlay.
+# ─── REWARD OVERLAY ELEMENTS ─────────────────────────────────────────────────
 var _reward_overlay: ColorRect = null
 var _reward_panel: ColorRect = null
 var _reward_title_label: Label = null
 var _reward_body_label: Label = null
 var _reward_quig_label: Label = null
+var _reward_quig_sprite: TextureRect = null
 var _reward_hint_label: Label = null
 var _reward_bond_card: ColorRect = null
 var _reward_eat_card: ColorRect = null
@@ -118,18 +178,7 @@ var _reward_eat_effect_label: Label = null
 var _reward_creature_tag_label: Label = null
 var _reward_creature_portrait: TextureRect = null
 
-var _combat_finished: bool = false
-var _phase_transitioning: bool = false
-
-# enemy_id -> Color — active status color override for enemy markers.
-# Cleared when the status expires or the enemy is defeated.
-var _status_marker_overrides: Dictionary = {}
-
-var _awaiting_reward_choice: bool = false
-var _reward_choice_made: bool = false
-var _run_finished: bool = false
-var _pending_reward_creature: Dictionary = {}
-var _pending_reward_dna_locked: bool = false
+# ─── LIVE REWARD ELEMENTS ────────────────────────────────────────────────────
 var _live_reward_shell: ColorRect = null
 var _live_reward_title_label: Label = null
 var _live_reward_body_label: Label = null
@@ -137,34 +186,44 @@ var _live_reward_hint_label: Label = null
 var _live_reward_queue: Array[Dictionary] = []
 var _live_reward_offer_timer: float = 0.0
 
-# Incremented each time an encounter payload is loaded. The function
-# captures this at entry and bails after the boss intro await if a newer load
-# has superseded it — mirrors the _cycle_task_id pattern in LaneManager.
+# ─── RUNTIME REQUISITES ──────────────────────────────────────────────────────
+var _combat_finished: bool = false
+var _phase_transitioning: bool = false
+var _awaiting_reward_choice: bool = false
+var _reward_choice_made: bool = false
+var _run_finished: bool = false
+var _pending_reward_creature: Dictionary = {}
+var _pending_reward_dna_locked: bool = false
+var _performance_reward_director: Node = null
+var _performance_hud: Control = null
+var _quig_tween: Tween = null
 var _encounter_load_gen: int = 0
-
 var _active_encounter: Dictionary = {}
 var _current_phase_index: int = 0
 var _run_growth: Node = null
+var _run_stats: Node = null
 
-# enemy_id -> ColorRect
+# ─── ENEMY TRACKING ──────────────────────────────────────────────────────────
 var _enemy_markers_by_id: Dictionary = {}
-# enemy_id -> enemy data
 var _all_enemies_by_id: Dictionary = {}
-# enemy_id -> max HP captured at arena build time (for low-HP threshold)
 var _enemy_max_hp: Dictionary = {}
-# Boss encounter state
+var _status_marker_overrides: Dictionary = {}
+var _enemy_phase_by_id: Dictionary = {}
+
+# ─── BOSS STATE ──────────────────────────────────────────────────────────────
 var _is_boss_encounter: bool = false
 var _boss_total_hp: float = 0.0
 var _boss_current_hp: float = 0.0
 var _boss_hp_shell: ColorRect = null
 var _boss_hp_bar: ProgressBar = null
 var _boss_name_label: Label = null
-# enemy_id -> phase index
-var _enemy_phase_by_id: Dictionary = {}
+var _boss_state_label: Label = null
+
+# ─── LANE VISUALS ────────────────────────────────────────────────────────────
 var _lane_strips: Dictionary = {}
 var _lane_hit_focus: Dictionary = {}
 
-# Song-mode state (used when _song_mode == true).
+# ─── SONG MODE STATE ─────────────────────────────────────────────────────────
 var _song_mode: bool = false
 var _song_elapsed: float = 0.0
 var _song_paused: bool = false
@@ -172,35 +231,118 @@ var _song_phase_index: int = -1
 var _song_boss_triggered: bool = false
 var _next_song_enemy_id: int = 100
 var _song_reward_pending: bool = false
-# Active phase table — set at run start from RegionSongContent based on active_region.
 var _song_phases: Array = []
-# SongConductor child node — null when no music-driven run is active.
 var _song_conductor: Node = null
-# Maps dynamically spawned song enemy_id → lane (so we know where to respawn on death).
 var _song_enemy_lanes: Dictionary = {}
 var _song_timer_label: Label = null
 var _song_phase_label: Label = null
 var _song_rng: RandomNumberGenerator = RandomNumberGenerator.new()
+var _escalation_director: Node = null
+var _support_resolver: RefCounted = null
 var _song_phase_dna_award_index: int = 0
-# Brief beat-quality text shown near the timing rings when the player acts on-beat.
+var _song_section_spawn_mult: float = 1.0
+var _song_level_end_time: float = 0.0
+var _last_beat_index: int = -1
+var _song_level_transitioning: bool = false
+var _regular_level_windows: Array = []
+var _regular_level_index: int = 0
 var _beat_feedback_label: Label = null
 var _last_mastery_context: Dictionary = {}
+var _quig_anim_accum: float = 0.0
+var _quig_anim_frame: int = 0
+var _dna_anim_accum: float = 0.0
+var _dna_anim_frame: int = 0
 
-# Boss music race state.
-# newness.wav plays during the final boss encounter.
-# If the boss is not killed before the track ends, the player loses.
+# ─── BOSS MUSIC & HUD ────────────────────────────────────────────────────────
 var _boss_music_player: AudioStreamPlayer = null
 var _boss_race_active: bool = false
 var _boss_music_duration: float = 0.0
-var _boss_hp_threshold_fired: bool = false  # fires once when boss HP crosses 50%
-var _boss_presence_timer: float = 0.0       # drives sovereign marker urgency pulse
-# Current region id — set at _start_song_run(); drives per-region runtime feel.
+var _boss_hp_threshold_fired: bool = false
+var _boss_presence_timer: float = 0.0
 var _region_id: String = ""
+var _dev_harness_request: Dictionary = {}
+var _active_song_map: Script = TRICKY_SONGMAP
+var _active_song_data: Dictionary = {}
 
+
+# ─── LIFECYCLE ───────────────────────────────────────────────────────────────
 
 func _ready() -> void:
+	if DevHarness.has_pending_request():
+		_dev_harness_request = DevHarness.get_pending_request()
+	
+	_initialize_systems()
+	_initialize_ui()
+	_initialize_run_state()
+	_connect_signals()
+	
+	_start_mini_run()
+	
+	if not _dev_harness_request.is_empty():
+		call_deferred("_apply_dev_harness_post_boot_state")
+
+
+func _initialize_systems() -> void:
+	_setup_lane_manager()
+	_setup_player_combat()
+	_setup_run_growth()
+	_setup_run_stats()
+	_setup_performance_rewards()
+	_setup_escalation_director()
+	_setup_support_resolver()
+
+
+func _setup_support_resolver() -> void:
+	_support_resolver = SUPPORT_EFFECT_RESOLVER.new()
+	_support_resolver.feedback_requested.connect(_show_feedback)
+	_support_resolver.flash_requested.connect(_flash_meter_shell)
+	_support_resolver.intervention_requested.connect(_spawn_support_intervention)
+	_support_resolver.heal_requested.connect(func(amt): 
+		var healed = GameState.heal_player(amt)
+		if healed > 0.0: EventBus.emit_signal("player_healed", healed)
+	)
+	_support_resolver.stamina_requested.connect(func(amt):
+		if combat_meter != null: combat_meter.restore_stamina(amt)
+	)
+	_support_resolver.support_charge_requested.connect(func(amt):
+		if _run_growth != null and _run_growth.has_method("gain_support_charge_direct"):
+			_run_growth.call("gain_support_charge_direct", amt)
+	)
+	_support_resolver.highlight_ring_requested.connect(func(lane, color, duration):
+		if _presentation_runtime != null: _presentation_runtime.highlight_timing_ring(lane, color, duration)
+	)
+
+
+func _setup_escalation_director() -> void:
+	if _escalation_director != null and is_instance_valid(_escalation_director):
+		return
+
+	_escalation_director = ENCOUNTER_ESCALATION_DIRECTOR.new()
+	_escalation_director.name = "EncounterEscalationDirector"
+	add_child(_escalation_director)
+	_escalation_director.lane_manager = lane_manager
+	_escalation_director.player_combat = player_combat
+	_escalation_director.phase_changed.connect(_on_escalation_phase_changed)
+	_escalation_director.spawn_requested.connect(_on_escalation_spawn_requested)
+	_escalation_director.feedback_requested.connect(_on_escalation_feedback_requested)
+
+
+func _on_escalation_phase_changed(index: int, phase_data: Dictionary) -> void:
+	_enter_song_phase(index)
+
+
+func _on_escalation_spawn_requested(lane: int, enemy_data: Dictionary) -> void:
+	_place_song_enemy_data(lane, enemy_data)
+
+
+func _on_escalation_feedback_requested(text: String, color: Color, duration: float) -> void:
+	_show_feedback(text, color, duration)
+
+
+func _initialize_ui() -> void:
 	_setup_visuals()
 	_setup_ui()
+	_setup_ui_pivots()
 	_create_feedback_label()
 	_create_title_cards()
 	_create_timing_circle_container()
@@ -208,47 +350,122 @@ func _ready() -> void:
 	_setup_presentation_runtime()
 	_create_reward_overlay()
 	_create_live_reward_shell()
-	_setup_run_growth()
+	_create_hud_presenter()
+	_refresh_hud_snapshot(0, 0.0, "stirring")
+
+
+func _initialize_run_state() -> void:
+	_combat_finished = false
+	_phase_transitioning = false
+	_run_finished = false
+
+
+func _connect_signals() -> void:
 	_connect_eventbus()
-	_setup_lane_manager()
-	_setup_player_combat()
-	_start_mini_run()
 
 
 func _process(delta: float) -> void:
+	_update_timers(delta)
+	_update_presentation_layers()
+	_update_performance_systems(delta)
+	_update_song_logic(delta)
+	_update_boss_race(delta)
+	_tick_hud_sprite_animation(delta)
+
+
+func _update_timers(delta: float) -> void:
 	for i in range(3):
 		if _ring_highlight_timers[i] > 0.0:
 			_ring_highlight_timers[i] = max(_ring_highlight_timers[i] - delta, 0.0)
-	if _timing_circle_container != null:
-		_update_timing_ring_proximity()
-	if _lane_marker_container != null:
-		_update_lane_visual_states()
+	
+	if _surge_window_timer > 0.0:
+		_surge_window_timer = max(_surge_window_timer - delta, 0.0)
+		if _surge_window_timer <= 0.0:
+			_surge_window_tendency = ""
+	
 	if _song_mode and _song_reward_pending and _awaiting_reward_choice and _live_reward_offer_timer > 0.0:
 		_live_reward_offer_timer = max(_live_reward_offer_timer - delta, 0.0)
 		_refresh_live_reward_shell()
 		if _live_reward_offer_timer <= 0.0:
 			_expire_live_reward_offer()
 
-	if _song_mode and not _song_paused and not _run_finished:
-		if _song_conductor != null:
-			# Conductor is active: sync elapsed time from audio playback position.
-			# Section transitions and boss trigger are driven by conductor signals,
-			# not by _tick_song_phase() or the manual SONG_DURATION check below.
-			_song_elapsed = _song_conductor.get_song_time()
-		else:
-			# Fallback (no audio): wall-clock timer with manual phase/boss checks.
-			_song_elapsed += delta
-			_tick_song_phase()
-			if not _song_boss_triggered and _song_elapsed >= SONG_CONTENT.SONG_DURATION:
-				_trigger_boss_final_movement()
-		_update_song_hud()
-		# Stall recovery: if the fire cycle is running but stalled with live enemies,
-		# kick it back. This catches any edge case where _cycle_stalled got set but
-		# set_enemy() missed the restart (e.g. enemies placed while _combat_running was false).
-		if not _song_boss_triggered and lane_manager.is_combat_running() and lane_manager.is_song_cycle_stalled() and lane_manager.alive_count() > 0:
-			lane_manager.start_song_cycle()
 
+func _update_presentation_layers() -> void:
+	if _timing_circle_container != null:
+		_update_timing_ring_proximity()
+	if _lane_marker_container != null:
+		_update_lane_visual_states()
+	if _enemy_marker_container != null:
+		_update_enemy_marker_threat_states()
+
+
+func _update_performance_systems(delta: float) -> void:
+	if _performance_reward_director != null and is_instance_valid(_performance_reward_director) and _performance_reward_director.has_method("process_tick"):
+		if not _awaiting_reward_choice:
+			_performance_reward_director.call("process_tick", delta)
+			if _performance_hud != null and _performance_hud.has_method("process_tick"):
+				_performance_hud.process_tick(delta, _song_mode, _run_finished, _awaiting_reward_choice)
+
+
+func _update_song_logic(delta: float) -> void:
+	if not _song_mode or _run_finished:
+		return
+		
+	if not _song_paused:
+		if _song_conductor != null:
+			_song_elapsed = _song_conductor.get_song_time()
+			if _escalation_director != null:
+				_escalation_director.update_song_time(_song_elapsed)
+
+			# Beat crossing detection
+
+			var current_beat: int = _song_conductor.get_beat_count()
+			if current_beat > _last_beat_index:
+				_last_beat_index = current_beat
+				var quality: String = _song_conductor.get_beat_quality()
+				_presentation_runtime.on_beat_pulse(quality, 1.0)
+		else:
+			_song_elapsed += delta
+			if _escalation_director != null:
+				_escalation_director.update_song_time(_song_elapsed)
+			if not _song_boss_triggered and _song_elapsed >= _song_level_end_time:
+				_on_regular_level_complete()
+		
+		_update_song_hud()
+		_recover_stalled_cycles()
+		_update_timing_debug()
+
+
+func _update_timing_debug() -> void:
+	if _timing_debug_label == null or not _timing_debug_label.visible:
+		return
+
+	if _song_conductor == null or not _song_conductor.is_beat_active():
+		_timing_debug_label.text = "Beat: --"
+		return
+
+	var quality: String = _song_conductor.get_beat_quality()
+	var phase: float = _song_conductor.get_beat_phase()
+	_timing_debug_label.text = "Beat: %s (%.2f)" % [quality.to_upper(), phase]
+	match quality:
+		"perfect":
+			_timing_debug_label.modulate = Color(0.6, 1.0, 0.6, 0.8)
+		"good":
+			_timing_debug_label.modulate = Color(1.0, 1.0, 0.6, 0.7)
+		_:
+			_timing_debug_label.modulate = Color(1.0, 1.0, 1.0, 0.4)
+
+
+func _recover_stalled_cycles() -> void:
+	if not _song_boss_triggered and lane_manager.is_combat_running() and lane_manager.is_song_cycle_stalled() and lane_manager.alive_count() > 0:
+		lane_manager.start_song_cycle()
+
+
+func _update_boss_race(delta: float) -> void:
 	if _boss_race_active and _boss_music_player != null and is_instance_valid(_boss_music_player):
+		var elapsed: float = _boss_music_player.get_playback_position()
+		if _escalation_director != null:
+			_escalation_director.update_song_time(elapsed)
 		_update_boss_race_hud()
 		_update_boss_presence(delta)
 
@@ -279,6 +496,9 @@ func _update_timing_ring_proximity() -> void:
 		elif bp > 0.88:
 			beat_pulse = ((bp - 0.88) / 0.12) * 0.06
 
+	# Pre-compute surge window fade factor once — used inside the per-lane loop.
+	var surge_wf: float = clamp(_surge_window_timer / 4.0, 0.0, 1.0) if _surge_window_timer > 0.0 else 0.0
+
 	for lane in range(3):
 		if _ring_highlight_timers[lane] > 0.0:
 			continue
@@ -288,23 +508,20 @@ func _update_timing_ring_proximity() -> void:
 			continue
 
 		var outer_ring: Line2D = group.get_node_or_null("Outer") as Line2D
-		var good_ring: Line2D = group.get_node_or_null("Good") as Line2D
 		var perfect_ring: Line2D = group.get_node_or_null("Perfect") as Line2D
 		var receiver_fill: Polygon2D = group.get_node_or_null("ReceiverFill") as Polygon2D
 		var receiver_glow: Polygon2D = group.get_node_or_null("ReceiverGlow") as Polygon2D
 		var edge_ring: Line2D = group.get_node_or_null("Edge") as Line2D
 		var beat_mark: Line2D = group.get_node_or_null("BeatMark") as Line2D
-		if outer_ring == null or good_ring == null or perfect_ring == null or receiver_fill == null or receiver_glow == null or edge_ring == null or beat_mark == null:
+		if outer_ring == null or perfect_ring == null or receiver_fill == null or receiver_glow == null or edge_ring == null or beat_mark == null:
 			continue
 
 		var base_color: Color = active_color if lane == player_combat.current_lane else inactive_color
 
-		var outer_color: Color = Color(base_color.r, base_color.g, base_color.b, base_color.a * 0.56)
-		var good_color: Color = Color(base_color.r, base_color.g, base_color.b, base_color.a * 0.20)
+		var outer_color: Color = Color(base_color.r, base_color.g, base_color.b, base_color.a * 0.45)
 		var perfect_color: Color = base_color.lightened(0.32)
-		var outer_width: float = 1.8
-		var good_width: float = 1.0
-		var perfect_width: float = 3.6
+		var outer_width: float = 2.2
+		var perfect_width: float = 4.2
 		var receiver_alpha: float = 0.10 if lane == player_combat.current_lane else 0.05
 		var receiver_glow_alpha: float = 0.0
 		var edge_alpha: float = 0.0
@@ -313,35 +530,38 @@ func _update_timing_ring_proximity() -> void:
 		var proj = lane_manager.get_projectile(lane)
 		if proj != null and not proj.is_resolved and not proj.is_reflected:
 			var p: float = proj.progress
+			var telegraph_profile: Dictionary = proj.telegraph_profile
+			var threat_color: Color = Color(telegraph_profile.get("lane_color", active_color))
+			var accent_color: Color = Color(telegraph_profile.get("accent_color", threat_color.lightened(0.18)))
+			var warning_bias: float = max(float(telegraph_profile.get("warning_bias", 1.0)), 0.84)
 
 			if p >= approach_start and p < outer_entry:
 				# Projectile is approaching - fade the receiver into focus gradually.
-				var t: float = (p - approach_start) / (outer_entry - approach_start)
-				outer_color = outer_color.lerp(active_color, t)
+				var t: float = clamp(((p - approach_start) / (outer_entry - approach_start)) * warning_bias, 0.0, 1.0)
+				outer_color = outer_color.lerp(threat_color, t)
 				receiver_alpha = lerp(receiver_alpha, 0.18, t)
-				receiver_glow_alpha = lerp(0.0, 0.08, t)
+				receiver_glow_alpha = lerp(0.0, 0.10, t)
+				beat_color = beat_color.lerp(accent_color, t * 0.55)
 
 			elif p >= outer_entry and p <= outer_exit:
 				# Projectile is inside the outer ring - active threat and edge pressure.
-				outer_color = active_color.lightened(0.10)
-				good_color = Color(active_color.r, active_color.g, active_color.b, 0.12)
+				outer_color = threat_color.lightened(0.08)
 				receiver_alpha = 0.22
-				receiver_glow_alpha = 0.14
-				beat_color = active_color.lightened(0.28)
+				receiver_glow_alpha = 0.16
+				beat_color = accent_color.lightened(0.18)
 
 				if p >= perfect_entry and p <= perfect_exit:
 					# Projectile is inside the perfect ring - sharpen the inner receiver truth.
-					good_color = Color(active_color.r, active_color.g, active_color.b, 0.16)
-					perfect_color = active_color.lightened(0.45)
+					perfect_color = accent_color.lightened(0.26)
 					perfect_width = 4.4
-					receiver_alpha = 0.32
-					receiver_glow_alpha = 0.18
-					beat_color = active_color.lightened(0.44)
+					receiver_alpha = 0.34
+					receiver_glow_alpha = 0.22
+					beat_color = accent_color.lightened(0.34)
 
 				var edge_distance: float = min(abs(p - outer_entry), abs(p - outer_exit))
 				if edge_distance <= EDGE_STATE_WIDTH:
 					var edge_t: float = 1.0 - clamp(edge_distance / EDGE_STATE_WIDTH, 0.0, 1.0)
-					edge_alpha = 0.18 + (0.26 * edge_t)
+					edge_alpha = 0.20 + (0.30 * edge_t)
 					outer_width = lerp(outer_width, 3.0, edge_t)
 
 		# Apply beat pulse on top of proximity-driven alpha.
@@ -350,15 +570,44 @@ func _update_timing_ring_proximity() -> void:
 		if beat_pulse > 0.03:
 			beat_color = beat_color.lerp(active_color.lightened(0.38), beat_pulse / 0.13)
 
-		receiver_fill.color = Color(active_color.r, active_color.g, active_color.b, receiver_alpha)
-		receiver_glow.color = Color(active_color.r, active_color.g, active_color.b, receiver_glow_alpha)
-		edge_ring.default_color = Color(active_color.r, active_color.g, active_color.b, edge_alpha)
+		# ── Surge identity window ──────────────────────────────────────────────
+		# After a tendency surge, tint the timing rings toward the tendency's
+		# identity color for 4 s. Fades out linearly via surge_wf.
+		# This presses the run's active character into the most-watched surface
+		# without touching hitbox, timing windows, or lane readability.
+		if surge_wf > 0.0:
+			match _surge_window_tendency:
+				"aggression":
+					# Perfect ring warms to orange-red — attack authority cue.
+					perfect_color = perfect_color.lerp(Color(1.0, 0.48, 0.16, perfect_color.a), surge_wf * 0.28)
+					perfect_width = minf(perfect_width + surge_wf * 0.8, 6.2)
+				"cadence":
+					# Beat mark brightens to gold — rhythm clarity cue.
+					beat_color = beat_color.lerp(Color(1.0, 0.90, 0.22, beat_color.a), surge_wf * 0.42)
+					receiver_alpha = minf(receiver_alpha + surge_wf * 0.04, 0.52)
+				"guard":
+					# Receiver fill gets a faint blue wash — defensive awareness cue.
+					# Color applied below at the receiver_fill assignment step.
+					receiver_alpha = minf(receiver_alpha + surge_wf * 0.04, 0.52)
+				"bond":
+					# Beat mark shifts teal — bond partner resonance cue.
+					beat_color = beat_color.lerp(Color(0.44, 0.96, 0.78, beat_color.a), surge_wf * 0.38)
+					receiver_alpha = minf(receiver_alpha + surge_wf * 0.03, 0.52)
+
+		var rf_color: Color = Color(active_color.r, active_color.g, active_color.b, receiver_alpha)
+		if proj != null and not proj.is_resolved and not proj.is_reflected:
+			var telegraph_profile: Dictionary = proj.telegraph_profile
+			var threat_color: Color = Color(telegraph_profile.get("lane_color", active_color))
+			rf_color = Color(threat_color.r, threat_color.g, threat_color.b, receiver_alpha)
+		if surge_wf > 0.0 and _surge_window_tendency == "guard":
+			rf_color = rf_color.lerp(Color(0.46, 0.70, 1.0, receiver_alpha), surge_wf * 0.20)
+		receiver_fill.color = rf_color
+		receiver_glow.color = Color(rf_color.r, rf_color.g, rf_color.b, receiver_glow_alpha)
+		edge_ring.default_color = Color(rf_color.r, rf_color.g, rf_color.b, edge_alpha)
 		beat_mark.default_color = beat_color
 
 		outer_ring.default_color = outer_color
 		outer_ring.width = outer_width
-		good_ring.default_color = good_color
-		good_ring.width = good_width
 		perfect_ring.default_color = perfect_color
 		perfect_ring.width = perfect_width
 
@@ -396,14 +645,18 @@ func _update_lane_visual_states() -> void:
 		var proj = lane_manager.get_projectile(lane)
 		if proj != null and not proj.is_resolved and not proj.is_reflected:
 			var p: float = proj.progress
-			var pressure: float = clamp((p - 0.76) / 0.28, 0.0, 1.0)
+			var telegraph_profile: Dictionary = proj.telegraph_profile
+			var threat_color: Color = Color(telegraph_profile.get("lane_color", active_color))
+			var accent_color: Color = Color(telegraph_profile.get("accent_color", threat_color.lightened(0.18)))
+			var warning_bias: float = max(float(telegraph_profile.get("warning_bias", 1.0)), 0.84)
+			var pressure: float = clamp(((p - 0.74) / 0.26) * warning_bias, 0.0, 1.0)
 			if pressure > 0.0:
-				state_color = lane_color.lerp(active_color.darkened(0.20), 0.55)
+				state_color = lane_color.lerp(threat_color.darkened(0.18), 0.62)
 				state_alpha = lerp(state_alpha, LANE_THREAT_ALPHA, pressure)
-				focus_color = active_color
-				focus_alpha = lerp(focus_alpha, 0.16, pressure)
-				focus_scale = lerp(1.0, 1.08, pressure)
-				var pulse: float = 0.92 + (sin(time * 5.2 + lane) * 0.03 + 0.03) * pressure
+				focus_color = accent_color
+				focus_alpha = lerp(focus_alpha, LANE_THREAT_FOCUS_ALPHA, pressure)
+				focus_scale = lerp(1.0, 1.10, pressure)
+				var pulse: float = 0.92 + (sin(time * (5.0 + warning_bias * 0.7) + lane) * 0.03 + 0.03) * pressure
 				strip.scale.y = pulse
 			else:
 				strip.scale.y = 1.0
@@ -411,9 +664,9 @@ func _update_lane_visual_states() -> void:
 			if p >= outer_entry and p <= outer_exit:
 				var critical_t: float = 1.0 - clamp(abs(p - 1.0) / (outer_exit - 1.0), 0.0, 1.0)
 				state_alpha = lerp(state_alpha, LANE_CRITICAL_ALPHA, 0.65 + critical_t * 0.35)
-				focus_alpha = lerp(focus_alpha, 0.24, 0.70 + critical_t * 0.30)
-				focus_scale = lerp(focus_scale, 1.14, 0.70 + critical_t * 0.30)
-				focus_color = active_color.lightened(0.08)
+				focus_alpha = lerp(focus_alpha, LANE_IMMINENT_FOCUS_ALPHA, 0.70 + critical_t * 0.30)
+				focus_scale = lerp(focus_scale, 1.16, 0.70 + critical_t * 0.30)
+				focus_color = accent_color.lightened(0.08)
 		else:
 			strip.scale.y = 1.0
 
@@ -440,6 +693,15 @@ func _unhandled_input(event: InputEvent) -> void:
 		if key_event.keycode == KEY_N:
 			_pass_reward()
 			return
+	if _performance_reward_director != null and is_instance_valid(_performance_reward_director) and _performance_reward_director.call("has_active_offer"):
+		if key_event.keycode == KEY_F:
+			_performance_reward_director.call("claim_active_offer", "manual")
+			return
+
+	if not _run_finished and key_event.is_action_pressed("toggle_dna_route"):
+		if _run_growth != null and is_instance_valid(_run_growth) and _run_growth.has_method("toggle_dna_routing_preference"):
+			_run_growth.call("toggle_dna_routing_preference")
+		return
 
 	if _run_finished:
 		if key_event.keycode == KEY_R:
@@ -457,21 +719,7 @@ func _apply_text_role(label: Label, role: String, align: int = -1) -> void:
 func _set_shell_treatment(shell: ColorRect, color: Color, border_color: Color) -> void:
 	if shell == null:
 		return
-	shell.color = color
-	shell.mouse_filter = Control.MOUSE_FILTER_IGNORE
-
-	var panel := StyleBoxFlat.new()
-	panel.bg_color = color
-	panel.corner_radius_top_left = 7
-	panel.corner_radius_top_right = 7
-	panel.corner_radius_bottom_left = 7
-	panel.corner_radius_bottom_right = 7
-	panel.border_width_left = 1
-	panel.border_width_top = 1
-	panel.border_width_right = 1
-	panel.border_width_bottom = 1
-	panel.border_color = border_color
-	shell.add_theme_stylebox_override("panel", panel)
+	UI_STYLE.apply_shell_style(shell, "", "", color, border_color)
 
 
 func _setup_visuals() -> void:
@@ -484,21 +732,16 @@ func _setup_visuals() -> void:
 
 	var field_rect := Rect2(104.0, 112.0, 1060.0, 464.0)
 
+	# Battlefield panel — kept for reference node but fully transparent.
+	# The background image and lane visuals are visually primary; no center slab overlay.
 	_battlefield_panel = ColorRect.new()
 	_battlefield_panel.name = "BattlefieldPanel"
 	_battlefield_panel.position = field_rect.position
 	_battlefield_panel.size = field_rect.size
-	_battlefield_panel.color = Color(0.02, 0.02, 0.03, 0.02)
+	_battlefield_panel.color = Color(0.0, 0.0, 0.0, 0.0)
 	_battlefield_panel.z_index = -7
 	add_child(_battlefield_panel)
-
-	_battlefield_inner_panel = ColorRect.new()
-	_battlefield_inner_panel.name = "BattlefieldInner"
-	_battlefield_inner_panel.position = field_rect.position + Vector2(18.0, 18.0)
-	_battlefield_inner_panel.size = field_rect.size - Vector2(36.0, 36.0)
-	_battlefield_inner_panel.color = Color(0.02, 0.02, 0.03, 0.01)
-	_battlefield_inner_panel.z_index = -6
-	add_child(_battlefield_inner_panel)
+	# _battlefield_inner_panel removed — redundant slab layer.
 
 	_battlefield_left_shade = ColorRect.new()
 	_battlefield_left_shade.name = "BattlefieldLeftShade"
@@ -578,35 +821,72 @@ func _apply_combat_background(override_path: String = "") -> void:
 	add_child(_bg_sprite)
 
 
+func _setup_ui_pivots() -> void:
+	if combo_label != null:
+		combo_label.pivot_offset = combo_label.size * 0.5
+
+
 func _setup_ui() -> void:
+	_build_hud_containers()
 	_build_meter_shell()
+	combo_label.reparent(_hud_top_right_container)
 	combo_label.text = "0"
-	combo_label.position = Vector2(1040.0, 16.0)
-	combo_label.size = Vector2(180.0, 30.0)
+	combo_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_apply_text_role(combo_label, "primary_value", HORIZONTAL_ALIGNMENT_RIGHT)
-	combo_label.add_theme_font_size_override("font_size", 24)
+	combo_label.add_theme_font_size_override("font_size", 26)
+
+	style_label.reparent(_hud_top_right_container)
 	style_label.text = "Stirring"
-	style_label.position = Vector2(962.0, 46.0)
-	style_label.size = Vector2(174.0, 24.0)
-	_apply_text_role(style_label, "secondary_value", HORIZONTAL_ALIGNMENT_LEFT)
-	style_label.add_theme_font_size_override("font_size", 17)
-	stamina_bar.min_value = 0.0
-	stamina_bar.max_value = 100.0
-	stamina_bar.value = 100.0
-	stamina_bar.position = Vector2(34.0, 58.0)
-	stamina_bar.size = Vector2(340.0, 13.0)
-	stamina_bar.show_percentage = false
+	style_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_apply_text_role(style_label, "secondary_value", HORIZONTAL_ALIGNMENT_RIGHT)
+	style_label.add_theme_font_size_override("font_size", 15)
+
+	var hp_row := HBoxContainer.new()
+	hp_row.name = "HpRow"
+	_hud_top_left_container.add_child(hp_row)
+	
+	var hp_caption := Label.new()
+	hp_caption.text = "Health"
+	_apply_text_role(hp_caption, "caption_strong")
+	hp_caption.add_theme_font_size_override("font_size", 14)
+	hp_row.add_child(hp_caption)
+
+	_hp_value_label = Label.new()
+	_hp_value_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_apply_text_role(_hp_value_label, "primary_value", HORIZONTAL_ALIGNMENT_RIGHT)
+	_hp_value_label.add_theme_font_size_override("font_size", 22)
+	hp_row.add_child(_hp_value_label)
+
+	hp_bar.reparent(_hud_top_left_container)
 	hp_bar.min_value = 0.0
 	hp_bar.max_value = GameState.player_max_hp
 	hp_bar.value = GameState.player_hp
-	hp_bar.position = Vector2(34.0, 36.0)
-	hp_bar.size = Vector2(340.0, 16.0)
+	hp_bar.custom_minimum_size = Vector2(240.0, 14.0)
 	hp_bar.show_percentage = false
+
+	var stamina_row := HBoxContainer.new()
+	stamina_row.name = "StaminaRow"
+	_hud_top_left_container.add_child(stamina_row)
+	
+	var stamina_caption := Label.new()
+	stamina_caption.text = "Stamina"
+	_apply_text_role(stamina_caption, "caption_strong")
+	stamina_caption.add_theme_font_size_override("font_size", 14)
+	stamina_row.add_child(stamina_caption)
+
+	stamina_bar.reparent(_hud_top_left_container)
+	stamina_bar.min_value = 0.0
+	stamina_bar.max_value = 100.0
+	stamina_bar.value = 100.0
+	stamina_bar.custom_minimum_size = Vector2(240.0, 11.0)
+	stamina_bar.show_percentage = false
+
+	ultimate_label.reparent(_hud_top_right_container)
 	ultimate_label.text = "0%"
-	ultimate_label.position = Vector2(946.0, 18.0)
-	ultimate_label.size = Vector2(102.0, 24.0)
-	_apply_text_role(ultimate_label, "warm_value")
-	ultimate_label.add_theme_font_size_override("font_size", 20)
+	ultimate_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_apply_text_role(ultimate_label, "warm_value", HORIZONTAL_ALIGNMENT_RIGHT)
+	ultimate_label.add_theme_font_size_override("font_size", 16)
+	
 	result_label.visible = false
 	result_label.text = ""
 	result_label.position = Vector2(320.0, 290.0)
@@ -614,16 +894,91 @@ func _setup_ui() -> void:
 	result_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	result_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_apply_text_role(result_label, "screen_title")
-	controls_label.text = "A S D choose lane  |  Left Arrow + lane parry  |  Right Arrow + lane dodge  |  R unleash"
-	controls_label.position = Vector2(32.0, 646.0)
-	controls_label.size = Vector2(720.0, 26.0)
-	_apply_text_role(controls_label, "hint")
+
+	_end_stats_label = Label.new()
+	_end_stats_label.name = "EndStatsLabel"
+	_end_stats_label.position = Vector2(380.0, 370.0)
+	_end_stats_label.size = Vector2(520.0, 160.0)
+	_end_stats_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_end_stats_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_end_stats_label.autowrap_mode = TextServer.AUTOWRAP_OFF
+	_end_stats_label.visible = false
+	_apply_text_role(_end_stats_label, "secondary_value")
+	_end_stats_label.add_theme_font_size_override("font_size", 16)
+	ui_layer.add_child(_end_stats_label)
+
+	controls_label.reparent(_hud_bottom_container)
+	controls_label.text = "A S D lane | Left Arrow parry | Right Arrow dodge | R unleash | Q route"
+	controls_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_apply_text_role(controls_label, "hint", HORIZONTAL_ALIGNMENT_CENTER)
+	controls_label.add_theme_font_size_override("font_size", 16)
+
 	_style_progress_bar(hp_bar, Color(0.18, 0.06, 0.08, 0.88), Color(0.73, 0.24, 0.26, 1.0), 6)
 	_style_progress_bar(stamina_bar, Color(0.08, 0.09, 0.10, 0.82), Color(0.44, 0.66, 0.58, 1.0), 5)
 	_build_quig_anchor()
 	_build_dna_shell()
 	_build_song_hud()
-	_refresh_hud_snapshot(0, 0.0, "stirring")
+
+
+func _build_hud_containers() -> void:
+	# Top Left Stack
+	var tl_panel := PanelContainer.new()
+	tl_panel.name = "TopLeftPanel"
+	tl_panel.position = Vector2(8.0, 4.0)
+	tl_panel.size = Vector2(300.0, 108.0)
+	UI_STYLE.apply_shell_style(tl_panel, "hud_left", COMBAT_PANEL_TOP_LEFT_PATH)
+	ui_layer.add_child(tl_panel)
+	
+	_hud_top_left_container = VBoxContainer.new()
+	_hud_top_left_container.name = "TopLeftVBox"
+	_hud_top_left_container.add_theme_constant_override("separation", 2)
+	_hud_top_left_container.add_theme_constant_override("margin_left", 12)
+	_hud_top_left_container.add_theme_constant_override("margin_top", 10)
+	tl_panel.add_child(_hud_top_left_container)
+
+	# Top Right Stack
+	var tr_panel := PanelContainer.new()
+	tr_panel.name = "TopRightPanel"
+	tr_panel.anchor_left = 1.0
+	tr_panel.anchor_right = 1.0
+	tr_panel.offset_left = -212.0
+	tr_panel.offset_top = 4.0
+	tr_panel.offset_right = -8.0
+	tr_panel.size = Vector2(212.0, 88.0)
+	UI_STYLE.apply_shell_style(tr_panel, "hud_right", COMBAT_PANEL_TOP_RIGHT_PATH)
+	ui_layer.add_child(tr_panel)
+
+	_hud_top_right_container = VBoxContainer.new()
+	_hud_top_right_container.name = "TopRightVBox"
+	_hud_top_right_container.add_theme_constant_override("separation", 0)
+	_hud_top_right_container.add_theme_constant_override("margin_right", 16)
+	_hud_top_right_container.add_theme_constant_override("margin_top", 8)
+	tr_panel.add_child(_hud_top_right_container)
+
+	_hud_right_stack = VBoxContainer.new()
+	_hud_right_stack.name = "RightStackContainer"
+	_hud_right_stack.anchor_left = 1.0
+	_hud_right_stack.anchor_right = 1.0
+	_hud_right_stack.offset_left = -120.0
+	_hud_right_stack.offset_top = 100.0
+	_hud_right_stack.offset_right = -24.0
+	_hud_right_stack.size = Vector2(RIGHT_HUD_STACK_WIDTH, 500.0)
+	_hud_right_stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_hud_right_stack.add_theme_constant_override("separation", 6)
+	ui_layer.add_child(_hud_right_stack)
+
+	_hud_bottom_container = HBoxContainer.new()
+	_hud_bottom_container.name = "BottomContainer"
+	_hud_bottom_container.anchor_top = 1.0
+	_hud_bottom_container.anchor_bottom = 1.0
+	_hud_bottom_container.anchor_right = 1.0
+	_hud_bottom_container.offset_left = 32.0
+	_hud_bottom_container.offset_top = -48.0
+	_hud_bottom_container.offset_right = -32.0
+	_hud_bottom_container.offset_bottom = -12.0
+	_hud_bottom_container.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_hud_bottom_container.alignment = BoxContainer.ALIGNMENT_CENTER
+	ui_layer.add_child(_hud_bottom_container)
 
 
 func _build_meter_shell() -> void:
@@ -634,198 +989,234 @@ func _build_meter_shell() -> void:
 	_meter_shell.color = Color(0.0, 0.0, 0.0, 0.0)
 	ui_layer.add_child(_meter_shell)
 
-	_combo_shell = ColorRect.new()
-	_combo_shell.name = "LeftHudShell"
-	_combo_shell.position = Vector2(18.0, 8.0)
-	_combo_shell.size = Vector2(374.0, 108.0)
-	_set_shell_treatment(_combo_shell, Color(0.07, 0.07, 0.08, 0.84), Color(0.23, 0.20, 0.18, 0.88))
-	ui_layer.add_child(_combo_shell)
-
-	_style_shell = ColorRect.new()
-	_style_shell.name = "RightHudShell"
-	_style_shell.position = Vector2(892.0, 8.0)
-	_style_shell.size = Vector2(340.0, 84.0)
-	_set_shell_treatment(_style_shell, Color(0.08, 0.07, 0.08, 0.84), Color(0.24, 0.20, 0.18, 0.88))
-	ui_layer.add_child(_style_shell)
-
 	_resource_shell = ColorRect.new()
 	_resource_shell.name = "RightHudAccent"
-	_resource_shell.position = Vector2(1044.0, 18.0)
-	_resource_shell.size = Vector2(176.0, 24.0)
-	_set_shell_treatment(_resource_shell, Color(0.15, 0.12, 0.10, 0.30), Color(0.30, 0.24, 0.18, 0.46))
+	_resource_shell.position = Vector2(1208.0, 12.0)
+	_resource_shell.size = Vector2(48.0, 16.0)
+	UI_STYLE.apply_shell_style(_resource_shell, "hud_accent")
+	_resource_shell.color = Color(0.16, 0.10, 0.08, 0.12)
 	ui_layer.add_child(_resource_shell)
 
 	_support_shell = ColorRect.new()
 	_support_shell.name = "SupportShell"
-	_support_shell.position = Vector2(892.0, 98.0)
-	_support_shell.size = Vector2(276.0, 90.0)
-	_set_shell_treatment(_support_shell, Color(0.08, 0.08, 0.10, 0.74), Color(0.20, 0.22, 0.19, 0.78))
-	ui_layer.add_child(_support_shell)
+	_support_shell.custom_minimum_size = Vector2(RIGHT_HUD_STACK_WIDTH, 68.0)
+	UI_STYLE.apply_shell_style(_support_shell, "support_idle")
+	_hud_right_stack.add_child(_support_shell)
 
-	# Bonded creature portrait — shown when the active support creature has a sprite_path.
-	# Hides automatically for creatures without art; no fallback needed.
+	# Bonded creature portrait
 	_support_creature_portrait = TextureRect.new()
 	_support_creature_portrait.name = "SupportPortrait"
-	_support_creature_portrait.position = Vector2(902.0, 108.0)
-	_support_creature_portrait.size = Vector2(64.0, 64.0)
+	_support_creature_portrait.position = Vector2(8.0, 4.0)
+	_support_creature_portrait.size = Vector2(20.0, 20.0)
 	_support_creature_portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	_support_creature_portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_support_creature_portrait.visible = false
-	ui_layer.add_child(_support_creature_portrait)
+	_support_shell.add_child(_support_creature_portrait)
 
 	_support_name_label = Label.new()
-	_support_name_label.position = Vector2(974.0, 108.0)
-	_support_name_label.size = Vector2(136.0, 20.0)
-	_support_name_label.text = "No bond"
-	_apply_text_role(_support_name_label, "caption_strong")
-	_support_name_label.add_theme_font_size_override("font_size", 16)
-	ui_layer.add_child(_support_name_label)
+	_support_name_label.position = Vector2(8.0, 2.0)
+	_support_name_label.size = Vector2(54.0, 20.0)
+	_support_name_label.text = PRESENTATION_TEXT.SUPPORT_EMPTY_NAME
+	_apply_text_role(_support_name_label, "secondary_value")
+	_support_name_label.add_theme_font_size_override("font_size", 18)
+	_support_shell.add_child(_support_name_label)
 
 	_support_value_label = Label.new()
-	_support_value_label.position = Vector2(1106.0, 108.0)
-	_support_value_label.size = Vector2(54.0, 20.0)
+	_support_value_label.position = Vector2(66.0, 0.0)
+	_support_value_label.size = Vector2(RIGHT_HUD_ROW_WIDTH, 22.0)
 	_support_value_label.text = "--"
-	_apply_text_role(_support_value_label, "secondary_value", HORIZONTAL_ALIGNMENT_RIGHT)
-	_support_value_label.add_theme_font_size_override("font_size", 16)
-	ui_layer.add_child(_support_value_label)
+	_apply_text_role(_support_value_label, "alert_value", HORIZONTAL_ALIGNMENT_RIGHT)
+	_support_value_label.add_theme_font_size_override("font_size", 20)
+	_support_shell.add_child(_support_value_label)
 
 	_support_bar = ProgressBar.new()
-	_support_bar.position = Vector2(974.0, 132.0)
-	_support_bar.size = Vector2(186.0, 12.0)
+	_support_bar.position = Vector2(8.0, 22.0)
+	_support_bar.size = Vector2(84.0, 14.0)
 	_support_bar.min_value = 0.0
 	_support_bar.max_value = 100.0
 	_support_bar.value = 0.0
 	_support_bar.show_percentage = false
-	ui_layer.add_child(_support_bar)
-	_style_progress_bar(_support_bar, Color(0.08, 0.09, 0.10, 0.80), Color(0.54, 0.70, 0.63, 0.92), 4)
+	_support_shell.add_child(_support_bar)
+	UI_STYLE.apply_bar_style(_support_bar, "support_idle")
 
 	_support_trigger_label = Label.new()
 	_support_trigger_label.name = "SupportTriggerHint"
-	_support_trigger_label.position = Vector2(974.0, 150.0)
-	_support_trigger_label.size = Vector2(186.0, 22.0)
+	_support_trigger_label.position = Vector2(8.0, 38.0)
+	_support_trigger_label.size = Vector2(RIGHT_HUD_TEXT_WIDTH, 18.0)
 	_support_trigger_label.text = ""
-	_apply_text_role(_support_trigger_label, "dim")
-	_support_trigger_label.add_theme_font_size_override("font_size", 12)
-	ui_layer.add_child(_support_trigger_label)
+	_apply_text_role(_support_trigger_label, "status_line")
+	_support_trigger_label.add_theme_font_size_override("font_size", 17)
+	_support_shell.add_child(_support_trigger_label)
 
 	_run_build_shell = ColorRect.new()
 	_run_build_shell.name = "RunBuildShell"
-	_run_build_shell.position = Vector2(892.0, 196.0)
-	_run_build_shell.size = Vector2(244.0, 70.0)
-	_set_shell_treatment(_run_build_shell, Color(0.07, 0.07, 0.09, 0.58), Color(0.19, 0.18, 0.17, 0.66))
-	ui_layer.add_child(_run_build_shell)
+	_run_build_shell.custom_minimum_size = Vector2(RIGHT_HUD_STACK_WIDTH, 22.0)
+	UI_STYLE.apply_shell_style(_run_build_shell, "run_build")
+	_run_build_shell.visible = false
+	_hud_right_stack.add_child(_run_build_shell)
 
 	var eaten_caption := Label.new()
-	eaten_caption.position = Vector2(904.0, 199.0)
-	eaten_caption.size = Vector2(44.0, 12.0)
-	eaten_caption.text = "Consumed"
-	_apply_text_role(eaten_caption, "caption")
-	ui_layer.add_child(eaten_caption)
+	eaten_caption.position = Vector2(8.0, 4.0)
+	eaten_caption.size = Vector2(54.0, 16.0)
+	eaten_caption.text = PRESENTATION_TEXT.RUN_BUILD_EATEN_CAPTION
+	_apply_text_role(eaten_caption, "caption_strong")
+	eaten_caption.visible = false
+	_run_build_shell.add_child(eaten_caption)
 
 	_eaten_value_label = Label.new()
-	_eaten_value_label.position = Vector2(942.0, 198.0)
-	_eaten_value_label.size = Vector2(184.0, 12.0)
+	_eaten_value_label.position = Vector2(34.0, 4.0)
+	_eaten_value_label.size = Vector2(54.0, 16.0)
 	_eaten_value_label.text = "--"
-	_apply_text_role(_eaten_value_label, "hint")
-	ui_layer.add_child(_eaten_value_label)
+	_apply_text_role(_eaten_value_label, "status_line")
+	_eaten_value_label.add_theme_font_size_override("font_size", 16)
+	_eaten_value_label.visible = false
+	_run_build_shell.add_child(_eaten_value_label)
 
 	var upgrade_caption := Label.new()
-	upgrade_caption.position = Vector2(904.0, 220.0)
-	upgrade_caption.size = Vector2(52.0, 12.0)
-	upgrade_caption.text = "Tendency"
-	_apply_text_role(upgrade_caption, "caption")
-	ui_layer.add_child(upgrade_caption)
+	upgrade_caption.position = Vector2(8.0, 4.0)
+	upgrade_caption.size = Vector2(54.0, 16.0)
+	upgrade_caption.text = PRESENTATION_TEXT.RUN_BUILD_TENDENCY_CAPTION
+	_apply_text_role(upgrade_caption, "caption_strong")
+	upgrade_caption.visible = false
+	_run_build_shell.add_child(upgrade_caption)
 
 	_upgrade_value_label = Label.new()
-	_upgrade_value_label.position = Vector2(942.0, 219.0)
-	_upgrade_value_label.size = Vector2(184.0, 12.0)
+	_upgrade_value_label.position = Vector2(34.0, 4.0)
+	_upgrade_value_label.size = Vector2(54.0, 16.0)
 	_upgrade_value_label.text = "--"
-	_apply_text_role(_upgrade_value_label, "hint")
-	ui_layer.add_child(_upgrade_value_label)
+	_apply_text_role(_upgrade_value_label, "alert_value")
+	_upgrade_value_label.add_theme_font_size_override("font_size", 16)
+	_upgrade_value_label.visible = false
+	_run_build_shell.add_child(_upgrade_value_label)
 
 	var bond_caption := Label.new()
-	bond_caption.position = Vector2(904.0, 243.0)
-	bond_caption.size = Vector2(52.0, 12.0)
-	bond_caption.text = "Bond"
-	_apply_text_role(bond_caption, "caption")
-	ui_layer.add_child(bond_caption)
+	bond_caption.position = Vector2(8.0, 4.0)
+	bond_caption.size = Vector2(54.0, 16.0)
+	bond_caption.text = PRESENTATION_TEXT.RUN_BUILD_BOND_CAPTION
+	_apply_text_role(bond_caption, "caption_strong")
+	bond_caption.visible = false
+	_run_build_shell.add_child(bond_caption)
 
 	_bond_value_label = Label.new()
-	_bond_value_label.position = Vector2(942.0, 242.0)
-	_bond_value_label.size = Vector2(184.0, 12.0)
+	_bond_value_label.position = Vector2(34.0, 4.0)
+	_bond_value_label.size = Vector2(54.0, 16.0)
 	_bond_value_label.text = "--"
 	_apply_text_role(_bond_value_label, "cool_value")
-	ui_layer.add_child(_bond_value_label)
+	_bond_value_label.add_theme_font_size_override("font_size", 16)
+	_bond_value_label.visible = false
+	_run_build_shell.add_child(_bond_value_label)
 
-	var hp_caption := Label.new()
-	hp_caption.position = Vector2(34.0, 16.0)
-	hp_caption.size = Vector2(96.0, 20.0)
-	hp_caption.text = "Health"
-	_apply_text_role(hp_caption, "caption_strong")
-	hp_caption.add_theme_font_size_override("font_size", 15)
-	ui_layer.add_child(hp_caption)
+	# Top-left sub-container for secondary stats (EXP, Def, Atk)
+	var stats_row := HBoxContainer.new()
+	stats_row.name = "StatsRow"
+	stats_row.custom_minimum_size = Vector2(240.0, 20.0)
+	_hud_top_left_container.add_child(stats_row)
 
-	_hp_value_label = Label.new()
-	_hp_value_label.position = Vector2(250.0, 12.0)
-	_hp_value_label.size = Vector2(124.0, 24.0)
-	_apply_text_role(_hp_value_label, "primary_value", HORIZONTAL_ALIGNMENT_RIGHT)
-	_hp_value_label.add_theme_font_size_override("font_size", 22)
-	ui_layer.add_child(_hp_value_label)
-
-	# EXP and Attack share the bottom row of the left panel, separated left/right.
 	var exp_caption := Label.new()
-	exp_caption.position = Vector2(34.0, 84.0)
-	exp_caption.size = Vector2(44.0, 16.0)
 	exp_caption.text = "EXP"
 	_apply_text_role(exp_caption, "caption")
-	exp_caption.add_theme_font_size_override("font_size", 13)
-	ui_layer.add_child(exp_caption)
+	exp_caption.add_theme_font_size_override("font_size", 14)
+	stats_row.add_child(exp_caption)
 
 	_exp_value_label = Label.new()
-	_exp_value_label.position = Vector2(78.0, 82.0)
-	_exp_value_label.size = Vector2(156.0, 18.0)
+	_exp_value_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_apply_text_role(_exp_value_label, "secondary_value", HORIZONTAL_ALIGNMENT_LEFT)
-	_exp_value_label.add_theme_font_size_override("font_size", 15)
-	ui_layer.add_child(_exp_value_label)
+	_exp_value_label.add_theme_font_size_override("font_size", 14)
+	stats_row.add_child(_exp_value_label)
+
+	var def_caption := Label.new()
+	def_caption.text = "Def"
+	_apply_text_role(def_caption, "caption")
+	def_caption.add_theme_font_size_override("font_size", 14)
+	stats_row.add_child(def_caption)
+
+	_def_value_label = Label.new()
+	_def_value_label.custom_minimum_size = Vector2(26.0, 0.0)
+	_apply_text_role(_def_value_label, "secondary_value", HORIZONTAL_ALIGNMENT_RIGHT)
+	_def_value_label.add_theme_font_size_override("font_size", 14)
+	stats_row.add_child(_def_value_label)
 
 	var atk_caption := Label.new()
-	atk_caption.position = Vector2(246.0, 84.0)
-	atk_caption.size = Vector2(38.0, 16.0)
 	atk_caption.text = "Atk"
 	_apply_text_role(atk_caption, "caption")
-	atk_caption.add_theme_font_size_override("font_size", 13)
-	ui_layer.add_child(atk_caption)
+	atk_caption.add_theme_font_size_override("font_size", 14)
+	stats_row.add_child(atk_caption)
 
 	_atk_value_label = Label.new()
-	_atk_value_label.position = Vector2(286.0, 82.0)
-	_atk_value_label.size = Vector2(88.0, 18.0)
+	_atk_value_label.custom_minimum_size = Vector2(26.0, 0.0)
 	_apply_text_role(_atk_value_label, "secondary_value", HORIZONTAL_ALIGNMENT_RIGHT)
-	_atk_value_label.add_theme_font_size_override("font_size", 15)
-	ui_layer.add_child(_atk_value_label)
+	_atk_value_label.add_theme_font_size_override("font_size", 14)
+	stats_row.add_child(_atk_value_label)
 
-	var style_caption := Label.new()
-	style_caption.position = Vector2(904.0, 48.0)
-	style_caption.size = Vector2(56.0, 18.0)
-	style_caption.text = "Style"
-	_apply_text_role(style_caption, "caption")
-	style_caption.add_theme_font_size_override("font_size", 13)
-	ui_layer.add_child(style_caption)
+	# Top-Right sub-containers for readouts
+	var ult_row := HBoxContainer.new()
+	ult_row.alignment = BoxContainer.ALIGNMENT_END
+	_hud_top_right_container.add_child(ult_row)
+	
+	var ultimate_caption := Label.new()
+	ultimate_caption.text = "Ult"
+	_apply_text_role(ultimate_caption, "caption_strong")
+	ultimate_caption.add_theme_font_size_override("font_size", 14)
+	ult_row.add_child(ultimate_caption)
+	ultimate_label.reparent(ult_row)
+	ultimate_label.custom_minimum_size = Vector2(40.0, 0.0)
+
+	var score_row := HBoxContainer.new()
+	score_row.alignment = BoxContainer.ALIGNMENT_END
+	_hud_top_right_container.add_child(score_row)
 
 	var score_caption := Label.new()
-	score_caption.position = Vector2(1088.0, 20.0)
-	score_caption.size = Vector2(70.0, 16.0)
-	score_caption.text = "Score"
-	_apply_text_role(score_caption, "caption")
-	score_caption.add_theme_font_size_override("font_size", 13)
-	ui_layer.add_child(score_caption)
+	score_caption.text = "Combo"
+	_apply_text_role(score_caption, "caption_strong")
+	score_caption.add_theme_font_size_override("font_size", 14)
+	score_row.add_child(score_caption)
+	combo_label.reparent(score_row)
+	combo_label.custom_minimum_size = Vector2(50.0, 0.0)
 
-	var ultimate_caption := Label.new()
-	ultimate_caption.position = Vector2(904.0, 20.0)
-	ultimate_caption.size = Vector2(50.0, 16.0)
-	ultimate_caption.text = "Ult"
-	_apply_text_role(ultimate_caption, "caption")
-	ultimate_caption.add_theme_font_size_override("font_size", 13)
-	ui_layer.add_child(ultimate_caption)
+	var style_row := HBoxContainer.new()
+	style_row.alignment = BoxContainer.ALIGNMENT_END
+	_hud_top_right_container.add_child(style_row)
+
+	var style_caption := Label.new()
+	style_caption.text = "Style"
+	_apply_text_role(style_caption, "caption_strong")
+	style_caption.add_theme_font_size_override("font_size", 14)
+	style_row.add_child(style_caption)
+	style_label.reparent(style_row)
+	style_label.custom_minimum_size = Vector2(100.0, 0.0)
+
+	_dna_route_shell = ColorRect.new()
+	_dna_route_shell.name = "DnaRouteShell"
+	_dna_route_shell.custom_minimum_size = Vector2(RIGHT_HUD_STACK_WIDTH, 22.0)
+	UI_STYLE.apply_shell_style(_dna_route_shell, "hud_right")
+	_hud_right_stack.add_child(_dna_route_shell)
+
+	_dna_route_label = Label.new()
+	_dna_route_label.position = Vector2(0.0, 0.0)
+	_dna_route_label.size = Vector2(RIGHT_HUD_STACK_WIDTH, 22.0)
+	_dna_route_label.text = PRESENTATION_TEXT.DNA_ROUTE_BOND_LABEL
+	_apply_text_role(_dna_route_label, "status_line", HORIZONTAL_ALIGNMENT_CENTER)
+	_dna_route_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_dna_route_label.add_theme_font_size_override("font_size", 16)
+	_dna_route_shell.add_child(_dna_route_label)
+
+	var run_score_row := HBoxContainer.new()
+	run_score_row.alignment = BoxContainer.ALIGNMENT_END
+	_hud_top_right_container.add_child(run_score_row)
+
+	var run_score_caption := Label.new()
+	run_score_caption.text = "Run"
+	_apply_text_role(run_score_caption, "caption_strong")
+	run_score_caption.add_theme_font_size_override("font_size", 14)
+	run_score_row.add_child(run_score_caption)
+
+	_run_score_label = Label.new()
+	_run_score_label.name = "RunScoreLabel"
+	_run_score_label.text = "0"
+	_apply_text_role(_run_score_label, "secondary_value", HORIZONTAL_ALIGNMENT_RIGHT)
+	_run_score_label.add_theme_font_size_override("font_size", 13)
+	_run_score_label.custom_minimum_size = Vector2(80.0, 0.0)
+	run_score_row.add_child(_run_score_label)
 
 	_bonded_creature_sprite = Sprite2D.new()
 	_bonded_creature_sprite.name = "BondedCreatureSprite"
@@ -837,35 +1228,57 @@ func _build_meter_shell() -> void:
 	# Boss HP bar — centered between HUD shells, hidden until a boss encounter loads.
 	_boss_hp_shell = ColorRect.new()
 	_boss_hp_shell.name = "BossHpShell"
-	_boss_hp_shell.position = Vector2(380.0, 6.0)
-	_boss_hp_shell.size = Vector2(520.0, 56.0)
-	_boss_hp_shell.color = Color(0.09, 0.06, 0.04, 0.82)
+	_boss_hp_shell.position = Vector2(396.0, 8.0)
+	_boss_hp_shell.size = Vector2(488.0, 48.0)
+	UI_STYLE.apply_shell_style(_boss_hp_shell, "boss_shell")
 	_boss_hp_shell.visible = false
 	ui_layer.add_child(_boss_hp_shell)
 
 	_boss_name_label = Label.new()
 	_boss_name_label.name = "BossNameLabel"
-	_boss_name_label.position = Vector2(380.0, 10.0)
-	_boss_name_label.size = Vector2(520.0, 16.0)
+	_boss_name_label.position = Vector2(410.0, 8.0)
+	_boss_name_label.size = Vector2(460.0, 22.0)
 	_boss_name_label.text = ""
 	_apply_text_role(_boss_name_label, "boss", HORIZONTAL_ALIGNMENT_CENTER)
+	_boss_name_label.add_theme_font_size_override("font_size", 26)
 	_boss_name_label.visible = false
 	ui_layer.add_child(_boss_name_label)
 
+	_boss_state_label = Label.new()
+	_boss_state_label.name = "BossStateLabel"
+	_boss_state_label.position = Vector2(410.0, 26.0)
+	_boss_state_label.size = Vector2(460.0, 14.0)
+	_boss_state_label.text = ""
+	_apply_text_role(_boss_state_label, "body", HORIZONTAL_ALIGNMENT_CENTER)
+	_boss_state_label.add_theme_font_size_override("font_size", 14)
+	_boss_state_label.add_theme_color_override("font_color", Color(0.82, 0.72, 0.58, 0.96))
+	_boss_state_label.visible = false
+	ui_layer.add_child(_boss_state_label)
+
 	_boss_hp_bar = ProgressBar.new()
 	_boss_hp_bar.name = "BossHpBar"
-	_boss_hp_bar.position = Vector2(392.0, 30.0)
-	_boss_hp_bar.size = Vector2(496.0, 20.0)
+	_boss_hp_bar.position = Vector2(410.0, 38.0)
+	_boss_hp_bar.size = Vector2(460.0, 14.0)
 	_boss_hp_bar.min_value = 0.0
 	_boss_hp_bar.max_value = 100.0
 	_boss_hp_bar.value = 100.0
 	_boss_hp_bar.show_percentage = false
 	_boss_hp_bar.visible = false
 	ui_layer.add_child(_boss_hp_bar)
-	_style_progress_bar(_boss_hp_bar, Color(0.10, 0.06, 0.03, 0.90), Color(0.84, 0.56, 0.12, 1.0), 4)
+	UI_STYLE.apply_bar_style(_boss_hp_bar, "boss")
 
 
 func _style_progress_bar(bar: ProgressBar, under_color: Color, fill_color: Color, corner_radius: int) -> void:
+	var role: String = ""
+	if bar == _support_bar:
+		role = "support_idle"
+	elif bar == _boss_hp_bar:
+		role = "boss"
+
+	if not role.is_empty():
+		UI_STYLE.apply_bar_style(bar, role)
+		return
+
 	var under := StyleBoxFlat.new()
 	under.bg_color = under_color
 	under.corner_radius_top_left = corner_radius
@@ -889,14 +1302,81 @@ func _style_progress_bar(bar: ProgressBar, under_color: Color, fill_color: Color
 	bar.add_theme_stylebox_override("fill", fill)
 
 
+func _create_panel_backing(
+	name: String,
+	texture_path: String,
+	region: Rect2,
+	position: Vector2,
+	size: Vector2,
+	modulate: Color = Color(1.0, 1.0, 1.0, 1.0)
+) -> TextureRect:
+	if not ResourceLoader.exists(texture_path):
+		return null
+
+	var source_texture: Texture2D = load(texture_path) as Texture2D
+	if source_texture == null:
+		return null
+
+	var atlas := AtlasTexture.new()
+	atlas.atlas = source_texture
+	atlas.region = region
+
+	var backing := TextureRect.new()
+	backing.name = name
+	backing.texture = atlas
+	backing.position = position
+	backing.size = size
+	backing.stretch_mode = TextureRect.STRETCH_SCALE
+	backing.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	backing.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	backing.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	backing.modulate = modulate
+	ui_layer.add_child(backing)
+	return backing
+
+
+func _build_strip_sprite(
+	name: String,
+	texture_path: String,
+	frame_size: Vector2i,
+	initial_frame: int,
+	position: Vector2,
+	size: Vector2
+) -> TextureRect:
+	if not ResourceLoader.exists(texture_path):
+		return null
+
+	var source_texture: Texture2D = load(texture_path) as Texture2D
+	if source_texture == null:
+		return null
+
+	var atlas := AtlasTexture.new()
+	atlas.atlas = source_texture
+	atlas.region = Rect2(
+		Vector2(frame_size.x * initial_frame, 0.0),
+		Vector2(frame_size.x, frame_size.y)
+	)
+
+	var sprite := TextureRect.new()
+	sprite.name = name
+	sprite.texture = atlas
+	sprite.position = position
+	sprite.size = size
+	sprite.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	sprite.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	sprite.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return sprite
+
+
 func _build_song_hud() -> void:
 	# Song phase label — top-center, dim.
 	_song_phase_label = Label.new()
 	_song_phase_label.name = "SongPhaseLabel"
 	_song_phase_label.text = ""
 	_apply_text_role(_song_phase_label, "dim", HORIZONTAL_ALIGNMENT_CENTER)
-	_song_phase_label.size = Vector2(400.0, 20.0)
-	_song_phase_label.position = Vector2(440.0, 10.0)
+	_song_phase_label.size = Vector2(300.0, 18.0)
+	_song_phase_label.position = Vector2(490.0, 12.0)
 	_song_phase_label.visible = false
 	ui_layer.add_child(_song_phase_label)
 
@@ -905,8 +1385,8 @@ func _build_song_hud() -> void:
 	_song_timer_label.name = "SongTimerLabel"
 	_song_timer_label.text = ""
 	_apply_text_role(_song_timer_label, "secondary_value", HORIZONTAL_ALIGNMENT_RIGHT)
-	_song_timer_label.size = Vector2(80.0, 22.0)
-	_song_timer_label.position = Vector2(1180.0, 10.0)
+	_song_timer_label.size = Vector2(46.0, 18.0)
+	_song_timer_label.position = Vector2(1216.0, 56.0)
 	_song_timer_label.visible = false
 	ui_layer.add_child(_song_timer_label)
 
@@ -916,77 +1396,123 @@ func _build_song_hud() -> void:
 	_beat_feedback_label = Label.new()
 	_beat_feedback_label.name = "BeatFeedbackLabel"
 	_beat_feedback_label.text = ""
-	_apply_text_role(_beat_feedback_label, "hint", HORIZONTAL_ALIGNMENT_CENTER)
-	_beat_feedback_label.size = Vector2(180.0, 20.0)
-	_beat_feedback_label.position = Vector2(354.0, 344.0)
+	_apply_text_role(_beat_feedback_label, "alert_value", HORIZONTAL_ALIGNMENT_CENTER)
+	_beat_feedback_label.add_theme_font_size_override("font_size", 22)
+	_beat_feedback_label.size = Vector2(280.0, 40.0)
+	_beat_feedback_label.position = Vector2(308.0, 334.0)
 	_beat_feedback_label.visible = false
 	_beat_feedback_label.z_index = 6
 	ui_layer.add_child(_beat_feedback_label)
 
 
 func _build_quig_anchor() -> void:
+	var quig_shell := ColorRect.new()
+	quig_shell.name = "QuigShell"
+	quig_shell.custom_minimum_size = Vector2(RIGHT_HUD_STACK_WIDTH, 28.0)
+	quig_shell.color = Color(0.0, 0.0, 0.0, 0.0)
+	_hud_right_stack.add_child(quig_shell)
+
+	_quig_anchor_sprite = _build_strip_sprite(
+		"QuigAnchorSprite",
+		QUIG_SPRITE_PATH,
+		QUIG_FRAME_SIZE,
+		0,
+		Vector2(2.0, 2.0),
+		Vector2(24.0, 24.0)
+	)
+	if _quig_anchor_sprite != null:
+		_quig_anchor_sprite.visible = false
+		quig_shell.add_child(_quig_anchor_sprite)
+
+		_timing_debug_label = Label.new()
+		_timing_debug_label.position = Vector2(10.0, 116.0)
+		_timing_debug_label.size = Vector2(240.0, 24.0)
+		_timing_debug_label.add_theme_font_size_override("font_size", 13)
+		_timing_debug_label.modulate = Color(1.0, 1.0, 1.0, 0.42)
+		_timing_debug_label.visible = OS.is_debug_build()
+		ui_layer.add_child(_timing_debug_label)
+
 	_quig_anchor_label = Label.new()
 	_quig_anchor_label.name = "QuigAnchor"
 	_quig_anchor_label.visible = false
-	_quig_anchor_label.position = Vector2(916.0, 234.0)
-	_quig_anchor_label.size = Vector2(228.0, 42.0)
+	_quig_anchor_label.position = Vector2(28.0, 0.0)
+	_quig_anchor_label.size = Vector2(RIGHT_HUD_STACK_WIDTH - 28.0, 28.0)
 	_quig_anchor_label.text = ""
 	_apply_text_role(_quig_anchor_label, "dim")
-	ui_layer.add_child(_quig_anchor_label)
+	_quig_anchor_label.add_theme_font_size_override("font_size", 16)
+	quig_shell.add_child(_quig_anchor_label)
 
 
 func _build_dna_shell() -> void:
 	_dna_shell = ColorRect.new()
 	_dna_shell.name = "DnaShell"
-	_dna_shell.position = Vector2(892.0, 274.0)
-	_dna_shell.size = Vector2(276.0, 84.0)
-	_set_shell_treatment(_dna_shell, Color(0.07, 0.07, 0.09, 0.64), Color(0.18, 0.22, 0.20, 0.72))
-	ui_layer.add_child(_dna_shell)
+	_dna_shell.custom_minimum_size = Vector2(RIGHT_HUD_STACK_WIDTH, 46.0)
+	UI_STYLE.apply_shell_style(_dna_shell, "dna")
+	_dna_shell.visible = false
+	_hud_right_stack.add_child(_dna_shell)
 
 	var dna_caption := Label.new()
-	dna_caption.position = Vector2(904.0, 278.0)
-	dna_caption.size = Vector2(60.0, 14.0)
+	dna_caption.position = Vector2(8.0, 4.0)
+	dna_caption.size = Vector2(42.0, 16.0)
 	dna_caption.text = "DNA"
 	_apply_text_role(dna_caption, "caption_strong")
-	dna_caption.add_theme_font_size_override("font_size", 13)
-	ui_layer.add_child(dna_caption)
+	dna_caption.add_theme_font_size_override("font_size", 16)
+	_dna_shell.add_child(dna_caption)
+
+	_dna_emblem = _build_strip_sprite(
+		"DnaEmblem",
+		DNA_SPRITE_PATH,
+		DNA_FRAME_SIZE,
+		0,
+		Vector2(RIGHT_HUD_STACK_WIDTH - 24.0, 4.0),
+		Vector2(16.0, 16.0)
+	)
+	if _dna_emblem != null:
+		_dna_emblem.modulate = Color(1.0, 1.0, 1.0, 0.82)
+		_dna_shell.add_child(_dna_emblem)
 
 	_dna_slot_labels.clear()
 	for i in range(DNA_HUD_VISIBLE_SLOTS):
 		var label := Label.new()
-		label.position = Vector2(904.0, 298.0 + i * 24.0)
-		label.size = Vector2(248.0, 20.0)
+		label.position = Vector2(8.0, 16.0 + i * 12.0)
+		label.size = Vector2(RIGHT_HUD_STACK_WIDTH - 16.0, 14.0)
 		label.text = "--"
 		_apply_text_role(label, "secondary_value")
 		label.add_theme_font_size_override("font_size", 14)
-		ui_layer.add_child(label)
+		_dna_shell.add_child(label)
 		_dna_slot_labels.append(label)
 
 
 func _refresh_hud_snapshot(score_value: int, exp_value: float, style_tier: String) -> void:
-	if _hp_value_label != null:
-		_hp_value_label.text = "%d/%d" % [int(GameState.player_hp), int(GameState.player_max_hp)]
-	if _exp_value_label != null:
-		var growth_level: int = 1
-		if _run_growth != null and is_instance_valid(_run_growth):
-			growth_level = int(_run_growth.level)
-		_exp_value_label.text = "L%d  %.0f" % [growth_level, exp_value]
+	_hud_presenter.refresh_hp(GameState.player_hp, GameState.player_max_hp)
+	var growth_level: int = 1
+	if _run_growth != null and is_instance_valid(_run_growth):
+		growth_level = int(_run_growth.level)
+	_hud_presenter.set_exp_text(growth_level, exp_value)
 	_refresh_run_build_readout()
-
-	combo_label.text = "%d" % score_value
-	style_label.text = style_tier.capitalize()
+	_hud_presenter.refresh_combo(score_value, style_tier)
+	_hud_presenter.refresh_style(style_tier)
 
 
 func _create_feedback_label() -> void:
+	_feedback_backing = ColorRect.new()
+	_feedback_backing.name = "FeedbackBacking"
+	_feedback_backing.visible = false
+	_feedback_backing.z_index = 89
+	_feedback_backing.position = Vector2(448.0, 76.0)
+	_feedback_backing.size = Vector2(364.0, 56.0)
+	UI_STYLE.apply_shell_style(_feedback_backing, "feedback_backing")
+	add_child(_feedback_backing)
+
 	_feedback_label = Label.new()
 	_feedback_label.name = "FeedbackLabel"
 	_feedback_label.visible = false
 	_feedback_label.z_index = 90
-	_feedback_label.position = Vector2(494.0, 84.0)
-	_feedback_label.size = Vector2(272.0, 36.0)
-	_feedback_label.pivot_offset = Vector2(136.0, 18.0)
+	_feedback_label.position = Vector2(468.0, 82.0)
+	_feedback_label.size = Vector2(324.0, 44.0)
+	_feedback_label.pivot_offset = Vector2(162.0, 22.0)
 	_apply_text_role(_feedback_label, "feedback", HORIZONTAL_ALIGNMENT_CENTER)
-	_feedback_label.add_theme_font_size_override("font_size", 26)
+	_feedback_label.add_theme_font_size_override("font_size", 34)
 	add_child(_feedback_label)
 
 
@@ -1033,8 +1559,13 @@ func _setup_presentation_runtime() -> void:
 		player_combat,
 		lane_manager,
 		_enemy_markers_by_id,
-		_ring_highlight_timers
+		_ring_highlight_timers,
+		_bg_sprite
 	)
+
+	_combat_audio_player = COMBAT_AUDIO_PLAYER.new()
+	_combat_audio_player.name = "CombatAudioPlayer"
+	add_child(_combat_audio_player)
 
 
 func _create_reward_overlay() -> void:
@@ -1147,10 +1678,22 @@ func _create_reward_overlay() -> void:
 
 	_reward_quig_label = Label.new()
 	_reward_quig_label.name = "RewardQuig"
-	_reward_quig_label.position = Vector2(42.0, 316.0)
-	_reward_quig_label.size = Vector2(860.0, 32.0)
+	_reward_quig_label.position = Vector2(84.0, 316.0)
+	_reward_quig_label.size = Vector2(818.0, 32.0)
 	_apply_text_role(_reward_quig_label, "hint")
 	_reward_panel.add_child(_reward_quig_label)
+
+	_reward_quig_sprite = _build_strip_sprite(
+		"RewardQuigSprite",
+		QUIG_SPRITE_PATH,
+		QUIG_FRAME_SIZE,
+		0,
+		Vector2(42.0, 312.0),
+		Vector2(32.0, 32.0)
+	)
+	if _reward_quig_sprite != null:
+		_reward_quig_sprite.visible = false
+		_reward_panel.add_child(_reward_quig_sprite)
 
 	_reward_hint_label = Label.new()
 	_reward_hint_label.name = "RewardHint"
@@ -1161,34 +1704,86 @@ func _create_reward_overlay() -> void:
 
 
 func _create_live_reward_shell() -> void:
+	var live_reward_art: TextureRect = null
 	_live_reward_shell = ColorRect.new()
 	_live_reward_shell.name = "LiveRewardShell"
 	_live_reward_shell.visible = false
-	_live_reward_shell.position = Vector2(456.0, 516.0)
-	_live_reward_shell.size = Vector2(410.0, 124.0)
-	_set_shell_treatment(_live_reward_shell, Color(0.08, 0.07, 0.08, 0.86), Color(0.30, 0.24, 0.18, 0.78))
+	_live_reward_shell.anchor_left = 1.0
+	_live_reward_shell.anchor_top = 1.0
+	_live_reward_shell.anchor_right = 1.0
+	_live_reward_shell.anchor_bottom = 1.0
+	_live_reward_shell.offset_left = -264.0
+	_live_reward_shell.offset_top = -120.0
+	_live_reward_shell.offset_right = -24.0
+	_live_reward_shell.offset_bottom = -58.0
+	_live_reward_shell.size = COMPACT_LIVE_REWARD_SIZE
+	UI_STYLE.apply_shell_style(_live_reward_shell, "live_reward")
 	ui_layer.add_child(_live_reward_shell)
 
 	_live_reward_title_label = Label.new()
-	_live_reward_title_label.position = Vector2(16.0, 12.0)
-	_live_reward_title_label.size = Vector2(378.0, 24.0)
+	_live_reward_title_label.position = Vector2(12.0, 6.0)
+	_live_reward_title_label.size = Vector2(214.0, 20.0)
 	_apply_text_role(_live_reward_title_label, "subheading")
+	_live_reward_title_label.add_theme_font_size_override("font_size", 22)
 	_live_reward_shell.add_child(_live_reward_title_label)
 
 	_live_reward_body_label = Label.new()
-	_live_reward_body_label.position = Vector2(16.0, 40.0)
-	_live_reward_body_label.size = Vector2(378.0, 48.0)
+	_live_reward_body_label.position = Vector2(12.0, 26.0)
+	_live_reward_body_label.size = Vector2(216.0, 20.0)
 	_live_reward_body_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_apply_text_role(_live_reward_body_label, "body")
-	_live_reward_body_label.add_theme_font_size_override("font_size", 13)
+	_live_reward_body_label.add_theme_font_size_override("font_size", 19)
 	_live_reward_shell.add_child(_live_reward_body_label)
 
 	_live_reward_hint_label = Label.new()
-	_live_reward_hint_label.position = Vector2(16.0, 92.0)
-	_live_reward_hint_label.size = Vector2(378.0, 18.0)
+	_live_reward_hint_label.position = Vector2(12.0, 46.0)
+	_live_reward_hint_label.size = Vector2(216.0, 14.0)
 	_apply_text_role(_live_reward_hint_label, "hint")
-	_live_reward_hint_label.add_theme_font_size_override("font_size", 12)
+	_live_reward_hint_label.add_theme_font_size_override("font_size", 17)
 	_live_reward_shell.add_child(_live_reward_hint_label)
+
+
+func _create_hud_presenter() -> void:
+	_hud_presenter = COMBAT_HUD_PRESENTER.new(COMBAT_CONTENT, PRESENTATION_TEXT, UI_STYLE)
+	_hud_presenter.bind_nodes({
+		# Static @onready nodes
+		"combo_label": combo_label,
+		"style_label": style_label,
+		"stamina_bar": stamina_bar,
+		"hp_bar": hp_bar,
+		"ultimate_label": ultimate_label,
+		"controls_label": controls_label,
+		# Resource readout
+		"hp_value_label": _hp_value_label,
+		"exp_value_label": _exp_value_label,
+		# Support cluster
+		"support_shell": _support_shell,
+		"support_bar": _support_bar,
+		"support_value_label": _support_value_label,
+		"support_name_label": _support_name_label,
+		"support_trigger_label": _support_trigger_label,
+		"support_creature_portrait": _support_creature_portrait,
+		# Run build cluster
+		"run_build_shell": _run_build_shell,
+		"eaten_value_label": _eaten_value_label,
+		"upgrade_value_label": _upgrade_value_label,
+		"bond_value_label": _bond_value_label,
+		"atk_value_label": _atk_value_label,
+		"def_value_label": _def_value_label,
+		"dna_route_label": _dna_route_label,
+		# DNA HUD cluster
+		"dna_shell": _dna_shell,
+		"dna_emblem": _dna_emblem,
+		"dna_slot_labels": _dna_slot_labels,
+		# Boss bar cluster
+		"boss_hp_shell": _boss_hp_shell,
+		"boss_hp_bar": _boss_hp_bar,
+		"boss_name_label": _boss_name_label,
+		"boss_state_label": _boss_state_label,
+		# Song HUD
+		"song_timer_label": _song_timer_label,
+		"song_phase_label": _song_phase_label,
+	})
 
 
 func _setup_run_growth() -> void:
@@ -1201,6 +1796,66 @@ func _setup_run_growth() -> void:
 	_run_growth.name = "RunGrowth"
 	_run_growth.set_script(script)
 	add_child(_run_growth)
+	if is_instance_valid(player_combat) and player_combat.has_method("set_run_growth"):
+		player_combat.set_run_growth(_run_growth)
+
+
+func _setup_run_stats() -> void:
+	var script: Script = load(RUN_STATS_SCRIPT_PATH)
+	if script == null:
+		push_error("RunStats script missing: " + RUN_STATS_SCRIPT_PATH)
+		return
+
+	_run_stats = Node.new()
+	_run_stats.name = "RunStats"
+	_run_stats.set_script(script)
+	add_child(_run_stats)
+
+	if _run_stats.has_signal("score_changed"):
+		_run_stats.connect("score_changed", Callable(self, "_on_run_score_changed"))
+
+
+func _setup_performance_rewards() -> void:
+	var script: Script = load(PERFORMANCE_REWARD_DIRECTOR_SCRIPT_PATH)
+	if script == null:
+		push_error("PerformanceRewardDirector script missing: " + PERFORMANCE_REWARD_DIRECTOR_SCRIPT_PATH)
+		return
+
+	_performance_reward_director = Node.new()
+	_performance_reward_director.name = "PerformanceRewardDirector"
+	_performance_reward_director.set_script(script)
+	add_child(_performance_reward_director)
+
+	_performance_hud = COMBAT_PERFORMANCE_HUD_SCENE.instantiate()
+	_performance_hud.position = Vector2(RIGHT_HUD_STACK_X - 14.0, 238.0)
+	ui_layer.add_child(_performance_hud)
+
+	# Center the OfferShell on the screen.
+	# The HUD Control itself is at (X-14, 268), so we need to offset back.
+	var offer_shell: Control = _performance_hud.get_node_or_null("OfferShell")
+	if offer_shell != null:
+		var screen_center_x: float = get_viewport_rect().size.x * 0.5
+		offer_shell.global_position = Vector2(screen_center_x - 160.0, 580.0)
+
+	if _performance_reward_director.has_method("bind_runtime"):
+		_performance_reward_director.call("bind_runtime", combat_meter, _run_growth, _run_stats)
+	
+	_performance_hud.bind_runtime(_performance_reward_director)
+
+	if _performance_reward_director.has_signal("reward_claimed"):
+		_performance_reward_director.connect("reward_claimed", Callable(self, "_on_performance_reward_claimed"))
+	if _performance_reward_director.has_signal("proc_feedback"):
+		_performance_reward_director.connect("proc_feedback", Callable(self, "_on_performance_reward_feedback"))
+
+
+func _on_performance_reward_claimed(_reward_data: Dictionary, _source: String) -> void:
+	# CombatScene-side logic for claims (e.g. SFX) can go here.
+	pass
+
+
+func _on_performance_reward_feedback(text: String, color: Color) -> void:
+	_show_feedback(text, color, 0.34)
+	# Chip feedback is handled by _performance_hud itself via signals.
 
 
 func _connect_eventbus() -> void:
@@ -1226,8 +1881,11 @@ func _connect_eventbus() -> void:
 	EventBus.player_teleported.connect(_on_player_teleported)
 	EventBus.timing_ring_pressed.connect(_presentation_runtime.on_timing_ring_pressed)
 	EventBus.run_growth_changed.connect(_on_run_growth_changed)
+	EventBus.run_growth_level_resolved.connect(_on_run_growth_level_resolved)
 	EventBus.tendency_growth_resolved.connect(_on_tendency_growth_resolved)
 	EventBus.support_charge_changed.connect(_on_support_charge_changed)
+	EventBus.creature_bonded.connect(_on_creature_bonded)
+	EventBus.dna_routing_changed.connect(_on_dna_routing_changed)
 	EventBus.bonded_support_triggered.connect(_on_bonded_support_triggered)
 	EventBus.dna_gained.connect(_on_dna_gained)
 	EventBus.mastery_context_updated.connect(_on_mastery_context_updated)
@@ -1258,16 +1916,79 @@ func _start_song_run() -> void:
 	_song_paused = false
 	_song_phase_index = -1
 	_song_boss_triggered = false
+	_song_level_transitioning = false
 	_next_song_enemy_id = 100
 	_song_reward_pending = false
 	_song_enemy_lanes.clear()
 	_song_rng.randomize()
+	_song_section_spawn_mult = 1.0
 	_clear_mastery_context_cache()
 
 	var region_id: String = String(GameState.active_region.get("id", "feeding_hollow"))
-	var song_run: Dictionary = ENCOUNTER_IDENTITY_RUNTIME.build_song_run(region_id)
-	_region_id = String(song_run.get("region_id", region_id))
+	_region_id = region_id if not region_id.is_empty() else "feeding_hollow"
+	_active_song_data = AUDIO_CONTENT.get_region_main_run_song(_region_id)
+	_active_song_map = AUDIO_CONTENT.get_region_song_map(_region_id)
+	print("CombatScene: region song route -> %s / %s" % [
+		_region_id,
+		String(_active_song_data.get("display_name", "Unknown"))
+	])
+
+	var song_duration: float = _resolve_active_song_duration()
+	_regular_level_windows = RUN_PACING_CONTENT.build_regular_level_windows(_region_id, song_duration)
+	_regular_level_index = clampi(int(_dev_harness_request.get("regular_level_index", 0)), 0, max(_regular_level_windows.size() - 1, 0))
+
+	_start_regular_level(_regular_level_index, true)
+
+
+func _resolve_active_song_duration() -> float:
+	var song_path: String = String(_active_song_data.get("file_path", ""))
+	if song_path.is_empty():
+		return RUN_PACING_CONTENT.MAX_REGULAR_LEVEL_DURATION_SECONDS
+	var stream: AudioStream = load(song_path)
+	if stream == null:
+		return RUN_PACING_CONTENT.MAX_REGULAR_LEVEL_DURATION_SECONDS
+	var stream_duration: float = stream.get_length()
+	if stream_duration <= 0.0:
+		return RUN_PACING_CONTENT.MAX_REGULAR_LEVEL_DURATION_SECONDS
+	return stream_duration
+
+
+func _start_regular_level(level_index: int, reset_hp: bool) -> void:
+	if level_index < 0 or level_index >= _regular_level_windows.size():
+		_trigger_boss_final_movement()
+		return
+
+	_song_level_transitioning = false
+	_regular_level_index = level_index
+	var level_window: Dictionary = _regular_level_windows[_regular_level_index]
+	var level_duration: float = float(level_window.get("duration", RUN_PACING_CONTENT.MAX_REGULAR_LEVEL_DURATION_SECONDS))
+	var level_start: float = float(level_window.get("start_time", 0.0))
+	var level_end: float = float(level_window.get("end_time", level_start + level_duration))
+	_song_level_end_time = level_end
+	_song_section_spawn_mult = 1.0
+	_song_phase_index = -1
+	_song_elapsed = level_start
+	_song_reward_pending = false
+	_song_enemy_lanes.clear()
+	_status_marker_overrides.clear()
+	if lane_manager != null and lane_manager.has_method("stop"):
+		lane_manager.stop()
+	lane_manager.set_song_mode_enabled(true)
+
+	var song_run: Dictionary = ENCOUNTER_IDENTITY_RUNTIME.build_song_run(_region_id, _regular_level_index, level_duration)
 	_song_phases = song_run.get("phases", [])
+	for i in range(_song_phases.size()):
+		var phase: Dictionary = _song_phases[i]
+		phase["start_time"] = float(phase.get("start_time", 0.0)) + level_start
+		_song_phases[i] = phase
+
+	if _escalation_director != null:
+		_escalation_director.setup(_region_id, _song_phases, _song_rng)
+		_escalation_director.start(level_start)
+
+	if _performance_reward_director != null and is_instance_valid(_performance_reward_director):
+		if reset_hp and _performance_reward_director.has_method("start_song_run"):
+			_performance_reward_director.call("start_song_run", _song_phases)
 
 	_active_encounter = {
 		"biome": song_run.get("biome", COMBAT_CONTENT.BIOME_FEEDING_HOLLOW),
@@ -1283,36 +2004,47 @@ func _start_song_run() -> void:
 	_apply_encounter_presentation()
 	_build_arena_visuals()
 	_draw_timing_circles()
-	_prepare_for_encounter(true)
+	_prepare_for_encounter(reset_hp)
 	_refresh_bonded_creature_render()
 
 	lane_manager.set_song_mode_enabled(true)
 
 	if _song_timer_label != null:
 		_song_timer_label.visible = true
-		_song_timer_label.text = "%d" % int(SONG_CONTENT.SONG_DURATION)
 	if _song_phase_label != null:
 		_song_phase_label.visible = true
+	_hud_presenter.update_song_timer(max(level_end - level_start, 0.0))
 
 	_set_song_controls_text()
 
-	# Enter phase 0 — starts the fire cycle with initial enemies.
-	_enter_song_phase(0)
+	# Enter phase 0 for this regular level and begin from its song window start.
+	var start_phase_index: int = 0
+	_enter_song_phase(start_phase_index)
 
-	# Start the music conductor. Phase transitions from here on are driven by
-	# conductor signals, not _tick_song_phase(). Phase 0 is already entered above;
-	# the conductor's opening section signal will only update spawn_interval_mult.
-	_start_song_conductor()
+	# Start the conductor inside this authored level window.
+	_start_song_conductor(level_start, level_end)
+	var level_label: String = String(level_window.get("label", "LEVEL %d" % (_regular_level_index + 1)))
+	_show_feedback("%s  [%d/%d]" % [level_label, _regular_level_index + 1, _regular_level_windows.size()], Color(0.90, 0.84, 0.66, 1.0), 0.48)
 
 
-func _tick_song_phase() -> void:
-	# Check if it is time to advance to the next phase.
-	var next_idx: int = _song_phase_index + 1
-	if next_idx >= _song_phases.size():
+func _advance_to_next_regular_level() -> void:
+	if _song_level_transitioning:
 		return
-	var next_phase: Dictionary = _song_phases[next_idx]
-	if _song_elapsed >= float(next_phase.get("start_time", 9999.0)):
-		_enter_song_phase(next_idx)
+	_song_level_transitioning = true
+	var next_level_index: int = _regular_level_index + 1
+	if next_level_index >= _regular_level_windows.size():
+		_trigger_boss_final_movement()
+		return
+	_start_regular_level(next_level_index, false)
+
+
+func _on_regular_level_complete() -> void:
+	if _song_boss_triggered or not _song_mode:
+		return
+	if _regular_level_index + 1 < _regular_level_windows.size():
+		_advance_to_next_regular_level()
+	else:
+		_trigger_boss_final_movement()
 
 
 func _enter_song_phase(new_idx: int) -> void:
@@ -1321,12 +2053,10 @@ func _enter_song_phase(new_idx: int) -> void:
 	var new_phase: Dictionary = _song_phases[new_idx]
 	var new_reward_pool: Array = new_phase.get("reward_pool", [])
 	_song_phase_dna_award_index = _song_rng.randi_range(0, max(new_reward_pool.size() - 1, 0)) if not new_reward_pool.is_empty() else 0
+	if _performance_reward_director != null and is_instance_valid(_performance_reward_director) and _performance_reward_director.has_method("enter_song_phase"):
+		_performance_reward_director.call("enter_song_phase", new_idx, new_phase)
 
-	_apply_song_phase_cadence(new_phase)
-
-	var intro_text: String = ENCOUNTER_IDENTITY_RUNTIME.get_phase_intro_text(_region_id, new_phase)
-	if not intro_text.is_empty():
-		_show_feedback(intro_text, Color(0.92, 0.88, 0.74, 1.0), 0.55)
+	_apply_song_phase_cadence(new_phase, _song_section_spawn_mult)
 
 	if _song_phase_label != null:
 		_song_phase_label.text = ENCOUNTER_IDENTITY_RUNTIME.get_phase_display_label(_region_id, new_phase)
@@ -1338,52 +2068,9 @@ func _enter_song_phase(new_idx: int) -> void:
 		if not reward_pool.is_empty():
 			_offer_song_phase_reward(reward_pool)
 
-	_seed_song_enemies_for_phase(new_phase)
 
-
-func _seed_song_enemies_for_phase(phase: Dictionary) -> void:
-	var max_threats: int = int(phase.get("max_active_threats", 2))
-	var current_alive: int = lane_manager.alive_count()
-	var lanes_to_fill: int = min(max_threats - current_alive, lane_manager.LANE_COUNT)
-	if lanes_to_fill <= 0:
-		# Alive count already meets the phase cap, but still ensure the fire cycle
-		# is running — it may have been stopped by a reward-pause stop() call.
-		if not lane_manager.is_combat_running():
-			lane_manager.start_song_cycle()
-		return
-
-	# Prefer lanes without an active enemy; fall back to any lane.
-	var empty_lanes: Array = []
-	for lane in range(lane_manager.LANE_COUNT):
-		if lane_manager.get_enemy(lane).is_empty() or float(lane_manager.get_enemy(lane).get("hp", 0.0)) <= 0.0:
-			empty_lanes.append(lane)
-
-	var ordered_lanes: Array = ENCOUNTER_IDENTITY_RUNTIME.order_empty_lanes(
-		_region_id,
-		phase,
-		empty_lanes,
-		player_combat.current_lane,
-		_song_rng
-	)
-
-	# Fill lanes in the order preferred by the current encounter identity.
-	var filled: int = 0
-	for i in range(ordered_lanes.size()):
-		if filled >= lanes_to_fill:
-			break
-		_place_song_enemy(int(ordered_lanes[i]))
-		filled += 1
-
-	# If the fire cycle hasn't started yet (phase 0 entry), kick it off.
-	if not lane_manager.is_combat_running():
-		lane_manager.start_song_cycle()
-
-
-func _place_song_enemy(lane: int) -> void:
-	var phase: Dictionary = _song_phases[_song_phase_index]
-	var enemy: Dictionary = ENCOUNTER_IDENTITY_RUNTIME.pick_weighted_enemy(phase, _song_rng)
-	if enemy.is_empty():
-		return
+func _place_song_enemy_data(lane: int, enemy_data: Dictionary) -> void:
+	var enemy: Dictionary = enemy_data.duplicate(true)
 	enemy["id"] = _next_song_enemy_id
 	enemy["lane"] = lane
 	_song_enemy_lanes[_next_song_enemy_id] = lane
@@ -1400,31 +2087,17 @@ func _place_song_enemy(lane: int) -> void:
 
 	var biome: Dictionary = _active_encounter.get("biome", {})
 	var inactive_color: Color = biome.get("enemy_inactive_color", Color(0.38, 0.18, 0.18, 0.55))
-	var marker_size: float = 42.0
-	var marker_half: float = marker_size * 0.5
-	# Dark frame behind the marker gives enemies visual weight and separates them from the background.
-	var marker_frame := ColorRect.new()
-	marker_frame.size = Vector2(marker_size + 2.0, marker_size + 2.0)
-	marker_frame.position = Vector2(
-		lane_manager.get_enemy_x() - marker_half - 1.0,
-		lane_manager.get_lane_y(lane) - marker_half - 1.0
-	)
-	marker_frame.color = Color(0.0, 0.0, 0.0, 0.44)
-	_enemy_marker_container.add_child(marker_frame)
-
-	var enemy_marker := ColorRect.new()
-	enemy_marker.name = "Enemy_%d" % enemy_id
-	enemy_marker.size = Vector2(marker_size, marker_size)
-	enemy_marker.position = Vector2(
-		lane_manager.get_enemy_x() - marker_half,
-		lane_manager.get_lane_y(lane) - marker_half
-	)
-	enemy_marker.color = inactive_color
-	enemy_marker.modulate = enemy.get("marker_modulate", Color(1.0, 1.0, 1.0, 1.0))
+	var enemy_marker: Node2D = _build_enemy_marker(enemy_id, lane, enemy, 42.0, inactive_color)
 	_enemy_marker_container.add_child(enemy_marker)
 	_enemy_markers_by_id[enemy_id] = enemy_marker
 
+	if not lane_manager.is_combat_running():
+		lane_manager.start_song_cycle()
+
 func _offer_song_phase_reward(reward_pool: Array) -> void:
+	if _escalation_director != null:
+		_escalation_director.pause()
+	
 	var creature_id: String = reward_pool[_song_rng.randi_range(0, reward_pool.size() - 1)]
 	var creature: Dictionary = COMBAT_CONTENT.get_creature(creature_id)
 	if creature.is_empty():
@@ -1437,6 +2110,8 @@ func _offer_song_phase_reward(reward_pool: Array) -> void:
 
 
 func _resume_song_after_reward() -> void:
+	if _escalation_director != null:
+		_escalation_director.resume()
 	_hide_live_reward_shell()
 	_pending_reward_creature = {}
 	_pending_reward_dna_locked = false
@@ -1451,6 +2126,8 @@ func _trigger_boss_final_movement() -> void:
 	_song_boss_triggered = true
 	_song_paused = true
 	_song_mode = false
+	if _escalation_director != null:
+		_escalation_director.stop()
 	_boss_hp_threshold_fired = false
 	_boss_presence_timer = 0.0
 	COMBAT_TRANSITION_STATE.prepare_boss_handoff(
@@ -1465,12 +2142,17 @@ func _trigger_boss_final_movement() -> void:
 	lane_manager.set_cycle_interval(1.05)
 	lane_manager.set_fire_stagger(0.54)
 
-	# Start the boss climax track. This replaces tricky.wav and becomes the
-	# damage-race timer — kill the boss before newness.wav ends or lose.
+	# Start the boss climax track. This stops the region run song and becomes the
+	# damage-race timer — kill the boss before the boss track ends or lose.
 	_start_boss_music()
 
 	# The live boss handoff is a direct encounter payload, not a queued run step.
 	var boss_encounter: Dictionary = ENCOUNTER_IDENTITY_RUNTIME.build_live_boss_encounter()
+
+	if _escalation_director != null:
+		var boss_phases: Array = boss_encounter.get("phases", [])
+		_escalation_director.setup(_region_id, boss_phases, _song_rng)
+		_escalation_director.start(0.0)
 
 	_run_finished = false
 	_is_boss_encounter = false
@@ -1481,25 +2163,23 @@ func _trigger_boss_final_movement() -> void:
 
 
 func _update_song_hud() -> void:
-	if _song_timer_label == null:
-		return
 	var remaining: float
 	if _song_conductor != null:
-		# Count down to the final movement (boss trigger), not total song length.
+		# Count down to the current regular-level window end.
 		remaining = max(_song_conductor.get_final_movement_time() - _song_elapsed, 0.0)
 	else:
-		remaining = max(SONG_CONTENT.SONG_DURATION - _song_elapsed, 0.0)
-	_song_timer_label.text = "%d" % int(ceil(remaining))
+		remaining = max(_song_level_end_time - _song_elapsed, 0.0)
+	_hud_presenter.update_song_timer(remaining)
 
 
 func _set_song_controls_text() -> void:
-	controls_label.text = "A S D choose lane  |  Left Arrow parry  |  Right Arrow dodge  |  R unleash"
+	_hud_presenter.set_controls_text("A S D choose lane  |  Left Arrow parry  |  Right Arrow dodge  |  R unleash")
 
 
-func _start_song_conductor() -> void:
+func _start_song_conductor(start_time: float = 0.0, end_time: float = -1.0) -> void:
 	# Instantiate SongConductor, wire signals, and start playback.
-	# Called at the end of _start_song_run() after phase 0 is already entered,
-	# so the opening section signal from the conductor only updates spawn_mult.
+	# Called at the start of each regular level window after phase 0 is entered.
+	# Section signals only adjust cadence multipliers; phase transitions stay local.
 	_stop_song_conductor()
 
 	_song_conductor = SONG_CONDUCTOR_SCRIPT.new()
@@ -1507,35 +2187,30 @@ func _start_song_conductor() -> void:
 	add_child(_song_conductor)
 	_song_conductor.section_changed.connect(_on_conductor_section_changed)
 	_song_conductor.final_movement_reached.connect(_on_conductor_final_movement)
-	_song_conductor.start(TRICKY_SONGMAP)
+	_song_conductor.start(_active_song_map, start_time, end_time)
 	player_combat.call("set_song_conductor", _song_conductor)
+	if _song_conductor != null:
+		_hud_presenter.update_song_timer(max(_song_conductor.get_final_movement_time() - start_time, 0.0))
 
 
 func _on_conductor_section_changed(section_id: String, data: Dictionary) -> void:
-	# Find the matching phase in _song_phases by id and enter it.
-	# If we are already in this phase (phase 0 pre-entered at run start),
-	# skip _enter_song_phase() and only apply the conductor's cycle multiplier on
-	# top of the existing phase cadence baseline.
-	for i in range(_song_phases.size()):
-		if String(_song_phases[i].get("id", "")) == section_id:
-			if i != _song_phase_index:
-				_enter_song_phase(i)
-			_apply_song_phase_cadence(_song_phases[i], float(data.get("spawn_interval_mult", 1.0)))
-			break
+	# Section changes are used as cadence modulation only.
+	# Regular-level phase transitions are time-authored per level window.
+	_song_section_spawn_mult = float(data.get("spawn_interval_mult", 1.0))
+	if _song_phase_index >= 0 and _song_phase_index < _song_phases.size():
+		_apply_song_phase_cadence(_song_phases[_song_phase_index], _song_section_spawn_mult)
+	if section_id == "final":
+		_song_section_spawn_mult = min(_song_section_spawn_mult, 0.86)
 
 
 func _on_conductor_final_movement() -> void:
-	# Boss trigger driven by the song map's FINAL_MOVEMENT_FRACTION.
-	# Replaces the old SONG_CONTENT.SONG_DURATION wall-clock check.
+	# End of the current regular-level window.
 	if not _song_boss_triggered and _song_mode and not _run_finished:
-		_trigger_boss_final_movement()
+		_on_regular_level_complete()
 
 
 func _hide_song_hud() -> void:
-	if _song_timer_label != null:
-		_song_timer_label.visible = false
-	if _song_phase_label != null:
-		_song_phase_label.visible = false
+	_hud_presenter.hide_song_hud()
 
 
 # ── Boss music race ──────────────────────────────────────────────────────────
@@ -1572,27 +2247,15 @@ func _stop_boss_music() -> void:
 
 
 func _show_boss_race_hud() -> void:
-	# Reuse the song HUD labels for the boss countdown.
-	if _song_phase_label != null:
-		_song_phase_label.text = "KILL IT BEFORE THE SONG ENDS"
-		_song_phase_label.add_theme_color_override("font_color", Color(0.82, 0.50, 0.28, 0.80))
-		_song_phase_label.visible = true
-	if _song_timer_label != null:
-		_song_timer_label.add_theme_color_override("font_color", Color(0.70, 0.55, 0.44, 0.85))
-		_song_timer_label.visible = true
+	_hud_presenter.show_boss_race_hud("KILL IT BEFORE THE SONG ENDS")
 
 
 func _update_boss_race_hud() -> void:
-	if _song_timer_label == null or _boss_music_player == null or not is_instance_valid(_boss_music_player):
+	if _boss_music_player == null or not is_instance_valid(_boss_music_player):
 		return
 	var elapsed: float = _boss_music_player.get_playback_position()
 	var remaining: float = max(_boss_music_duration - elapsed, 0.0)
-	_song_timer_label.text = "%d" % int(ceil(remaining))
-	# Shift the timer label toward red as time runs out (ramps in the final 50%).
-	var frac: float = clampf(remaining / max(_boss_music_duration, 1.0), 0.0, 1.0)
-	var urgency: float = clampf((0.5 - frac) / 0.5, 0.0, 1.0)
-	_song_timer_label.add_theme_color_override("font_color",
-		Color(lerpf(0.70, 1.0, urgency), lerpf(0.55, 0.20, urgency), lerpf(0.44, 0.20, urgency), 0.92))
+	_hud_presenter.update_boss_race_timer(remaining, _boss_music_duration)
 
 
 func _update_boss_presence(delta: float) -> void:
@@ -1616,7 +2279,7 @@ func _update_boss_presence(delta: float) -> void:
 	var pulsed_color: Color = Color(base_color.r, base_color.g, base_color.b, pulse_alpha)
 
 	for enemy_id in _enemy_markers_by_id.keys():
-		var marker: ColorRect = _enemy_markers_by_id[enemy_id]
+		var marker: Node2D = _enemy_markers_by_id[enemy_id]
 		if marker == null or not is_instance_valid(marker):
 			continue
 		# Never override a status color.
@@ -1624,11 +2287,13 @@ func _update_boss_presence(delta: float) -> void:
 			continue
 		var enemy_phase: int = int(_enemy_phase_by_id.get(enemy_id, -1))
 		if enemy_phase == _current_phase_index:
-			marker.color = pulsed_color
+			var marker_body: ColorRect = marker.get_node_or_null("Body") as ColorRect
+			if marker_body != null:
+				marker_body.color = pulsed_color
 
 
 func _on_boss_music_finished() -> void:
-	# Called when newness.wav plays to its end.
+	# Called when the boss track plays to its end.
 	# Guard: if the boss was already killed, _boss_race_active is false — do nothing.
 	if not _boss_race_active or _run_finished:
 		return
@@ -1672,15 +2337,109 @@ func _start_mini_run() -> void:
 	_hide_boss_bar()
 	_hide_reward_overlay()
 
+	_apply_dev_harness_region_override()
 	if GameState.has_method("reset_run_state"):
 		GameState.reset_run_state()
+	_apply_dev_harness_pre_run_state()
 
 	EventBus.emit_signal("run_started", int(GameState.run_number))
 	_live_reward_queue.clear()
 	_song_reward_pending = false
+	_regular_level_windows.clear()
+	_regular_level_index = 0
+	_song_level_end_time = 0.0
+	_song_level_transitioning = false
 	_hide_live_reward_shell()
 	_refresh_run_build_readout()
 	_start_song_run()
+
+
+func _apply_dev_harness_region_override() -> void:
+	if _dev_harness_request.is_empty():
+		return
+	var requested_region_id: String = String(_dev_harness_request.get("region_id", ""))
+	if requested_region_id.is_empty():
+		return
+	for region in ROUTE_CONTENT.REGIONS:
+		if String(region.get("id", "")) == requested_region_id:
+			GameState.set_active_region(region)
+			return
+
+
+func _apply_dev_harness_pre_run_state() -> void:
+	if _dev_harness_request.is_empty():
+		return
+
+	var support_species_id: String = String(_dev_harness_request.get("support_species_id", ""))
+	if not support_species_id.is_empty():
+		var bonded_creature: Dictionary = COMBAT_CONTENT.get_creature(support_species_id)
+		if not bonded_creature.is_empty():
+			bonded_creature["bond_level"] = max(int(_dev_harness_request.get("support_bond_level", 2)), 1)
+			bonded_creature["bond_order"] = 1
+			GameState.roster = [bonded_creature]
+
+	var dna_seed: Dictionary = _dev_harness_request.get("dna_seed", {})
+	if not dna_seed.is_empty():
+		GameState.dna_by_species = dna_seed.duplicate(true)
+
+	var absorbed_species_ids: Array = _dev_harness_request.get("absorbed_species_ids", [])
+	for species_id in absorbed_species_ids:
+		var creature: Dictionary = COMBAT_CONTENT.get_creature(String(species_id))
+		if not creature.is_empty():
+			GameState.absorb_creature_type(creature)
+
+
+func _apply_dev_harness_post_boot_state() -> void:
+	if _dev_harness_request.is_empty():
+		return
+
+	var run_growth_state: Dictionary = _dev_harness_request.get("run_growth", {})
+	if not run_growth_state.is_empty() and _run_growth != null and is_instance_valid(_run_growth) and _run_growth.has_method("apply_debug_state"):
+		_run_growth.call("apply_debug_state", run_growth_state)
+
+	if _dev_harness_request.has("player_hp_ratio"):
+		_debug_set_player_hp_ratio(float(_dev_harness_request.get("player_hp_ratio", 1.0)))
+
+	var reward_species_id: String = String(_dev_harness_request.get("preview_live_reward_species_id", ""))
+	if not reward_species_id.is_empty():
+		var reward_creature: Dictionary = COMBAT_CONTENT.get_creature(reward_species_id)
+		if not reward_creature.is_empty():
+			_show_live_reward_offer(reward_creature)
+
+	if String(_dev_harness_request.get("start_mode", "song")) == "boss":
+		await _debug_begin_boss_preview(bool(_dev_harness_request.get("trigger_boss_threshold", false)))
+
+	DevHarness.clear_request()
+	_dev_harness_request.clear()
+
+
+func _debug_set_player_hp_ratio(ratio: float) -> void:
+	var clamped_ratio: float = clampf(ratio, 0.15, 1.0)
+	GameState.player_hp = max(GameState.player_max_hp * clamped_ratio, 1.0)
+	_hud_presenter.refresh_hp(GameState.player_hp, GameState.player_max_hp)
+
+
+func _debug_begin_boss_preview(trigger_threshold: bool) -> void:
+	_trigger_boss_final_movement()
+	await get_tree().create_timer(1.7).timeout
+	if trigger_threshold and _is_boss_encounter:
+		_debug_apply_boss_threshold_preview()
+
+
+func _debug_apply_boss_threshold_preview() -> void:
+	if _boss_total_hp <= 0.0 or _hud_presenter == null:
+		return
+	_boss_current_hp = _boss_total_hp * 0.5
+	_hud_presenter.update_boss_hp(_boss_current_hp)
+	if not _boss_hp_threshold_fired:
+		_boss_hp_threshold_fired = true
+		_show_feedback("SOVEREIGN UNLEASH", Color(0.92, 0.42, 0.12, 1.0), 0.70)
+		if _performance_reward_director != null and is_instance_valid(_performance_reward_director) and _performance_reward_director.has_method("notify_boss_threshold"):
+			_performance_reward_director.call("notify_boss_threshold", "sovereign_unleash", 8.0, "BOSS BREAK")
+		_presentation_runtime.apply_impact_profile(COMBAT_IMPACT_FEEDBACK.build_boss_threshold_profile())
+		_trigger_boss_threshold_spectacle()
+		lane_manager.set_cycle_interval(0.60)
+		lane_manager.set_fire_stagger(0.44)
 
 
 # Direct encounter loader used by the live runtime. Song phases build their
@@ -1742,6 +2501,8 @@ func _apply_encounter_presentation() -> void:
 	background.color = biome.get("background_color", Color(0.06, 0.06, 0.08, 1.0))
 	result_label.visible = false
 	result_label.text = ""
+	if _end_stats_label != null:
+		_end_stats_label.visible = false
 
 
 func _build_arena_visuals() -> void:
@@ -1794,17 +2555,7 @@ func _build_arena_visuals() -> void:
 		var lane: int = int(enemy.get("lane", 0))
 
 		var marker_size: float = 64.0 if _is_boss_encounter else 42.0
-		var marker_half: float = marker_size * 0.5
-		var enemy_marker := ColorRect.new()
-		enemy_marker.name = "Enemy_%d" % enemy_id
-		enemy_marker.size = Vector2(marker_size, marker_size)
-		enemy_marker.position = Vector2(
-			lane_manager.get_enemy_x() - marker_half,
-			lane_manager.get_lane_y(lane) - marker_half
-		)
-		enemy_marker.color = inactive_enemy_color
-		enemy_marker.modulate = enemy.get("marker_modulate", Color(1.0, 1.0, 1.0, 1.0))
-
+		var enemy_marker: Node2D = _build_enemy_marker(enemy_id, lane, enemy, marker_size, inactive_enemy_color)
 		_enemy_marker_container.add_child(enemy_marker)
 		_enemy_markers_by_id[enemy_id] = enemy_marker
 		_enemy_max_hp[enemy_id] = float(enemy.get("hp", 1))
@@ -1818,19 +2569,165 @@ func _refresh_enemy_marker_states() -> void:
 	var inactive_color: Color = biome.get("enemy_inactive_color", Color(0.38, 0.18, 0.18, 0.55))
 
 	for enemy_id in _enemy_markers_by_id.keys():
-		var marker: ColorRect = _enemy_markers_by_id[enemy_id]
+		var marker: Node2D = _enemy_markers_by_id[enemy_id]
 		if marker == null or not is_instance_valid(marker):
+			continue
+		var marker_body: ColorRect = marker.get_node_or_null("Body") as ColorRect
+		if marker_body == null:
 			continue
 
 		var enemy_phase: int = int(_enemy_phase_by_id.get(enemy_id, -1))
 		if enemy_phase == _current_phase_index:
-			marker.color = active_color
+			marker_body.color = active_color
 		else:
-			marker.color = inactive_color
+			marker_body.color = inactive_color
 
 		# Apply active status color override on top of biome color.
 		if _status_marker_overrides.has(enemy_id):
-			marker.color = _status_marker_overrides[enemy_id]
+			marker_body.color = _status_marker_overrides[enemy_id]
+
+
+func _build_enemy_marker(enemy_id: int, lane: int, enemy: Dictionary, marker_size: float, base_color: Color) -> Node2D:
+	var telegraph_profile: Dictionary = COMBAT_CONTENT.get_enemy_telegraph_profile(enemy)
+	var marker_half: float = marker_size * 0.5
+	var marker_root := Node2D.new()
+	marker_root.name = "Enemy_%d" % enemy_id
+	marker_root.position = Vector2(lane_manager.get_enemy_x(), lane_manager.get_lane_y(lane))
+
+	var frame := ColorRect.new()
+	frame.name = "Frame"
+	frame.size = Vector2(marker_size + 4.0, marker_size + 4.0)
+	frame.position = Vector2(-marker_half - 2.0, -marker_half - 2.0)
+	frame.color = Color(0.0, 0.0, 0.0, 0.50)
+	marker_root.add_child(frame)
+
+	var body := ColorRect.new()
+	body.name = "Body"
+	body.size = Vector2(marker_size, marker_size)
+	body.position = Vector2(-marker_half, -marker_half)
+	body.color = base_color
+	body.modulate = enemy.get("marker_modulate", Color(1.0, 1.0, 1.0, 1.0))
+	marker_root.add_child(body)
+
+	var core := ColorRect.new()
+	core.name = "Core"
+	core.size = Vector2(marker_size - 12.0, marker_size - 12.0)
+	core.position = Vector2(-(core.size.x * 0.5), -(core.size.y * 0.5))
+	core.color = Color(0.0, 0.0, 0.0, 0.12)
+	marker_root.add_child(core)
+
+	var edge := ColorRect.new()
+	edge.name = "Edge"
+	edge.size = Vector2(marker_size - 4.0, marker_size - 4.0)
+	edge.position = Vector2(-(edge.size.x * 0.5), -(edge.size.y * 0.5))
+	edge.color = Color(telegraph_profile.get("projectile_color", Color.WHITE))
+	edge.color.a = 0.0
+	marker_root.add_child(edge)
+
+	var accent := ColorRect.new()
+	accent.name = "Accent"
+	accent.color = Color(telegraph_profile.get("marker_color", Color.WHITE))
+	var sigil := ColorRect.new()
+	sigil.name = "Sigil"
+	sigil.color = Color(telegraph_profile.get("accent_color", Color.WHITE))
+	_configure_enemy_marker_shape(accent, sigil, marker_size, String(telegraph_profile.get("family", "fang")))
+	marker_root.add_child(accent)
+	marker_root.add_child(sigil)
+
+	# Creature Silhouette Integration: if this enemy is a specific creature species,
+	# overlay a desaturated/tinted version of its sprite for stronger threat identity.
+	var species_id: String = String(enemy.get("species_id", ""))
+	if not species_id.is_empty():
+		var sprite_path: String = COMBAT_CONTENT.get_creature_art_path(species_id, "battlefield")
+		if not sprite_path.is_empty():
+			var sprite := Sprite2D.new()
+			var tex: Texture2D = load(sprite_path)
+			if tex != null:
+				sprite.texture = tex
+				sprite.name = "CreatureSilhouette"
+				# Desaturated, dark silhouette that fits the procedural frame.
+				sprite.modulate = base_color.darkened(0.4)
+				sprite.modulate.a = 0.55
+				# Scale to fit inside the marker core.
+				var render: Dictionary = COMBAT_CONTENT.get_creature_combat_render(species_id)
+				sprite.scale = Vector2(render.get("scale", 0.052), render.get("scale", 0.052)) * (marker_size / 42.0)
+				# Offset it slightly so it doesn't obscure the accent/sigil shapes.
+				sprite.position = Vector2(0.0, -2.0)
+				marker_root.add_child(sprite)
+				marker_root.move_child(sprite, 3) # Put it above the Core but below Accent/Sigil
+	
+	return marker_root
+
+
+func _configure_enemy_marker_shape(accent: ColorRect, sigil: ColorRect, marker_size: float, family: String) -> void:
+	var half: float = marker_size * 0.5
+	match family:
+		"mass":
+			accent.size = Vector2(marker_size - 10.0, 6.0)
+			accent.position = Vector2(-half + 5.0, -half + 5.0)
+			sigil.size = Vector2(10.0, 10.0)
+			sigil.position = Vector2(-5.0, 6.0)
+		"needle":
+			accent.size = Vector2(5.0, marker_size - 10.0)
+			accent.position = Vector2(-2.5, -half + 5.0)
+			sigil.size = Vector2(marker_size - 12.0, 4.0)
+			sigil.position = Vector2(-half + 6.0, -half + 7.0)
+		"veil":
+			accent.size = Vector2(marker_size - 8.0, 4.0)
+			accent.position = Vector2(-half + 4.0, -2.0)
+			sigil.size = Vector2(6.0, marker_size - 16.0)
+			sigil.position = Vector2(-half + 8.0, -half + 8.0)
+		"chorus":
+			accent.size = Vector2(marker_size - 12.0, 4.0)
+			accent.position = Vector2(-half + 6.0, -half + 7.0)
+			sigil.size = Vector2(marker_size - 16.0, 4.0)
+			sigil.position = Vector2(-half + 8.0, half - 11.0)
+		"sovereign":
+			accent.size = Vector2(marker_size - 10.0, 6.0)
+			accent.position = Vector2(-half + 5.0, -half + 5.0)
+			sigil.size = Vector2(6.0, marker_size - 12.0)
+			sigil.position = Vector2(-3.0, -half + 6.0)
+		_:
+			accent.size = Vector2(marker_size * 0.42, 5.0)
+			accent.position = Vector2(half - accent.size.x - 6.0, half - 10.0)
+			sigil.size = Vector2(5.0, marker_size * 0.52)
+			sigil.position = Vector2(-half + 7.0, -half + 6.0)
+	accent.color.a = 0.18
+	sigil.color.a = 0.22
+
+
+func _update_enemy_marker_threat_states() -> void:
+	for enemy_id in _enemy_markers_by_id.keys():
+		var marker: Node2D = _enemy_markers_by_id[enemy_id]
+		if marker == null or not is_instance_valid(marker):
+			continue
+		var enemy: Dictionary = _all_enemies_by_id.get(enemy_id, {})
+		var lane: int = int(enemy.get("lane", -1))
+		if lane < 0:
+			continue
+		var telegraph_profile: Dictionary = COMBAT_CONTENT.get_enemy_telegraph_profile(enemy)
+		var edge: ColorRect = marker.get_node_or_null("Edge") as ColorRect
+		var accent: ColorRect = marker.get_node_or_null("Accent") as ColorRect
+		var sigil: ColorRect = marker.get_node_or_null("Sigil") as ColorRect
+		var core: ColorRect = marker.get_node_or_null("Core") as ColorRect
+		if edge == null or accent == null or sigil == null or core == null:
+			continue
+
+		var pressure: float = 0.0
+		var imminent: float = 0.0
+		var projectile = lane_manager.get_projectile(lane)
+		if projectile != null and not projectile.is_resolved and not projectile.is_reflected and int(projectile.enemy_id) == enemy_id:
+			var warning_bias: float = max(float(telegraph_profile.get("warning_bias", 1.0)), 0.84)
+			pressure = clamp(((projectile.progress - 0.70) / 0.30) * warning_bias, 0.0, 1.0)
+			imminent = clamp((projectile.progress - 0.96) / 0.08, 0.0, 1.0)
+
+		var threat_color: Color = Color(telegraph_profile.get("projectile_color", Color.WHITE))
+		var accent_color: Color = Color(telegraph_profile.get("accent_color", threat_color.lightened(0.18)))
+		var marker_color: Color = Color(telegraph_profile.get("marker_color", accent_color))
+		edge.color = Color(threat_color.r, threat_color.g, threat_color.b, pressure * 0.12 + imminent * 0.24)
+		accent.color = Color(marker_color.r, marker_color.g, marker_color.b, 0.18 + pressure * 0.30 + imminent * 0.14)
+		sigil.color = Color(accent_color.r, accent_color.g, accent_color.b, 0.22 + pressure * 0.34 + imminent * 0.18)
+		core.color = Color(accent_color.r, accent_color.g, accent_color.b, 0.08 + pressure * 0.08 + imminent * 0.06)
 
 
 func _draw_timing_circles() -> void:
@@ -1859,23 +2756,15 @@ func _draw_timing_circles() -> void:
 
 		# Inner fill: active lane gets a subtle glow, inactive is nearly invisible.
 		var fill_alpha: float = 0.07 if is_active_lane else 0.03
-		var receiver_fill := _make_disc_polygon(RING_GOOD_RADIUS + 1.0, Color(base_color.r, base_color.g, base_color.b, fill_alpha))
+		var receiver_fill := _make_disc_polygon(RING_PERFECT_RADIUS + 9.0, Color(base_color.r, base_color.g, base_color.b, fill_alpha))
 		receiver_fill.name = "ReceiverFill"
 
 		# Outer ring: boundary marker — slightly thicker for cleaner visibility.
-		var outer_ring := _make_ring_line(RING_OUTER_RADIUS, Color(base_color.r, base_color.g, base_color.b, base_color.a * 0.56), 1.8)
+		var outer_ring := _make_ring_line(RING_OUTER_RADIUS, Color(base_color.r, base_color.g, base_color.b, base_color.a * 0.45), 2.2)
 		outer_ring.name = "Outer"
 
-		# Good ring: subtle mid-ring, guides the eye toward perfect without calling attention.
-		var good_ring := _make_ring_line(
-			RING_GOOD_RADIUS,
-			Color(base_color.r, base_color.g, base_color.b, base_color.a * 0.20),
-			1.0
-		)
-		good_ring.name = "Good"
-
 		# Perfect ring: the focal point — thicker and bright, the true target.
-		var perfect_ring := _make_ring_line(RING_PERFECT_RADIUS, base_color.lightened(0.32), 3.6)
+		var perfect_ring := _make_ring_line(RING_PERFECT_RADIUS, base_color.lightened(0.32), 4.2)
 		perfect_ring.name = "Perfect"
 
 		var edge_ring := _make_ring_line(RING_OUTER_RADIUS + 4.0, Color(base_color.r, base_color.g, base_color.b, 0.0), 1.0)
@@ -1893,7 +2782,6 @@ func _draw_timing_circles() -> void:
 		lane_group.add_child(receiver_fill)
 		lane_group.add_child(edge_ring)
 		lane_group.add_child(outer_ring)
-		lane_group.add_child(good_ring)
 		lane_group.add_child(perfect_ring)
 		lane_group.add_child(beat_mark)
 		_timing_circle_container.add_child(lane_group)
@@ -1929,8 +2817,7 @@ func _prepare_for_encounter(reset_hp: bool) -> void:
 	if reset_hp:
 		GameState.player_hp = GameState.player_max_hp
 
-	hp_bar.max_value = GameState.player_max_hp
-	hp_bar.value = GameState.player_hp
+	_hud_presenter.refresh_hp(GameState.player_hp, GameState.player_max_hp)
 
 	if player_combat.has_method("set_combat_enabled"):
 		player_combat.set_combat_enabled(true)
@@ -1941,6 +2828,8 @@ func _prepare_for_encounter(reset_hp: bool) -> void:
 	_hide_reward_overlay()
 	result_label.visible = false
 	result_label.text = ""
+	if _end_stats_label != null:
+		_end_stats_label.visible = false
 	_set_combat_controls_text()
 
 
@@ -2065,6 +2954,7 @@ func _finish_run(victory: bool) -> void:
 	_phase_transitioning = false
 
 	_stop_boss_music()
+	_stop_song_conductor()
 	_hide_song_hud()
 	_hide_boss_bar()
 
@@ -2085,26 +2975,17 @@ func _finish_run(victory: bool) -> void:
 		_show_feedback("RUN FAILED", Color(1.0, 0.45, 0.45, 1.0), 0.65)
 		controls_label.text = "Run failed  |  R restart  |  T return to lair"
 
+	_show_end_stats()
 	_hide_reward_overlay()
 	_hide_live_reward_shell()
 	_live_reward_queue.clear()
 
 func _show_boss_bar() -> void:
-	if _boss_hp_shell != null:
-		_boss_hp_shell.visible = true
-	if _boss_name_label != null:
-		_boss_name_label.visible = true
-	if _boss_hp_bar != null:
-		_boss_hp_bar.visible = true
+	_hud_presenter.show_boss_bar()
 
 
 func _hide_boss_bar() -> void:
-	if _boss_hp_shell != null:
-		_boss_hp_shell.visible = false
-	if _boss_name_label != null:
-		_boss_name_label.visible = false
-	if _boss_hp_bar != null:
-		_boss_hp_bar.visible = false
+	_hud_presenter.hide_boss_bar()
 
 
 func _setup_boss_hp_bar() -> void:
@@ -2114,14 +2995,11 @@ func _setup_boss_hp_bar() -> void:
 		for enemy in phase:
 			_boss_total_hp += float(enemy.get("hp", 0))
 	_boss_current_hp = _boss_total_hp
-
-	if _boss_hp_bar != null:
-		_boss_hp_bar.max_value = _boss_total_hp
-		_boss_hp_bar.value = _boss_total_hp
-	if _boss_name_label != null:
-		_boss_name_label.text = String(_active_encounter.get("boss_name", ""))
-
-	_show_boss_bar()
+	_hud_presenter.setup_boss_bar(
+		_boss_total_hp,
+		String(_active_encounter.get("boss_name", "")),
+		PRESENTATION_TEXT.BOSS_STATE_OPENING
+	)
 
 
 func _show_boss_intro(boss_name: String) -> void:
@@ -2203,21 +3081,33 @@ func _show_title_card(title_text: String, subtitle_text: String) -> void:
 	)
 
 
-func _show_feedback(text: String, color: Color, lifetime: float = 0.38) -> void:
+func _show_feedback(text: String, color: Color, lifetime: float = COMBAT_FEEDBACK_MIN_LIFETIME) -> void:
 	_feedback_label.text = text
 	_feedback_label.modulate = color
 	_feedback_label.visible = true
+	if _feedback_backing != null:
+		_feedback_backing.visible = true
+		_feedback_backing.modulate = Color(1.0, 1.0, 1.0, 1.0)
+		_feedback_backing.scale = Vector2(1.12, 1.12)
 	# Punch-in: start enlarged and snap down — reads as impact authority, not decoration.
 	_feedback_label.scale = Vector2(1.32, 1.32)
 
 	var tween := create_tween()
 	tween.tween_property(_feedback_label, "scale", Vector2.ONE, 0.10).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
-	tween.tween_interval(lifetime)
-	tween.tween_property(_feedback_label, "modulate:a", 0.0, 0.13)
+	if _feedback_backing != null:
+		tween.parallel().tween_property(_feedback_backing, "scale", Vector2.ONE, 0.10).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
+	tween.tween_interval(max(lifetime, COMBAT_FEEDBACK_MIN_LIFETIME))
+	tween.tween_property(_feedback_label, "modulate:a", 0.0, COMBAT_FEEDBACK_FADE_TIME)
+	if _feedback_backing != null:
+		tween.parallel().tween_property(_feedback_backing, "modulate:a", 0.0, COMBAT_FEEDBACK_FADE_TIME)
 	tween.tween_callback(func() -> void:
 		_feedback_label.visible = false
 		_feedback_label.modulate.a = 1.0
 		_feedback_label.scale = Vector2.ONE
+		if _feedback_backing != null:
+			_feedback_backing.visible = false
+			_feedback_backing.modulate.a = 1.0
+			_feedback_backing.scale = Vector2.ONE
 	)
 
 
@@ -2238,8 +3128,8 @@ func _show_beat_feedback(text: String, color: Color) -> void:
 	_beat_feedback_label.modulate = Color(color.r, color.g, color.b, 1.0)
 	_beat_feedback_label.visible = true
 	var tween := create_tween()
-	tween.tween_interval(0.22)
-	tween.tween_property(_beat_feedback_label, "modulate:a", 0.0, 0.16)
+	tween.tween_interval(BEAT_FEEDBACK_HOLD_TIME)
+	tween.tween_property(_beat_feedback_label, "modulate:a", 0.0, BEAT_FEEDBACK_FADE_TIME)
 	tween.tween_callback(func() -> void:
 		_beat_feedback_label.visible = false
 		_beat_feedback_label.modulate.a = 1.0
@@ -2283,7 +3173,7 @@ func _offer_victory_reward(creature_data: Dictionary) -> void:
 	var _player_dna: float = GameState.get_dna(_offer_species_id)
 	_pending_reward_dna_locked = not GameState.has_dna_for(_offer_species_id, _offer_dna_threshold)
 
-	_reward_creature_tag_label.text = "Creature"
+	_reward_creature_tag_label.text = PRESENTATION_TEXT.REWARD_TAG_CREATURE
 	_reward_title_label.text = _offer_creature_name
 
 	var _body_text: String = _offer_description
@@ -2297,30 +3187,47 @@ func _offer_victory_reward(creature_data: Dictionary) -> void:
 			_dna_line = "DNA:  %.0f / %.0f  —  not enough" % [_player_dna, _offer_dna_threshold]
 		else:
 			_dna_line = "DNA:  %.0f / %.0f  —  sufficient" % [_player_dna, _offer_dna_threshold]
+		_dna_line = PRESENTATION_TEXT.dna_status_line(_player_dna, _offer_dna_threshold, _pending_reward_dna_locked)
 		_reward_body_label.text = _body_text + "\n\n" + _dna_line
 	else:
 		_reward_body_label.text = _body_text
 
 	if _pending_reward_dna_locked:
-		_reward_bond_label.text = "Bond  [B]  — locked"
-		_reward_bond_effect_label.text = "Not enough DNA.\n\n%s" % _format_bond_passive(_pending_reward_creature.get("bond_passive", {}))
-		_reward_eat_label.text = "Eat  [E]  — locked"
-		_reward_eat_effect_label.text = "Not enough DNA.\n\n%s" % _describe_eat_effect(_pending_reward_creature.get("eat_effect", {}))
-		_reward_hint_label.text = "Insufficient DNA  |  N — pass this creature"
-		controls_label.text = "DNA locked  |  N pass"
+		_reward_bond_label.text = PRESENTATION_TEXT.reward_bond_label(true)
+		var active_bond_level: int = int(_pending_reward_creature.get("bond_level", 1))
+		var level_mult: float = GameState.get_bond_level_mult(active_bond_level)
+		_reward_bond_effect_label.text = PRESENTATION_TEXT.reward_locked_effect_body(
+			PRESENTATION_TEXT.format_bond_passive_long(_pending_reward_creature.get("bond_passive", {}), level_mult)
+		)
+		_reward_eat_label.text = PRESENTATION_TEXT.reward_eat_label(true)
+		_reward_eat_effect_label.text = PRESENTATION_TEXT.reward_locked_effect_body(
+			PRESENTATION_TEXT.format_eat_effect(_pending_reward_creature.get("eat_effect", {}))
+		)
+		_reward_hint_label.text = PRESENTATION_TEXT.REWARD_HINT_LOCKED
+		controls_label.text = PRESENTATION_TEXT.REWARD_CONTROLS_LOCKED
 	else:
-		_reward_bond_label.text = "Bond  [B]"
-		_reward_bond_effect_label.text = "Keep it close.\n\n%s\n\nThe run bends around this creature." % _format_bond_passive(_pending_reward_creature.get("bond_passive", {}))
-		_reward_eat_label.text = "Eat  [E]"
-		_reward_eat_effect_label.text = "Take what it gives.\n\n%s\n\nImmediate pressure through consumption." % _describe_eat_effect(_pending_reward_creature.get("eat_effect", {}))
-		_reward_hint_label.text = "Choose one  |  B keeps it close  |  E feeds on it  |  N pass"
-		controls_label.text = "Reward choice  |  B bond  |  E eat  |  N pass"
+		_reward_bond_label.text = PRESENTATION_TEXT.reward_bond_label(false)
+		var active_bond_level: int = int(_pending_reward_creature.get("bond_level", 1))
+		var level_mult: float = GameState.get_bond_level_mult(active_bond_level)
+		_reward_bond_effect_label.text = PRESENTATION_TEXT.reward_bond_body(
+			PRESENTATION_TEXT.format_bond_passive_long(_pending_reward_creature.get("bond_passive", {}), level_mult)
+		)
+		_reward_eat_label.text = PRESENTATION_TEXT.reward_eat_label(false)
+		_reward_eat_effect_label.text = PRESENTATION_TEXT.reward_eat_body(
+			PRESENTATION_TEXT.format_eat_effect(_pending_reward_creature.get("eat_effect", {}))
+		)
+		_reward_hint_label.text = PRESENTATION_TEXT.REWARD_HINT_CHOICE
+		controls_label.text = PRESENTATION_TEXT.REWARD_CONTROLS_CHOICE
 
 	_reward_quig_label.text = String(_pending_reward_creature.get("quig_offer_text", ""))
+	_refresh_quig_ui_state()
 
 	# Load and show creature portrait if art is available.
 	if _reward_creature_portrait != null:
-		var sprite_path: String = String(_pending_reward_creature.get("sprite_path", ""))
+		var reward_species_id: String = String(_pending_reward_creature.get("species_id", ""))
+		var sprite_path: String = COMBAT_CONTENT.get_creature_art_path(reward_species_id, "reward")
+		if sprite_path.is_empty():
+			sprite_path = String(_pending_reward_creature.get("sprite_path", ""))
 		if not sprite_path.is_empty() and ResourceLoader.exists(sprite_path):
 			var portrait_tex: Texture2D = load(sprite_path) as Texture2D
 			if portrait_tex != null:
@@ -2330,97 +3237,6 @@ func _offer_victory_reward(creature_data: Dictionary) -> void:
 				_reward_creature_portrait.visible = false
 		else:
 			_reward_creature_portrait.visible = false
-
-
-func _format_eat_effect(effect: Dictionary) -> String:
-	match effect.get("type", ""):
-		"damage_flat":
-			return "+%.0f permanent attack damage" % float(effect.get("value", 0.0))
-		"hp_restore":
-			return "restores %.0f HP immediately — no permanent bonus" % float(effect.get("value", 0.0))
-		_:
-			return "absorb its essence"
-
-
-func _describe_eat_effect(effect: Dictionary) -> String:
-	match effect.get("type", ""):
-		"damage_flat":
-			return "+%.0f permanent attack damage" % float(effect.get("value", 0.0))
-		"hp_restore":
-			return "restores %.0f HP immediately â€” no permanent bonus" % float(effect.get("value", 0.0))
-		"max_hp_flat":
-			return "+%.0f max HP immediately" % float(effect.get("value", 0.0))
-		"support_charge":
-			return "+%.0f support charge immediately" % float(effect.get("value", 0.0))
-		_:
-			return "absorb its essence"
-
-
-func _format_bond_passive(passive: Dictionary, bond_level: int = 1) -> String:
-	var mult: float = GameState.get_bond_level_mult(bond_level)
-	match passive.get("type", ""):
-		"damage_on_ultimate":
-			return "+%.0f damage added to your ultimate" % (float(passive.get("value", 0.0)) * mult)
-		"damage_reduction_pct":
-			return "%.0f%% damage reduction while bonded" % (float(passive.get("value", 0.0)) * mult * 100.0)
-		"hp_on_kill":
-			return "+%.1f HP restored on every enemy kill" % (float(passive.get("value", 0.0)) * mult)
-		"parry_reflect_mult":
-			return "+%.0f%% parry reflect damage while bonded" % (float(passive.get("value", 0.0)) * mult * 100.0)
-		"timed_damage_flat":
-			return "+%.1f flat damage added to every timed attack" % (float(passive.get("value", 0.0)) * mult)
-		_:
-			return "keep in roster"
-
-
-func _format_bond_passive_short(passive: Dictionary, bond_level: int = 1) -> String:
-	# Compact version for the in-combat BOND row of the run build shell.
-	# bond_level scales displayed values to reflect current progression.
-	var mult: float = GameState.get_bond_level_mult(bond_level)
-	match passive.get("type", ""):
-		"damage_on_ultimate":
-			return "+%.0f ult dmg" % (float(passive.get("value", 0.0)) * mult)
-		"damage_reduction_pct":
-			return "%.0f%% def" % (float(passive.get("value", 0.0)) * mult * 100.0)
-		"hp_on_kill":
-			return "+%.1f hp/kill" % (float(passive.get("value", 0.0)) * mult)
-		"parry_reflect_mult":
-			return "+%.0f%% parry" % (float(passive.get("value", 0.0)) * mult * 100.0)
-		"timed_damage_flat":
-			return "+%.1f timed" % (float(passive.get("value", 0.0)) * mult)
-		_:
-			return "--"
-
-
-func _format_trigger_hint(effect_id: String) -> String:
-	# One-line description of when the bonded creature fires, shown under the support bar.
-	match effect_id:
-		"ashclaw_strike":
-			return "Triggers on perfect timing"
-		"bond_remnant_mend":
-			return "Triggers on damage while ready"
-		"gruvek_gorge":
-			return "Triggers on kill"
-		"veilskin_phase":
-			return "Triggers on perfect parry"
-		"thornback_rend":
-			return "Triggers on perfect timing"
-		_:
-			return ""
-
-
-func _describe_trigger_hint(effect_id: String) -> String:
-	match effect_id:
-		"knellspine_peal":
-			return "Triggers on good timing"
-		"marrowward_ward":
-			return "Triggers on dodge"
-		"gorefane_maul":
-			return "Triggers on ultimate"
-		"hushcoil_lull":
-			return "Triggers on perfect parry"
-		_:
-			return _format_trigger_hint(effect_id)
 
 
 func _hide_reward_overlay() -> void:
@@ -2437,70 +3253,16 @@ func _hide_reward_overlay() -> void:
 	_reward_eat_effect_label.text = ""
 	_reward_quig_label.text = ""
 	_reward_hint_label.text = ""
+	_refresh_quig_ui_state()
 
 
 func _refresh_run_build_readout() -> void:
-	if _eaten_value_label != null:
-		_eaten_value_label.text = _format_absorbed_bonus_summary()
-	if _upgrade_value_label != null:
-		_upgrade_value_label.text = _format_upgrade_summary()
-
-	if _bond_value_label != null:
-		var active: Dictionary = GameState.get_active_bonded_creature()
-		if not active.is_empty():
-			var active_bond_level: int = int(active.get("bond_level", 1))
-			_bond_value_label.text = _format_bond_passive_short(active.get("bond_passive", {}), active_bond_level)
-		else:
-			_bond_value_label.text = "--"
-
-	if _atk_value_label != null:
-		_atk_value_label.text = "%.0f" % GameState.get_attack_damage()
-
-	if _run_build_shell != null:
-		var has_build: bool = not GameState.absorbed_types.is_empty()
-		_run_build_shell.color = Color(0.08, 0.08, 0.10, 0.60) if has_build else Color(0.07, 0.07, 0.09, 0.50)
+	_hud_presenter.refresh_run_build(_run_growth)
 	_refresh_dna_hud()
 
 
 func _refresh_dna_hud() -> void:
-	if _dna_slot_labels.is_empty():
-		return
-
-	var relevant_species: Array[String] = []
-	if _song_mode and _song_phase_index >= 0 and _song_phase_index < _song_phases.size():
-		var phase: Dictionary = _song_phases[_song_phase_index]
-		for species_id in phase.get("reward_pool", []):
-			var typed_species_id: String = String(species_id)
-			if not typed_species_id.is_empty() and not relevant_species.has(typed_species_id):
-				relevant_species.append(typed_species_id)
-
-	if not _pending_reward_creature.is_empty():
-		var pending_species_id: String = String(_pending_reward_creature.get("species_id", ""))
-		if not pending_species_id.is_empty() and not relevant_species.has(pending_species_id):
-			relevant_species.insert(0, pending_species_id)
-
-	if relevant_species.is_empty():
-		for species_id in GameState.dna_by_species.keys():
-			var typed_species_id: String = String(species_id)
-			if GameState.get_dna(typed_species_id) > 0.0:
-				relevant_species.append(typed_species_id)
-		relevant_species.sort()
-
-	for i in range(_dna_slot_labels.size()):
-		var label: Label = _dna_slot_labels[i]
-		if i >= relevant_species.size():
-			label.text = "--"
-			continue
-
-		var species_id: String = relevant_species[i]
-		var creature: Dictionary = COMBAT_CONTENT.get_creature(species_id)
-		var display_name: String = String(creature.get("display_name", species_id)).to_upper()
-		var threshold: float = float(creature.get("dna_threshold", 0.0))
-		var current: float = GameState.get_dna(species_id)
-		if threshold > 0.0:
-			label.text = "%s  %.0f/%.0f" % [display_name, current, threshold]
-		else:
-			label.text = "%s  %.0f" % [display_name, current]
+	_hud_presenter.refresh_dna_hud(_song_mode, _song_phase_index, _song_phases, _pending_reward_creature)
 
 
 func _show_live_reward_offer(creature_data: Dictionary) -> void:
@@ -2520,6 +3282,7 @@ func _show_live_reward_offer(creature_data: Dictionary) -> void:
 	_refresh_live_reward_shell()
 	_refresh_dna_hud()
 	_refresh_song_controls_text()
+	_refresh_quig_ui_state()
 
 
 func _refresh_live_reward_shell() -> void:
@@ -2531,30 +3294,37 @@ func _refresh_live_reward_shell() -> void:
 	var current_dna: float = GameState.get_dna(species_id)
 	var display_name: String = String(_pending_reward_creature.get("display_name", "Creature"))
 	var encounter_context: String = _describe_creature_offer_context(_pending_reward_creature)
-	_live_reward_title_label.text = "%s in reach" % display_name
-	var live_body: String = String(_pending_reward_creature.get("description", ""))
+	_live_reward_title_label.text = PRESENTATION_TEXT.live_reward_title(display_name)
+	var live_body: String = _compact_hud_copy(String(_pending_reward_creature.get("description", "")), 30)
 	if not encounter_context.is_empty():
-		live_body += "\nEncounter: %s" % encounter_context
-	live_body += "\nDNA %.0f/%.0f" % [current_dna, threshold]
+		live_body += "  %s" % _compact_hud_copy(encounter_context, 12)
+	live_body += "\n%s" % PRESENTATION_TEXT.live_dna_gate_line(current_dna, threshold)
 	_live_reward_body_label.text = live_body
-	if _pending_reward_dna_locked:
-		_live_reward_hint_label.text = "Locked for now  |  N pass  |  %.0fs" % ceil(_live_reward_offer_timer)
-	else:
-		_live_reward_hint_label.text = "B bond  |  E eat  |  N pass  |  %.0fs" % ceil(_live_reward_offer_timer)
+	_live_reward_hint_label.text = PRESENTATION_TEXT.live_reward_hint(_pending_reward_dna_locked, _live_reward_offer_timer)
+
+
+func _compact_hud_copy(text: String, max_length: int) -> String:
+	var compact: String = " ".join(text.split("\n", false)).strip_edges()
+	if compact.length() <= max_length:
+		return compact
+	if max_length <= 3:
+		return compact.left(max_length)
+	return compact.left(max_length - 3).strip_edges() + "..."
 
 
 func _hide_live_reward_shell() -> void:
 	if _live_reward_shell != null:
 		_live_reward_shell.visible = false
 	_live_reward_offer_timer = 0.0
+	_refresh_quig_ui_state()
 
 
 func _refresh_song_controls_text() -> void:
 	if _song_reward_pending and _awaiting_reward_choice:
 		if _pending_reward_dna_locked:
-			controls_label.text = "Combat live  |  DNA locked  |  N pass reward"
+			_hud_presenter.set_controls_text(PRESENTATION_TEXT.LIVE_CONTROLS_LOCKED)
 		else:
-			controls_label.text = "Combat live  |  B bond  |  E eat  |  N pass reward"
+			_hud_presenter.set_controls_text(PRESENTATION_TEXT.LIVE_CONTROLS_CHOICE)
 		return
 	_set_song_controls_text()
 
@@ -2583,65 +3353,6 @@ func _describe_creature_offer_context(creature_data: Dictionary) -> String:
 	return COMBAT_CONTENT.get_creature_encounter_summary(species_id)
 
 
-func _format_absorbed_bonus_summary() -> String:
-	if GameState.absorbed_types.is_empty():
-		return "--"
-
-	var chips: Array[String] = []
-	var visible_count: int = min(2, GameState.absorbed_types.size())
-	for i in range(visible_count):
-		var entry: Dictionary = GameState.absorbed_types[i]
-		var species_id: String = String(entry.get("source_species_id", ""))
-		var creature_name: String = species_id
-		if not species_id.is_empty():
-			var creature: Dictionary = COMBAT_CONTENT.get_creature(species_id)
-			creature_name = String(creature.get("display_name", species_id))
-
-		var short_name: String = _compact_token(creature_name, 4)
-		var eat_type: String = String(entry.get("eat_type", "damage_flat"))
-		if eat_type == "hp_restore":
-			var heal_applied: int = int(round(float(entry.get("heal_applied", 0.0))))
-			chips.append("[%s~%d]" % [short_name, heal_applied])
-		elif eat_type == "max_hp_flat":
-			var max_hp_bonus: int = int(round(float(entry.get("max_hp_bonus", 0.0))))
-			chips.append("[%sHP+%d]" % [short_name, max_hp_bonus])
-		elif eat_type == "support_charge":
-			var support_charge_bonus: int = int(round(float(entry.get("support_charge_bonus", 0.0))))
-			chips.append("[%sCH+%d]" % [short_name, support_charge_bonus])
-		else:
-			var damage_bonus: int = int(round(float(entry.get("damage_bonus", 0.0))))
-			chips.append("[%s+%d]" % [short_name, damage_bonus])
-
-	var hidden_count: int = GameState.absorbed_types.size() - visible_count
-	if hidden_count > 0:
-		chips.append("+%d" % hidden_count)
-
-	return _join_compact_tokens(chips)
-
-
-func _format_upgrade_summary() -> String:
-	if _run_growth != null and is_instance_valid(_run_growth) and _run_growth.has_method("get_tendency_summary"):
-		return String(_run_growth.call("get_tendency_summary"))
-	return "--"
-
-
-func _compact_token(text: String, max_len: int) -> String:
-	var cleaned: String = text.strip_edges().to_upper().replace(" ", "")
-	if cleaned.length() <= max_len:
-		return cleaned
-	return cleaned.substr(0, max_len)
-
-
-func _join_compact_tokens(tokens: Array[String]) -> String:
-	if tokens.is_empty():
-		return ""
-
-	var result: String = tokens[0]
-	for i in range(1, tokens.size()):
-		result += " " + tokens[i]
-	return result
-
-
 func _choose_bond() -> void:
 	if not _awaiting_reward_choice or _reward_choice_made:
 		return
@@ -2657,30 +3368,31 @@ func _choose_bond() -> void:
 
 	var updated_creature: Dictionary = GameState.add_bonded_creature(_pending_reward_creature)
 	EventBus.emit_signal("creature_bonded", updated_creature)
-	_refresh_dna_hud()
 
 	_reward_choice_made = true
 	_awaiting_reward_choice = false
 
 	var _bond_creature_name: String = String(_pending_reward_creature.get("display_name", "creature"))
-	_reward_creature_tag_label.text = "Bond sealed"
-	_reward_title_label.text = "%s bonded." % _bond_creature_name
-	_reward_body_label.text = "%s enters your roster at bond level %d." % [
-		_bond_creature_name,
-		int(updated_creature.get("bond_level", 1))
-	]
-	_reward_bond_label.text = "Bonded"
-	_reward_bond_effect_label.text = _format_bond_passive(_pending_reward_creature.get("bond_passive", {}))
+	var _new_bond_level: int = int(updated_creature.get("bond_level", 1))
+	var _bond_deepened: bool = _new_bond_level > 1
+	_reward_creature_tag_label.text = PRESENTATION_TEXT.REWARD_TAG_BONDED
+	_reward_title_label.text = "%s deepens." % _bond_creature_name if _bond_deepened else "%s bonded." % _bond_creature_name
+	_reward_body_label.text = PRESENTATION_TEXT.bond_result_body(_bond_creature_name, _new_bond_level)
+	_reward_bond_label.text = "Bond L%d" % _new_bond_level if _bond_deepened else "Bonded"
+	_reward_bond_effect_label.text = PRESENTATION_TEXT.format_bond_passive_long(
+		_pending_reward_creature.get("bond_passive", {}), 
+		GameState.get_bond_level_mult(_new_bond_level)
+	)
 	_reward_eat_label.text = ""
 	_reward_eat_effect_label.text = ""
-	_reward_quig_label.text = "Quig: \"Good. Watch — they're already positioning.\""
+	_reward_quig_label.text = PRESENTATION_TEXT.bond_result_quig(_bond_creature_name)
+	_refresh_quig_ui_state()
 
 	if _song_reward_pending:
-		_show_feedback("%s BONDED" % _bond_creature_name.to_upper(), Color(0.82, 0.94, 0.76, 1.0), 0.34)
 		_resume_song_after_reward()
 	else:
-		_reward_hint_label.text = "R restart run"
-		controls_label.text = "Run complete  |  R restart run"
+		_reward_hint_label.text = PRESENTATION_TEXT.REWARD_HINT_RESTART
+		controls_label.text = PRESENTATION_TEXT.REWARD_CONTROLS_RESTART
 		_finish_run(true)
 
 
@@ -2722,9 +3434,9 @@ func _choose_eat() -> void:
 	_awaiting_reward_choice = false
 
 	var _eat_creature_name: String = String(_pending_reward_creature.get("display_name", "creature"))
-	_reward_creature_tag_label.text = "Consumed"
+	_reward_creature_tag_label.text = PRESENTATION_TEXT.REWARD_TAG_EATEN
 	_reward_title_label.text = "%s consumed." % _eat_creature_name
-	_reward_body_label.text = "Its nature folds into you."
+	_reward_body_label.text = PRESENTATION_TEXT.eat_result_body()
 	_reward_bond_label.text = ""
 	_reward_bond_effect_label.text = ""
 	_reward_eat_label.text = "Absorbed"
@@ -2750,8 +3462,9 @@ func _choose_eat() -> void:
 			String(absorbed_entry.get("type", "unknown")).capitalize(),
 			float(absorbed_entry.get("damage_bonus", 0.0))
 		]
-	_reward_quig_label.text = "Quig is silent."
-	_reward_hint_label.text = "..."
+	_reward_quig_label.text = PRESENTATION_TEXT.eat_result_quig(_eat_creature_name)
+	_reward_hint_label.text = PRESENTATION_TEXT.REWARD_HINT_WAIT
+	_refresh_quig_ui_state()
 
 	_refresh_run_build_readout()
 
@@ -2766,14 +3479,15 @@ func _choose_eat() -> void:
 	if not _reward_choice_made:
 		return
 
-	_reward_quig_label.text = "Quig: \"There will be others.\""
+	_reward_quig_label.text = "Quig: \"There will be others. They may remember this.\""
+	_refresh_quig_ui_state()
 
 	if _song_reward_pending:
 		_show_feedback("REWARD PASSED", Color(0.76, 0.60, 0.42, 1.0), 0.24)
 		_resume_song_after_reward()
 	else:
-		_reward_hint_label.text = "R restart run"
-		controls_label.text = "Run complete  |  R restart run"
+		_reward_hint_label.text = PRESENTATION_TEXT.REWARD_HINT_RESTART
+		controls_label.text = PRESENTATION_TEXT.REWARD_CONTROLS_RESTART
 		_finish_run(true)
 
 
@@ -2788,32 +3502,71 @@ func _pass_reward() -> void:
 	_pending_reward_dna_locked = false
 	_pending_reward_creature = {}
 
-	_reward_creature_tag_label.text = "Passed"
-	_reward_title_label.text = "Gone."
-	_reward_body_label.text = "It will not return."
+	_reward_creature_tag_label.text = PRESENTATION_TEXT.REWARD_TAG_PASSED
+	_reward_title_label.text = PRESENTATION_TEXT.REWARD_TITLE_PASSED
+	_reward_body_label.text = PRESENTATION_TEXT.REWARD_BODY_PASSED
 	_reward_bond_label.text = ""
 	_reward_eat_label.text = ""
 	_reward_bond_effect_label.text = ""
 	_reward_eat_effect_label.text = ""
-	_reward_quig_label.text = "Quig: \"It won't be back.\""
-	_reward_hint_label.text = "..."
+	_reward_quig_label.text = PRESENTATION_TEXT.pass_result_quig()
+	_reward_hint_label.text = PRESENTATION_TEXT.REWARD_HINT_WAIT
 	controls_label.text = ""
+	_refresh_quig_ui_state()
 
 	if _song_reward_pending:
 		_show_feedback("REWARD PASSED", Color(0.76, 0.60, 0.42, 1.0), 0.24)
 		_resume_song_after_reward()
 	else:
-		_reward_hint_label.text = "R restart run"
-		controls_label.text = "Run complete  |  R restart run"
+		_reward_hint_label.text = PRESENTATION_TEXT.REWARD_HINT_RESTART
+		controls_label.text = PRESENTATION_TEXT.REWARD_CONTROLS_RESTART
 		_finish_run(true)
 
 
-func _on_combo_changed(count: int, _tier: String) -> void:
-	combo_label.text = "%d" % count
+func _on_combo_changed(count: int, tier: String) -> void:
+	_hud_presenter.refresh_combo(count, tier)
 
 
-func _on_style_changed(score: float, tier: String) -> void:
-	style_label.text = tier.capitalize()
+func _on_run_score_changed(score: int) -> void:
+	if _run_score_label != null:
+		_run_score_label.text = "%d" % score
+
+
+func _show_end_stats() -> void:
+	if _end_stats_label == null or _run_stats == null or not is_instance_valid(_run_stats):
+		return
+
+	var kills: int = int(_run_stats.kills)
+	var dmg: int = int(_run_stats.damage_dealt)
+	var p_att: int = int(_run_stats.perfect_attacks)
+	var g_att: int = int(_run_stats.good_attacks)
+	var p_par: int = int(_run_stats.perfect_parries)
+	var g_par: int = int(_run_stats.good_parries)
+	var ult: int = int(_run_stats.ultimates_fired)
+	var sup: int = int(_run_stats.support_triggers)
+	var surges: int = int(_run_stats.tendency_surges)
+	var hit: int = int(_run_stats.times_hit)
+	var bonds: int = int(_run_stats.bonds)
+	var eats: int = int(_run_stats.eats)
+	var score: int = int(_run_stats.run_score)
+	var grade: String = _run_stats.call("get_grade") if _run_stats.has_method("get_grade") else "—"
+
+	var growth_level: int = 1
+	if _run_growth != null and is_instance_valid(_run_growth):
+		growth_level = int(_run_growth.level)
+
+	_end_stats_label.text = (
+		"[ %s ]  %d pts\n\n" % [grade, score]
+		+ "Kills %d    Damage %d    Hits taken %d\n" % [kills, dmg, hit]
+		+ "Perfect %d  Good %d    Parries %d+%d\n" % [p_att, g_att, p_par, g_par]
+		+ "Ultimates %d    Support %d    Surges %d\n" % [ult, sup, surges]
+		+ "Bonded %d    Eaten %d    Level %d" % [bonds, eats, growth_level]
+	)
+	_end_stats_label.visible = true
+
+
+func _on_style_changed(_score: float, tier: String) -> void:
+	_hud_presenter.refresh_style(tier)
 
 
 func _on_dna_gained(_species_id: String, _amount: float, _total: float) -> void:
@@ -2827,16 +3580,28 @@ func _on_dna_gained(_species_id: String, _amount: float, _total: float) -> void:
 		_refresh_song_controls_text()
 
 
+func _on_dna_routing_changed(route_id: String, label: String) -> void:
+	var route_color: Color = Color(0.82, 0.96, 0.82, 1.0) if route_id == "bond" else Color(0.96, 0.84, 0.62, 1.0)
+	if _dna_route_label != null:
+		_dna_route_label.text = label
+		_dna_route_label.modulate = route_color
+	
+	if _dna_route_shell != null:
+		var tween := create_tween()
+		_dna_route_shell.modulate = Color(1.5, 1.5, 1.5, 1.0)
+		tween.tween_property(_dna_route_shell, "modulate", Color.WHITE, 0.25)
+	
+	_show_feedback(label, route_color, 0.20)
+
+
 func _on_stamina_changed(current: float, maximum: float) -> void:
-	stamina_bar.max_value = maximum
-	stamina_bar.value = current
+	_hud_presenter.refresh_stamina(current, maximum)
 
 
 func _on_player_took_damage(_amount: float, source_lane: int) -> void:
-	hp_bar.max_value = GameState.player_max_hp
-	hp_bar.value = GameState.player_hp
-	if _hp_value_label != null:
-		_hp_value_label.text = "%d/%d" % [int(GameState.player_hp), int(GameState.player_max_hp)]
+	_hud_presenter.refresh_hp(GameState.player_hp, GameState.player_max_hp)
+	if _escalation_director != null:
+		_escalation_director.notify_player_hp_changed(GameState.get_hp_percent())
 	# Pale Shelf: hits feel clinical and punishing — "EXPOSED" in cold blue, harder flash.
 	# All other regions: standard warm "STRUCK".
 	if _region_id == "pale_shelf":
@@ -2851,22 +3616,21 @@ func _on_player_took_damage(_amount: float, source_lane: int) -> void:
 
 
 func _on_player_healed(_amount: float) -> void:
-	hp_bar.max_value = GameState.player_max_hp
-	hp_bar.value = GameState.player_hp
-	if _hp_value_label != null:
-		_hp_value_label.text = "%d/%d" % [int(GameState.player_hp), int(GameState.player_max_hp)]
+	_hud_presenter.refresh_hp(GameState.player_hp, GameState.player_max_hp)
+	if _escalation_director != null:
+		_escalation_director.notify_player_hp_changed(GameState.get_hp_percent())
 	_show_feedback("MEND", Color(0.70, 0.96, 0.84, 1.0), 0.26)
 	_flash_meter_shell(Color(0.11, 0.22, 0.17, 0.92), 0.10)
 
 
 func _on_ultimate_available() -> void:
-	ultimate_label.text = "Ready"
+	_hud_presenter.set_ultimate_text("Ready")
 	_show_feedback("READY", Color(1.0, 0.85, 0.35, 1.0), 0.45)
 	_flash_meter_shell(Color(0.30, 0.21, 0.10, 0.94), 0.20)
 
 
 func _on_ultimate_fired(_power: float) -> void:
-	ultimate_label.text = "0%"
+	_hud_presenter.set_ultimate_text("0%")
 	var tier: String = combat_meter.get_current_tier()
 	var ult_text: String = "DEVOUR"
 	if tier == "sovereign":
@@ -2905,31 +3669,35 @@ func _on_enemy_damaged(enemy_id: int, damage: float) -> void:
 		if max_hp > 0.0:
 			var current_hp: float = float(lane_manager.get_enemy(lane).get("hp", 0))
 			if current_hp / max_hp <= ENEMY_LOW_HP_THRESHOLD:
-				var marker: ColorRect = _enemy_markers_by_id.get(enemy_id, null)
+				var marker: Node2D = _enemy_markers_by_id.get(enemy_id, null)
 				if marker != null and is_instance_valid(marker):
-					marker.modulate = Color(0.90, 0.28, 0.28, 1.0)
+					var marker_body: ColorRect = marker.get_node_or_null("Body") as ColorRect
+					if marker_body != null:
+						marker_body.modulate = Color(0.90, 0.28, 0.28, 1.0)
 
 	# Decrement unified boss HP bar.
-	if _is_boss_encounter and _boss_hp_bar != null and is_instance_valid(_boss_hp_bar):
+	if _is_boss_encounter and _hud_presenter != null:
 		_boss_current_hp = max(_boss_current_hp - damage, 0.0)
-		_boss_hp_bar.value = _boss_current_hp
-		# One-shot mid-fight escalation at 50% total HP.
-		# Fires during phase 1 or 2 — whichever the blow lands in.
+		_hud_presenter.update_boss_hp(_boss_current_hp)
+		
+		if _escalation_director != null and _boss_total_hp > 0.0:
+			_escalation_director.notify_boss_hp_changed(_boss_current_hp / _boss_total_hp)
+		
+		# Feedback and effects only (director handles timing shift)
 		if not _boss_hp_threshold_fired and _boss_total_hp > 0.0 and (_boss_current_hp / _boss_total_hp) <= 0.5:
 			_boss_hp_threshold_fired = true
-			_show_feedback("SOVEREIGN UNLEASH", Color(0.92, 0.42, 0.12, 1.0), 0.70)
+			_hud_presenter.set_boss_state_text(PRESENTATION_TEXT.BOSS_STATE_FINAL)
+			if _performance_reward_director != null and is_instance_valid(_performance_reward_director) and _performance_reward_director.has_method("notify_boss_threshold"):
+				_performance_reward_director.call("notify_boss_threshold", "sovereign_unleash", 8.0, "BOSS BREAK")
 			_presentation_runtime.apply_impact_profile(COMBAT_IMPACT_FEEDBACK.build_boss_threshold_profile())
 			_trigger_boss_threshold_spectacle()
-			# State 3: tightest cadence - 0.60 s cycle, 0.44 stagger. Projectiles cluster hard.
-			lane_manager.set_cycle_interval(0.60)
-			lane_manager.set_fire_stagger(0.44)
 
 	_spawn_damage_number(enemy_id, damage)
 	_presentation_runtime.apply_impact_profile(COMBAT_IMPACT_FEEDBACK.build_enemy_hit_profile(damage, is_boss_target), lane, enemy_id)
 
 
 func _spawn_damage_number(enemy_id: int, damage: float) -> void:
-	var marker: ColorRect = _enemy_markers_by_id.get(enemy_id, null)
+	var marker: Node2D = _enemy_markers_by_id.get(enemy_id, null)
 	if marker == null or not is_instance_valid(marker):
 		return
 	var start_pos: Vector2 = marker.position + Vector2(6.0, -18.0)
@@ -2937,11 +3705,13 @@ func _spawn_damage_number(enemy_id: int, damage: float) -> void:
 	lbl.text = "%.0f" % damage
 	lbl.position = start_pos
 	lbl.z_index = 10
-	UI_STYLE.apply_label(lbl, "caption_strong")
+	UI_STYLE.apply_label(lbl, "warm_value")
+	lbl.add_theme_font_size_override("font_size", 19)
+	lbl.add_theme_constant_override("outline_size", 2)
 	_enemy_marker_container.add_child(lbl)
 	var tween := create_tween()
-	tween.tween_property(lbl, "position:y", start_pos.y - 30.0, 0.6)
-	tween.parallel().tween_property(lbl, "modulate:a", 0.0, 0.6)
+	tween.tween_property(lbl, "position:y", start_pos.y - 44.0, DAMAGE_NUMBER_FLOAT_TIME)
+	tween.parallel().tween_property(lbl, "modulate:a", 0.0, DAMAGE_NUMBER_FLOAT_TIME)
 	tween.tween_callback(lbl.queue_free)
 
 
@@ -2980,23 +3750,33 @@ func _on_enemy_defeated(enemy_id: int) -> void:
 				_song_phase_dna_award_index += 1
 				dna_amount = DNA_PER_KILL
 		if not dna_species.is_empty() and dna_amount > 0.0:
-			GameState.add_dna(dna_species, dna_amount)
-			EventBus.emit_signal("dna_gained", dna_species, dna_amount, GameState.get_dna(dna_species))
-			_show_feedback("+%s DNA" % String(COMBAT_CONTENT.get_creature(dna_species).get("display_name", dna_species)).to_upper(), Color(0.62, 0.96, 0.78, 1.0), 0.22)
+			var dna_result: Dictionary = {}
+			if _run_growth != null and is_instance_valid(_run_growth) and _run_growth.has_method("process_dna_gain"):
+				dna_result = _run_growth.call("process_dna_gain", dna_species, dna_amount)
+			else:
+				GameState.add_dna(dna_species, dna_amount)
+				dna_result = {
+					"banked": true,
+					"total": GameState.get_dna(dna_species),
+					"route_id": "bond",
+					"exp_gained": 0.0
+				}
+			EventBus.emit_signal("dna_gained", dna_species, dna_amount, float(dna_result.get("total", GameState.get_dna(dna_species))))
+			var dna_name: String = String(COMBAT_CONTENT.get_creature(dna_species).get("display_name", dna_species)).to_upper()
+			if bool(dna_result.get("auto_bonded", false)):
+				# Skip DNA feedback; _on_creature_bonded will handle the 'BONDED' flash.
+				pass
+			elif bool(dna_result.get("banked", false)):
+				_show_feedback("+%s DNA" % dna_name, Color(0.62, 0.96, 0.78, 1.0), 0.22)
+			else:
+				_show_feedback("+%s DNA -> EXP" % dna_name, Color(0.96, 0.84, 0.62, 1.0), 0.22)
 
 	if _song_mode and not _song_paused and not _song_boss_triggered:
 		var dead_lane: int = _song_enemy_lanes.get(enemy_id, -1)
 		if dead_lane >= 0:
 			_song_enemy_lanes.erase(enemy_id)
-			# Schedule a respawn in the same lane if the phase still has room.
-			var respawn_lane: int = dead_lane
-			get_tree().create_timer(0.40).timeout.connect(func() -> void:
-				if _song_mode and not _song_paused and not _song_boss_triggered:
-					var phase: Dictionary = _song_phases[_song_phase_index]
-					var max_threats: int = int(phase.get("max_active_threats", 2))
-					if lane_manager.alive_count() < max_threats:
-						_place_song_enemy(respawn_lane)
-			, CONNECT_ONE_SHOT)
+			if _escalation_director != null:
+				_escalation_director.notify_enemy_defeated(enemy_id, dead_lane)
 
 
 func _on_slow_motion(scale: float, duration: float) -> void:
@@ -3031,12 +3811,16 @@ func _on_player_attacked(lane: int, _damage: float, was_timed: bool) -> void:
 
 func _on_timed_attack_resolved(lane: int, quality: String, damage: float) -> void:
 	var ravage_effect: Dictionary = _get_growth_effect("timed_attack_bonus_damage")
+	var flat_bonus_effect: Dictionary = _get_growth_effect("timed_attack_bonus_flat")
 	var beat_quality: String = _get_beat_quality_for_action()
 	var enemy_id: int = _get_enemy_id_for_lane(lane)
 	if not ravage_effect.is_empty():
 		var rip_damage: float = damage * float(ravage_effect.get("value", 0.0))
 		lane_manager.damage_enemy(lane, rip_damage)
 		_presentation_runtime.spawn_attack_silhouette_to_lane(lane, Color(0.95, 0.48, 0.36, 0.34), 8.0, 0.08, 0.92)
+	if not flat_bonus_effect.is_empty():
+		lane_manager.damage_enemy(lane, float(flat_bonus_effect.get("value", 0.0)))
+		_presentation_runtime.spawn_attack_silhouette_to_lane(lane, Color(0.98, 0.70, 0.34, 0.30), 8.0, 0.08, 0.94)
 
 	if quality == "good":
 		var flow_effect: Dictionary = _get_growth_effect("good_timed_bonus_damage")
@@ -3093,9 +3877,43 @@ func _on_combo_broken(_lost: int) -> void:
 
 
 func _on_run_growth_changed(level: int, exp: float, exp_to_next: float) -> void:
-	if _exp_value_label != null:
-		_exp_value_label.text = "L%d  %.0f/%.0f" % [level, exp, exp_to_next]
+	_hud_presenter.set_exp_text(level, exp, exp_to_next)
 	_refresh_run_build_readout()
+
+
+func _on_run_growth_level_resolved(result: Dictionary) -> void:
+	_refresh_run_build_readout()
+	if result.is_empty():
+		return
+	var readout_label: String = String(result.get("readout_label", ""))
+	var summary: String = String(result.get("summary", ""))
+	if readout_label.is_empty():
+		return
+	_quig_anchor_label.text = _compact_hud_copy("%s - %s" % [readout_label, summary], 34)
+	_quig_anchor_label.visible = true
+	_refresh_quig_ui_state()
+	
+	if _quig_tween != null:
+		_quig_tween.kill()
+		
+	_quig_tween = create_tween()
+	_quig_tween.tween_interval(TENDENCY_ANCHOR_HOLD_TIME)
+	_quig_tween.tween_property(_quig_anchor_label, "modulate:a", 0.0, TENDENCY_ANCHOR_FADE_TIME)
+	_quig_tween.tween_callback(func() -> void:
+		_quig_anchor_label.visible = false
+		_quig_anchor_label.modulate.a = 1.0
+		_refresh_quig_ui_state()
+	)
+	var snapshot: Dictionary = result.get("snapshot", {})
+	if not snapshot.is_empty():
+		_hud_presenter.refresh_hp(
+			float(snapshot.get("player_hp", GameState.player_hp)),
+			float(snapshot.get("player_max_hp", GameState.player_max_hp))
+		)
+		_hud_presenter.refresh_stats(
+			float(snapshot.get("attack_damage", GameState.get_attack_damage())),
+			float(snapshot.get("player_defense", GameState.player_defense))
+		)
 
 
 func _on_tendency_growth_resolved(tendency_id: String, title: String, summary: String) -> void:
@@ -3112,68 +3930,98 @@ func _on_tendency_growth_resolved(tendency_id: String, title: String, summary: S
 		"bond":
 			color = Color(0.74, 0.96, 0.82, 1.0)
 	_show_feedback(title, color, 0.42)
-	_quig_anchor_label.text = summary
+	_surge_window_tendency = tendency_id
+	_surge_window_timer = 4.0
+	_quig_anchor_label.text = _compact_hud_copy(summary, 34)
 	_quig_anchor_label.visible = true
-	var tween := create_tween()
-	tween.tween_interval(1.6)
-	tween.tween_property(_quig_anchor_label, "modulate:a", 0.0, 0.18)
-	tween.tween_callback(func() -> void:
+	_refresh_quig_ui_state()
+	
+	if _quig_tween != null:
+		_quig_tween.kill()
+	
+	_quig_tween = create_tween()
+	_quig_tween.tween_interval(TENDENCY_ANCHOR_HOLD_TIME)
+	_quig_tween.tween_property(_quig_anchor_label, "modulate:a", 0.0, TENDENCY_ANCHOR_FADE_TIME)
+	_quig_tween.tween_callback(func() -> void:
 		_quig_anchor_label.visible = false
 		_quig_anchor_label.modulate.a = 1.0
+		_refresh_quig_ui_state()
 	)
 
 
+func _tick_hud_sprite_animation(delta: float) -> void:
+	if _has_active_quig_ui():
+		_quig_anim_accum += delta
+		if _quig_anim_accum >= QUIG_FRAME_DURATION:
+			_quig_anim_accum = fmod(_quig_anim_accum, QUIG_FRAME_DURATION)
+			_quig_anim_frame = (_quig_anim_frame + 1) % QUIG_FRAME_COUNT
+			_apply_strip_frame(_quig_anchor_sprite, QUIG_FRAME_SIZE, _quig_anim_frame)
+			_apply_strip_frame(_reward_quig_sprite, QUIG_FRAME_SIZE, _quig_anim_frame)
+	else:
+		if _quig_anim_frame != 0:
+			_quig_anim_frame = 0
+			_apply_strip_frame(_quig_anchor_sprite, QUIG_FRAME_SIZE, 0)
+			_apply_strip_frame(_reward_quig_sprite, QUIG_FRAME_SIZE, 0)
+		_quig_anim_accum = 0.0
+
+	if _dna_shell != null and _dna_shell.visible and _dna_emblem != null:
+		_dna_anim_accum += delta
+		if _dna_anim_accum >= DNA_FRAME_DURATION:
+			_dna_anim_accum = fmod(_dna_anim_accum, DNA_FRAME_DURATION)
+			_dna_anim_frame = (_dna_anim_frame + 1) % DNA_FRAME_COUNT
+			_apply_strip_frame(_dna_emblem, DNA_FRAME_SIZE, _dna_anim_frame)
+	else:
+		if _dna_anim_frame != 0:
+			_dna_anim_frame = 0
+			_apply_strip_frame(_dna_emblem, DNA_FRAME_SIZE, 0)
+		_dna_anim_accum = 0.0
+
+
+func _apply_strip_frame(target: TextureRect, frame_size: Vector2i, frame: int) -> void:
+	if target == null or not is_instance_valid(target):
+		return
+	var atlas: AtlasTexture = target.texture as AtlasTexture
+	if atlas == null:
+		return
+	atlas.region = Rect2(
+		Vector2(frame * frame_size.x, 0.0),
+		Vector2(frame_size.x, frame_size.y)
+	)
+
+
+func _has_active_quig_ui() -> bool:
+	var anchor_live: bool = _quig_anchor_label != null and _quig_anchor_label.visible and not _quig_anchor_label.text.is_empty()
+	var reward_live: bool = _reward_overlay != null and _reward_overlay.visible and _reward_quig_label != null and not _reward_quig_label.text.is_empty()
+	return anchor_live or reward_live
+
+
+func _refresh_quig_ui_state() -> void:
+	var anchor_live: bool = _quig_anchor_label != null and _quig_anchor_label.visible and not _quig_anchor_label.text.is_empty()
+	if _quig_anchor_sprite != null:
+		_quig_anchor_sprite.visible = anchor_live
+		if anchor_live:
+			_quig_anchor_sprite.modulate = _quig_anchor_label.modulate
+
+	var reward_live: bool = _reward_overlay != null and _reward_overlay.visible and _reward_quig_label != null and not _reward_quig_label.text.is_empty()
+	if _reward_quig_sprite != null:
+		_reward_quig_sprite.visible = reward_live
+
+
+func _on_creature_bonded(creature_data: Dictionary) -> void:
+	var _name: String = String(creature_data.get("display_name", "creature")).to_upper()
+	var _level: int = int(creature_data.get("bond_level", 1))
+	var _flash_text: String = "BOND L%d" % _level if _level > 1 else "%s BONDED" % _name
+	var _flash_color: Color = Color(0.62, 0.88, 1.0, 1.0) if _level > 1 else Color(0.82, 0.94, 0.76, 1.0)
+	
+	_show_feedback(_flash_text, _flash_color, 0.48)
+	EventBus.emit_signal("screen_flash", _flash_color.lerp(Color.WHITE, 0.5), 0.12)
+	
+	_refresh_dna_hud()
+	_refresh_run_build_readout()
+
+
 func _on_support_charge_changed(current: float, maximum: float, active_species_id: String) -> void:
-	if _support_bar != null:
-		_support_bar.max_value = maximum
-		_support_bar.value = current
-
-	if _support_value_label != null:
-		if active_species_id.is_empty():
-			_support_value_label.text = "--"
-		elif current >= maximum:
-			_support_value_label.text = "Ready"
-		else:
-			_support_value_label.text = "%d%%" % int(round((current / maximum) * 100.0))
-
-	if _support_name_label != null:
-		if _run_growth != null and is_instance_valid(_run_growth) and _run_growth.has_method("get_active_display_name"):
-			var display_name: String = String(_run_growth.call("get_active_display_name"))
-			_support_name_label.text = display_name
-		else:
-			_support_name_label.text = "No bond"
-
-	# Creature portrait: load only when the active species changes.
-	if _support_creature_portrait != null:
-		if active_species_id != _support_portrait_species:
-			_support_portrait_species = active_species_id
-			if not active_species_id.is_empty():
-				var portrait_path: String = COMBAT_CONTENT.get_creature_sprite_path(active_species_id)
-				if not portrait_path.is_empty() and ResourceLoader.exists(portrait_path):
-					var portrait_tex: Texture2D = load(portrait_path) as Texture2D
-					if portrait_tex != null:
-						_support_creature_portrait.texture = portrait_tex
-						_support_creature_portrait.visible = true
-					else:
-						_support_creature_portrait.visible = false
-				else:
-					_support_creature_portrait.visible = false
-			else:
-				_support_creature_portrait.visible = false
-				_support_creature_portrait.texture = null
-
-	if _support_trigger_label != null:
-		if active_species_id.is_empty():
-			_support_trigger_label.text = ""
-		else:
-			var support_role: Dictionary = COMBAT_CONTENT.get_support_role(active_species_id)
-			_support_trigger_label.text = _describe_trigger_hint(String(support_role.get("effect_id", "")))
-
-	if _support_shell != null:
-		var shell_color: Color = Color(0.08, 0.08, 0.10, 0.56)
-		if not active_species_id.is_empty() and current >= maximum:
-			shell_color = Color(0.10, 0.12, 0.11, 0.72)
-		_support_shell.color = shell_color
+	_hud_presenter.refresh_support(current, maximum, active_species_id, _run_growth)
 	_refresh_bonded_creature_render(active_species_id)
 	_refresh_run_build_readout()
 
@@ -3192,7 +4040,7 @@ func _refresh_bonded_creature_render(active_species_id: String = "") -> void:
 		_bonded_creature_sprite.texture = null
 		return
 
-	var sprite_path: String = COMBAT_CONTENT.get_creature_sprite_path(species_id)
+	var sprite_path: String = COMBAT_CONTENT.get_creature_art_path(species_id, "battlefield")
 	if sprite_path.is_empty() or not ResourceLoader.exists(sprite_path):
 		_bonded_creature_species = species_id
 		_bonded_creature_sprite.visible = false
@@ -3303,244 +4151,52 @@ func _build_support_mastery_context(effect_id: String, lane: int) -> Dictionary:
 	return context
 
 
-func _on_bonded_support_triggered(_species_id: String, lane: int, effect_id: String) -> void:
-	var support_role: Dictionary = _get_support_role_for_effect(effect_id)
+func _on_bonded_support_triggered(species_id: String, lane: int, effect_id: String) -> void:
+	var support_role: Dictionary = COMBAT_CONTENT.get_support_role(species_id)
 	var combo_mult: float = combat_meter.damage_multiplier()
 	var active_creature: Dictionary = GameState.get_active_bonded_creature()
 	var bond_mult: float = GameState.get_bond_level_mult(int(active_creature.get("bond_level", 1)))
+	
+	# Bond Surge: next support trigger has doubled effectiveness.
+	var bond_surge: bool = false
+	var surge_mult: float = 1.0
+	if _run_growth != null and _run_growth.has_method("get_runtime_effect"):
+		var surge_effect: Dictionary = _run_growth.get_runtime_effect("bond_trigger_mult")
+		surge_mult = float(surge_effect.get("value", 1.0))
+		bond_surge = surge_mult > 1.0
+
 	var mastery_context: Dictionary = _build_support_mastery_context(effect_id, lane)
 	var mastery: String = String(mastery_context.get("window_id", ""))
 	var cadence_surge: bool = mastery == "cadence_surge"
-	var support_profile: Dictionary = COMBAT_IMPACT_FEEDBACK.build_support_profile(effect_id, cadence_surge)
+	var support_profile: Dictionary = COMBAT_IMPACT_FEEDBACK.build_support_profile(effect_id, cadence_surge, bond_surge)
+	
+	if bond_surge:
+		_show_feedback("SYNC ACTIVE", Color(0.44, 0.96, 0.78, 1.0), 0.42)
 	var support_enemy_id: int = _get_enemy_id_for_lane(lane)
-	if effect_id == "bond_remnant_mend" or effect_id == "gruvek_gorge" or effect_id == "marrowward_ward" or effect_id == "gorefane_maul":
+	if effect_id == "bond_remnant_mend" or effect_id == "gruvek_gorge" or effect_id == "marrowward_ward" or effect_id == "gorefane_maul" or effect_id == "siltgrip_drag":
 		support_enemy_id = -1
 
 	# HOLLOW amplifier: when Bond Remnant is the active creature, REND gets one extra charge
 	# and EXPOSE lasts 0.5 s longer. Mastery windows stack on top of this.
 	var is_hollow_active: bool = String(active_creature.get("species_id", "")) == "bond_remnant"
-	var rend_charges: int = 4 if is_hollow_active else 3
-	var expose_duration: float = 3.0 if is_hollow_active else 2.5
-	if cadence_surge:
-		_show_beat_feedback("CADENCE SURGE", Color(1.0, 0.88, 0.42, 1.0))
 
-	match effect_id:
-		"ashclaw_strike":
-			var strike_damage: float = float(support_role.get("effect_value", 10.0)) * combo_mult * bond_mult
-			var expose_time: float = expose_duration
-			if cadence_surge:
-				strike_damage *= 1.35
-				expose_time += 1.0
-			lane_manager.damage_enemy(lane, strike_damage)
-			lane_manager.apply_status(lane, "expose", {"duration": expose_time})
-			# Mastery window: in_pocket adds REND (1 charge) on top of EXPOSE — the claw tears
-			# deeper when triggered through sustained precision. flow_state escalates to 2 charges.
-			if cadence_surge:
-				lane_manager.apply_status(lane, "rend", {"charges": rend_charges + 1})
-				_show_feedback("ASHCLAW SURGE", Color(1.0, 0.58, 0.18, 1.0), 0.46)
-			elif mastery == "flow_state":
-				lane_manager.apply_status(lane, "rend", {"charges": rend_charges - 1})
-				_show_feedback("ASHCLAW REND", Color(1.0, 0.52, 0.22, 1.0), 0.44)
-			elif mastery == "in_pocket":
-				lane_manager.apply_status(lane, "rend", {"charges": 1})
-				_show_feedback("ASHCLAW TEARS", Color(0.98, 0.56, 0.30, 1.0), 0.40)
-			else:
-				_show_feedback(String(support_role.get("feedback_text", "ASHCLAW")), Color(0.95, 0.60, 0.42, 1.0), 0.36)
-			_presentation_runtime.highlight_timing_ring(lane, Color(0.92, 0.56, 0.38, 1.0), 7.0)
-			_presentation_runtime.spawn_attack_silhouette_to_lane(lane, Color(0.95, 0.60, 0.42, 0.72), 16.0, 0.14, 1.18)
-			_flash_meter_shell(Color(0.25, 0.12, 0.10, 0.92), 0.10)
-		"bond_remnant_mend":
-			var base_heal: float = float(support_role.get("effect_value", 6.0)) * bond_mult
-			# Mastery window: in_pocket adds a stamina pulse (precision earns recovery).
-			# flow_state heals more deeply and restores more stamina.
-			var heal_amount: float = base_heal
-			var stamina_restore: float = 0.0
-			var mend_text: String = String(support_role.get("feedback_text", "REMNANT"))
-			var mend_color: Color = Color(0.72, 0.96, 0.88, 1.0)
-			if cadence_surge:
-				heal_amount = base_heal * 1.85
-				stamina_restore = 28.0
-				mend_text = "SURGE MEND"
-				mend_color = Color(0.64, 1.0, 0.86, 1.0)
-			elif mastery == "flow_state":
-				heal_amount = base_heal * 1.5
-				stamina_restore = 20.0
-				mend_text = "DEEP MEND"
-				mend_color = Color(0.60, 1.0, 0.82, 1.0)
-			elif mastery == "in_pocket":
-				stamina_restore = 12.0
-				mend_text = "MEND PULSE"
-				mend_color = Color(0.66, 0.98, 0.86, 1.0)
-			var healed: float = GameState.heal_player(heal_amount)
-			if healed > 0.0:
-				EventBus.emit_signal("player_healed", healed)
-			if stamina_restore > 0.0:
-				combat_meter.restore_stamina(stamina_restore)
-			_show_feedback(mend_text, mend_color, 0.28)
-			_presentation_runtime.highlight_timing_ring(lane, Color(0.68, 0.94, 0.84, 1.0), 4.8)
-			_flash_meter_shell(Color(0.12, 0.22, 0.18, 0.92), 0.10)
-		"gruvek_gorge":
-			var gorge_damage: float = float(support_role.get("effect_value", 10.0)) * combo_mult * bond_mult
-			if cadence_surge:
-				gorge_damage *= 1.18
-			for check_lane in range(3):
-				lane_manager.damage_enemy(check_lane, gorge_damage)
-			# Apply GORGE-MARK to surviving enemies after gorge damage resolves.
-			for check_lane in range(3):
-				var surviving: Dictionary = lane_manager.get_enemy(check_lane)
-				if surviving.has("hp") and float(surviving["hp"]) > 0.0:
-					lane_manager.apply_status(check_lane, "gorge_mark", {})
-			if cadence_surge:
-				var gorge_healed: float = GameState.heal_player(6.0 * bond_mult)
-				if gorge_healed > 0.0:
-					EventBus.emit_signal("player_healed", gorge_healed)
-				_show_feedback("FEAST WAVE", Color(0.94, 0.58, 0.18, 1.0), 0.42)
-			else:
-				_show_feedback(String(support_role.get("feedback_text", "GORGE")), Color(0.90, 0.52, 0.22, 1.0), 0.38)
-			for check_lane in range(3):
-				_presentation_runtime.highlight_timing_ring(check_lane, Color(0.88, 0.50, 0.20, 1.0), 6.0)
-				_presentation_runtime.spawn_attack_silhouette_to_lane(check_lane, Color(0.90, 0.52, 0.22, 0.55), 11.0, 0.10, 1.05)
-			_flash_meter_shell(Color(0.28, 0.14, 0.08, 0.92), 0.12)
-		"veilskin_phase":
-			var phase_damage: float = float(support_role.get("effect_value", 12.0)) * bond_mult
-			if cadence_surge:
-				phase_damage *= 1.20
-			lane_manager.damage_enemy(lane, phase_damage)
-			# Mastery window: flow_state applies PALE to all 3 lanes — a full battlefield
-			# disruption instead of a single-lane nerf. in_pocket adds extra stamina.
-			var stamina_amount: float = 25.0
-			var phase_text: String = String(support_role.get("feedback_text", "PHASE"))
-			if cadence_surge:
-				for pale_lane in range(3):
-					lane_manager.apply_status(pale_lane, "pale", {})
-				stamina_amount = 40.0
-				phase_text = "VEIL CASCADE"
-			elif mastery == "flow_state":
-				for pale_lane in range(3):
-					lane_manager.apply_status(pale_lane, "pale", {})
-				stamina_amount = 35.0
-				phase_text = "FULL PHASE"
-			elif mastery == "in_pocket":
-				lane_manager.apply_status(lane, "pale", {})
-				stamina_amount = 32.0
-				phase_text = "CLEAN PHASE"
-			else:
-				lane_manager.apply_status(lane, "pale", {})
-			combat_meter.restore_stamina(stamina_amount)
-			_show_feedback(phase_text, Color(0.78, 0.92, 1.0, 1.0), 0.36)
-			for ring_lane in range(3):
-				_presentation_runtime.highlight_timing_ring(ring_lane, Color(0.72, 0.88, 1.0, 1.0), 5.5)
-			_flash_meter_shell(Color(0.10, 0.18, 0.26, 0.92), 0.10)
-		"knellspine_peal":
-			var peal_damage: float = float(support_role.get("effect_value", 8.0)) * combo_mult * bond_mult
-			var charge_return: float = 18.0
-			var peal_text: String = String(support_role.get("feedback_text", "PEAL"))
-			if cadence_surge:
-				peal_damage *= 1.25
-				charge_return = 28.0
-				lane_manager.apply_status(lane, "expose", {"duration": 3.0})
-				peal_text = "SURGE PEAL"
-			elif mastery == "flow_state":
-				charge_return = 24.0
-				lane_manager.apply_status(lane, "expose", {"duration": 2.5})
-				peal_text = "DEEP PEAL"
-			lane_manager.damage_enemy(lane, peal_damage)
-			if _run_growth != null and is_instance_valid(_run_growth) and _run_growth.has_method("gain_support_charge_direct"):
-				_run_growth.call("gain_support_charge_direct", charge_return)
-			_show_feedback(peal_text, Color(0.98, 0.82, 0.34, 1.0), 0.34)
-			_presentation_runtime.highlight_timing_ring(lane, Color(1.0, 0.84, 0.42, 1.0), 6.2)
-			_presentation_runtime.spawn_attack_silhouette_to_lane(lane, Color(0.98, 0.82, 0.34, 0.68), 14.0, 0.12, 1.12)
-			_flash_meter_shell(Color(0.24, 0.18, 0.08, 0.92), 0.10)
-		"marrowward_ward":
-			var ward_heal: float = float(support_role.get("effect_value", 8.0)) * bond_mult
-			var ward_stamina: float = 18.0
-			var ward_text: String = String(support_role.get("feedback_text", "WARD"))
-			for pale_lane in range(3):
-				lane_manager.apply_status(pale_lane, "pale", {})
-			if cadence_surge:
-				ward_heal *= 1.5
-				ward_stamina = 32.0
-				ward_text = "FULL WARD"
-			elif mastery == "flow_state":
-				ward_heal *= 1.25
-				ward_stamina = 24.0
-				ward_text = "BONE WARD"
-			var ward_restored: float = GameState.heal_player(ward_heal)
-			if ward_restored > 0.0:
-				EventBus.emit_signal("player_healed", ward_restored)
-			combat_meter.restore_stamina(ward_stamina)
-			_show_feedback(ward_text, Color(0.78, 0.92, 0.82, 1.0), 0.34)
-			for ring_lane in range(3):
-				_presentation_runtime.highlight_timing_ring(ring_lane, Color(0.78, 0.92, 0.82, 1.0), 5.4)
-			_flash_meter_shell(Color(0.12, 0.18, 0.14, 0.92), 0.10)
-		"gorefane_maul":
-			var maul_damage: float = float(support_role.get("effect_value", 14.0)) * combo_mult * bond_mult
-			var maul_charges: int = 1
-			var maul_text: String = String(support_role.get("feedback_text", "MAUL"))
-			if cadence_surge:
-				maul_damage *= 1.22
-				maul_charges = 3
-				maul_text = "FEAST MAUL"
-			elif mastery == "flow_state":
-				maul_charges = 2
-				maul_text = "RIP MAUL"
-			for check_lane in range(3):
-				lane_manager.damage_enemy(check_lane, maul_damage)
-			for check_lane in range(3):
-				var maul_enemy: Dictionary = lane_manager.get_enemy(check_lane)
-				if maul_enemy.has("hp") and float(maul_enemy["hp"]) > 0.0:
-					lane_manager.apply_status(check_lane, "rend", {"charges": maul_charges})
-			_show_feedback(maul_text, Color(0.96, 0.44, 0.20, 1.0), 0.40)
-			for check_lane in range(3):
-				_presentation_runtime.highlight_timing_ring(check_lane, Color(0.98, 0.48, 0.22, 1.0), 6.8)
-				_presentation_runtime.spawn_attack_silhouette_to_lane(check_lane, Color(0.96, 0.44, 0.20, 0.62), 15.0, 0.14, 1.10)
-			_flash_meter_shell(Color(0.30, 0.12, 0.08, 0.92), 0.12)
-		"hushcoil_lull":
-			var lull_damage: float = float(support_role.get("effect_value", 7.0)) * combo_mult * bond_mult
-			var lull_text: String = String(support_role.get("feedback_text", "LULL"))
-			lane_manager.damage_enemy(lane, lull_damage)
-			for pale_lane in range(3):
-				lane_manager.apply_status(pale_lane, "pale", {})
-			if cadence_surge:
-				lane_manager.apply_status(lane, "expose", {"duration": 3.0})
-				combat_meter.restore_stamina(18.0)
-				lull_text = "DEAD LULL"
-			elif mastery == "flow_state":
-				lane_manager.apply_status(lane, "expose", {"duration": 2.5})
-				lull_text = "DEEP LULL"
-			_show_feedback(lull_text, Color(0.72, 0.82, 0.98, 1.0), 0.34)
-			for ring_lane in range(3):
-				_presentation_runtime.highlight_timing_ring(ring_lane, Color(0.68, 0.80, 0.98, 1.0), 5.8)
-			_flash_meter_shell(Color(0.10, 0.14, 0.24, 0.92), 0.10)
-		"thornback_rend":
-			var rend_damage: float = float(support_role.get("effect_value", 20.0)) * combo_mult * bond_mult
-			if cadence_surge:
-				rend_damage *= 1.25
-			lane_manager.damage_enemy(lane, rend_damage)
-			# Mastery window: each tier adds rend charges — more hits at +30% damage.
-			# flow_state adds 2 charges; in_pocket adds 1.
-			var mastery_charges: int = rend_charges
-			var rend_text: String = String(support_role.get("feedback_text", "REND"))
-			var rend_color: Color = Color(0.96, 0.75, 0.38, 1.0)
-			if cadence_surge:
-				mastery_charges = rend_charges + 3
-				rend_text = "THORNBURST"
-				rend_color = Color(1.0, 0.84, 0.24, 1.0)
-			elif mastery == "flow_state":
-				mastery_charges = rend_charges + 2
-				rend_text = "REND SURGE"
-				rend_color = Color(1.0, 0.82, 0.28, 1.0)
-			elif mastery == "in_pocket":
-				mastery_charges = rend_charges + 1
-				rend_text = "DEEP REND"
-				rend_color = Color(0.98, 0.78, 0.32, 1.0)
-			lane_manager.apply_status(lane, "rend", {"charges": mastery_charges})
-			_show_feedback(rend_text, rend_color, 0.36)
-			_presentation_runtime.highlight_timing_ring(lane, Color(0.94, 0.72, 0.34, 1.0), 7.5)
-			_presentation_runtime.spawn_attack_silhouette_to_lane(lane, Color(0.96, 0.75, 0.38, 0.78), 18.0, 0.16, 1.22)
-			_flash_meter_shell(Color(0.28, 0.16, 0.08, 0.92), 0.10)
-		_:
-			return
+	if _support_resolver != null:
+		var ctx: Dictionary = {
+			"species_id": species_id,
+			"lane": lane,
+			"effect_id": effect_id,
+			"combo_mult": combo_mult,
+			"bond_mult": bond_mult,
+			"surge_mult": surge_mult,
+			"mastery_window": mastery,
+			"cadence_surge": cadence_surge,
+			"bond_surge": bond_surge,
+			"is_hollow_active": is_hollow_active,
+			"lane_manager": lane_manager,
+			"combat_meter": combat_meter,
+			"game_state": GameState
+		}
+		_support_resolver.resolve(ctx)
 
 	_presentation_runtime.apply_impact_profile(support_profile, lane, support_enemy_id)
 
@@ -3597,7 +4253,7 @@ func _on_enemy_status_applied(lane: int, status_id: String) -> void:
 	var enemy_id: int = _get_enemy_id_for_lane(lane)
 	if enemy_id < 0:
 		return
-	var marker: ColorRect = _enemy_markers_by_id.get(enemy_id, null)
+	var marker: Node2D = _enemy_markers_by_id.get(enemy_id, null)
 	if marker == null or not is_instance_valid(marker):
 		return
 
@@ -3617,7 +4273,9 @@ func _on_enemy_status_applied(lane: int, status_id: String) -> void:
 		_:
 			return
 
-	marker.color = _status_marker_overrides[enemy_id]
+	var marker_body: ColorRect = marker.get_node_or_null("Body") as ColorRect
+	if marker_body != null:
+		marker_body.color = _status_marker_overrides[enemy_id]
 
 
 func _on_enemy_status_cleared(lane: int) -> void:
@@ -3627,7 +4285,7 @@ func _on_enemy_status_cleared(lane: int) -> void:
 		return
 	_status_marker_overrides.erase(enemy_id)
 
-	var marker: ColorRect = _enemy_markers_by_id.get(enemy_id, null)
+	var marker: Node2D = _enemy_markers_by_id.get(enemy_id, null)
 	if marker == null or not is_instance_valid(marker):
 		return
 
@@ -3635,10 +4293,16 @@ func _on_enemy_status_cleared(lane: int) -> void:
 	var active_color: Color = biome.get("enemy_active_color", Color(0.76, 0.21, 0.21, 1.0))
 	var inactive_color: Color = biome.get("enemy_inactive_color", Color(0.38, 0.18, 0.18, 0.55))
 	var phase: int = int(_enemy_phase_by_id.get(enemy_id, -1))
-	marker.color = active_color if phase == _current_phase_index else inactive_color
+	var marker_body: ColorRect = marker.get_node_or_null("Body") as ColorRect
+	if marker_body != null:
+		marker_body.color = active_color if phase == _current_phase_index else inactive_color
 
 
 func _get_growth_effect(effect_type: String) -> Dictionary:
+	if _performance_reward_director != null and is_instance_valid(_performance_reward_director) and _performance_reward_director.has_method("get_runtime_effect"):
+		var performance_effect: Dictionary = _performance_reward_director.call("get_runtime_effect", effect_type)
+		if not performance_effect.is_empty():
+			return performance_effect
 	if _run_growth != null and is_instance_valid(_run_growth) and _run_growth.has_method("get_runtime_effect"):
 		var runtime_effect: Dictionary = _run_growth.call("get_runtime_effect", effect_type)
 		if not runtime_effect.is_empty():
@@ -3661,20 +4325,6 @@ func _get_legacy_upgrade_effect(effect_type: String) -> Dictionary:
 	return {}
 
 
-func _get_support_role_for_effect(effect_id: String) -> Dictionary:
-	var species_id: String = ""
-	if _run_growth != null and is_instance_valid(_run_growth) and _run_growth.has_method("get_active_species_id"):
-		species_id = String(_run_growth.call("get_active_species_id"))
-	if species_id.is_empty():
-		return {}
-
-	var support_role: Dictionary = COMBAT_CONTENT.get_support_role(species_id)
-	if String(support_role.get("effect_id", "")) != effect_id:
-		return {}
-
-	return support_role
-
-
 func _on_player_teleported(_from_lane: int, _to_lane: int) -> void:
 	_draw_timing_circles()
 
@@ -3684,7 +4334,7 @@ func _remove_enemy_marker(enemy_id: int) -> void:
 	if not _enemy_markers_by_id.has(enemy_id):
 		return
 
-	var marker: ColorRect = _enemy_markers_by_id[enemy_id]
+	var marker: Node2D = _enemy_markers_by_id[enemy_id]
 	if marker == null or not is_instance_valid(marker):
 		_enemy_markers_by_id.erase(enemy_id)
 		return
@@ -3698,3 +4348,11 @@ func _remove_enemy_marker(enemy_id: int) -> void:
 	)
 
 	_enemy_markers_by_id.erase(enemy_id)
+
+
+func _spawn_support_intervention(species_id: String, lane: int, tint: Color) -> void:
+	var support_art: String = COMBAT_CONTENT.get_creature_art_path(species_id, "support")
+	if not support_art.is_empty():
+		_presentation_runtime.spawn_creature_intervention(lane, support_art, tint)
+	else:
+		_presentation_runtime.spawn_attack_silhouette_to_lane(lane, tint, 16.0, 0.14, 1.18)

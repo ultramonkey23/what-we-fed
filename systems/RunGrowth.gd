@@ -2,6 +2,7 @@ extends Node
 
 const GROWTH_CONTENT = preload("res://data/RunGrowthContent.gd")
 const COMBAT_CONTENT = preload("res://data/CombatContent.gd")
+const PRESENTATION_TEXT = preload("res://data/PresentationTextContent.gd")
 
 # Live run growth now resolves immediately through tendency surges.
 # Legacy upgrade-pool effects remain only as a compatibility fallback for
@@ -13,6 +14,23 @@ var exp_to_next: float = GROWTH_CONTENT.LEVEL_THRESHOLDS[0]
 var support_charge: float = 0.0
 var tendency_points: Dictionary = {}
 var tendency_levels: Dictionary = {}
+var dna_routing_preference: String = "bond"
+
+# Temporary surge buffs granted by tendency pulses.
+var active_surges: Dictionary = {
+	"aggression": 0.0, # hits remaining
+	"cadence": 0.0,    # seconds remaining
+	"guard": 0.0,      # hits remaining
+	"bond": 0.0        # activations remaining
+}
+
+# Run-local passives granted by eating creatures.
+var mutations: Array[Dictionary] = []
+
+
+func _process(delta: float) -> void:
+	if active_surges.get("cadence", 0.0) > 0.0:
+		active_surges["cadence"] = max(active_surges["cadence"] - delta, 0.0)
 
 var _encounter_style_tiers_awarded: Dictionary = {}
 var _encounter_survival_spent: bool = false
@@ -48,6 +66,7 @@ func _ready() -> void:
 		EventBus.bonded_support_triggered.connect(_on_bonded_support_triggered)
 	_emit_growth_state()
 	_emit_support_state()
+	_emit_dna_routing_state()
 	_reset_tendencies()
 
 
@@ -59,13 +78,25 @@ func get_active_species_id() -> String:
 func get_active_display_name() -> String:
 	var creature: Dictionary = GameState.get_active_bonded_creature()
 	if creature.is_empty():
-		return "No Bond"
+		return PRESENTATION_TEXT.SUPPORT_EMPTY_NAME
 	var support_role: Dictionary = creature.get("support_role", {})
-	return String(support_role.get("readout_name", creature.get("display_name", "No Bond")))
+	return String(support_role.get("readout_name", creature.get("display_name", PRESENTATION_TEXT.SUPPORT_EMPTY_NAME)))
 
 
 func get_tendency_summary() -> String:
 	var tendency_tokens: Array[String] = []
+	
+	# Priority: show active surges if any.
+	for surge_id in active_surges.keys():
+		if active_surges[surge_id] > 0.0:
+			var label: String = ""
+			match surge_id:
+				"aggression": label = "VENGEANCE"
+				"cadence": label = "FLOW"
+				"guard": label = "IRON"
+				"bond": label = "SYNC"
+			tendency_tokens.append(label)
+
 	var ordered_ids: Array[String] = _sorted_tendency_ids_by_level()
 	for i in range(min(2, ordered_ids.size())):
 		var tendency_id: String = ordered_ids[i]
@@ -86,19 +117,124 @@ func get_runtime_effect(effect_type: String) -> Dictionary:
 	match effect_type:
 		"timed_attack_bonus_damage":
 			var aggression_level: int = int(tendency_levels.get("aggression", 0))
-			if aggression_level > 0:
-				return {"type": effect_type, "value": 0.12 * aggression_level}
+			var surge_bonus: float = 0.0
+			if active_surges.get("aggression", 0.0) > 0.0:
+				surge_bonus = 0.25 # 25% extra damage during aggression surge
+
+			if aggression_level > 0 or surge_bonus > 0.0:
+				return {"type": effect_type, "value": 0.12 * aggression_level + surge_bonus}
 		"good_timed_bonus_damage":
 			var cadence_level: int = int(tendency_levels.get("cadence", 0))
 			if cadence_level > 0:
-				return {"type": effect_type, "value": 0.08 * cadence_level}
+				return {"type": effect_type, "value": 0.12 * cadence_level}
 		"support_charge_gain_mult":
 			var bond_level: int = int(tendency_levels.get("bond", 0))
-			if bond_level > 0:
-				return {"type": effect_type, "value": 1.0 + 0.12 * bond_level}
+			var surge_mult: float = 1.0
+			if active_surges.get("cadence", 0.0) > 0.0:
+				surge_mult = 2.0 # Double charge gain during cadence surge
+
+			if bond_level > 0 or surge_mult > 1.0:
+				return {"type": effect_type, "value": (1.0 + 0.12 * bond_level) * surge_mult}
+		"guard_damage_reduction":
+			if active_surges.get("guard", 0.0) > 0.0:
+				return {"type": effect_type, "value": 0.50} # 50% damage reduction for 1 hit
+		"bond_trigger_mult":
+			if active_surges.get("bond", 0.0) > 0.0:
+				return {"type": effect_type, "value": 2.0} # Double effectiveness for next support
 		_:
 			return {}
 	return {}
+
+
+func has_surge(surge_type: String) -> bool:
+	return active_surges.get(surge_type, 0.0) > 0.0
+
+
+func consume_surge_hit(surge_type: String) -> void:
+	if active_surges.has(surge_type):
+		active_surges[surge_type] = max(active_surges[surge_type] - 1.0, 0.0)
+
+
+func get_growth_snapshot() -> Dictionary:
+	var cadence_level: int = int(tendency_levels.get("cadence", 0))
+	var bond_level: int = int(tendency_levels.get("bond", 0))
+	return {
+		"level": level,
+		"exp": exp,
+		"exp_to_next": exp_to_next,
+		"base_damage": GameState.player_base_damage,
+		"attack_damage": GameState.get_attack_damage(),
+		"player_defense": GameState.player_defense,
+		"player_defense_reduction": GameState.get_defense_damage_reduction(),
+		"player_hp": GameState.player_hp,
+		"player_max_hp": GameState.player_max_hp,
+		"support_charge": support_charge,
+		"support_max": GROWTH_CONTENT.SUPPORT_MAX,
+		"dna_routing_preference": dna_routing_preference,
+		"good_timed_bonus_damage_mult": 0.12 * cadence_level,
+		"support_charge_gain_mult": 1.0 + 0.12 * bond_level
+	}
+
+
+func get_dna_routing_label() -> String:
+	if dna_routing_preference == "exp":
+		return PRESENTATION_TEXT.DNA_ROUTE_EXP_LABEL
+	return PRESENTATION_TEXT.DNA_ROUTE_BOND_LABEL
+
+
+func toggle_dna_routing_preference() -> String:
+	dna_routing_preference = "exp" if dna_routing_preference == "bond" else "bond"
+	_emit_dna_routing_state()
+	return dna_routing_preference
+
+
+func process_dna_gain(species_id: String, amount: float) -> Dictionary:
+	if species_id.is_empty() or amount <= 0.0:
+		return {
+			"species_id": species_id,
+			"amount": 0.0,
+			"banked": false,
+			"total": GameState.get_dna(species_id),
+			"route_id": dna_routing_preference,
+			"exp_gained": 0.0
+		}
+
+	if dna_routing_preference == "exp":
+		var exp_gained: float = amount * GROWTH_CONTENT.DNA_EXP_PER_POINT
+		_grant_exp(exp_gained)
+		return {
+			"species_id": species_id,
+			"amount": amount,
+			"banked": false,
+			"total": GameState.get_dna(species_id),
+			"route_id": dna_routing_preference,
+			"exp_gained": exp_gained
+		}
+
+	GameState.add_dna(species_id, amount)
+	var creature_data: Dictionary = COMBAT_CONTENT.get_creature(species_id)
+	var threshold: float = float(creature_data.get("dna_threshold", 999.0))
+	var current_total: float = GameState.get_dna(species_id)
+	var auto_bonded: bool = false
+	
+	if not GameState.is_species_bonded(species_id) and current_total >= threshold:
+		GameState.spend_dna(species_id, threshold)
+		var updated_creature: Dictionary = GameState.add_bonded_creature(creature_data)
+		EventBus.emit_signal("creature_bonded", updated_creature)
+		auto_bonded = true
+		_grant_tendency("bond", 3.0) # Bonus tendency for the breakthrough moment
+
+	_gain_support_charge(amount * GROWTH_CONTENT.DNA_BOND_SUPPORT_CHARGE_PER_POINT)
+	_grant_tendency("bond", amount * GROWTH_CONTENT.DNA_BOND_TENDENCY_PER_POINT)
+	return {
+		"species_id": species_id,
+		"amount": amount,
+		"banked": true,
+		"total": GameState.get_dna(species_id),
+		"route_id": dna_routing_preference,
+		"exp_gained": 0.0,
+		"auto_bonded": auto_bonded
+	}
 
 
 func _on_run_started(_run_number: int) -> void:
@@ -106,6 +242,10 @@ func _on_run_started(_run_number: int) -> void:
 	exp = 0.0
 	exp_to_next = GROWTH_CONTENT.LEVEL_THRESHOLDS[0]
 	support_charge = 0.0
+	dna_routing_preference = "bond"
+	mutations.clear()
+	for surge_id in active_surges.keys():
+		active_surges[surge_id] = 0.0
 	_reset_tendencies()
 	# Apply starting_support_charge region modifier if the Drowned Cut is active.
 	var region_mod: Dictionary = GameState.active_region.get("modifier", {})
@@ -116,6 +256,7 @@ func _on_run_started(_run_number: int) -> void:
 	_encounter_pressure_mend_spent = false
 	_emit_growth_state()
 	_emit_support_state()
+	_emit_dna_routing_state()
 
 
 func _on_combat_started(_enemy_data: Array) -> void:
@@ -127,6 +268,13 @@ func _on_combat_started(_enemy_data: Array) -> void:
 func _on_enemy_defeated(_enemy_id: int) -> void:
 	_grant_exp(GROWTH_CONTENT.EXP_KILL)
 	_gain_support_charge(GROWTH_CONTENT.CHARGE_ENEMY_DEFEAT)
+	
+	# Aggression Surge: heal on kill.
+	if active_surges.get("aggression", 0.0) > 0.0:
+		var healed: float = GameState.heal_player(4.0)
+		if healed > 0.0:
+			EventBus.emit_signal("player_healed", healed)
+
 	# Drowned Cut: resonant volume identity — each kill charges the bond layer faster.
 	# +75% of the base kill charge, so ~6 kills to fill instead of ~10.
 	if GameState.active_region.get("id", "") == "drowned_cut":
@@ -139,6 +287,10 @@ func _on_enemy_defeated(_enemy_id: int) -> void:
 func _on_timed_attack_resolved(lane: int, quality: String, _damage: float) -> void:
 	_grant_exp(GROWTH_CONTENT.EXP_TIMED_ATTACK)
 	_gain_support_charge(GROWTH_CONTENT.CHARGE_TIMED_ATTACK)
+	
+	if active_surges.get("aggression", 0.0) > 0.0:
+		consume_surge_hit("aggression")
+
 	var cadence_gain: float = 0.5
 	if quality == "good":
 		cadence_gain = 1.0
@@ -189,6 +341,9 @@ func _on_ultimate_fired(_power: float) -> void:
 
 
 func _on_player_took_damage(_amount: float, source_lane: int) -> void:
+	if active_surges.get("guard", 0.0) > 0.0:
+		consume_surge_hit("guard")
+
 	if not _encounter_survival_spent and _apply_upgrade_effect_on_event("first_damage_taken"):
 		_encounter_survival_spent = true
 
@@ -200,7 +355,13 @@ func _on_player_took_damage(_amount: float, source_lane: int) -> void:
 	_grant_tendency("guard", 0.25)
 
 
-func _on_creature_changed(_creature_data: Dictionary) -> void:
+func _on_creature_changed(creature_data: Dictionary) -> void:
+	# Eating a creature adds its identity to the run mutations.
+	var eat_effect: Dictionary = creature_data.get("eat_effect", {})
+	if not eat_effect.is_empty():
+		mutations.append(creature_data)
+		EventBus.emit_signal("screen_flash", Color(0.85, 0.22, 0.14, 0.08), 0.10)
+	
 	_emit_support_state()
 
 
@@ -222,6 +383,8 @@ func _on_player_dodged(_from_lane: int, _to_lane: int) -> void:
 
 
 func _on_bonded_support_triggered(_species_id: String, _lane: int, _effect_id: String) -> void:
+	if active_surges.get("bond", 0.0) > 0.0:
+		consume_surge_hit("bond")
 	_grant_tendency("bond", 1.25)
 
 
@@ -383,10 +546,56 @@ func _emit_support_state() -> void:
 	EventBus.emit_signal("support_charge_changed", support_charge, GROWTH_CONTENT.SUPPORT_MAX, get_active_species_id())
 
 
+func _emit_dna_routing_state() -> void:
+	EventBus.emit_signal("dna_routing_changed", dna_routing_preference, get_dna_routing_label())
+
+
 func gain_support_charge_direct(amount: float) -> void:
 	if amount <= 0.0:
 		return
 	support_charge = clamp(support_charge + amount, 0.0, GROWTH_CONTENT.SUPPORT_MAX)
+	_emit_support_state()
+
+
+func gain_reward_support_charge(amount: float) -> void:
+	if amount <= 0.0:
+		return
+
+	if get_active_species_id().is_empty():
+		_emit_support_state()
+		return
+
+	var gain_mult: float = 1.0
+	var gain_effect: Dictionary = _get_growth_effect("support_charge_gain_mult")
+	if not gain_effect.is_empty():
+		gain_mult = float(gain_effect.get("value", 1.0))
+
+	support_charge = clamp(support_charge + amount * gain_mult, 0.0, GROWTH_CONTENT.SUPPORT_MAX)
+	_emit_support_state()
+
+
+func apply_debug_state(state: Dictionary) -> void:
+	if state.is_empty():
+		return
+
+	level = max(int(state.get("level", level)), 1)
+	exp = max(float(state.get("exp", exp)), 0.0)
+	exp_to_next = _get_exp_threshold_for_level(level)
+
+	var seeded_points: Dictionary = state.get("tendency_points", {})
+	if not seeded_points.is_empty():
+		for tendency_id in tendency_points.keys():
+			tendency_points[tendency_id] = float(seeded_points.get(tendency_id, 0.0))
+
+	var seeded_levels: Dictionary = state.get("tendency_levels", {})
+	if not seeded_levels.is_empty():
+		for tendency_id in tendency_levels.keys():
+			tendency_levels[tendency_id] = max(int(seeded_levels.get(tendency_id, 0)), 0)
+
+	if state.has("support_charge"):
+		support_charge = clamp(float(state.get("support_charge", support_charge)), 0.0, GROWTH_CONTENT.SUPPORT_MAX)
+
+	_emit_growth_state()
 	_emit_support_state()
 
 
@@ -416,38 +625,89 @@ func _apply_real_time_growth_pulse() -> void:
 	if tendency_id.is_empty():
 		tendency_id = "aggression"
 
-	tendency_levels[tendency_id] = int(tendency_levels.get(tendency_id, 0)) + 1
+	var new_level: int = int(tendency_levels.get(tendency_id, 0)) + 1
+	tendency_levels[tendency_id] = new_level
 	tendency_points[tendency_id] = max(float(tendency_points.get(tendency_id, 0.0)) - 4.0, 0.0)
-
-	var title: String = ""
-	var summary: String = ""
-	match tendency_id:
-		"aggression":
-			GameState.player_base_damage += 1.0
-			title = "AGGRESSION SURGE"
-			summary = "Attack +1"
-		"cadence":
-			title = "CADENCE SURGE"
-			summary = "Good timing damage +8%"
-		"guard":
-			var old_hp: float = GameState.player_hp
-			GameState.player_max_hp += 8.0
-			GameState.player_hp = min(GameState.player_hp + 6.0, GameState.player_max_hp)
-			var healed: float = GameState.player_hp - old_hp
-			if healed > 0.0:
-				EventBus.emit_signal("player_healed", healed)
-			title = "GUARD SURGE"
-			summary = "Max HP +8"
-		"bond":
-			_gain_support_charge(12.0)
-			title = "BOND SURGE"
-			summary = "Support gain +12%"
-		_:
-			return
+	var result: Dictionary = _resolve_tendency_level_up(tendency_id, new_level)
+	if result.is_empty():
+		return
 
 	_emit_growth_state()
 	_emit_support_state()
-	EventBus.emit_signal("tendency_growth_resolved", tendency_id, title, summary)
+	EventBus.emit_signal("run_growth_level_resolved", result)
+	EventBus.emit_signal("tendency_growth_resolved", tendency_id, String(result.get("title", "")), String(result.get("summary", "")))
+
+
+func _resolve_tendency_level_up(tendency_id: String, tendency_level: int) -> Dictionary:
+	var outcome: Dictionary = GROWTH_CONTENT.TENDENCY_LEVEL_UP_OUTCOMES.get(tendency_id, {})
+	if outcome.is_empty():
+		return {}
+
+	var changes: Array[Dictionary] = []
+	for effect in outcome.get("effects", []):
+		var effect_data: Dictionary = effect
+		var applied_change: Dictionary = _apply_level_up_effect(effect_data, tendency_level)
+		if not applied_change.is_empty():
+			changes.append(applied_change)
+
+	var result: Dictionary = {
+		"level": level,
+		"tendency_id": tendency_id,
+		"tendency_level": tendency_level,
+		"title": String(outcome.get("title", tendency_id.to_upper())),
+		"readout_label": String(outcome.get("readout_label", tendency_id.capitalize())),
+		"changes": changes,
+		"snapshot": get_growth_snapshot()
+	}
+	result["summary"] = PRESENTATION_TEXT.tendency_level_up_summary(result)
+	return result
+
+
+func _apply_level_up_effect(effect_data: Dictionary, tendency_level: int) -> Dictionary:
+	var effect_type: String = String(effect_data.get("type", ""))
+	var base_value: float = float(effect_data.get("value", 0.0))
+	match effect_type:
+		"base_damage_flat":
+			GameState.player_base_damage += base_value
+			return {"type": effect_type, "applied_value": base_value}
+		"max_hp_flat":
+			var current_hp_before: float = GameState.player_hp
+			GameState.player_max_hp += base_value
+			var hp_gain: float = min(base_value * 0.5, GameState.player_max_hp - current_hp_before)
+			GameState.player_hp = min(current_hp_before + hp_gain, GameState.player_max_hp)
+			if GameState.player_hp > current_hp_before:
+				EventBus.emit_signal("player_healed", GameState.player_hp - current_hp_before)
+			return {"type": effect_type, "applied_value": base_value}
+		"defense_flat":
+			GameState.player_defense += base_value
+			return {"type": effect_type, "applied_value": base_value}
+		"heal_now":
+			var healed: float = GameState.heal_player(base_value)
+			if healed > 0.0:
+				EventBus.emit_signal("player_healed", healed)
+			return {"type": effect_type, "applied_value": healed}
+		"support_charge_now":
+			var before_charge: float = support_charge
+			_gain_support_charge(base_value)
+			return {"type": effect_type, "applied_value": support_charge - before_charge}
+		"good_timed_bonus_damage_per_level":
+			return {"type": effect_type, "applied_value": base_value * tendency_level}
+		"support_charge_gain_mult_per_level":
+			return {"type": effect_type, "applied_value": base_value * tendency_level}
+		"surge_aggression":
+			active_surges["aggression"] = base_value
+			return {"type": effect_type, "applied_value": base_value}
+		"surge_cadence":
+			active_surges["cadence"] = base_value
+			return {"type": effect_type, "applied_value": base_value}
+		"surge_guard":
+			active_surges["guard"] = base_value
+			return {"type": effect_type, "applied_value": base_value}
+		"surge_bond":
+			active_surges["bond"] = base_value
+			return {"type": effect_type, "applied_value": base_value}
+		_:
+			return {}
 
 
 func _get_leading_tendency_id() -> String:
@@ -487,3 +747,9 @@ func _tendency_short_name(tendency_id: String) -> String:
 			return "BOND"
 		_:
 			return tendency_id.to_upper()
+
+
+func _get_exp_threshold_for_level(level_value: int) -> float:
+	if level_value - 1 < GROWTH_CONTENT.LEVEL_THRESHOLDS.size():
+		return GROWTH_CONTENT.LEVEL_THRESHOLDS[level_value - 1]
+	return GROWTH_CONTENT.LEVEL_THRESHOLDS[GROWTH_CONTENT.LEVEL_THRESHOLDS.size() - 1] + 70.0

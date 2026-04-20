@@ -1,5 +1,5 @@
 param(
-    [ValidateSet("run", "validate", "editor", "resolve")]
+    [ValidateSet("run", "validate", "smoke", "editor", "resolve", "debug")]
     [string]$Mode = "run",
     [Parameter(ValueFromRemainingArguments = $true)]
     [string[]]$GodotArgs
@@ -146,7 +146,8 @@ function Get-DefaultLogFile {
 function Invoke-Godot {
     param(
         [Parameter(Mandatory = $true)]
-        [string[]]$Arguments
+        [string[]]$Arguments,
+        [string]$LogPath = ""
     )
 
     $godotExe = Resolve-GodotExecutable
@@ -156,6 +157,9 @@ function Invoke-Godot {
 
     Write-Host ("Using Godot: {0}" -f $godotExe)
     Write-Host ("Project root: {0}" -f $repoRoot)
+    if (-not [string]::IsNullOrWhiteSpace($LogPath)) {
+        Write-Host ("Log file: {0}" -f $LogPath)
+    }
 
     & $godotExe @Arguments
     $exitCode = $LASTEXITCODE
@@ -202,7 +206,7 @@ function Get-GodotLogErrors {
                 $inErrorBlock = $false
             }
         } elseif ($inErrorBlock -and $line -match "^\s+at:") {
-            # Stack-trace context for the preceding error — keep it.
+            # Stack-trace context for the preceding error Ã¢â‚¬" keep it.
             $errors.Add($line)
         } else {
             $inErrorBlock = $false
@@ -217,34 +221,61 @@ switch ($Mode) {
         Write-Host (Resolve-GodotExecutable)
     }
     "editor" {
-        $args = @("--editor", "--path", (Get-RepoRoot), "--log-file", (Get-DefaultLogFile -ModeName "editor")) + $GodotArgs
-        Invoke-Godot -Arguments $args
+        $logFile = Get-DefaultLogFile -ModeName "editor"
+        $args = @("--editor", "--path", (Get-RepoRoot), "--log-file", $logFile) + $GodotArgs
+        Invoke-Godot -Arguments $args -LogPath $logFile
     }
     "run" {
-        $args = @("--path", (Get-RepoRoot), "--log-file", (Get-DefaultLogFile -ModeName "run")) + $GodotArgs
-        Invoke-Godot -Arguments $args
+        $logFile = Get-DefaultLogFile -ModeName "run"
+        $args = @("--path", (Get-RepoRoot), "--log-file", $logFile) + $GodotArgs
+        Invoke-Godot -Arguments $args -LogPath $logFile
+    }
+    "debug" {
+        $logFile = Get-DefaultLogFile -ModeName "debug-harness"
+        $args = @("--path", (Get-RepoRoot), "--log-file", $logFile, "res://scenes/dev/DebugBootScene.tscn") + $GodotArgs
+        Invoke-Godot -Arguments $args -LogPath $logFile
+    }
+    "smoke" {
+        $repoRoot = Get-RepoRoot
+        $smokeLog = Get-DefaultLogFile -ModeName "smoke"
+        $smokeArgs = @("--path", $repoRoot, "--headless", "--quit-after", "1", "--log-file", $smokeLog) + $GodotArgs
+        Invoke-Godot -Arguments $smokeArgs -LogPath $smokeLog
+
+        $logErrors = Get-GodotLogErrors -LogPath $smokeLog
+        if ($logErrors.Count -gt 0) {
+            Write-Host ""
+            Write-Host "SMOKE FAILED - errors found in smoke log:" -ForegroundColor Red
+            foreach ($line in $logErrors) {
+                Write-Host ("  {0}" -f $line) -ForegroundColor Red
+            }
+            Write-Host ""
+            Write-Host ("Full log: {0}" -f $smokeLog)
+            exit 1
+        }
+
+        Write-Host "SMOKE OK" -ForegroundColor Green
     }
     "validate" {
         $repoRoot = Get-RepoRoot
 
-        # Step 1: import pass — re-imports any new or changed assets.
-        # Uses the non-headless path so audio/texture importers have full access.
-        $importArgs = @("--path", $repoRoot, "--import", "--log-file", (Get-DefaultLogFile -ModeName "import"))
-        Invoke-Godot -Arguments $importArgs
+        # Step 1: import pass - re-import any new or changed assets.
+        # Uses the non-headless path so audio and texture importers have full access.
+        $importLog = Get-DefaultLogFile -ModeName "import"
+        $importArgs = @("--path", $repoRoot, "--import", "--log-file", $importLog)
+        Invoke-Godot -Arguments $importArgs -LogPath $importLog
 
-        # Step 2: headless smoke run — boots the project for one frame and quits.
-        # Catches autoload failures, parse errors, and missing-node crashes.
+        # Step 2: headless smoke run - boot the project for one frame and quit.
+        # This catches autoload failures, parse errors, and missing-node crashes.
         $validateLog = Get-DefaultLogFile -ModeName "validate"
         $smokeArgs = @("--path", $repoRoot, "--headless", "--quit-after", "1", "--log-file", $validateLog) + $GodotArgs
-        Invoke-Godot -Arguments $smokeArgs
+        Invoke-Godot -Arguments $smokeArgs -LogPath $validateLog
 
         # Step 3: scan the smoke log for real errors.
-        # Godot exits 0 even on GDScript parse/runtime errors — log scan is the only
-        # reliable way to detect them from the outside.
+        # Godot exits 0 even on GDScript parse or runtime errors.
         $logErrors = Get-GodotLogErrors -LogPath $validateLog
         if ($logErrors.Count -gt 0) {
             Write-Host ""
-            Write-Host "VALIDATE FAILED — errors found in smoke log:" -ForegroundColor Red
+            Write-Host "VALIDATE FAILED - errors found in smoke log:" -ForegroundColor Red
             foreach ($line in $logErrors) {
                 Write-Host ("  {0}" -f $line) -ForegroundColor Red
             }

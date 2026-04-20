@@ -2,24 +2,28 @@
 
 ## Current priority order
 
-### 1. Timing Truth Bundle
+### [DONE] 1. Timing Truth Bundle
 Goal:
-- make parry and attack timing visually honest
-- align logic to visible circles / beat mark
-- remove misleading or unreachable timing zones
-- add a temporary debug calibration aid
+- make parry and attack timing visually honest [DONE]
+- align logic to visible circles / beat mark [DONE]
+- remove misleading or unreachable timing zones [DONE]
+- add a temporary debug calibration aid [DONE]
 
-### 2. Creature Feedback Bundle
+### [DONE] 2. Creature Feedback Bundle
 Goal:
-- surface bonded creature effects in UI
-- surface absorbed/eaten bonuses in UI
-- make the current run build readable
+- surface bonded creature effects in UI [DONE]
+- surface absorbed/eaten bonuses in UI [DONE]
+- make the current run build readable [DONE]
+- add organic UI animations (scale pulses) for feedback [DONE]
 
-### 3. Combat Feel Cleanup Bundle
+### 3. Combat Feel Cleanup & Polish
 Goal:
 - centralize slow-motion constants
 - centralize repeated feel/timing values
 - clarify fragile delayed state handling
+- [DONE] unify tier visual identity (labels/colors)
+- [DONE] background "beat bloom" environmental feedback
+- [DONE] simulated chromatic jitter on heavy impacts
 
 ### 4. Data Extraction Bundle
 Goal:

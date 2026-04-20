@@ -2,6 +2,7 @@ extends Node2D
 
 const LAIR_SCENE_PATH: String = "res://scenes/ui/LairScene.tscn"
 const UI_STYLE = preload("res://systems/UIStyle.gd")
+const PRESENTATION_TEXT = preload("res://data/PresentationTextContent.gd")
 
 var _controls_panel: ColorRect = null
 var _controls_visible: bool = false
@@ -72,7 +73,7 @@ func _build_ui() -> void:
 	canvas.add_child(title_label)
 
 	var sub_label: Label = Label.new()
-	sub_label.text = "The hollow remembers."
+	sub_label.text = PRESENTATION_TEXT.TITLE_SUBTITLE
 	sub_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	sub_label.size = Vector2(1280.0, 40.0)
 	sub_label.position = Vector2(0.0, 328.0)
@@ -80,7 +81,7 @@ func _build_ui() -> void:
 	canvas.add_child(sub_label)
 
 	var prompt_label: Label = Label.new()
-	prompt_label.text = "Press any key to begin"
+	prompt_label.text = PRESENTATION_TEXT.TITLE_PROMPT
 	prompt_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	prompt_label.size = Vector2(1280.0, 40.0)
 	prompt_label.position = Vector2(0.0, 434.0)
@@ -88,7 +89,7 @@ func _build_ui() -> void:
 	canvas.add_child(prompt_label)
 
 	var hint_label: Label = Label.new()
-	hint_label.text = "H - how to play"
+	hint_label.text = PRESENTATION_TEXT.TITLE_HINT
 	hint_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hint_label.size = Vector2(1280.0, 30.0)
 	hint_label.position = Vector2(0.0, 660.0)
@@ -115,15 +116,15 @@ func _build_ui() -> void:
 	_controls_panel.add_child(inner_bg)
 
 	var controls_text: String = (
-		"How to play\n\n"
+		PRESENTATION_TEXT.TITLE_HELP_HEADER + "\n\n"
 		+ "A / S / D               Attack lane 1 / 2 / 3\n"
 		+ "Left Arrow + A/S/D      Parry incoming attack\n"
 		+ "Right Arrow + A/S/D     Dodge to adjacent lane\n"
 		+ "R                       Ultimate attack\n"
 		+ "\n"
 		+ "- During live offers -\n"
-		+ "B / E                   Bond or Eat live creature offer\n"
-		+ "N                       Pass live creature offer\n"
+		+ "B / E                   Bond or Eat live claim\n"
+		+ "N                       Pass live claim\n"
 		+ "R                       Restart run\n"
 		+ "T                       Return to lair"
 	)

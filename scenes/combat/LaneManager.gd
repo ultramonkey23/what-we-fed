@@ -1,5 +1,7 @@
 extends Node
 
+const COMBAT_CONTENT = preload("res://data/CombatContent.gd")
+
 const LANE_COUNT: int = 3
 # fire_stagger is the wait between firing successive lanes in a single cycle.
 # Wider = each lane projectile arrives as a distinct timed event.
@@ -414,7 +416,8 @@ func _fire_lane(lane: int) -> void:
 		_enemy_x,
 		_hit_zone_x,
 		_player_x,
-		get_lane_y(lane)
+		get_lane_y(lane),
+		COMBAT_CONTENT.get_enemy_telegraph_profile(enemy)
 	)
 
 	projectile.resolved.connect(_on_projectile_resolved.bind(lane))

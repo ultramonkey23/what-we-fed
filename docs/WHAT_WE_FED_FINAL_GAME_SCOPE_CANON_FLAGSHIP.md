@@ -25,24 +25,61 @@ It should be treated as the current highest-level project spine until deliberate
 **WHAT WE FED**
 
 ## Final genre identity
-A dark, stylish, creature-driven action game that fuses:
-- rhythm/timing-based combat
-- lane pressure and battlefield reading
-- mutation and predatory growth
-- bonded creature support
-- run-based progression
-- long-term creature development
-- oppressive horror atmosphere
-- premium readable UI
-- escalating bosses
-- evolving world state
-- a long-form kaiju ascension arc shaped by player action
+A dark, stylish, creature-driven **RPG roguelite** where realtime lane-timing combat is the signature expression layer for predation, build identity, and monstrous ascent.
+
+## Genre hierarchy
+- RPG first
+- Roguelite second
+- Creature-driven progression game third
+- Lane-timing action combat fourth, as the signature expression layer
+
+## Layer responsibilities
+
+### Combat is responsible for
+- honest moment-to-moment skill pressure
+- readable three-lane threat management
+- proving whether the build actually functions under song-time
+- making creature growth visible and earned
+
+### The RPG layer is responsible for
+- deciding what kind of creature the player is becoming
+- turning DNA, tendencies, support, and bond vs eat choices into identity
+- producing transformational growth instead of flat stat inflation
+
+### The roguelite layer is responsible for
+- structuring repeatable runs under escalating pressure
+- creating adaptation, variation, and failure-driven learning
+- supporting replayability without generic content sprawl
+
+### The creature layer is responsible for
+- giving progression a body, appetite, and consequence
+- preserving species-specific DNA meaning
+- keeping bond vs eat central to the player fantasy
 
 ## Short pitch
-A weak, hungry being survives a hostile world through timing mastery, predation, and dangerous creature bonds. Runs are shaped by combat mastery, mutation choices, bonded support, and meaningful creature decisions. Over time, the player builds a stable of creatures, develops signature support partners, alters the world through what they feed, preserve, or destroy, and pushes toward an endgame where their choices may help birth or define a kaiju-class final catastrophe.
+A weak, hungry being survives a hostile world through timing mastery, predation, and dangerous creature bonds, shaping a feared monster across repeatable song-runs where every bond, meal, and mutation changes what the creature becomes.
 
 ## Core fantasy
 **Start weak. Become feared.**
+
+## Core loop hierarchy
+
+### In-run loop
+- read lanes
+- survive timing pressure
+- prey on species for DNA
+- decide bond or eat when creature offers appear
+- steer the creature toward a recognizable role before the song ends
+
+### Between-run loop
+- retain meaningful growth
+- reinforce identity direction
+- re-enter with clearer intent rather than wider sprawl
+
+### Long-term loop
+- develop a creature fantasy over many runs
+- deepen support identity and species meaning
+- build toward later-scope ranch and world consequences only when the live RPG roguelite foundation is strong enough
 
 The player should feel like:
 - desperate prey at first
@@ -94,12 +131,13 @@ Not direct copying, but the project should carry energy from:
 
 ## What it must NOT feel like
 - generic fantasy RPG
+- generic action game with monsters pasted on top
 - soft/cute pet collector
 - bland mobile game
 - random roguelite soup
 - pure rhythm-game gimmick
 - spreadsheet-heavy management sim
-- generic action game with monsters pasted on top
+- ranch-first management game
 
 ---
 
@@ -749,4 +787,4 @@ Not:
 
 # 17. Final One-Sentence Vision
 
-**What We Fed** should become a dark, stylish, creature-driven action game where a weak hungry being survives through timing mastery, predation, mutation, and dangerous creature bonds, gradually shaping both their own monstrous ascent and the evolution of a living world that may ultimately birth a kaiju-class final catastrophe.
+**What We Fed** should become a dark, stylish, creature-driven RPG roguelite where a weak hungry being survives through timing mastery, predation, mutation, and dangerous creature bonds, shaping a feared monster through repeatable song-runs before later-scope world and kaiju consequences are pulled forward.

@@ -34,6 +34,8 @@ var _stream_player: AudioStreamPlayer = null
 var _sections: Array = []          # sections with computed absolute start_time
 var _current_section_idx: int = -1
 var _final_movement_time: float = 9999.0
+var _window_start_time: float = 0.0
+var _window_end_time: float = 9999.0
 var _final_triggered: bool = false
 var _song_duration: float = 0.0
 var _running: bool = false
@@ -47,7 +49,7 @@ const BEAT_GOOD_WINDOW: float    = 0.130
 var _beat_interval: float = 0.0  # seconds per beat; 0 = no BPM defined for this map
 
 
-func start(song_map_script) -> void:
+func start(song_map_script, start_time: float = 0.0, window_end_time: float = -1.0) -> void:
 	# song_map_script — a preloaded RefCounted script with SONG_PATH, SECTIONS,
 	# and FINAL_MOVEMENT_FRACTION constants (see data/song_maps/tricky_songmap.gd).
 
@@ -83,11 +85,24 @@ func start(song_map_script) -> void:
 		s["start_time"] = float(s.get("start_fraction", 0.0)) * _song_duration
 		_sections.append(s)
 
+	var clamped_start_time: float = clampf(start_time, 0.0, max(_song_duration - 0.05, 0.0))
+	_window_start_time = clamped_start_time
+	_window_end_time = _final_movement_time
+	if window_end_time > 0.0:
+		_window_end_time = clampf(window_end_time, _window_start_time + 0.05, _song_duration)
 	_current_section_idx = -1
 	_final_triggered = false
 	current_intensity = 0.0
 	current_spawn_mult = 1.0
 	current_section_id = ""
+	for i in range(_sections.size()):
+		if clamped_start_time >= float(_sections[i].get("start_time", 0.0)):
+			_current_section_idx = i
+			current_intensity = float(_sections[i].get("intensity", 0.0))
+			current_spawn_mult = float(_sections[i].get("spawn_interval_mult", 1.0))
+			current_section_id = String(_sections[i].get("id", ""))
+		else:
+			break
 
 	# Beat interval from the song map's BPM constant, if defined.
 	_beat_interval = 0.0
@@ -97,7 +112,7 @@ func start(song_map_script) -> void:
 			_beat_interval = 60.0 / bpm
 
 	_running = true
-	_stream_player.play()
+	_stream_player.play(clamped_start_time)
 
 
 func pause() -> void:
@@ -121,7 +136,7 @@ func stop() -> void:
 func get_song_time() -> float:
 	if _stream_player == null or not is_instance_valid(_stream_player):
 		return 0.0
-	return _stream_player.get_playback_position()
+	return _stream_player.get_playback_position() + AudioServer.get_time_since_last_mix()
 
 
 func get_song_duration() -> float:
@@ -129,12 +144,19 @@ func get_song_duration() -> float:
 
 
 func get_final_movement_time() -> float:
-	return _final_movement_time
+	return _window_end_time
 
 
 func is_beat_active() -> bool:
 	# True when beat tracking is available and the conductor is playing.
 	return _running and _beat_interval > 0.0
+
+
+func get_beat_count() -> int:
+	# Returns total beats elapsed since song start.
+	if not is_beat_active():
+		return 0
+	return int(floor(get_song_time() / _beat_interval))
 
 
 func get_beat_phase() -> float:
@@ -167,7 +189,7 @@ func _process(_delta: float) -> void:
 	if not _running or _stream_player == null:
 		return
 
-	var t: float = _stream_player.get_playback_position()
+	var t: float = get_song_time()
 
 	# Section transition check — advance one at a time so no section is skipped.
 	var next_idx: int = _current_section_idx + 1
@@ -181,6 +203,6 @@ func _process(_delta: float) -> void:
 			section_changed.emit(current_section_id, next_section)
 
 	# Final movement trigger — fires once.
-	if not _final_triggered and t >= _final_movement_time:
+	if not _final_triggered and t >= _window_end_time:
 		_final_triggered = true
 		final_movement_reached.emit()

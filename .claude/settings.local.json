@@ -5,7 +5,27 @@
       "Bash(ls -la *.ps1 *.bat *.sh)",
       "Bash(ls tools/)",
       "Bash(powershell:*)",
-      "Bash(echo \"EXIT: $?\")"
+      "Bash(echo \"EXIT: $?\")",
+      "Bash(powershell.exe -ExecutionPolicy Bypass -File tools/godot.ps1 validate)",
+      "Bash(python3:*)",
+      "Bash(powershell.exe:*)",
+      "Bash(awk ':*)",
+      "Bash(mv /tmp/combat_fixed.gd scenes/combat/CombatScene.gd)",
+      "Bash(cmd.exe /c smoke_project.bat)",
+      "Bash(cmd.exe /c validate_project.bat)",
+      "Bash(smoke_project.bat)",
+      "Bash(cmd /c smoke_project.bat)",
+      "Bash(cmd /c validate_project.bat)",
+      "Bash(python3 -c ':*)",
+      "Bash(python -c ':*)",
+      "Bash(cmd.exe /c \"smoke_project.bat\")",
+      "Bash(cmd.exe /c \"validate_project.bat\")",
+      "Bash(identify \"assets/ui/combat/panels/combat_panel_top_left.png.png\")",
+      "Bash(python3 -c \"from PIL import Image; img=Image.open\\('assets/ui/combat/panels/combat_panel_top_left.png.png'\\); print\\(img.size\\)\")",
+      "Bash(echo \"EXIT:$?\")",
+      "Bash(cmd /c debug_harness.bat)",
+      "Bash(ls \"C:\\\\Users\\\\harin\\\\OneDrive\\\\Desktop\\\\gamesdevs\\\\What We Fed\\\\what-we-fed\"/*.bat)",
+      "Bash(xxd /c/Users/harin/OneDrive/Desktop/gamesdevs/\"What We Fed\"/what-we-fed/.godot/uid_cache.bin)"
     ]
   }
 }

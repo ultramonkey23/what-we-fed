@@ -1,20 +1,17 @@
 # Local Godot CLI Workflow
 
-Use the repo-local wrappers from the project root:
+Use [PROJECT_SETUP_AND_VALIDATION.md](../PROJECT_SETUP_AND_VALIDATION.md) as the main workflow entrypoint.
+
+Quick command summary from repo root:
 
 ```bat
 run_project.bat
 validate_project.bat
+editor_project.bat
+resolve_godot.bat
 ```
 
-What they do:
-- `run_project.bat` launches the project from terminal.
-- `validate_project.bat` runs a quick import pass, then a one-frame headless smoke run.
-- Both wrappers keep Godot logs and writable editor state inside `.godot-cli/` instead of relying on global AppData paths.
-
-If Godot is not on `PATH`, the wrapper will try common Windows install/unpack locations first.
-
-If auto-discovery misses your install, use either of these repo-safe overrides:
+Repo-local overrides:
 
 1. Current shell only:
 
@@ -22,6 +19,6 @@ If auto-discovery misses your install, use either of these repo-safe overrides:
 $env:WHAT_WE_FED_GODOT_EXE = "C:\full\path\to\Godot_v4.6.1-stable_win64_console.exe"
 ```
 
-2. Persistent for this repo checkout:
+2. Persistent for this checkout:
 
-Create `.godot-cli\godot_path.txt` containing the full path to the executable on the first line.
+Create `.godot-cli\godot_path.txt` and put the full executable path on line 1.

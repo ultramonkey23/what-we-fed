@@ -3,15 +3,23 @@ extends RefCounted
 const COMBAT_CONTENT = preload("res://data/CombatContent.gd")
 const REGION_SONG_CONTENT = preload("res://data/RegionSongContent.gd")
 const IDENTITY_CONTENT = preload("res://data/EncounterIdentityContent.gd")
+const RUN_PACING_CONTENT = preload("res://data/RunPacingContent.gd")
 
 
-static func build_song_run(region_id: String) -> Dictionary:
+static func build_song_run(region_id: String, regular_level_index: int = 0, level_duration: float = 120.0) -> Dictionary:
 	var resolved_region_id: String = region_id if not region_id.is_empty() else "feeding_hollow"
+	var base_phases: Array = REGION_SONG_CONTENT.get_song_phases(resolved_region_id)
+	var scaled_phases: Array = _build_scaled_song_level_phases(
+		resolved_region_id,
+		base_phases,
+		regular_level_index,
+		level_duration
+	)
 	return {
 		"region_id": resolved_region_id,
 		"biome": _get_biome_for_region(resolved_region_id),
 		"identity": IDENTITY_CONTENT.get_region_identity(resolved_region_id),
-		"phases": REGION_SONG_CONTENT.get_song_phases(resolved_region_id)
+		"phases": scaled_phases
 	}
 
 
@@ -144,3 +152,44 @@ static func _unique_lane_order(order: Array) -> Array:
 		if not unique.has(lane):
 			unique.append(lane)
 	return unique
+
+
+static func _build_scaled_song_level_phases(
+	region_id: String,
+	source_phases: Array,
+	regular_level_index: int,
+	level_duration: float
+) -> Array:
+	var scaled: Array = []
+	if source_phases.is_empty():
+		return scaled
+	var safe_duration: float = max(level_duration, 20.0)
+	var phase_fractions: Array[float] = RUN_PACING_CONTENT.get_phase_start_fractions()
+	var scaling: Dictionary = RUN_PACING_CONTENT.get_level_scaling(region_id, regular_level_index)
+	var cycle_mult: float = float(scaling.get("cycle_interval_mult", 1.0))
+	var stagger_mult: float = float(scaling.get("fire_stagger_mult", 1.0))
+	var threat_bonus: int = int(scaling.get("max_active_threats_bonus", 0))
+	var hp_mult: float = float(scaling.get("enemy_hp_mult", 1.0))
+	var damage_mult: float = float(scaling.get("enemy_damage_mult", 1.0))
+	var projectile_speed_mult: float = float(scaling.get("enemy_projectile_speed_mult", 1.0))
+
+	for i in range(source_phases.size()):
+		var phase: Dictionary = Dictionary(source_phases[i]).duplicate(true)
+		var start_fraction: float = phase_fractions[i] if i < phase_fractions.size() else clampf(float(i) / float(max(source_phases.size() - 1, 1)), 0.0, 1.0)
+		phase["start_time"] = start_fraction * safe_duration
+		phase["cycle_interval"] = max(float(phase.get("cycle_interval", 2.2)) * cycle_mult, 0.35)
+		phase["fire_stagger"] = clampf(float(phase.get("fire_stagger", 0.45)) * stagger_mult, 0.42, 0.90)
+		phase["max_active_threats"] = clampi(int(phase.get("max_active_threats", 2)) + threat_bonus, 1, 5)
+
+		var pool: Array = phase.get("enemy_pool", [])
+		var scaled_pool: Array = []
+		for enemy in pool:
+			var scaled_enemy: Dictionary = Dictionary(enemy).duplicate(true)
+			scaled_enemy["hp"] = float(scaled_enemy.get("hp", 28.0)) * hp_mult
+			scaled_enemy["damage"] = float(scaled_enemy.get("damage", 8.0)) * damage_mult
+			if scaled_enemy.has("projectile_speed"):
+				scaled_enemy["projectile_speed"] = float(scaled_enemy.get("projectile_speed", 265.0)) * projectile_speed_mult
+			scaled_pool.append(scaled_enemy)
+		phase["enemy_pool"] = scaled_pool
+		scaled.append(phase)
+	return scaled

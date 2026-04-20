@@ -6,6 +6,7 @@ const FOLLOW_UP_WINDOW: float = 0.55
 
 # Combat result tuning.
 const TIMED_ATTACK_DAMAGE_RATIO: float = 0.5
+const PLAYER_DAMAGE_TO_TIMED_RATIO: float = 0.42
 const LATE_ATTACK_PUNISH_RATIO: float = 0.18
 const GOOD_PARRY_REFLECT_MULT: float = 1.2
 const PERFECT_PARRY_REFLECT_MULT: float = 2.0
@@ -67,6 +68,7 @@ const HIT_SPRITE_SCALE := Vector2(0.94, 1.0)
 var lane_manager: Node = null
 var combat_meter: Node = null
 var _song_conductor: Node = null
+var _run_growth: Node = null
 var _sprite_color_tween: Tween = null
 
 var current_lane: int = NEUTRAL_LANE
@@ -155,8 +157,8 @@ func setup(new_lane_manager: Node, new_combat_meter: Node) -> void:
 		EventBus.projectile_fired.connect(_on_projectile_fired)
 
 	for lane in range(3):
-		var projectile = lane_manager.get_projectile(lane)
-		if projectile != null:
+		var projectile: Projectile = lane_manager.get_projectile(lane) as Projectile
+		if is_instance_valid(projectile):
 			_connect_projectile_signals(projectile)
 
 	_return_to_neutral_state(true)
@@ -178,6 +180,10 @@ func set_combat_enabled(enabled: bool) -> void:
 
 func set_song_conductor(conductor: Node) -> void:
 	_song_conductor = conductor
+
+
+func set_run_growth(rg: Node) -> void:
+	_run_growth = rg
 
 
 func _get_beat_quality() -> String:
@@ -239,7 +245,7 @@ func _flash_sprite_color(tint: Color, duration: float) -> void:
 	if _sprite_color_tween != null:
 		_sprite_color_tween.kill()
 	# Sprite2D uses modulate (not color). Base is Color.WHITE = no tint.
-	var vis_node = _player_sprite if _player_sprite != null else sprite
+	var vis_node: CanvasItem = _player_sprite if _player_sprite != null else sprite
 	var prop: String = "modulate" if _player_sprite != null else "color"
 	var base: Color = Color.WHITE if _player_sprite != null else Color(0.25, 0.55, 0.95, 1.0)
 	_sprite_color_tween = create_tween()
@@ -272,7 +278,7 @@ func _lock_action(duration: float, state: String) -> void:
 
 
 func _handle_lane_action(target_lane: int) -> void:
-	target_lane = clamp(target_lane, 0, 2)
+	target_lane = clampi(target_lane, 0, 2)
 	_consume_chain_bypass_if_needed()
 	_select_action_lane(target_lane)
 
@@ -301,23 +307,21 @@ func _select_action_lane(target_lane: int) -> void:
 func _try_attack() -> void:
 	_play_attack_state(current_lane)
 
-	var projectile = lane_manager.get_projectile(current_lane)
-	var combo_mult: float = combat_meter.damage_multiplier()
+	var projectile: Node2D = lane_manager.get_projectile(current_lane)
+	var combo_mult: float = combat_meter.damage_multiplier() if combat_meter else 1.0
 
 	if parry_followup_active:
 		_fire_parry_followup(combo_mult)
 		return
 
-	if projectile == null:
+	if not is_instance_valid(projectile):
 		_idle_attack(combo_mult)
 		return
 
-	var quality: String = String(projectile.evaluate_attack_timing())
+	var quality: String = String(projectile.call("evaluate_attack_timing"))
 
 	match quality:
-		"good":
-			_resolve_timed_attack(projectile, combo_mult, quality)
-		"perfect":
+		"good", "perfect":
 			_resolve_timed_attack(projectile, combo_mult, quality)
 		"early":
 			_resolve_early_attack()
@@ -332,21 +336,21 @@ func _try_attack() -> void:
 func _try_parry() -> void:
 	_play_parry_state(current_lane)
 
-	var projectile = lane_manager.get_projectile(current_lane)
-	if projectile == null:
+	var projectile: Node2D = lane_manager.get_projectile(current_lane)
+	if not is_instance_valid(projectile):
 		return
 
-	if not combat_meter.can_parry():
+	if not combat_meter.call("can_parry"):
 		EventBus.emit_signal("player_no_stamina")
 		return
 
-	if not combat_meter.spend_stamina_for_parry():
+	if not combat_meter.call("spend_stamina_for_parry"):
 		return
 
-	var quality: String = String(projectile.evaluate_parry_timing())
+	var quality: String = String(projectile.call("evaluate_parry_timing"))
 
 	if quality != "good" and quality != "perfect":
-		combat_meter.record_bad_timing()
+		combat_meter.call("record_bad_timing")
 		_clear_mastery_context("failed_parry", current_lane)
 		EventBus.emit_signal("screen_flash", Color(1.0, 0.2, 0.2, 0.08), 0.05)
 		_lock_action(FAILED_PARRY_RECOVERY, "failed_parry")
@@ -367,12 +371,12 @@ func _try_parry() -> void:
 		reflect_mult *= 1.25
 		followup_window = 0.85
 
-	var reflect_damage: float = float(projectile.damage) * reflect_mult * combo_mult * (1.0 + _get_parry_reflect_bonus())
+	var reflect_damage: float = float(projectile.get("damage")) * reflect_mult * combo_mult * (1.0 + _get_parry_reflect_bonus())
 
-	projectile.reflect_to_enemy(reflect_damage)
-	lane_manager.clear_slot(current_lane)
-	combat_meter.record_parry(quality)
-	combat_meter.record_phrase_action(quality)
+	projectile.call("reflect_to_enemy", reflect_damage)
+	lane_manager.call("clear_slot", current_lane)
+	combat_meter.call("record_parry", quality)
+	combat_meter.call("record_phrase_action", quality)
 	_show_parry_image()
 	_emit_mastery_context("parry", current_lane, quality, beat)
 
@@ -409,7 +413,7 @@ func _try_dodge() -> void:
 	else:
 		to_lane = current_lane + 1 if current_lane < 2 else current_lane - 1
 
-	to_lane = clamp(to_lane, 0, 2)
+	to_lane = clampi(to_lane, 0, 2)
 
 	if to_lane == from_lane:
 		return
@@ -418,14 +422,14 @@ func _try_dodge() -> void:
 	EventBus.emit_signal("player_teleported", from_lane, to_lane)
 	_play_dodge_state(to_lane)
 
-	var destination_projectile = lane_manager.get_projectile(to_lane)
-	if destination_projectile != null:
+	var destination_projectile: Projectile = lane_manager.get_projectile(to_lane) as Projectile
+	if is_instance_valid(destination_projectile):
 		destination_projectile.resolve("dodged_through")
-		lane_manager.clear_slot(to_lane)
+		lane_manager.call("clear_slot", to_lane)
 
 	var beat: String = _get_beat_quality()
-	combat_meter.record_dodge()
-	combat_meter.record_phrase_action("good")
+	combat_meter.call("record_dodge")
+	combat_meter.call("record_phrase_action", "good")
 	_emit_mastery_context("dodge", to_lane, "good", beat)
 	EventBus.emit_signal("player_dodged", from_lane, to_lane)
 
@@ -441,11 +445,11 @@ func _try_dodge() -> void:
 func _try_ultimate() -> void:
 	_play_attack_state(current_lane)
 
-	if not combat_meter.is_ultimate_available():
+	if not combat_meter.call("is_ultimate_available"):
 		return
 
 	var beat: String = _get_beat_quality()
-	var multiplier: float = combat_meter.consume_ultimate()
+	var multiplier: float = float(combat_meter.call("consume_ultimate"))
 	if multiplier <= 0.0:
 		return
 
@@ -460,7 +464,7 @@ func _try_ultimate() -> void:
 	total_damage += _get_creature_bonus()
 
 	for lane in range(3):
-		lane_manager.damage_enemy(lane, total_damage)
+		lane_manager.call("damage_enemy", lane, total_damage)
 
 	EventBus.emit_signal("screen_flash", Color(1.0, 0.75, 0.3, 0.16), 0.10)
 
@@ -498,7 +502,20 @@ func _resolve_timed_attack(projectile, combo_mult: float, quality: String) -> vo
 	elif beat == "perfect" or beat == "good":
 		beat_mult = 1.15
 
-	var timed_damage: float = (float(projectile.damage) * TIMED_ATTACK_DAMAGE_RATIO) * combo_mult * (1.0 + phrase_bonus) * beat_mult + _get_timed_damage_bonus()
+	# Tendency growth multiplier: aggression adds flat % to all timed hits;
+	# cadence adds additional flat % to good and perfect hits only.
+	var growth_mult: float = 1.0
+	if _run_growth != null and _run_growth.has_method("get_runtime_effect"):
+		var aggr_effect: Dictionary = _run_growth.get_runtime_effect("timed_attack_bonus_damage")
+		growth_mult += float(aggr_effect.get("value", 0.0))
+		if quality == "good" or quality == "perfect":
+			var cad_effect: Dictionary = _run_growth.get_runtime_effect("good_timed_bonus_damage")
+			growth_mult += float(cad_effect.get("value", 0.0))
+
+	# Player attack damage (base + absorbed) now cashes out directly in timed attacks.
+	# We combine the "reflected" projectile damage with a portion of the player's own power.
+	var base_atk: float = GameState.get_attack_damage()
+	var timed_damage: float = ((float(projectile.damage) * TIMED_ATTACK_DAMAGE_RATIO) + (base_atk * PLAYER_DAMAGE_TO_TIMED_RATIO)) * combo_mult * (1.0 + phrase_bonus) * beat_mult * growth_mult + _get_timed_damage_bonus()
 	var recovery: float = TIMED_ATTACK_RECOVERY
 
 	projectile.resolve("attack_%s" % quality)
@@ -570,10 +587,15 @@ func _take_damage(amount: float, source_lane: int) -> void:
 	_play_hit_state(source_lane)
 	_show_hurt_image()
 
-	amount = amount * (1.0 - _get_damage_reduction())
+	var surge_dr: float = 0.0
+	if _run_growth != null and _run_growth.has_method("get_runtime_effect"):
+		var effect: Dictionary = _run_growth.get_runtime_effect("guard_damage_reduction")
+		surge_dr = float(effect.get("value", 0.0))
+
+	amount = amount * (1.0 - _get_damage_reduction()) * (1.0 - surge_dr)
 	GameState.player_hp = max(GameState.player_hp - amount, 0.0)
 	_flash_sprite_color(Color(1.0, 0.25, 0.25, 1.0), 0.18)
-	combat_meter.break_phrase()
+	combat_meter.call("break_phrase")
 	_clear_mastery_context("damage_taken", source_lane)
 	EventBus.emit_signal("player_took_damage", amount, source_lane)
 	EventBus.emit_signal("screen_shake", 5.0, 0.12)
@@ -597,14 +619,14 @@ func _get_creature_bonus() -> float:
 
 func _get_damage_reduction() -> float:
 	# Sums damage_reduction_pct from all bonded creatures, scaled by bond level.
-	# Capped at 50% to prevent stacking from becoming degenerate.
-	var total: float = 0.0
+	# Live run defense shares this seam so survivability stays concrete and bounded.
+	var total: float = GameState.get_defense_damage_reduction()
 	for creature in GameState.roster:
 		var passive: Dictionary = creature.get("bond_passive", {})
 		if passive.get("type", "") == "damage_reduction_pct":
 			var mult: float = GameState.get_bond_level_mult(int(creature.get("bond_level", 1)))
 			total += float(passive.get("value", 0.0)) * mult
-	return min(total, 0.50)
+	return min(total, GameState.COMBINED_DAMAGE_REDUCTION_CAP)
 
 
 func _get_parry_reflect_bonus() -> float:
@@ -802,12 +824,12 @@ func _play_world_motion(action_position: Vector2, return_position: Vector2, push
 
 func _on_projectile_fired(lane: int, _enemy_id: int) -> void:
 	var projectile = lane_manager.get_projectile(lane)
-	if projectile != null:
+	if is_instance_valid(projectile):
 		_connect_projectile_signals(projectile)
 
 
 func _connect_projectile_signals(projectile) -> void:
-	if projectile == null:
+	if not is_instance_valid(projectile):
 		return
 
 	if not projectile.player_contact.is_connected(_on_projectile_player_contact):
@@ -818,9 +840,9 @@ func _on_projectile_player_contact(projectile) -> void:
 	if not combat_enabled:
 		return
 
-	if projectile == null or projectile.is_resolved:
+	if not is_instance_valid(projectile) or projectile.is_resolved:
 		return
 
 	_take_damage(float(projectile.damage), int(projectile.lane))
 	projectile.resolve("miss")
-	lane_manager.clear_slot(int(projectile.lane))
+	lane_manager.call("clear_slot", int(projectile.lane))

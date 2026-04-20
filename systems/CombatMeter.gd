@@ -38,8 +38,10 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	if stamina < stamina_max:
+		var old_stamina: float = stamina
 		stamina = min(stamina + PASSIVE_REGEN_PER_SEC * delta, stamina_max)
-		EventBus.emit_signal("stamina_changed", stamina, stamina_max)
+		if not is_equal_approx(stamina, old_stamina):
+			EventBus.emit_signal("stamina_changed", stamina, stamina_max)
 
 
 func can_parry() -> bool:

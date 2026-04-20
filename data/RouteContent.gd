@@ -11,25 +11,25 @@ const REGIONS: Array[Dictionary] = [
 	{
 		"id": "feeding_hollow",
 		"name": "The Feeding Hollow",
-		"flavor": "Every creature here learned hunger from the same wound.",
+		"flavor": "Every mouth here learned hunger from the same wound.",
 		"tag": "FAMILIAR",
 		"modifier": {"type": "attack_bonus", "value": 3.0},
-		"modifier_label": "+3 attack damage"
+		"modifier_label": "+3 attack damage\nThe hollow answers force with force"
 	},
 	{
 		"id": "pale_shelf",
 		"name": "The Pale Shelf",
-		"flavor": "Nothing hides here. Neither do you.",
+		"flavor": "Nothing hides here. Loss stays in plain sight.",
 		"tag": "EXPOSED",
 		"modifier": {"type": "max_hp_bonus", "value": 20.0},
-		"modifier_label": "+20 max HP"
+		"modifier_label": "+20 max HP\nThe shelf teaches you to stay standing"
 	},
 	{
 		"id": "drowned_cut",
 		"name": "The Drowned Cut",
-		"flavor": "Something older moved through here. The water still remembers its weight.",
+		"flavor": "Something older moved through here. The water still keeps its shape.",
 		"tag": "RESONANT",
 		"modifier": {"type": "starting_support_charge", "value": 30.0},
-		"modifier_label": "Bond starts 30% charged\nRequires a bonded creature to take effect"
+		"modifier_label": "Bond starts 30% charged\nRequires a bonded creature to answer"
 	}
 ]

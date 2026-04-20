@@ -1,17 +1,19 @@
-@tool
 extends Node2D
 ## Debug calibration system for timing truth verification.
 ##
-## This system displays timing zone boundaries as a projectile approaches the hit zone.
+## This system displays timing zone boundaries as a reference grid.
 ## Enable DEBUG_TIMING_CALIBRATION to render zone bands and progress indicators.
 ## 
-## Shown zones (progress value):
-## - 0.88–0.96: Approach (yellow)
-## - 0.96–1.04: Good zone (cyan)
-## - 0.98–1.02: Perfect zone (bright green)
-## - 1.00: Beat mark center (white vertical line)
+## Shown zones (progress value reference):
+## - Progress 0.88: Approach zone marker
+## - Progress 0.96: Good zone outer boundary
+## - Progress 0.98: Perfect zone entry
+## - Progress 1.00: Beat mark center (exact perfect moment)
+## - Progress 1.02: Perfect zone exit
+## - Progress 1.04: Good zone outer boundary
 ##
 ## No gameplay impact. Disable before shipping.
+## This is a future enhancement placeholder - currently minimal implementation.
 
 const DEBUG_TIMING_CALIBRATION: bool = false
 
@@ -43,43 +45,14 @@ func _draw_static_zone_grid() -> void:
 	if _overlay == null:
 		return
 	
-	# Get viewport dimensions.
-	var vp_size: Vector2 = get_viewport_rect().size
-	var vp_height: float = vp_size.y
+	# Zone reference markers (currently placeholder).
+	# Note: Positioning these statically on screen doesn't accurately reflect
+	# in-world projectile positioning, so this is kept minimal.
+	# The DEBUG_TIMING label on projectiles provides better verification.
 	
-	# Timing zone reference bands.
-	var zones: Array = [
-		{"progress": 0.88, "label": "APP", "color": Color(1.0, 1.0, 0.0, 0.08)},
-		{"progress": 0.96, "label": "GOOD", "color": Color(0.0, 1.0, 1.0, 0.12)},
-		{"progress": 0.98, "label": "PERF", "color": Color(0.0, 1.0, 0.0, 0.16)},
-		{"progress": 1.00, "label": "BEAT", "color": Color(1.0, 1.0, 1.0, 0.20)},
-		{"progress": 1.02, "label": "PERF", "color": Color(0.0, 1.0, 0.0, 0.16)},
-		{"progress": 1.04, "label": "GOOD", "color": Color(0.0, 1.0, 1.0, 0.12)},
-	]
-	
-	for zone in zones:
-		var p: float = zone.get("progress", 0.5)
-		var x_pos: float = lerp(0.0, vp_size.x * 0.3, p)
-		
-		# Draw vertical line for zone marker.
-		var marker_line := Line2D.new()
-		marker_line.name = "Zone_%.2f" % p
-		marker_line.add_point(Vector2(x_pos, 0.0))
-		marker_line.add_point(Vector2(x_pos, vp_height))
-		marker_line.width = 1.5
-		marker_line.default_color = zone.get("color", Color.WHITE)
-		marker_line.z_index = 200
-		_overlay.add_child(marker_line)
-		
-		# Add zone label every other marker.
-		if fmod(p, 0.02) < 0.01 or p == 1.0:
-			var label := Label.new()
-			label.name = "Label_%.2f" % p
-			label.text = zone.get("label", "")
-			label.add_theme_font_size_override("font_size", 10)
-			label.position = Vector2(x_pos + 4.0, 8.0)
-			label.add_theme_color_override("font_color", zone.get("color", Color.WHITE))
-			_overlay.add_child(label)
+	# Future enhancement: Could overlay timing band visualization
+	# on top of the combat scene showing zone boundaries.
+	# For now, this system is reserved for future iteration.
 
 
 func show_calibration() -> void:

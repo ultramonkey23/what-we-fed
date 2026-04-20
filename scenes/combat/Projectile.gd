@@ -304,27 +304,24 @@ func _update_visual_state(reflected: bool) -> void:
 
 
 func _create_debug_zone_markers() -> void:
-	# Optional debug visualization: draw zone boundaries as vertical indicators
-	# relative to the projectile's expected hit point. This helps verify that
-	# visual rings align with the actual timing windows.
-	# Only active when DEBUG_TIMING = true.
+	# Optional debug visualization: create zone marker nodes for future use.
+	# Placeholder for enhanced debug visualization - currently unused but ready for expansion.
+	# Could be used to show zone boundaries as the projectile approaches, but the current
+	# _update_debug_display() label provides sufficient calibration info.
 	if not DEBUG_TIMING:
 		return
 	
-	# Assume a standard layout: hit_zone_x is where the beat mark should be.
-	# The rings expand from there based on intercept distance.
-	# This marker set is visual calibration only — not part of game logic.
-	
-	var debug_group := Node2D.new()
-	debug_group.name = "DebugZoneMarkers"
-	add_child(debug_group)
-	
-	# We'll paint zone markers as the projectile approaches.
-	# These will be updated in _process to show the active zone relative to hit.
+	# Reserved for future enhancement. Leave as placeholder for now.
+	# A future iteration could populate this with visual zone boundary markers
+	# to show the 0.96, 0.98, 1.00, 1.02, 1.04 progress boundaries graphically.
 
 
 func _get_debug_zone_quality(p: float) -> String:
 	# Return a label for the current progress zone.
+	# Handles both normal state and edge case of already-resolved projectiles.
+	if is_resolved or is_reflected:
+		return "RESOLVED"
+	
 	if p < 0.92:
 		return "→FAR"
 	elif p < ATTACK_GOOD_MIN:
@@ -354,11 +351,15 @@ func _update_debug_display() -> void:
 	var zone_quality: String = _get_debug_zone_quality(progress)
 	var offset: float = progress - 1.0
 	
+	# Safe character access: use first char or '?' if string is empty
+	var attack_char: String = attack_quality.substr(0, 1) if attack_quality.length() > 0 else "?"
+	var parry_char: String = parry_quality.substr(0, 1) if parry_quality.length() > 0 else "?"
+	
 	_dbg.text = "P:%.3f [%s]\nA:%s | P:%s\nZone:%s" % [
 		progress,
 		"%.2f%%" % (offset * 100.0),
-		attack_quality[0],  # First letter
-		parry_quality[0],   # First letter
+		attack_char,
+		parry_char,
 		zone_quality
 	]
 

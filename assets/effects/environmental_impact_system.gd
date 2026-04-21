@@ -1,5 +1,6 @@
 extends Node
 class_name EnvironmentalImpactSystem
+const UI_STYLE = preload("res://systems/UIStyle.gd")
 
 # World reaction system that responds to player's growing power
 @export var damage_threshold: float = 0.1
@@ -149,8 +150,8 @@ func create_destruction_particles(position: Vector2, radius: float, particle_cou
 	process_material.gravity = Vector3(0, -196, 0)
 	process_material.scale_min = 0.5
 	process_material.scale_max = 3.0
-	process_material.color = Color.BROWN
-	process_material.emission = Color.ORANGE
+	process_material.color = UI_STYLE.get_manga_color("blood_ember")
+	process_material.emission = UI_STYLE.get_manga_color("alert_gold")
 	
 	destruction_particles.process_material = process_material
 	
@@ -265,8 +266,8 @@ func create_world_transformation_effects(_radius: float):
 	process_material.gravity = Vector3.ZERO
 	process_material.scale_min = 2.0
 	process_material.scale_max = 6.0
-	process_material.color = Color.MAGENTA
-	process_material.emission = Color.CYAN
+	process_material.color = UI_STYLE.get_manga_color("mutation_magenta")
+	process_material.emission = UI_STYLE.get_manga_color("bond_teal")
 	
 	transform_particles.process_material = process_material
 	
@@ -283,7 +284,7 @@ func create_screen_transformation_effect() -> ColorRect:
 	var screen_effect = ColorRect.new()
 	screen_effect.size = get_viewport().get_visible_rect().size
 	screen_effect.position = Vector2.ZERO
-	screen_effect.color = Color.MAGENTA
+	screen_effect.color = UI_STYLE.get_manga_color("deep_violet")
 	screen_effect.modulate = Color(1, 1, 1, 0.7)
 	
 	get_tree().current_scene.add_child(screen_effect)

@@ -139,7 +139,8 @@ func _build_ui() -> void:
 	header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	header.size = Vector2(VIEWPORT_W, 52.0)
 	header.position = Vector2(0.0, 38.0)
-	UI_STYLE.apply_label(header, "screen_title")
+	UI_STYLE.apply_label(header, "mm_title")
+	header.add_theme_font_size_override("font_size", 42)
 	canvas.add_child(header)
 
 	var sub: Label = Label.new()
@@ -147,7 +148,7 @@ func _build_ui() -> void:
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	sub.size = Vector2(VIEWPORT_W, 26.0)
 	sub.position = Vector2(0.0, 90.0)
-	UI_STYLE.apply_label(sub, "screen_subtitle")
+	UI_STYLE.apply_label(sub, "mm_subtitle")
 	canvas.add_child(sub)
 
 	_build_region_slots(canvas)
@@ -169,10 +170,11 @@ func _build_region_slots(canvas: CanvasLayer) -> void:
 
 func _create_route_slot(canvas: CanvasLayer, slot_index: int) -> Dictionary:
 	var card: ColorRect = ColorRect.new()
-	card.color = Color(0.12, 0.07, 0.07, 1.0)
+	card.color = UI_STYLE.get_manga_color("deep_violet")
 	card.size = Vector2(CARD_WIDTH, CARD_HEIGHT)
 	card.position = Vector2.ZERO
 	card.visible = false
+	UI_STYLE.apply_shell_style(card, "mm_command")
 	canvas.add_child(card)
 	_slot_cards.append(card)
 
@@ -187,23 +189,25 @@ func _create_route_slot(canvas: CanvasLayer, slot_index: int) -> Dictionary:
 	num_label.text = str(slot_index + 1)
 	num_label.position = Vector2(14.0, 14.0)
 	num_label.size = Vector2(24.0, 24.0)
-	UI_STYLE.apply_label(num_label, "card_index")
+	UI_STYLE.apply_label(num_label, "mm_caption")
 	card.add_child(num_label)
 
 	var tag_label: Label = Label.new()
 	tag_label.position = Vector2(14.0, 46.0)
 	tag_label.size = Vector2(CARD_WIDTH - 28.0, 20.0)
-	UI_STYLE.apply_label(tag_label, "card_tag")
+	UI_STYLE.apply_label(tag_label, "mm_choice_bond")
+	tag_label.add_theme_font_size_override("font_size", 13)
 	card.add_child(tag_label)
 
 	var name_label: Label = Label.new()
 	name_label.position = Vector2(14.0, 68.0)
 	name_label.size = Vector2(CARD_WIDTH - 28.0, 36.0)
-	UI_STYLE.apply_label(name_label, "card_title")
+	UI_STYLE.apply_label(name_label, "mm_stat_primary")
 	card.add_child(name_label)
 
 	var sep: ColorRect = ColorRect.new()
-	sep.color = Color(0.28, 0.18, 0.14, 0.50)
+	sep.color = UI_STYLE.get_manga_color("blood_ember")
+	sep.color.a = 0.50
 	sep.size = Vector2(CARD_WIDTH - 28.0, 1.0)
 	sep.position = Vector2(14.0, 112.0)
 	card.add_child(sep)
@@ -220,11 +224,11 @@ func _create_route_slot(canvas: CanvasLayer, slot_index: int) -> Dictionary:
 	flavor_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	flavor_label.position = Vector2.ZERO
 	flavor_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	UI_STYLE.apply_label(flavor_label, "card_body")
+	UI_STYLE.apply_label(flavor_label, "mm_body")
 	flavor_scroll.add_child(flavor_label)
 
 	var mod_bg: ColorRect = ColorRect.new()
-	mod_bg.color = Color(0.16, 0.10, 0.06, 1.0)
+	mod_bg.color = UI_STYLE.get_manga_color("ink_black")
 	mod_bg.size = Vector2(CARD_WIDTH - 28.0, 72.0)
 	mod_bg.position = Vector2(14.0, CARD_HEIGHT - 88.0)
 	card.add_child(mod_bg)
@@ -241,7 +245,7 @@ func _create_route_slot(canvas: CanvasLayer, slot_index: int) -> Dictionary:
 	mod_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	mod_label.position = Vector2.ZERO
 	mod_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	UI_STYLE.apply_label(mod_label, "body")
+	UI_STYLE.apply_label(mod_label, "mm_body")
 	mod_scroll.add_child(mod_label)
 
 	return {
@@ -294,7 +298,7 @@ func _build_bottom_bar(canvas: CanvasLayer) -> void:
 	_footer_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_footer_hint.size = Vector2(VIEWPORT_W, 28.0)
 	_footer_hint.position = Vector2(0.0, 660.0)
-	UI_STYLE.apply_label(_footer_hint, "hint")
+	UI_STYLE.apply_label(_footer_hint, "mm_hint")
 	canvas.add_child(_footer_hint)
 
 
@@ -332,6 +336,10 @@ func _refresh_card_highlights() -> void:
 		if global_i >= n:
 			continue
 		var is_selected: bool = (global_i == _selected_index)
-		_slot_cards[slot].color = Color(0.20, 0.13, 0.08, 1.0) if is_selected else Color(0.12, 0.07, 0.07, 1.0)
+		_slot_cards[slot].color = UI_STYLE.get_manga_color("blood_ember") if is_selected else UI_STYLE.get_manga_color("deep_violet")
+		if is_selected:
+			_slot_cards[slot].color.a = 0.36
+		else:
+			_slot_cards[slot].color.a = 1.0
 		if slot < _slot_accents.size() and is_instance_valid(_slot_accents[slot]):
-			_slot_accents[slot].color = Color(0.86, 0.60, 0.24, 1.0) if is_selected else Color(0.0, 0.0, 0.0, 0.0)
+			_slot_accents[slot].color = UI_STYLE.get_manga_color("alert_gold") if is_selected else Color(0.0, 0.0, 0.0, 0.0)

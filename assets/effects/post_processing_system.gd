@@ -1,5 +1,6 @@
 extends Node
 class_name PostProcessingSystem
+const UI_STYLE = preload("res://systems/UIStyle.gd")
 
 # Advanced post-processing for maximum visual impact and cinematic quality
 enum PostProcessingStyle {
@@ -249,7 +250,7 @@ func apply_environmental_effects(environment_intensity: float):
 		tween.set_parallel(true)
 		
 		# Environmental color shifts and effects
-		tween.tween_property(shader_material, "shader_parameter/environmental_tint", Color(0.8, 0.6, 0.4), 0.5)
+		tween.tween_property(shader_material, "shader_parameter/environmental_tint", UI_STYLE.get_manga_color("blood_ember"), 0.5)
 		tween.tween_property(shader_material, "shader_parameter/contrast_boost", 1.0 + environment_intensity * 0.3, 0.5)
 		tween.tween_property(shader_material, "shader_parameter/saturation_enhancement", 1.0 + environment_intensity * 0.2, 0.5)
 
@@ -261,7 +262,7 @@ func apply_cinematic_effects(cinematic_intensity: float):
 		
 		# Film-like effects
 		tween.tween_property(shader_material, "shader_parameter/film_grain", cinematic_intensity * 0.1, 0.3)
-		tween.tween_property(shader_material, "shader_parameter/color_grading", Color(1.05, 1.02, 0.98), 0.3)
+		tween.tween_property(shader_material, "shader_parameter/color_grading", Color(1.04, 0.98, 1.02), 0.3)
 		tween.tween_property(shader_material, "shader_parameter/contrast_boost", 1.0 + cinematic_intensity * 0.2, 0.3)
 
 func apply_screen_dominance_effects(dominance_level: float):

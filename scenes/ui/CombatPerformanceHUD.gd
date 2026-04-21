@@ -7,53 +7,161 @@ var _director: Node = null
 var _proc_chip_timer: float = 0.0
 var _proc_tween: Tween = null
 
-@onready var _shell: Control = %PerformanceShell
-@onready var _caption: Label = %Caption
-@onready var _progress_label: Label = %ProgressLabel
-@onready var _status_label: Label = %StatusLabel
-@onready var _claims_label: Label = %ClaimsLabel
-@onready var _proc_chip_label: Label = %ProcChipLabel
+var _shell: Control = null
+var _caption: Label = null
+var _progress_label: Label = null
+var _status_label: Label = null
+var _claims_label: Label = null
+var _proc_chip_label: Label = null
 
-@onready var _offer_shell: Control = %OfferShell
-@onready var _offer_title_label: Label = %OfferTitleLabel
-@onready var _offer_body_label: Label = %OfferBodyLabel
-@onready var _offer_hint_label: Label = %OfferHintLabel
-@onready var _offer_progress_bar: ProgressBar = %OfferProgressBar
+var _offer_shell: Control = null
+var _offer_title_label: Label = null
+var _offer_body_label: Label = null
+var _offer_hint_label: Label = null
+var _offer_progress_bar: ProgressBar = null
+var _offer_creature_silhouette: ColorRect = null
+var _bond_choice_label: Label = null
+var _eat_choice_label: Label = null
+var _ultimate_shell: Control = null
+var _ultimate_label: Label = null
+var _ultimate_progress_bar: ProgressBar = null
 
 
 func _ready() -> void:
+	_cache_nodes()
+	if _shell == null:
+		return
 	_shell.visible = false
-	_offer_shell.visible = false
+	if _offer_shell != null:
+		_offer_shell.visible = false
 	if _proc_chip_label != null:
 		_proc_chip_label.visible = false
 	_apply_styles()
 
 
+func _cache_nodes() -> void:
+	_shell = get_node_or_null("%PerformanceShell")
+	if _shell == null:
+		_shell = get_node_or_null("PerformancePanel")
+	if _shell == null:
+		_shell = get_node_or_null("PerformanceShell")
+
+	_caption = _resolve_label(["%Caption", "PerformancePanel/PerformanceContainer/Caption"])
+	_progress_label = _resolve_label(["%ProgressLabel", "%PowerLevel", "PerformancePanel/PerformanceContainer/ProgressLabel", "PerformancePanel/PerformanceContainer/PowerLevel"])
+	_status_label = _resolve_label(["%StatusLabel", "PerformancePanel/PerformanceContainer/StatusLabel"])
+	_claims_label = _resolve_label(["%ClaimsLabel", "%ComboDisplay", "PerformancePanel/PerformanceContainer/ClaimsLabel", "PerformancePanel/PerformanceContainer/ComboDisplay"])
+	_proc_chip_label = _resolve_label(["%ProcChipLabel"])
+
+	_offer_shell = get_node_or_null("%OfferShell")
+	if _offer_shell == null:
+		_offer_shell = get_node_or_null("OfferPanel")
+	if _offer_shell == null:
+		_offer_shell = get_node_or_null("OfferShell")
+
+	_offer_title_label = _resolve_label(["%OfferTitleLabel", "OfferPanel/OfferContainer/OfferTitleLabel", "OfferShell/OfferContainer/OfferTitleLabel"])
+	_offer_body_label = _resolve_label(["%OfferBodyLabel", "OfferPanel/OfferContainer/OfferBodyLabel", "OfferShell/OfferContainer/OfferBodyLabel"])
+	_offer_hint_label = _resolve_label(["%OfferHintLabel", "OfferPanel/OfferContainer/OfferHintLabel", "OfferShell/OfferContainer/OfferHintLabel"])
+	_offer_progress_bar = _resolve_progress_bar(["%OfferProgressBar", "OfferPanel/OfferProgressBar", "OfferShell/OfferProgressBar"])
+	_offer_creature_silhouette = _resolve_color_rect(["OfferPanel/OfferContainer/CreatureSilhouette"])
+	_bond_choice_label = _resolve_label(["OfferPanel/OfferContainer/ChoiceContainer/BondChoice"])
+	_eat_choice_label = _resolve_label(["OfferPanel/OfferContainer/ChoiceContainer/EatChoice"])
+	_ultimate_shell = _resolve_control(["UltimateGauge"])
+	_ultimate_label = _resolve_label(["UltimateGauge/UltimateContainer/UltimateLabel"])
+	_ultimate_progress_bar = _resolve_progress_bar(["UltimateGauge/UltimateContainer/UltimateProgressBar"])
+
+
+func _resolve_label(paths: Array[String]) -> Label:
+	for p in paths:
+		var node: Node = get_node_or_null(p)
+		if node is Label:
+			return node as Label
+	return null
+
+
+func _resolve_progress_bar(paths: Array[String]) -> ProgressBar:
+	for p in paths:
+		var node: Node = get_node_or_null(p)
+		if node is ProgressBar:
+			return node as ProgressBar
+	return null
+
+
+func _resolve_color_rect(paths: Array[String]) -> ColorRect:
+	for p in paths:
+		var node: Node = get_node_or_null(p)
+		if node is ColorRect:
+			return node as ColorRect
+	return null
+
+
+func _resolve_control(paths: Array[String]) -> Control:
+	for p in paths:
+		var node: Node = get_node_or_null(p)
+		if node is Control:
+			return node as Control
+	return null
+
+
 func _apply_styles() -> void:
-	UI_STYLE.apply_shell_style(_shell, "hud_right")
-	UI_STYLE.apply_label(_caption, "caption")
-	UI_STYLE.apply_label(_progress_label, "alert_value")
-	UI_STYLE.apply_label(_status_label, "body")
-	UI_STYLE.apply_label(_claims_label, "status_line")
-	UI_STYLE.apply_label(_proc_chip_label, "caption", HORIZONTAL_ALIGNMENT_RIGHT)
+	if _shell != null:
+		UI_STYLE.apply_shell_style(_shell, "mm_command")
+	if _caption != null:
+		UI_STYLE.apply_label(_caption, "mm_caption")
+	if _progress_label != null:
+		UI_STYLE.apply_label(_progress_label, "mm_monster_alert")
+	if _status_label != null:
+		UI_STYLE.apply_label(_status_label, "mm_body")
+	if _claims_label != null:
+		UI_STYLE.apply_label(_claims_label, "mm_stat_secondary")
+	if _proc_chip_label != null:
+		UI_STYLE.apply_label(_proc_chip_label, "mm_caption", HORIZONTAL_ALIGNMENT_RIGHT)
 
-	UI_STYLE.apply_shell_style(_offer_shell, "live_reward")
-	UI_STYLE.apply_label(_offer_title_label, "subheading")
-	UI_STYLE.apply_label(_offer_body_label, "body")
-	UI_STYLE.apply_label(_offer_hint_label, "hint")
+	if _offer_shell != null:
+		UI_STYLE.apply_shell_style(_offer_shell, "mm_mutation")
+	if _offer_title_label != null:
+		UI_STYLE.apply_label(_offer_title_label, "mm_choice_consume")
+	if _offer_body_label != null:
+		UI_STYLE.apply_label(_offer_body_label, "mm_body")
+	if _offer_hint_label != null:
+		UI_STYLE.apply_label(_offer_hint_label, "mm_hint")
 	
-	UI_STYLE.apply_bar_style(_offer_progress_bar, "support_ready")
+	if _offer_progress_bar != null:
+		UI_STYLE.apply_bar_style(_offer_progress_bar, "mm_offer")
+	if _offer_creature_silhouette != null:
+		var silhouette_color: Color = UI_STYLE.get_manga_color("deep_violet")
+		_offer_creature_silhouette.color = Color(silhouette_color.r, silhouette_color.g, silhouette_color.b, 0.78)
+	if _bond_choice_label != null:
+		UI_STYLE.apply_label(_bond_choice_label, "mm_choice_bond")
+		_bond_choice_label.add_theme_font_size_override("font_size", 13)
+	if _eat_choice_label != null:
+		UI_STYLE.apply_label(_eat_choice_label, "mm_choice_consume")
+		_eat_choice_label.add_theme_font_size_override("font_size", 13)
+	if _ultimate_shell != null:
+		UI_STYLE.apply_shell_style(_ultimate_shell, "mm_apex")
+	if _ultimate_label != null:
+		UI_STYLE.apply_label(_ultimate_label, "mm_monster_alert")
+		_ultimate_label.add_theme_font_size_override("font_size", 12)
+	if _ultimate_progress_bar != null:
+		UI_STYLE.apply_bar_style(_ultimate_progress_bar, "mm_ultimate")
 
-	_caption.text = "PERFORMANCE"
-	_caption.add_theme_font_size_override("font_size", 13)
-	_progress_label.add_theme_font_size_override("font_size", 19)
-	_status_label.add_theme_font_size_override("font_size", 15)
-	_claims_label.add_theme_font_size_override("font_size", 13)
-	_proc_chip_label.add_theme_font_size_override("font_size", 13)
+	if _caption != null:
+		_caption.text = "PREDATION METER"
+		_caption.add_theme_font_size_override("font_size", 12)
+	if _progress_label != null:
+		_progress_label.add_theme_font_size_override("font_size", 18)
+	if _status_label != null:
+		_status_label.add_theme_font_size_override("font_size", 14)
+	if _claims_label != null:
+		_claims_label.add_theme_font_size_override("font_size", 12)
+	if _proc_chip_label != null:
+		_proc_chip_label.add_theme_font_size_override("font_size", 12)
 
-	_offer_title_label.add_theme_font_size_override("font_size", 22)
-	_offer_body_label.add_theme_font_size_override("font_size", 18)
-	_offer_hint_label.add_theme_font_size_override("font_size", 16)
+	if _offer_title_label != null:
+		_offer_title_label.add_theme_font_size_override("font_size", 20)
+	if _offer_body_label != null:
+		_offer_body_label.add_theme_font_size_override("font_size", 16)
+	if _offer_hint_label != null:
+		_offer_hint_label.add_theme_font_size_override("font_size", 14)
 
 
 func bind_runtime(director: Node) -> void:
@@ -81,13 +189,16 @@ func process_tick(delta: float, song_mode: bool, run_finished: bool, awaiting_ch
 		if _director.has_method("has_active_offer") and _director.call("has_active_offer"):
 			_refresh_offer(awaiting_choice)
 		else:
-			_offer_shell.visible = false
+			if _offer_shell != null:
+				_offer_shell.visible = false
 	else:
-		_offer_shell.visible = false
+		if _offer_shell != null:
+			_offer_shell.visible = false
 
 	if _proc_chip_timer > 0.0:
 		_proc_chip_timer = max(_proc_chip_timer - delta, 0.0)
-		_proc_chip_label.visible = _proc_chip_timer > 0.0
+		if _proc_chip_label != null:
+			_proc_chip_label.visible = _proc_chip_timer > 0.0
 		# Alpha is handled by tween; don't reset it here while timer is active.
 
 
@@ -168,7 +279,8 @@ func _refresh_offer(awaiting_choice: bool) -> void:
 	var time_left: float = float(_director.call("get_active_offer_time_left"))
 	var total_time: float = PERFORMANCE_REWARD_CONTENT.OFFER_DURATION
 	
-	_offer_shell.visible = true
+	if _offer_shell != null:
+		_offer_shell.visible = true
 	
 	if _offer_title_label != null:
 		_offer_title_label.text = "%s - %s" % [
@@ -187,7 +299,8 @@ func _refresh_offer(awaiting_choice: bool) -> void:
 
 
 func _hide_offer() -> void:
-	_offer_shell.visible = false
+	if _offer_shell != null:
+		_offer_shell.visible = false
 
 
 func _on_proc_feedback(text: String, color: Color) -> void:

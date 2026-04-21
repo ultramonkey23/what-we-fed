@@ -578,13 +578,7 @@ func _update_timing_debug() -> void:
 			escalation_window
 		]
 	_timing_debug_label.text = debug_text
-	match quality:
-		"perfect":
-			_timing_debug_label.modulate = Color(0.6, 1.0, 0.6, 0.8)
-		"good":
-			_timing_debug_label.modulate = Color(1.0, 1.0, 0.6, 0.7)
-		_:
-			_timing_debug_label.modulate = Color(1.0, 1.0, 1.0, 0.4)
+	_timing_debug_label.modulate = UI_STYLE.get_quality_feedback_color(quality)
 
 
 func _recover_stalled_cycles() -> void:
@@ -603,8 +597,9 @@ func _update_boss_race(delta: float) -> void:
 
 func _update_timing_ring_proximity() -> void:
 	var biome: Dictionary = _active_encounter.get("biome", {})
-	var active_color: Color = biome.get("ring_active_color", Color(1.0, 0.95, 0.55, 1.0))
-	var inactive_color: Color = biome.get("ring_inactive_color", Color(0.7, 0.7, 0.8, 0.45))
+	var ring_palette: Dictionary = UI_STYLE.get_combat_ring_palette()
+	var active_color: Color = biome.get("ring_active_color", ring_palette.get("active", Color(1.0, 0.95, 0.55, 1.0)))
+	var inactive_color: Color = biome.get("ring_inactive_color", ring_palette.get("inactive", Color(0.7, 0.7, 0.8, 0.45)))
 
 	var intercept_dist: float = lane_manager.get_enemy_x() - lane_manager.get_hit_zone_x()
 	if intercept_dist <= 0.0:
@@ -712,11 +707,13 @@ func _update_timing_ring_proximity() -> void:
 			match _surge_window_tendency:
 				"aggression":
 					# Perfect ring warms to orange-red — attack authority cue.
-					perfect_color = perfect_color.lerp(Color(1.0, 0.48, 0.16, perfect_color.a), surge_wf * 0.28)
+					var aggression_color: Color = UI_STYLE.get_tendency_surge_color("aggression")
+					perfect_color = perfect_color.lerp(Color(aggression_color.r, aggression_color.g, aggression_color.b, perfect_color.a), surge_wf * 0.28)
 					perfect_width = minf(perfect_width + surge_wf * 0.8, 6.2)
 				"cadence":
 					# Beat mark brightens to gold — rhythm clarity cue.
-					beat_color = beat_color.lerp(Color(1.0, 0.90, 0.22, beat_color.a), surge_wf * 0.42)
+					var cadence_color: Color = UI_STYLE.get_tendency_surge_color("cadence")
+					beat_color = beat_color.lerp(Color(cadence_color.r, cadence_color.g, cadence_color.b, beat_color.a), surge_wf * 0.42)
 					receiver_alpha = minf(receiver_alpha + surge_wf * 0.04, 0.52)
 				"guard":
 					# Receiver fill gets a faint blue wash — defensive awareness cue.
@@ -724,7 +721,8 @@ func _update_timing_ring_proximity() -> void:
 					receiver_alpha = minf(receiver_alpha + surge_wf * 0.04, 0.52)
 				"bond":
 					# Beat mark shifts teal — bond partner resonance cue.
-					beat_color = beat_color.lerp(Color(0.44, 0.96, 0.78, beat_color.a), surge_wf * 0.38)
+					var bond_color: Color = UI_STYLE.get_tendency_surge_color("bond")
+					beat_color = beat_color.lerp(Color(bond_color.r, bond_color.g, bond_color.b, beat_color.a), surge_wf * 0.38)
 					receiver_alpha = minf(receiver_alpha + surge_wf * 0.03, 0.52)
 
 		var rf_color: Color = Color(active_color.r, active_color.g, active_color.b, receiver_alpha)
@@ -733,7 +731,8 @@ func _update_timing_ring_proximity() -> void:
 			var threat_color: Color = Color(telegraph_profile.get("lane_color", active_color))
 			rf_color = Color(threat_color.r, threat_color.g, threat_color.b, receiver_alpha)
 		if surge_wf > 0.0 and _surge_window_tendency == "guard":
-			rf_color = rf_color.lerp(Color(0.46, 0.70, 1.0, receiver_alpha), surge_wf * 0.20)
+			var guard_color: Color = UI_STYLE.get_tendency_surge_color("guard")
+			rf_color = rf_color.lerp(Color(guard_color.r, guard_color.g, guard_color.b, receiver_alpha), surge_wf * 0.20)
 		receiver_fill.color = rf_color
 		receiver_glow.color = Color(rf_color.r, rf_color.g, rf_color.b, receiver_glow_alpha)
 		edge_ring.default_color = Color(rf_color.r, rf_color.g, rf_color.b, edge_alpha)
@@ -747,9 +746,10 @@ func _update_timing_ring_proximity() -> void:
 
 func _update_lane_visual_states() -> void:
 	var biome: Dictionary = _active_encounter.get("biome", {})
-	var lane_color: Color = biome.get("lane_color", Color(0.30, 0.30, 0.35, 1.0))
-	var active_color: Color = biome.get("ring_active_color", Color(1.0, 0.95, 0.55, 1.0))
-	var inactive_color: Color = biome.get("ring_inactive_color", Color(0.7, 0.7, 0.8, 0.45))
+	var ring_palette: Dictionary = UI_STYLE.get_combat_ring_palette()
+	var lane_color: Color = biome.get("lane_color", ring_palette.get("lane", Color(0.30, 0.30, 0.35, 1.0)))
+	var active_color: Color = biome.get("ring_active_color", ring_palette.get("active", Color(1.0, 0.95, 0.55, 1.0)))
+	var inactive_color: Color = biome.get("ring_inactive_color", ring_palette.get("inactive", Color(0.7, 0.7, 0.8, 0.45)))
 	var time: float = Time.get_ticks_msec() / 1000.0
 	var intercept_dist: float = lane_manager.get_enemy_x() - lane_manager.get_hit_zone_x()
 
@@ -872,7 +872,7 @@ func _set_shell_treatment(shell: ColorRect, color: Color, border_color: Color) -
 
 func _setup_visuals() -> void:
 	background.z_index = -10
-	background.color = Color(0.05, 0.04, 0.05, 1.0)
+	background.color = UI_STYLE.get_manga_color("ink_black")
 
 	_apply_combat_background()
 
@@ -893,7 +893,7 @@ func _setup_visuals() -> void:
 	_battlefield_left_shade.name = "BattlefieldLeftShade"
 	_battlefield_left_shade.position = Vector2(field_rect.position.x + 6.0, field_rect.position.y + 20.0)
 	_battlefield_left_shade.size = Vector2(86.0, field_rect.size.y - 40.0)
-	_battlefield_left_shade.color = Color(0.02, 0.02, 0.03, 0.14)
+	_battlefield_left_shade.color = Color(0.02, 0.02, 0.03, 0.16)
 	_battlefield_left_shade.z_index = -5
 	add_child(_battlefield_left_shade)
 
@@ -901,7 +901,7 @@ func _setup_visuals() -> void:
 	_battlefield_right_shade.name = "BattlefieldRightShade"
 	_battlefield_right_shade.position = Vector2(field_rect.end.x - 92.0, field_rect.position.y + 20.0)
 	_battlefield_right_shade.size = Vector2(86.0, field_rect.size.y - 40.0)
-	_battlefield_right_shade.color = Color(0.02, 0.02, 0.03, 0.10)
+	_battlefield_right_shade.color = Color(0.08, 0.04, 0.10, 0.12)
 	_battlefield_right_shade.z_index = -5
 	add_child(_battlefield_right_shade)
 
@@ -909,7 +909,8 @@ func _setup_visuals() -> void:
 	_battlefield_top_trim.name = "BattlefieldTopTrim"
 	_battlefield_top_trim.position = field_rect.position + Vector2(76.0, 8.0)
 	_battlefield_top_trim.size = Vector2(field_rect.size.x - 152.0, 2.0)
-	_battlefield_top_trim.color = Color(0.44, 0.37, 0.28, 0.20)
+	var top_trim_color: Color = UI_STYLE.get_manga_color("alert_gold")
+	_battlefield_top_trim.color = Color(top_trim_color.r, top_trim_color.g, top_trim_color.b, 0.24)
 	_battlefield_top_trim.z_index = -5
 	add_child(_battlefield_top_trim)
 
@@ -917,7 +918,8 @@ func _setup_visuals() -> void:
 	_battlefield_bottom_trim.name = "BattlefieldBottomTrim"
 	_battlefield_bottom_trim.position = Vector2(field_rect.position.x + 96.0, field_rect.end.y - 10.0)
 	_battlefield_bottom_trim.size = Vector2(field_rect.size.x - 192.0, 1.0)
-	_battlefield_bottom_trim.color = Color(0.34, 0.27, 0.21, 0.16)
+	var bottom_trim_color: Color = UI_STYLE.get_manga_color("blood_ember")
+	_battlefield_bottom_trim.color = Color(bottom_trim_color.r, bottom_trim_color.g, bottom_trim_color.b, 0.18)
 	_battlefield_bottom_trim.z_index = -5
 	add_child(_battlefield_bottom_trim)
 
@@ -1847,7 +1849,7 @@ func _build_meter_shell() -> void:
 	_boss_state_label.text = ""
 	_apply_text_role(_boss_state_label, "body", HORIZONTAL_ALIGNMENT_CENTER)
 	_boss_state_label.add_theme_font_size_override("font_size", 14)
-	_boss_state_label.add_theme_color_override("font_color", Color(0.82, 0.72, 0.58, 0.96))
+	_boss_state_label.add_theme_color_override("font_color", UI_STYLE.get_manga_color("alert_gold"))
 	_boss_state_label.visible = false
 	boss_vbox.add_child(_boss_state_label)
 
@@ -2049,7 +2051,7 @@ func _build_quig_anchor() -> void:
 		_timing_debug_label.position = Vector2(10.0, 116.0)
 		_timing_debug_label.size = Vector2(240.0, 24.0)
 		_timing_debug_label.add_theme_font_size_override("font_size", 13)
-		_timing_debug_label.modulate = Color(1.0, 1.0, 1.0, 0.42)
+		_timing_debug_label.modulate = UI_STYLE.get_quality_feedback_color("idle")
 		_timing_debug_label.visible = OS.is_debug_build()
 		ui_layer.add_child(_timing_debug_label)
 

@@ -1,7 +1,6 @@
 [gd_scene format=3 uid="uid://b8m7f5j2k3l3"]
 
 [ext_resource type="Script" path="res://scenes/ui/CombatPerformanceHUD.gd" id="1_script"]
-[ext_resource type="Shader" path="res://assets/ui/shaders/energy_border_shader.gdshader" id="energy_shader"]
 
 [node name="PowerFantasyCombatHUD" type="Control"]
 layout_mode = 3
@@ -13,22 +12,6 @@ unique_name_in_owner = true
 layout_mode = 0
 offset_right = 200.0
 offset_bottom = 80.0
-material = SubResource("ShaderMaterial_energy_border")
-
-[node name="PanelStyle" type="StyleBoxFlat" parent="PerformancePanel"]
-bg_color = Color(0.05, 0.05, 0.05, 0.95)
-border_width_left = 4
-border_width_top = 4
-border_width_right = 4
-border_width_bottom = 4
-border_color = Color(0, 1, 1, 0.8)
-corner_radius_top_left = 8
-corner_radius_top_right = 8
-corner_radius_bottom_right = 8
-corner_radius_bottom_left = 8
-shadow_color = Color(0, 1, 1, 0.3)
-shadow_size = 8
-anti_aliasing = true
 
 [node name="PerformanceContainer" type="VBoxContainer" parent="PerformancePanel"]
 layout_mode = 1
@@ -43,22 +26,18 @@ offset_bottom = -10.0
 [node name="Caption" type="Label" parent="PerformancePanel/PerformanceContainer"]
 layout_mode = 2
 text = "POWER METER"
-label_settings = SubResource("LabelSettings_dominant_header")
 
 [node name="PowerLevel" type="Label" parent="PerformancePanel/PerformanceContainer"]
 layout_mode = 2
 text = "AWAKENING"
-label_settings = SubResource("LabelSettings_power_stage")
 
 [node name="ComboDisplay" type="Label" parent="PerformancePanel/PerformanceContainer"]
 layout_mode = 2
 text = "0x DOMINANCE"
-label_settings = SubResource("LabelSettings_combo")
 
 [node name="StatusLabel" type="Label" parent="PerformancePanel/PerformanceContainer"]
 layout_mode = 2
 text = "PREDATOR'S RISE"
-label_settings = SubResource("LabelSettings_status")
 
 [node name="OfferPanel" type="Panel" parent="."]
 unique_name_in_owner = true
@@ -66,21 +45,6 @@ layout_mode = 0
 offset_left = 220.0
 offset_right = 620.0
 offset_bottom = 120.0
-material = SubResource("ShaderMaterial_mutation_border")
-
-[node name="OfferPanelStyle" type="StyleBoxFlat" parent="OfferPanel"]
-bg_color = Color(0.05, 0.03, 0.05, 0.95)
-border_width_left = 4
-border_width_top = 4
-border_width_right = 4
-border_width_bottom = 4
-border_color = Color(1, 0, 1, 0.8)
-corner_radius_top_left = 8
-corner_radius_top_right = 8
-corner_radius_bottom_right = 8
-corner_radius_bottom_left = 8
-shadow_color = Color(1, 0, 1, 0.3)
-shadow_size = 8
 
 [node name="OfferContainer" type="VBoxContainer" parent="OfferPanel"]
 layout_mode = 1
@@ -100,13 +64,11 @@ color = Color(0.2, 0.1, 0.2, 0.8)
 [node name="OfferTitleLabel" type="Label" parent="OfferPanel/OfferContainer"]
 layout_mode = 2
 text = "ASHCLAW DEMANDS CHOICE"
-label_settings = SubResource("LabelSettings_offer_title")
 
 [node name="OfferBodyLabel" type="Label" parent="OfferPanel/OfferContainer"]
 layout_mode = 2
 text = "BOND FOR SHARED POWER  OR  CONSUME FOR SOLO DOMINANCE"
 autowrap_mode = 3
-label_settings = SubResource("LabelSettings_offer_body")
 
 [node name="ChoiceContainer" type="HBoxContainer" parent="OfferPanel/OfferContainer"]
 layout_mode = 2
@@ -114,12 +76,10 @@ layout_mode = 2
 [node name="BondChoice" type="Label" parent="OfferPanel/OfferContainer/ChoiceContainer"]
 layout_mode = 2
 text = "[Q] BOND"
-label_settings = SubResource("LabelSettings_bond_choice")
 
 [node name="EatChoice" type="Label" parent="OfferPanel/OfferContainer/ChoiceContainer"]
 layout_mode = 2
 text = "[E] CONSUME"
-label_settings = SubResource("LabelSettings_eat_choice")
 
 [node name="UltimateGauge" type="Panel" parent="."]
 unique_name_in_owner = true
@@ -130,21 +90,6 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 offset_top = -60.0
 offset_bottom = 0.0
-material = SubResource("ShaderMaterial_ultimate_border")
-
-[node name="UltimateStyle" type="StyleBoxFlat" parent="UltimateGauge"]
-bg_color = Color(0.05, 0.05, 0.02, 0.95)
-border_width_left = 4
-border_width_top = 4
-border_width_right = 4
-border_width_bottom = 4
-border_color = Color(1, 1, 0, 0.8)
-corner_radius_top_left = 8
-corner_radius_top_right = 8
-corner_radius_bottom_right = 8
-corner_radius_bottom_left = 8
-shadow_color = Color(1, 1, 0, 0.3)
-shadow_size = 8
 
 [node name="UltimateContainer" type="HBoxContainer" parent="UltimateGauge"]
 layout_mode = 1
@@ -159,7 +104,6 @@ offset_bottom = -8.0
 [node name="UltimateLabel" type="Label" parent="UltimateGauge/UltimateContainer"]
 layout_mode = 2
 text = "APEX POWER"
-label_settings = SubResource("LabelSettings_ultimate")
 
 [node name="UltimateProgressBar" type="ProgressBar" parent="UltimateGauge/UltimateContainer"]
 layout_mode = 2
@@ -169,57 +113,3 @@ max_value = 100.0
 value = 0.0
 show_percentage = false
 tint_progress = Color(1, 1, 0, 0.9)
-
-[SubResource type="ShaderMaterial" id="ShaderMaterial_energy_border"]
-shader = ExtResource("energy_shader")
-shader_parameter/energy_color = Color(0, 1, 1, 1)
-shader_parameter/energy_intensity = 1.0
-shader_parameter/pulse_speed = 2.0
-
-[SubResource type="ShaderMaterial" id="ShaderMaterial_mutation_border"]
-shader = ExtResource("energy_shader")
-shader_parameter/energy_color = Color(1, 0, 1, 1)
-shader_parameter/energy_intensity = 1.2
-shader_parameter/pulse_speed = 1.5
-
-[SubResource type="ShaderMaterial" id="ShaderMaterial_ultimate_border"]
-shader = ExtResource("energy_shader")
-shader_parameter/energy_color = Color(1, 1, 0, 1)
-shader_parameter/energy_intensity = 1.5
-shader_parameter/pulse_speed = 1.0
-
-[SubResource type="LabelSettings" id="LabelSettings_dominant_header"]
-font_size = 12
-font_color = Color(0, 1, 1, 1)
-
-[SubResource type="LabelSettings" id="LabelSettings_power_stage"]
-font_size = 10
-font_color = Color(0.8, 0.8, 0.8, 1)
-
-[SubResource type="LabelSettings" id="LabelSettings_combo"]
-font_size = 16
-font_color = Color(1, 1, 1, 1)
-
-[SubResource type="LabelSettings" id="LabelSettings_status"]
-font_size = 12
-font_color = Color(0.9, 0.9, 0.9, 1)
-
-[SubResource type="LabelSettings" id="LabelSettings_offer_title"]
-font_size = 14
-font_color = Color(1, 0, 1, 1)
-
-[SubResource type="LabelSettings" id="LabelSettings_offer_body"]
-font_size = 12
-font_color = Color(0.95, 0.95, 0.95, 1)
-
-[SubResource type="LabelSettings" id="LabelSettings_bond_choice"]
-font_size = 11
-font_color = Color(0, 0.8, 1, 1)
-
-[SubResource type="LabelSettings" id="LabelSettings_eat_choice"]
-font_size = 11
-font_color = Color(1, 0.2, 0.2, 1)
-
-[SubResource type="LabelSettings" id="LabelSettings_ultimate"]
-font_size = 12
-font_color = Color(1, 1, 0, 1)

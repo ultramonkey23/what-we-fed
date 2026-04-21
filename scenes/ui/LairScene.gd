@@ -98,7 +98,8 @@ func _build_ui() -> void:
 	header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	header.size = Vector2(1280.0, 58.0)
 	header.position = Vector2(0.0, 36.0)
-	UI_STYLE.apply_label(header, "screen_title")
+	UI_STYLE.apply_label(header, "mm_title")
+	header.add_theme_font_size_override("font_size", 42)
 	canvas.add_child(header)
 
 	var sub: Label = Label.new()
@@ -107,7 +108,7 @@ func _build_ui() -> void:
 	sub.size = Vector2(920.0, 48.0)
 	sub.position = Vector2(180.0, 92.0)
 	sub.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	UI_STYLE.apply_label(sub, "screen_subtitle")
+	UI_STYLE.apply_label(sub, "mm_subtitle")
 	canvas.add_child(sub)
 
 	var lair: Array = GameState.lair_roster
@@ -151,13 +152,15 @@ func _build_empty_state(canvas: CanvasLayer) -> void:
 
 func _build_den_sidebar(canvas: CanvasLayer, lair: Array) -> void:
 	var slab: ColorRect = ColorRect.new()
-	slab.color = Color(0.07, 0.04, 0.05, 0.92)
+	slab.color = UI_STYLE.get_manga_color("deep_violet")
+	slab.color.a = 0.92
 	slab.position = Vector2(SIDEBAR_X - 6.0, 118.0)
 	slab.size = Vector2(SIDEBAR_W + 12.0, 498.0)
 	canvas.add_child(slab)
 
 	var rim: ColorRect = ColorRect.new()
-	rim.color = Color(0.34, 0.22, 0.14, 0.45)
+	rim.color = UI_STYLE.get_manga_color("blood_ember")
+	rim.color.a = 0.45
 	rim.position = Vector2(SIDEBAR_X - 6.0, 118.0)
 	rim.size = Vector2(SIDEBAR_W + 12.0, 2.0)
 	canvas.add_child(rim)
@@ -166,7 +169,8 @@ func _build_den_sidebar(canvas: CanvasLayer, lair: Array) -> void:
 	den.text = PRESENTATION_TEXT.LAIR_DEN_LABEL
 	den.position = Vector2(SIDEBAR_X + 10.0, 128.0)
 	den.size = Vector2(SIDEBAR_W - 20.0, 28.0)
-	UI_STYLE.apply_label(den, "caption_strong")
+	UI_STYLE.apply_label(den, "mm_choice_consume")
+	den.add_theme_font_size_override("font_size", 15)
 	canvas.add_child(den)
 
 	var blurb: Label = Label.new()
@@ -174,24 +178,27 @@ func _build_den_sidebar(canvas: CanvasLayer, lair: Array) -> void:
 	blurb.position = Vector2(SIDEBAR_X + 10.0, 156.0)
 	blurb.size = Vector2(SIDEBAR_W - 20.0, 56.0)
 	blurb.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	UI_STYLE.apply_label(blurb, "dim")
+	UI_STYLE.apply_label(blurb, "mm_dim")
 	canvas.add_child(blurb)
 
 	var act_head: Label = Label.new()
 	act_head.text = PRESENTATION_TEXT.LAIR_ACTIVE_HEAD
 	act_head.position = Vector2(SIDEBAR_X + 10.0, 224.0)
 	act_head.size = Vector2(SIDEBAR_W - 20.0, 26.0)
-	UI_STYLE.apply_label(act_head, "bond_heading")
+	UI_STYLE.apply_label(act_head, "mm_choice_bond")
+	act_head.add_theme_font_size_override("font_size", 18)
 	canvas.add_child(act_head)
 
 	var panel: ColorRect = ColorRect.new()
-	panel.color = Color(0.05, 0.03, 0.04, 0.88)
+	panel.color = UI_STYLE.get_manga_color("ink_black")
+	panel.color.a = 0.88
 	panel.position = Vector2(SIDEBAR_X + 8.0, 254.0)
 	panel.size = Vector2(SIDEBAR_W - 16.0, 188.0)
 	canvas.add_child(panel)
 
 	var inset: ColorRect = ColorRect.new()
-	inset.color = Color(0.86, 0.58, 0.22, 0.22)
+	inset.color = UI_STYLE.get_manga_color("alert_gold")
+	inset.color.a = 0.24
 	inset.position = Vector2(SIDEBAR_X + 8.0, 254.0)
 	inset.size = Vector2(3.0, 188.0)
 	canvas.add_child(inset)
@@ -201,40 +208,40 @@ func _build_den_sidebar(canvas: CanvasLayer, lair: Array) -> void:
 	_hub_solo_label.position = Vector2(SIDEBAR_X + 20.0, 264.0)
 	_hub_solo_label.size = Vector2(SIDEBAR_W - 36.0, 168.0)
 	_hub_solo_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	UI_STYLE.apply_label(_hub_solo_label, "body")
+	UI_STYLE.apply_label(_hub_solo_label, "mm_body")
 	canvas.add_child(_hub_solo_label)
 
 	_hub_name = Label.new()
 	_hub_name.position = Vector2(SIDEBAR_X + 20.0, 262.0)
 	_hub_name.size = Vector2(SIDEBAR_W - 36.0, 32.0)
-	UI_STYLE.apply_label(_hub_name, "primary_value")
+	UI_STYLE.apply_label(_hub_name, "mm_stat_primary")
 	canvas.add_child(_hub_name)
 
 	_hub_identity = Label.new()
 	_hub_identity.position = Vector2(SIDEBAR_X + 20.0, 296.0)
 	_hub_identity.size = Vector2(SIDEBAR_W - 36.0, 22.0)
-	UI_STYLE.apply_label(_hub_identity, "dim")
+	UI_STYLE.apply_label(_hub_identity, "mm_dim")
 	canvas.add_child(_hub_identity)
 
 	_hub_support = Label.new()
 	_hub_support.position = Vector2(SIDEBAR_X + 20.0, 322.0)
 	_hub_support.size = Vector2(SIDEBAR_W - 36.0, 44.0)
 	_hub_support.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	UI_STYLE.apply_label(_hub_support, "caption")
+	UI_STYLE.apply_label(_hub_support, "mm_caption")
 	canvas.add_child(_hub_support)
 
 	_hub_bond_pot = Label.new()
 	_hub_bond_pot.position = Vector2(SIDEBAR_X + 20.0, 376.0)
 	_hub_bond_pot.size = Vector2(SIDEBAR_W - 36.0, 56.0)
 	_hub_bond_pot.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	UI_STYLE.apply_label(_hub_bond_pot, "card_metric")
+	UI_STYLE.apply_label(_hub_bond_pot, "mm_stat_secondary")
 	canvas.add_child(_hub_bond_pot)
 
 	var ranch_t: Label = Label.new()
 	ranch_t.text = PRESENTATION_TEXT.LAIR_RANCH_STUB_TITLE
 	ranch_t.position = Vector2(SIDEBAR_X + 10.0, 458.0)
 	ranch_t.size = Vector2(SIDEBAR_W - 20.0, 24.0)
-	UI_STYLE.apply_label(ranch_t, "caption_strong")
+	UI_STYLE.apply_label(ranch_t, "mm_caption")
 	canvas.add_child(ranch_t)
 
 	var ranch_b: Label = Label.new()
@@ -242,7 +249,7 @@ func _build_den_sidebar(canvas: CanvasLayer, lair: Array) -> void:
 	ranch_b.position = Vector2(SIDEBAR_X + 10.0, 484.0)
 	ranch_b.size = Vector2(SIDEBAR_W - 20.0, 110.0)
 	ranch_b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	UI_STYLE.apply_label(ranch_b, "dim")
+	UI_STYLE.apply_label(ranch_b, "mm_dim")
 	canvas.add_child(ranch_b)
 
 	_refresh_active_support_panel()
@@ -270,7 +277,7 @@ func _build_creature_list(canvas: CanvasLayer, lair: Array) -> void:
 
 func _build_creature_card(canvas: CanvasLayer, creature: Dictionary, index: int, x: float, y: float, w: float, h: float) -> void:
 	var card: ColorRect = ColorRect.new()
-	card.color = Color(0.12, 0.07, 0.07, 1.0)
+	card.color = UI_STYLE.get_manga_color("deep_violet")
 	card.size = Vector2(w, h)
 	card.position = Vector2(x, y)
 	canvas.add_child(card)
@@ -285,7 +292,7 @@ func _build_creature_card(canvas: CanvasLayer, creature: Dictionary, index: int,
 	num_label.text = str(index + 1)
 	num_label.position = Vector2(14.0, (h - 26.0) * 0.5)
 	num_label.size = Vector2(26.0, 26.0)
-	UI_STYLE.apply_label(num_label, "card_index")
+	UI_STYLE.apply_label(num_label, "mm_caption")
 	card.add_child(num_label)
 	_card_index_labels.append(num_label)
 
@@ -294,7 +301,8 @@ func _build_creature_card(canvas: CanvasLayer, creature: Dictionary, index: int,
 	pill.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	pill.position = Vector2(w - 118.0, 12.0)
 	pill.size = Vector2(96.0, 22.0)
-	UI_STYLE.apply_label(pill, "card_tag")
+	UI_STYLE.apply_label(pill, "mm_choice_bond")
+	pill.add_theme_font_size_override("font_size", 12)
 	pill.visible = false
 	card.add_child(pill)
 	_active_pills.append(pill)
@@ -306,14 +314,14 @@ func _build_creature_card(canvas: CanvasLayer, creature: Dictionary, index: int,
 	name_label.text = display
 	name_label.position = Vector2(50.0, 10.0)
 	name_label.size = Vector2(w - 200.0, 30.0)
-	UI_STYLE.apply_label(name_label, "card_title")
+	UI_STYLE.apply_label(name_label, "mm_stat_primary")
 	card.add_child(name_label)
 
 	var id_label: Label = Label.new()
 	id_label.text = _identity_line(creature, species_id)
 	id_label.position = Vector2(50.0, 40.0)
 	id_label.size = Vector2(w - 90.0, 22.0)
-	UI_STYLE.apply_label(id_label, "dim")
+	UI_STYLE.apply_label(id_label, "mm_dim")
 	card.add_child(id_label)
 
 	var bond_level: int = int(creature.get("bond_level", 1))
@@ -322,7 +330,7 @@ func _build_creature_card(canvas: CanvasLayer, creature: Dictionary, index: int,
 	bl_label.text = "Bond %d  ·  Potential cap %s" % [bond_level, potential_label]
 	bl_label.position = Vector2(50.0, 62.0)
 	bl_label.size = Vector2(w - 100.0, 22.0)
-	UI_STYLE.apply_label(bl_label, "card_metric")
+	UI_STYLE.apply_label(bl_label, "mm_stat_secondary")
 	card.add_child(bl_label)
 
 	var support_line: String = _support_one_liner(creature, species_id)
@@ -331,7 +339,7 @@ func _build_creature_card(canvas: CanvasLayer, creature: Dictionary, index: int,
 		sup_label.text = support_line
 		sup_label.position = Vector2(50.0, 84.0)
 		sup_label.size = Vector2(w - 100.0, 22.0)
-		UI_STYLE.apply_label(sup_label, "caption")
+		UI_STYLE.apply_label(sup_label, "mm_caption")
 		card.add_child(sup_label)
 
 	var desc: String = String(creature.get("description", ""))
@@ -349,7 +357,7 @@ func _build_creature_card(canvas: CanvasLayer, creature: Dictionary, index: int,
 		desc_label.position = Vector2.ZERO
 		desc_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		desc_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		UI_STYLE.apply_label(desc_label, "card_body")
+		UI_STYLE.apply_label(desc_label, "mm_body")
 		desc_scroll.add_child(desc_label)
 		_reflow_lair_desc_scroll(desc_scroll, desc_label)
 
@@ -404,7 +412,7 @@ func _build_bottom_bar(canvas: CanvasLayer, lair: Array) -> void:
 	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	note.size = Vector2(1060.0, 30.0)
 	note.position = Vector2(110.0, 612.0)
-	UI_STYLE.apply_label(note, "note")
+	UI_STYLE.apply_label(note, "mm_dim")
 	canvas.add_child(note)
 
 	var count: int = min(lair.size(), MAX_LAIR_DISPLAY)
@@ -419,7 +427,7 @@ func _build_bottom_bar(canvas: CanvasLayer, lair: Array) -> void:
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hint.size = Vector2(1280.0, 28.0)
 	hint.position = Vector2(0.0, 652.0)
-	UI_STYLE.apply_label(hint, "hint")
+	UI_STYLE.apply_label(hint, "mm_hint")
 	canvas.add_child(hint)
 
 
@@ -428,13 +436,17 @@ func _refresh_card_highlights() -> void:
 		if not is_instance_valid(_creature_cards[i]):
 			continue
 		var is_selected: bool = (i == _selected_index)
-		_creature_cards[i].color = Color(0.22, 0.14, 0.09, 1.0) if is_selected else Color(0.12, 0.07, 0.07, 1.0)
+		_creature_cards[i].color = UI_STYLE.get_manga_color("blood_ember") if is_selected else UI_STYLE.get_manga_color("deep_violet")
+		if is_selected:
+			_creature_cards[i].color.a = 0.34
+		else:
+			_creature_cards[i].color.a = 1.0
 		if i < _card_accents.size() and is_instance_valid(_card_accents[i]):
-			_card_accents[i].color = Color(0.92, 0.62, 0.26, 1.0) if is_selected else Color(0.0, 0.0, 0.0, 0.0)
+			_card_accents[i].color = UI_STYLE.get_manga_color("alert_gold") if is_selected else Color(0.0, 0.0, 0.0, 0.0)
 		if i < _active_pills.size() and is_instance_valid(_active_pills[i]):
 			_active_pills[i].visible = is_selected
 		if i < _card_index_labels.size() and is_instance_valid(_card_index_labels[i]):
-			UI_STYLE.apply_label(_card_index_labels[i], "warm_value" if is_selected else "card_index")
+			UI_STYLE.apply_label(_card_index_labels[i], "mm_choice_consume" if is_selected else "mm_caption")
 
 
 func _refresh_active_support_panel() -> void:

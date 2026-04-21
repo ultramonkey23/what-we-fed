@@ -13,6 +13,21 @@ This guide defines the premium visual direction for "What We Fed" art upgrades, 
 - **Biological Horror**: Organic, mutated forms with readable silhouettes
 - **Ascendant Power**: Visual escalation from weak prey to feared predator
 - **Stylish & Cool**: Influenced by Solo Leveling, Digimon evolution, MHA silhouettes
+- **Manga Monstrosity**: Ink-heavy contrast, dramatic framing, and aggressive silhouette clarity
+
+### Manga + Cool Monster Cohesion Rules
+- **Ink Contrast First**: Major panels and labels should read against near-black ink foundations before accent colors are introduced.
+- **Monster Intent Readability**: Bond/Eat, threat states, and apex moments must be visually distinct in less than a second.
+- **Accent Discipline**: Use ember, mutation magenta, and bond teal as role-based accents, not ambient noise.
+- **Readable Drama**: Add punch with sharp highlights and outline-heavy typography, but never hide timing/lane truth.
+- **Single Source Styling**: Route style choices through `systems/UIStyle.gd` semantic roles; avoid ad hoc inline scene styling.
+
+### Manga Monster Token Families
+- **Base surfaces**: ink black, deep violet shells
+- **Alert accents**: ember red/orange and apex gold
+- **Mutation accents**: magenta/purple energy
+- **Bond accents**: teal resonance
+- **Text hierarchy**: high-outline, high-contrast labels for critical combat reads
 
 ### Color Palette
 **Primary Dark Theme:**

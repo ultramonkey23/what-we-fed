@@ -211,27 +211,28 @@ func _build_ui() -> void:
 	_panel = ColorRect.new()
 	_panel.position = Vector2(84.0, 56.0)
 	_panel.size = Vector2(1112.0, 608.0)
-	UI_STYLE.apply_shell_style(_panel, "", "", Color(0.07, 0.05, 0.06, 0.98), Color(0.22, 0.16, 0.14, 0.94))
+	UI_STYLE.apply_shell_style(_panel, "mm_command")
 	_canvas.add_child(_panel)
 
 	_header_label = Label.new()
 	_header_label.text = PRESENTATION_TEXT.RUN_SPINE_LEVEL_HEADER
 	_header_label.position = Vector2(0.0, 14.0)
 	_header_label.size = Vector2(1112.0, 36.0)
-	UI_STYLE.apply_label(_header_label, "heading", HORIZONTAL_ALIGNMENT_CENTER)
+	UI_STYLE.apply_label(_header_label, "mm_title", HORIZONTAL_ALIGNMENT_CENTER)
+	_header_label.add_theme_font_size_override("font_size", 38)
 	_panel.add_child(_header_label)
 
 	_subtitle_label = Label.new()
 	_subtitle_label.text = PRESENTATION_TEXT.RUN_SPINE_LEVEL_SUBTITLE
 	_subtitle_label.position = Vector2(0.0, 48.0)
 	_subtitle_label.size = Vector2(1112.0, 22.0)
-	UI_STYLE.apply_label(_subtitle_label, "screen_subtitle", HORIZONTAL_ALIGNMENT_CENTER)
+	UI_STYLE.apply_label(_subtitle_label, "mm_subtitle", HORIZONTAL_ALIGNMENT_CENTER)
 	_panel.add_child(_subtitle_label)
 
 	_next_label = Label.new()
 	_next_label.position = Vector2(0.0, 72.0)
 	_next_label.size = Vector2(1112.0, 22.0)
-	UI_STYLE.apply_label(_next_label, "caption_strong", HORIZONTAL_ALIGNMENT_CENTER)
+	UI_STYLE.apply_label(_next_label, "mm_caption", HORIZONTAL_ALIGNMENT_CENTER)
 	_panel.add_child(_next_label)
 
 	_build_choice_cards()
@@ -246,14 +247,14 @@ func _build_ui() -> void:
 
 	_prep_body_label = Label.new()
 	_prep_body_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	UI_STYLE.apply_label(_prep_body_label, "body")
+	UI_STYLE.apply_label(_prep_body_label, "mm_body")
 	_prep_scroll.add_child(_prep_body_label)
 
 	_state_hint_label = Label.new()
 	_state_hint_label.position = Vector2(0.0, 554.0)
 	_state_hint_label.size = Vector2(1112.0, 44.0)
 	_state_hint_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	UI_STYLE.apply_label(_state_hint_label, "hint", HORIZONTAL_ALIGNMENT_CENTER)
+	UI_STYLE.apply_label(_state_hint_label, "mm_hint", HORIZONTAL_ALIGNMENT_CENTER)
 	_panel.add_child(_state_hint_label)
 
 
@@ -269,7 +270,7 @@ func _build_choice_cards() -> void:
 		card.name = "RunSpineUpgradeCard_%d" % i
 		card.position = Vector2(start_x + i * (card_w + gap), 104.0)
 		card.size = Vector2(card_w, card_h)
-		UI_STYLE.apply_shell_style(card, "", "", Color(0.12, 0.09, 0.10, 0.96), Color(0.30, 0.22, 0.20, 0.88))
+		UI_STYLE.apply_shell_style(card, "mm_mutation")
 		_panel.add_child(card)
 		_choice_cards.append(card)
 
@@ -277,14 +278,15 @@ func _build_choice_cards() -> void:
 		index_label.text = str(i + 1)
 		index_label.position = Vector2(14.0, 14.0)
 		index_label.size = Vector2(24.0, 24.0)
-		UI_STYLE.apply_label(index_label, "card_index")
+		UI_STYLE.apply_label(index_label, "mm_caption")
 		card.add_child(index_label)
 
 		var cat_label: Label = Label.new()
 		cat_label.name = "Category"
 		cat_label.position = Vector2(14.0, 42.0)
 		cat_label.size = Vector2(card_w - 28.0, 18.0)
-		UI_STYLE.apply_label(cat_label, "caption_strong")
+		UI_STYLE.apply_label(cat_label, "mm_choice_consume")
+		cat_label.add_theme_font_size_override("font_size", 14)
 		card.add_child(cat_label)
 
 		var title_label: Label = Label.new()
@@ -292,13 +294,14 @@ func _build_choice_cards() -> void:
 		title_label.position = Vector2(14.0, 64.0)
 		title_label.size = Vector2(card_w - 28.0, 54.0)
 		title_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		UI_STYLE.apply_label(title_label, "card_title")
+		UI_STYLE.apply_label(title_label, "mm_stat_primary")
 		card.add_child(title_label)
 
 		var separator: ColorRect = ColorRect.new()
 		separator.position = Vector2(14.0, 124.0)
 		separator.size = Vector2(card_w - 28.0, 1.0)
-		separator.color = Color(0.28, 0.20, 0.18, 0.50)
+		separator.color = UI_STYLE.get_manga_color("mutation_magenta")
+		separator.color.a = 0.48
 		card.add_child(separator)
 
 		var body_label: Label = Label.new()
@@ -306,7 +309,7 @@ func _build_choice_cards() -> void:
 		body_label.position = Vector2(14.0, 136.0)
 		body_label.size = Vector2(card_w - 28.0, 70.0)
 		body_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		UI_STYLE.apply_label(body_label, "body")
+		UI_STYLE.apply_label(body_label, "mm_body")
 		card.add_child(body_label)
 
 

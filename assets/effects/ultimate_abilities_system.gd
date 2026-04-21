@@ -1,5 +1,6 @@
 extends Node
 class_name UltimateAbilitiesSystem
+const UI_STYLE = preload("res://systems/UIStyle.gd")
 
 # World-breaking ultimate abilities for power fantasy
 enum UltimateType {
@@ -71,7 +72,7 @@ func activate_predator_dominion():
 	create_world_energy_explosion()
 	
 	# Reality distortion effects
-	activate_reality_distortion(Color.PURPLE, 0.8)
+	activate_reality_distortion(UI_STYLE.get_manga_color("deep_violet"), 0.8)
 	
 	# Time manipulation
 	time_freeze.activate(0.5)
@@ -97,8 +98,8 @@ func create_world_energy_explosion():
 		process_material.gravity = Vector3.ZERO
 		process_material.scale_min = 4.0
 		process_material.scale_max = 12.0
-		process_material.color = Color.PURPLE
-		process_material.emission = Color.BLACK
+		process_material.color = UI_STYLE.get_manga_color("mutation_magenta")
+		process_material.emission = UI_STYLE.get_manga_color("ink_black")
 		
 		world_particles.process_material = process_material
 
@@ -131,7 +132,7 @@ func dominate_screen_with_power():
 		tween.tween_method(func(trauma): screen_shake.add_trauma(trauma), 0.2, 1.0, 1.0)
 	
 	# Screen color domination
-	tween.tween_property(screen_overlay, "color", Color.PURPLE, 0.3)
+	tween.tween_property(screen_overlay, "color", UI_STYLE.get_manga_color("deep_violet"), 0.3)
 	tween.tween_property(screen_overlay, "modulate", Color(1, 1, 1, 0.9), 0.3)
 	
 	# Screen pulse effects
@@ -171,8 +172,8 @@ func create_destruction_wave(center: Vector2, wave_number: int):
 	process_material.spread = 360.0
 	process_material.initial_velocity_min = 400.0 * wave_number
 	process_material.initial_velocity_max = 800.0 * wave_number
-	process_material.color = Color.ORANGE_RED
-	process_material.emission = Color.YELLOW
+	process_material.color = UI_STYLE.get_manga_color("blood_ember")
+	process_material.emission = UI_STYLE.get_manga_color("alert_gold")
 	
 	wave.process_material = process_material
 	
@@ -188,7 +189,7 @@ func activate_monster_ascension():
 	create_dna_helix_effect()
 	
 	# Reality-bending transformation
-	activate_reality_distortion(Color.MAGENTA, 1.0)
+	activate_reality_distortion(UI_STYLE.get_manga_color("mutation_magenta"), 1.0)
 	
 	# Epic time freeze
 	time_freeze.activate(1.0)
@@ -214,8 +215,8 @@ func create_dna_helix_effect():
 		process_material.gravity = Vector3.ZERO
 		process_material.scale_min = 2.0
 		process_material.scale_max = 8.0
-		process_material.color = Color.MAGENTA
-		process_material.emission = Color.CYAN
+		process_material.color = UI_STYLE.get_manga_color("mutation_magenta")
+		process_material.emission = UI_STYLE.get_manga_color("bond_teal")
 		
 		world_particles.process_material = process_material
 	
@@ -225,7 +226,7 @@ func create_dna_helix_effect():
 func create_dna_helix_visual():
 	var helix = Line2D.new()
 	helix.width = 5.0
-	helix.default_color = Color.CYAN
+	helix.default_color = UI_STYLE.get_manga_color("bond_teal")
 	
 	# Create helix pattern
 	var center = get_viewport().get_visible_rect().size / 2
@@ -250,10 +251,10 @@ func create_dna_helix_visual():
 func play_transformation_sequence():
 	# Multi-stage transformation with dramatic visual progression
 	var stages = [
-		{"color": Color.MAGENTA, "duration": 0.8, "effect": "Initial mutation"},
-		{"color": Color.GOLD, "duration": 0.8, "effect": "Power surge"},
-		{"color": Color.CYAN, "duration": 0.8, "effect": "Final transformation"},
-		{"color": Color.WHITE, "duration": 0.6, "effect": "Ascension complete"}
+		{"color": UI_STYLE.get_manga_color("mutation_magenta"), "duration": 0.8, "effect": "Initial mutation"},
+		{"color": UI_STYLE.get_manga_color("blood_ember"), "duration": 0.8, "effect": "Power surge"},
+		{"color": UI_STYLE.get_manga_color("bond_teal"), "duration": 0.8, "effect": "Final transformation"},
+		{"color": UI_STYLE.get_manga_color("paper"), "duration": 0.6, "effect": "Ascension complete"}
 	]
 	
 	for stage in stages:
@@ -310,8 +311,8 @@ func create_ultimate_aura():
 	process_material.gravity = Vector3(0, -98, 0)
 	process_material.scale_min = 3.0
 	process_material.scale_max = 8.0
-	process_material.color = Color.GOLD
-	process_material.emission = Color.WHITE
+	process_material.color = UI_STYLE.get_manga_color("alert_gold")
+	process_material.emission = UI_STYLE.get_manga_color("paper")
 	
 	aura.process_material = process_material
 	

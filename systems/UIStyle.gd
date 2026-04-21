@@ -2,6 +2,13 @@ extends RefCounted
 
 const DISPLAY_FONT = preload("res://assets/fonts/display/This Night.ttf")
 const UI_FONT = preload("res://assets/fonts/ui/WereWolf.ttf")
+const MM_INK_BLACK = Color(0.03, 0.02, 0.04, 1.0)
+const MM_DEEP_VIOLET = Color(0.14, 0.08, 0.20, 1.0)
+const MM_BLOOD_EMBER = Color(0.90, 0.32, 0.15, 1.0)
+const MM_MUTATION_MAGENTA = Color(0.82, 0.16, 0.74, 1.0)
+const MM_BOND_TEAL = Color(0.24, 0.86, 0.74, 1.0)
+const MM_ALERT_GOLD = Color(0.96, 0.78, 0.30, 1.0)
+const MM_PAPER = Color(0.96, 0.94, 0.90, 1.0)
 
 
 ## Full-screen menu shell: subtle vertical gradient plus a thin warm frame (matches HUD border tones).
@@ -255,8 +262,98 @@ static func _load_texture(texture_path: String) -> Texture2D:
 	return null
 
 
+static func get_manga_color(role: String) -> Color:
+	match role:
+		"ink_black":
+			return MM_INK_BLACK
+		"deep_violet":
+			return MM_DEEP_VIOLET
+		"blood_ember":
+			return MM_BLOOD_EMBER
+		"mutation_magenta":
+			return MM_MUTATION_MAGENTA
+		"bond_teal":
+			return MM_BOND_TEAL
+		"alert_gold":
+			return MM_ALERT_GOLD
+		"paper":
+			return MM_PAPER
+		_:
+			return MM_PAPER
+
+
+static func get_quality_feedback_color(quality: String) -> Color:
+	match quality:
+		"perfect":
+			return Color(0.40, 1.0, 0.72, 0.86)
+		"good":
+			return Color(1.0, 0.90, 0.44, 0.78)
+		"slip":
+			return Color(1.0, 0.60, 0.42, 0.78)
+		_:
+			return Color(0.92, 0.92, 0.92, 0.44)
+
+
+static func get_tendency_surge_color(tendency: String) -> Color:
+	match tendency:
+		"aggression":
+			return MM_BLOOD_EMBER
+		"cadence":
+			return MM_ALERT_GOLD
+		"guard":
+			return Color(0.46, 0.70, 1.0, 1.0)
+		"bond":
+			return MM_BOND_TEAL
+		_:
+			return MM_PAPER
+
+
+static func get_combat_ring_palette() -> Dictionary:
+	return {
+		"active": Color(1.0, 0.95, 0.55, 1.0),
+		"inactive": Color(0.7, 0.7, 0.8, 0.45),
+		"lane": Color(0.30, 0.30, 0.35, 1.0)
+	}
+
+
 static func _shell_palette_for_role(role: String) -> Dictionary:
 	match role:
+		"mm_command":
+			return {
+				"bg_color": Color(0.08, 0.05, 0.08, 0.96),
+				"border_color": Color(0.64, 0.30, 0.20, 0.96),
+				"corner_radius": 8,
+				"border_width": 2,
+				"shadow_color": Color(0.06, 0.02, 0.03, 0.34),
+				"shadow_size": 2
+			}
+		"mm_alert":
+			return {
+				"bg_color": Color(0.10, 0.06, 0.04, 0.96),
+				"border_color": MM_ALERT_GOLD,
+				"corner_radius": 8,
+				"border_width": 2,
+				"shadow_color": Color(0.18, 0.10, 0.02, 0.30),
+				"shadow_size": 2
+			}
+		"mm_mutation":
+			return {
+				"bg_color": Color(0.10, 0.04, 0.10, 0.96),
+				"border_color": MM_MUTATION_MAGENTA,
+				"corner_radius": 8,
+				"border_width": 2,
+				"shadow_color": Color(0.12, 0.02, 0.14, 0.34),
+				"shadow_size": 2
+			}
+		"mm_apex":
+			return {
+				"bg_color": Color(0.12, 0.05, 0.03, 0.98),
+				"border_color": MM_BLOOD_EMBER,
+				"corner_radius": 8,
+				"border_width": 2,
+				"shadow_color": Color(0.20, 0.05, 0.02, 0.36),
+				"shadow_size": 2
+			}
 		"hud_left":
 			return {
 				"bg_color": Color(0.06, 0.06, 0.07, 0.92),
@@ -346,6 +443,22 @@ static func _shell_palette_for_role(role: String) -> Dictionary:
 
 static func _bar_palette_for_role(role: String) -> Dictionary:
 	match role:
+		"mm_offer":
+			return {
+				"under_color": Color(0.10, 0.05, 0.11, 0.96),
+				"fill_color": MM_MUTATION_MAGENTA,
+				"border_color": Color(0.34, 0.16, 0.34, 0.92),
+				"corner_radius": 6,
+				"border_width": 1
+			}
+		"mm_ultimate":
+			return {
+				"under_color": Color(0.12, 0.06, 0.04, 0.98),
+				"fill_color": MM_BLOOD_EMBER,
+				"border_color": MM_ALERT_GOLD,
+				"corner_radius": 6,
+				"border_width": 1
+			}
 		"support_idle":
 			return {
 				"under_color": Color(0.05, 0.06, 0.07, 0.96),
@@ -401,6 +514,101 @@ static func apply_label(label: Label, role: String, align: int = -1) -> void:
 
 static func _style_for_role(role: String) -> Dictionary:
 	match role:
+		"mm_title":
+			return {
+				"font": DISPLAY_FONT,
+				"size": 50,
+				"color": MM_PAPER,
+				"outline_size": 3,
+				"outline_color": MM_INK_BLACK,
+				"shadow_color": Color(0.0, 0.0, 0.0, 0.44),
+				"shadow_x": 2,
+				"shadow_y": 3
+			}
+		"mm_subtitle":
+			return {
+				"font": UI_FONT,
+				"size": 18,
+				"color": Color(0.72, 0.67, 0.74, 0.98),
+				"outline_size": 2,
+				"outline_color": MM_INK_BLACK
+			}
+		"mm_stat_primary":
+			return {
+				"font": UI_FONT,
+				"size": 20,
+				"color": MM_PAPER,
+				"outline_size": 2,
+				"outline_color": MM_INK_BLACK
+			}
+		"mm_stat_secondary":
+			return {
+				"font": UI_FONT,
+				"size": 17,
+				"color": Color(0.84, 0.78, 0.86, 0.98),
+				"outline_size": 2,
+				"outline_color": MM_INK_BLACK
+			}
+		"mm_choice_bond":
+			return {
+				"font": DISPLAY_FONT,
+				"size": 20,
+				"color": MM_BOND_TEAL,
+				"outline_size": 2,
+				"outline_color": MM_INK_BLACK
+			}
+		"mm_choice_consume":
+			return {
+				"font": DISPLAY_FONT,
+				"size": 20,
+				"color": MM_BLOOD_EMBER,
+				"outline_size": 2,
+				"outline_color": MM_INK_BLACK
+			}
+		"mm_monster_alert":
+			return {
+				"font": DISPLAY_FONT,
+				"size": 24,
+				"color": MM_ALERT_GOLD,
+				"outline_size": 2,
+				"outline_color": MM_INK_BLACK,
+				"shadow_color": Color(0.0, 0.0, 0.0, 0.36),
+				"shadow_x": 1,
+				"shadow_y": 2
+			}
+		"mm_caption":
+			return {
+				"font": UI_FONT,
+				"size": 14,
+				"color": Color(0.80, 0.74, 0.82, 0.96),
+				"outline_size": 1,
+				"outline_color": MM_INK_BLACK
+			}
+		"mm_body":
+			return {
+				"font": UI_FONT,
+				"size": 16,
+				"color": Color(0.90, 0.88, 0.92, 0.98),
+				"outline_size": 1,
+				"outline_color": MM_INK_BLACK,
+				"line_spacing": 1
+			}
+		"mm_hint":
+			return {
+				"font": UI_FONT,
+				"size": 16,
+				"color": Color(0.88, 0.78, 0.66, 0.98),
+				"outline_size": 2,
+				"outline_color": MM_INK_BLACK
+			}
+		"mm_dim":
+			return {
+				"font": UI_FONT,
+				"size": 14,
+				"color": Color(0.60, 0.54, 0.62, 0.92),
+				"outline_size": 1,
+				"outline_color": MM_INK_BLACK
+			}
 		"caption":
 			return {
 				"font": UI_FONT,

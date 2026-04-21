@@ -1,0 +1,23 @@
+---
+description: Core truth and authority order for WHAT WE FED repo work
+alwaysApply: true
+---
+
+# Core Truth
+
+- Preserve live build truth first; current source/canon files are the primary authority.
+- Preserve locked identity: timing truth, lane readability, support readability, DNA meaning, Bond vs Eat tension, and no-pause active-combat identity.
+- Current runtime behavior outranks speculative or deferred dream scope.
+- Choose one bounded next move; avoid scope widening.
+- If instructions conflict, follow this order:
+  1. Source/canon files
+  2. Runtime evidence
+  3. User task constraints
+  4. Repo operating docs
+  5. Dream scope
+
+# Canonical References
+
+- `docs/ai/AGENT_OPERATING_SYSTEM.md`
+- `AGENTS.md`
+- `GEMINI.md`

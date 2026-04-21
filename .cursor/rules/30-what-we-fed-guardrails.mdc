@@ -1,0 +1,23 @@
+---
+description: WHAT WE FED anti-drift guardrails for repo workflow and agent tasks
+alwaysApply: true
+---
+
+# WHAT WE FED Guardrails
+
+- This is a repo workflow / agent capability pass unless user explicitly expands scope.
+- Do not modify gameplay systems, scene flow, or balance during agent-layer tasks.
+- Do not widen into ranch, world-state, kaiju, or unrelated gameplay expansion.
+- Do not reintroduce stale pause-era assumptions.
+
+# Preserve Locked Core
+
+- Timing truth and lane readability are non-negotiable.
+- Support readability and telegraph clarity are protected.
+- DNA meaning and Bond vs Eat tension remain meaningful.
+- No-pause applies during active combat; between-level menus are allowed by design.
+
+# Working Style
+
+- Prefer explicit anti-drift decisions over generic optimization.
+- Keep changes surgical and explain non-goals.

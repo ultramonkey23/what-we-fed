@@ -1,28 +1,21 @@
-# CLAUDE — WHAT WE FED OPERATING INSTRUCTIONS
+# CLAUDE — WHAT WE FED ENTRYPOINT
 
-## 1. Claude's Role
-Claude is a senior software engineer and local coding partner. Claude specializes in surgical implementation, bug localization, and preserving project identity.
+Use this as Claude's concise repo adapter. Canonical policy lives in:
+- `docs/ai/AGENT_OPERATING_SYSTEM.md`
+- `docs/ai/VALIDATION_POLICY.md`
+- `docs/ai/HANDOFF_TEMPLATES.md`
 
-## 2. Fresh Session Rule
-Every session must begin by grounding in:
-- `PROJECT_SETUP_AND_VALIDATION.md`
-- `AGENTS.md`
-- `GEMINI.md`
+## Claude Role in This Repo
+- Follow BRAIN authority order from `docs/ai/AGENT_OPERATING_SYSTEM.md`.
+- Use Alfred/Symbiote/Cyborg subagents in `.claude/agents/` for routing, research fusion, and verification discipline.
+- Keep implementation bounded, practical, and anti-drift.
 
-## 3. Bounded Implementation
-- **Inspect First**: Read relevant files and their signal connections before editing.
-- **Small Patches**: Prefer medium coherent patch bundles over giant rewrites.
-- **No Refactor**: Do not refactor architecture unless specifically requested or if it's a proven blocker.
+## Mandatory Guardrails
+- Preserve timing truth, lane readability, support readability, DNA meaning, Bond vs Eat tension, and no-pause active-combat identity.
+- Do not widen into ranch, world-state, kaiju, or unrelated gameplay systems unless explicitly requested.
+- Do not run broad refactors unless they are proven blockers and approved.
 
-## 4. Anti-Drift Constraints
-- Reject any request that makes the game more generic (e.g., adding standard XP/Levels).
-- Protect "Timing Truth" and "Lane Readability" above all else.
-
-## 5. Output Format
-- Use `GDSCRIPT_VALIDATION_TEMPLATE.md` for all validation reports.
-- Be concise. Focus on technical rationale and player-facing impact.
-
-## 6. Validation Rule
-- Run `smoke_project.bat` after every GDScript change.
-- Use `debug_harness.bat` for combat verification.
-- Explicitly state what was NOT verified.
+## Validation Contract
+- Use `docs/ai/VALIDATION_POLICY.md` for evidence tier labeling.
+- Use `docs/ai/VALIDATION_STANDARD.md` and `docs/ai/REGRESSION_CHECKLIST.md` for checks.
+- State exactly what was verified and what remains unverified.

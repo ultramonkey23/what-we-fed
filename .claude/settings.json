@@ -1,0 +1,14 @@
+{
+  "agentOperatingLayerVersion": "v1",
+  "canonicalDocs": [
+    "docs/ai/AGENT_OPERATING_SYSTEM.md",
+    "docs/ai/VALIDATION_POLICY.md",
+    "docs/ai/HANDOFF_TEMPLATES.md"
+  ],
+  "subagentDirectory": ".claude/agents",
+  "defaultWorkflow": {
+    "routing": "alfred",
+    "research": "symbiote",
+    "verification": "cyborg"
+  }
+}

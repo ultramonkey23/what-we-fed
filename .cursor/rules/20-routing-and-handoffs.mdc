@@ -1,0 +1,22 @@
+---
+description: Route work to one bounded move and use consistent handoff structure
+alwaysApply: true
+---
+
+# Routing and Handoffs
+
+- Route work to one best next move before broad implementation.
+- Keep plans bounded, practical, and sequence-aware.
+- Prefer decomposition that reduces risk and preserves momentum.
+- Handoffs must include:
+  - goal and scope
+  - files touched
+  - validation status (verified/unverified)
+  - risks
+  - one next bounded follow-up
+
+# Canonical References
+
+- `docs/ai/HANDOFF_TEMPLATES.md`
+- `docs/ai/NEXT_MOVE_ROUTER.md`
+- `docs/ai/AGENT_OPERATING_SYSTEM.md`

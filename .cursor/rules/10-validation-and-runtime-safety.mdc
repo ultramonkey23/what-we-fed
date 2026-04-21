@@ -1,0 +1,23 @@
+---
+description: Validation evidence tiers and runtime safety reporting rules
+alwaysApply: true
+---
+
+# Validation and Runtime Safety
+
+- Label validation as one of: runtime-verified, static-only, or speculative.
+- Never present speculative claims as verified facts.
+- For runtime-impacting changes, report:
+  - commands run
+  - outcomes
+  - explicit unverified items
+- Use these docs as canonical validation sources:
+  - `docs/ai/VALIDATION_POLICY.md`
+  - `docs/ai/VALIDATION_STANDARD.md`
+  - `docs/ai/REGRESSION_CHECKLIST.md`
+
+# Runtime Safety Boundaries
+
+- In workflow/docs tasks, do not alter gameplay runtime logic.
+- If runtime checks are not run, say so directly and avoid certainty claims.
+- Do not regress flow/readability constraints while validating docs or config changes.

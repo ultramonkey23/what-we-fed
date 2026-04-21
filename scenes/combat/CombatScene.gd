@@ -36,6 +36,7 @@ const UI_STYLE = preload("res://systems/UIStyle.gd")
 const COMBAT_AUDIO_PLAYER = preload("res://systems/CombatAudioPlayer.gd")
 const ENCOUNTER_ESCALATION_DIRECTOR = preload("res://systems/EncounterEscalationDirector.gd")
 const SUPPORT_EFFECT_RESOLVER = preload("res://systems/SupportEffectResolver.gd")
+const PATH_RUN_PLAN = preload("res://systems/PathRunPlan.gd")
 
 # ─── CONSTANTS ───────────────────────────────────────────────────────────────
 const RUN_GROWTH_SCRIPT_PATH: String = "res://systems/RunGrowth.gd"
@@ -149,6 +150,10 @@ var _upgrade_choice_labels: Array[Label] = []
 var _awaiting_upgrade_choice: bool = false
 var _pending_upgrades: Array[Dictionary] = []
 var _pending_predation: Array[Dictionary] = []
+var _pending_path_choice_nodes: Array[Dictionary] = []
+var _pending_path_choice_level_index: int = -1
+var _active_path_node: Dictionary = {}
+var _active_path_context: Dictionary = {}
 
 var _run_spine_surface: Node = null
 # Legacy between-level overlay vars retained for non-song upgrade flow compatibility.
@@ -2980,6 +2985,10 @@ func _start_song_run() -> void:
 	var song_duration: float = _resolve_active_song_duration()
 	_regular_level_windows = RUN_PACING_CONTENT.build_regular_level_windows(_region_id, song_duration)
 	_regular_level_index = clampi(int(_dev_harness_request.get("regular_level_index", 0)), 0, max(_regular_level_windows.size() - 1, 0))
+	var regular_level_count: int = _regular_level_windows.size()
+	if GameState.run_path_plan.is_empty() or GameState.run_path_plan.size() != regular_level_count:
+		GameState.run_path_plan = PATH_RUN_PLAN.build_plan(_region_id, regular_level_count)
+	_prepare_path_context_for_level(_regular_level_index)
 
 	_start_regular_level(_regular_level_index, true)
 
@@ -3021,7 +3030,8 @@ func _start_regular_level(level_index: int, reset_hp: bool) -> void:
 		lane_manager.stop()
 	lane_manager.set_song_mode_enabled(true)
 
-	var song_run: Dictionary = ENCOUNTER_IDENTITY_RUNTIME.build_song_run(_region_id, _regular_level_index, level_duration)
+	var encounter_options: Dictionary = Dictionary(_active_path_context.get("encounter_options", {})).duplicate(true)
+	var song_run: Dictionary = ENCOUNTER_IDENTITY_RUNTIME.build_song_run(_region_id, _regular_level_index, level_duration, encounter_options)
 	_song_phases = song_run.get("phases", [])
 	for i in range(_song_phases.size()):
 		var phase: Dictionary = _song_phases[i]
@@ -3070,7 +3080,8 @@ func _start_regular_level(level_index: int, reset_hp: bool) -> void:
 	# Start the conductor inside this authored level window.
 	_start_song_conductor(level_start, level_end)
 	var level_label: String = String(level_window.get("label", "LEVEL %d" % (_regular_level_index + 1)))
-	_show_feedback("%s  [%d/%d]" % [level_label, _regular_level_index + 1, _regular_level_windows.size()], Color(0.90, 0.84, 0.66, 1.0), 0.48)
+	var node_name: String = String(_active_path_node.get("display_name", "Prey"))
+	_show_feedback("%s  [%d/%d]  •  %s" % [level_label, _regular_level_index + 1, _regular_level_windows.size(), node_name], Color(0.90, 0.84, 0.66, 1.0), 0.48)
 
 
 func _advance_to_next_regular_level() -> void:
@@ -3111,7 +3122,8 @@ func _show_level_completion_rewards() -> void:
 	if _run_spine_surface != null and _run_spine_surface.has_method("present_level_completion"):
 		_run_spine_surface.call("present_level_completion", _pending_upgrades, _run_growth, advancing_to_boss)
 	if _pending_upgrades.is_empty():
-		_try_present_predation_after_run_spine()
+		if not _try_present_predation_after_run_spine():
+			_try_present_path_choice_after_run_spine()
 	_show_feedback("LEVEL COMPLETE", Color(0.85, 0.95, 0.75, 1.0), 0.60)
 	controls_label.text = ""
 
@@ -3129,6 +3141,8 @@ func _create_run_spine_surface() -> void:
 		_run_spine_surface.connect("continue_requested", Callable(self, "_on_run_spine_continue_requested"))
 	if _run_spine_surface.has_signal("predation_selected"):
 		_run_spine_surface.connect("predation_selected", Callable(self, "_on_run_spine_predation_selected"))
+	if _run_spine_surface.has_signal("path_node_selected"):
+		_run_spine_surface.connect("path_node_selected", Callable(self, "_on_run_spine_path_node_selected"))
 
 
 func _is_run_spine_active() -> bool:
@@ -3155,15 +3169,21 @@ func _on_run_spine_upgrade_selected(index: int) -> void:
 	if _run_spine_surface != null and _run_spine_surface.has_method("notify_upgrade_committed"):
 		_run_spine_surface.call("notify_upgrade_committed", index)
 	_pending_upgrades.clear()
-	_try_present_predation_after_run_spine()
-
-
-func _try_present_predation_after_run_spine() -> void:
-	_pending_predation = PREDATION_POOL.build_offers(3)
-	if _pending_predation.is_empty():
+	if _try_present_predation_after_run_spine():
 		return
+	_try_present_path_choice_after_run_spine()
+
+
+func _try_present_predation_after_run_spine() -> bool:
+	_pending_predation.clear()
+	if _performance_reward_director != null and is_instance_valid(_performance_reward_director) and _performance_reward_director.has_method("consume_pending_predation_offers"):
+		_pending_predation = _performance_reward_director.call("consume_pending_predation_offers", 2)
+	if _pending_predation.is_empty():
+		return false
 	if _run_spine_surface != null and is_instance_valid(_run_spine_surface) and _run_spine_surface.has_method("present_predation_pool"):
 		_run_spine_surface.call("present_predation_pool", _pending_predation)
+		return true
+	return false
 
 
 func _on_run_spine_predation_selected(index: int) -> void:
@@ -3177,6 +3197,59 @@ func _on_run_spine_predation_selected(index: int) -> void:
 	_pending_predation.clear()
 	if _run_spine_surface != null and is_instance_valid(_run_spine_surface) and _run_spine_surface.has_method("notify_predation_committed"):
 		_run_spine_surface.call("notify_predation_committed", index)
+	_try_present_path_choice_after_run_spine()
+
+
+func _try_present_path_choice_after_run_spine() -> bool:
+	var next_level_index: int = _regular_level_index + 1
+	if next_level_index >= _regular_level_windows.size():
+		return false
+	if not PATH_RUN_PLAN.is_branch_slot(GameState.run_path_plan, next_level_index):
+		return false
+	var candidates: Array[Dictionary] = PATH_RUN_PLAN.get_branch_candidates(GameState.run_path_plan, next_level_index)
+	if candidates.is_empty():
+		return false
+	_pending_path_choice_nodes = candidates
+	_pending_path_choice_level_index = next_level_index
+	if _run_spine_surface != null and is_instance_valid(_run_spine_surface) and _run_spine_surface.has_method("present_path_choice"):
+		var branch_label: String = _path_branch_label_for_level(next_level_index)
+		_show_feedback(
+			"PATH BRANCH %s  •  choose L%d" % [branch_label, next_level_index + 1],
+			Color(0.72, 0.90, 0.98, 1.0),
+			0.55
+		)
+		# Path choice always picks the next regular level; boss comes after level completion flow.
+		_run_spine_surface.call("present_path_choice", candidates, false)
+		return true
+	return false
+
+
+func _on_run_spine_path_node_selected(node_id: String) -> void:
+	if _pending_path_choice_level_index < 0:
+		return
+	var valid_choice: bool = false
+	for node in _pending_path_choice_nodes:
+		if String(node.get("id", "")) == node_id:
+			valid_choice = true
+			break
+	if not valid_choice:
+		return
+	GameState.run_path_plan = PATH_RUN_PLAN.apply_branch_choice(GameState.run_path_plan, _pending_path_choice_level_index, node_id)
+	GameState.run_path_chosen_ids.append(node_id)
+	var chosen_name: String = node_id.replace("_", " ").to_upper()
+	for node in _pending_path_choice_nodes:
+		if String(node.get("id", "")) == node_id:
+			chosen_name = String(node.get("display_name", chosen_name))
+			break
+	_show_feedback(
+		"PATH LOCKED  •  %s  ->  L%d" % [chosen_name, _pending_path_choice_level_index + 1],
+		Color(0.80, 0.90, 0.66, 1.0),
+		0.55
+	)
+	_pending_path_choice_nodes.clear()
+	_pending_path_choice_level_index = -1
+	if _run_spine_surface != null and is_instance_valid(_run_spine_surface) and _run_spine_surface.has_method("notify_path_committed"):
+		_run_spine_surface.call("notify_path_committed", node_id)
 
 
 func _on_run_spine_continue_requested(advance_to_boss: bool) -> void:
@@ -3184,7 +3257,34 @@ func _on_run_spine_continue_requested(advance_to_boss: bool) -> void:
 	if advance_to_boss:
 		_trigger_boss_final_movement()
 	else:
+		var next_level_index: int = _regular_level_index + 1
+		if next_level_index < _regular_level_windows.size():
+			_show_feedback("PATH ADVANCE  ->  L%d" % (next_level_index + 1), Color(0.70, 0.88, 0.98, 1.0), 0.45)
+		_prepare_path_context_for_level(_regular_level_index + 1)
 		_advance_to_next_regular_level()
+
+
+func _prepare_path_context_for_level(level_index: int) -> void:
+	_active_path_node = PATH_RUN_PLAN.get_level_node(GameState.run_path_plan, level_index)
+	_active_path_context = PATH_RUN_PLAN.apply_node_effects(_active_path_node, GameState, _run_growth, _performance_reward_director)
+	if OS.is_debug_build():
+		print(
+			"PathMap: preparing L%d with node=%s"
+			% [level_index + 1, String(_active_path_node.get("id", "prey"))]
+		)
+
+
+func _path_branch_label_for_level(level_index: int) -> String:
+	var branch_counter: int = 0
+	for i in range(GameState.run_path_plan.size()):
+		var entry: Dictionary = Dictionary(GameState.run_path_plan[i])
+		if not bool(entry.get("is_branch_slot", false)):
+			continue
+		if int(entry.get("level_index", -1)) == level_index:
+			var codepoint: int = "A".unicode_at(0) + branch_counter
+			return String.chr(codepoint)
+		branch_counter += 1
+	return "?"
 
 
 func _enter_song_phase(new_idx: int) -> void:
@@ -3535,6 +3635,10 @@ func _start_mini_run() -> void:
 	_song_reward_pending = false
 	_regular_level_windows.clear()
 	_regular_level_index = 0
+	_pending_path_choice_nodes.clear()
+	_pending_path_choice_level_index = -1
+	_active_path_node.clear()
+	_active_path_context.clear()
 	_song_level_end_time = 0.0
 	_song_level_transitioning = false
 	_hide_live_reward_shell()

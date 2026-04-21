@@ -53,6 +53,17 @@ var active_lair_creature_id: String = ""
 # The region the player selected before the current run. Persists between runs.
 var active_region: Dictionary = {}
 
+# Run path plan for regular levels.
+# Each entry:
+# {
+#   "level_index": int,
+#   "node_id": String,
+#   "is_branch_slot": bool,
+#   "branch_candidates": Array[Dictionary]
+# }
+var run_path_plan: Array[Dictionary] = []
+var run_path_chosen_ids: PackedStringArray = PackedStringArray()
+
 # Base stat values. reset_run_state() resets player_max_hp and player_base_damage
 # to these constants before applying a region modifier, so bonuses never accumulate.
 const BASE_MAX_HP: float = 100.0
@@ -330,6 +341,8 @@ func reset_run_state() -> void:
 	# dna_by_species persists as it is creature-specific currency for metaprogression.
 	roster.clear()
 	taken_upgrades.clear()
+	run_path_plan.clear()
+	run_path_chosen_ids.clear()
 	_bond_order_counter = 0
 	# Re-seed the run roster with the player's selected lair creature, if any.
 	if not active_lair_creature_id.is_empty():

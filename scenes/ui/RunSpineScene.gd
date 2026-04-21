@@ -3,6 +3,7 @@ extends Node2D
 signal upgrade_selected(index: int)
 signal predation_selected(index: int)
 signal continue_requested(advance_to_boss: bool)
+signal path_node_selected(node_id: String)
 
 const UI_STYLE = preload("res://systems/UIStyle.gd")
 const PRESENTATION_TEXT = preload("res://data/PresentationTextContent.gd")
@@ -13,6 +14,7 @@ var _run_growth: Node = null
 var _advance_to_boss: bool = false
 var _awaiting_upgrade_choice: bool = false
 var _awaiting_continue: bool = false
+var _awaiting_path_choice: bool = false
 ## evolution → optional predation → review (continue)
 var _shell_phase: String = "evolution"
 
@@ -43,6 +45,7 @@ func present_level_completion(choices: Array[Dictionary], run_growth_ref: Node, 
 	_advance_to_boss = advance_to_boss
 	_awaiting_upgrade_choice = not _choices.is_empty()
 	_awaiting_continue = _choices.is_empty()
+	_awaiting_path_choice = false
 	_apply_shell_titles()
 	_refresh_cards()
 	_refresh_prep_body()
@@ -61,8 +64,28 @@ func present_predation_pool(offers: Array[Dictionary]) -> void:
 		_choices.append(o.duplicate(true))
 	_awaiting_upgrade_choice = true
 	_awaiting_continue = false
+	_awaiting_path_choice = false
 	_apply_shell_titles()
 	_refresh_cards()
+	_refresh_card_layout()
+	_refresh_prep_body()
+	_refresh_hint()
+
+
+func present_path_choice(nodes: Array[Dictionary], advance_to_boss: bool) -> void:
+	if nodes.is_empty():
+		return
+	_shell_phase = "path"
+	_choices.clear()
+	for node in nodes:
+		_choices.append(node.duplicate(true))
+	_advance_to_boss = advance_to_boss
+	_awaiting_upgrade_choice = false
+	_awaiting_path_choice = true
+	_awaiting_continue = false
+	_apply_shell_titles()
+	_refresh_cards()
+	_refresh_card_layout()
 	_refresh_prep_body()
 	_refresh_hint()
 
@@ -72,15 +95,27 @@ func notify_predation_committed(_selected_index: int) -> void:
 	_awaiting_upgrade_choice = false
 	_awaiting_continue = true
 	_choices.clear()
+	_awaiting_path_choice = false
 	_apply_shell_titles()
 	_refresh_cards()
+	_refresh_card_layout()
 	_refresh_prep_body()
+	_refresh_hint()
+
+
+func notify_path_committed(_node_id: String) -> void:
+	_shell_phase = "review"
+	_awaiting_upgrade_choice = false
+	_awaiting_path_choice = false
+	_awaiting_continue = true
+	_apply_shell_titles()
 	_refresh_hint()
 
 
 func notify_upgrade_committed(_selected_index: int) -> void:
 	_awaiting_upgrade_choice = false
 	_awaiting_continue = true
+	_awaiting_path_choice = false
 	_refresh_prep_body()
 	_refresh_hint()
 
@@ -92,8 +127,10 @@ func hide_surface() -> void:
 	_shell_phase = "evolution"
 	_awaiting_upgrade_choice = false
 	_awaiting_continue = false
+	_awaiting_path_choice = false
 	_choices.clear()
 	_refresh_cards()
+	_refresh_card_layout()
 
 
 func refresh_prep_summary() -> void:
@@ -134,6 +171,20 @@ func _unhandled_input(event: InputEvent) -> void:
 			else:
 				emit_signal("upgrade_selected", selected_index)
 			get_viewport().set_input_as_handled()
+		return
+
+	if _awaiting_path_choice:
+		var path_index: int = -1
+		match key_event.keycode:
+			KEY_1:
+				path_index = 0
+			KEY_2:
+				path_index = 1
+		if path_index >= 0 and path_index < _choices.size():
+			var node_id: String = String(_choices[path_index].get("id", ""))
+			if not node_id.is_empty():
+				emit_signal("path_node_selected", node_id)
+				get_viewport().set_input_as_handled()
 		return
 
 	if _awaiting_continue:
@@ -270,6 +321,22 @@ func _refresh_cards() -> void:
 			card.get_node("Body").text = String(choice.get("summary", ""))
 		else:
 			card.visible = false
+	_refresh_card_layout()
+
+
+func _refresh_card_layout() -> void:
+	var visible_cards: Array[ColorRect] = []
+	for card in _choice_cards:
+		if card.visible:
+			visible_cards.append(card)
+	if visible_cards.is_empty():
+		return
+	var card_w: float = _choice_cards[0].size.x
+	var gap: float = 24.0
+	var total_w: float = card_w * float(visible_cards.size()) + gap * float(maxi(visible_cards.size() - 1, 0))
+	var start_x: float = (_panel.size.x - total_w) * 0.5
+	for i in range(visible_cards.size()):
+		visible_cards[i].position.x = start_x + float(i) * (card_w + gap)
 
 
 func _apply_shell_titles() -> void:
@@ -282,6 +349,9 @@ func _apply_shell_titles() -> void:
 		"review":
 			_header_label.text = PRESENTATION_TEXT.RUN_SPINE_REVIEW_HEADER
 			_subtitle_label.text = PRESENTATION_TEXT.RUN_SPINE_REVIEW_SUBTITLE
+		"path":
+			_header_label.text = "CHOOSE THE NEXT HUNT"
+			_subtitle_label.text = "Shape this run's creature path."
 		_:
 			_header_label.text = PRESENTATION_TEXT.RUN_SPINE_LEVEL_HEADER
 			_subtitle_label.text = PRESENTATION_TEXT.RUN_SPINE_LEVEL_SUBTITLE
@@ -298,6 +368,9 @@ func _refresh_hint() -> void:
 			_state_hint_label.text = PRESENTATION_TEXT.RUN_SPINE_PREDATION_CONTROLS
 		else:
 			_state_hint_label.text = PRESENTATION_TEXT.RUN_SPINE_EVOLUTION_CONTROLS
+		return
+	if _awaiting_path_choice:
+		_state_hint_label.text = "1 / 2 - choose next node"
 		return
 	if _awaiting_continue:
 		_state_hint_label.text = PRESENTATION_TEXT.RUN_PREP_CONTROLS

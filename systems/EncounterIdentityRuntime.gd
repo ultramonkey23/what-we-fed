@@ -6,14 +6,15 @@ const IDENTITY_CONTENT = preload("res://data/EncounterIdentityContent.gd")
 const RUN_PACING_CONTENT = preload("res://data/RunPacingContent.gd")
 
 
-static func build_song_run(region_id: String, regular_level_index: int = 0, level_duration: float = 120.0) -> Dictionary:
+static func build_song_run(region_id: String, regular_level_index: int = 0, level_duration: float = 120.0, options: Dictionary = {}) -> Dictionary:
 	var resolved_region_id: String = region_id if not region_id.is_empty() else "feeding_hollow"
 	var base_phases: Array = REGION_SONG_CONTENT.get_song_phases(resolved_region_id)
 	var scaled_phases: Array = _build_scaled_song_level_phases(
 		resolved_region_id,
 		base_phases,
 		regular_level_index,
-		level_duration
+		level_duration,
+		options
 	)
 	return {
 		"region_id": resolved_region_id,
@@ -158,7 +159,8 @@ static func _build_scaled_song_level_phases(
 	region_id: String,
 	source_phases: Array,
 	regular_level_index: int,
-	level_duration: float
+	level_duration: float,
+	options: Dictionary = {}
 ) -> Array:
 	var scaled: Array = []
 	if source_phases.is_empty():
@@ -172,6 +174,13 @@ static func _build_scaled_song_level_phases(
 	var hp_mult: float = float(scaling.get("enemy_hp_mult", 1.0))
 	var damage_mult: float = float(scaling.get("enemy_damage_mult", 1.0))
 	var projectile_speed_mult: float = float(scaling.get("enemy_projectile_speed_mult", 1.0))
+	var elite_mode: bool = bool(options.get("elite", false))
+	if elite_mode:
+		cycle_mult *= float(options.get("cycle_interval_mult", 0.92))
+		threat_bonus += int(options.get("max_active_threats_bonus", 1))
+		hp_mult *= float(options.get("enemy_hp_mult", 1.18))
+		damage_mult *= float(options.get("enemy_damage_mult", 1.12))
+		projectile_speed_mult *= float(options.get("enemy_projectile_speed_mult", 1.05))
 
 	for i in range(source_phases.size()):
 		var phase: Dictionary = Dictionary(source_phases[i]).duplicate(true)

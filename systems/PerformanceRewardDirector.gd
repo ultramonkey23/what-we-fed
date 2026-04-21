@@ -1,6 +1,7 @@
 extends Node
 
 const PERFORMANCE_REWARD_CONTENT = preload("res://data/PerformanceRewardContent.gd")
+const PREDATION_POOL = preload("res://systems/PredationPool.gd")
 const WOUND_HUNGER_COOLDOWN: float = 1.25
 
 signal state_changed()
@@ -30,6 +31,8 @@ var _exhaustion_announced: bool = false
 var offers_enabled: bool = true
 var banked_reward_count: int = 0
 var _is_level_completion_choice: bool = false
+var _level_completion_context: Dictionary = {}
+var _predation_pool_pending: bool = false
 
 var _active_offer: Dictionary = {}
 var _offer_timer: float = 0.0
@@ -94,6 +97,8 @@ func reset_full_run_data() -> void:
 	_runtime_effects.clear()
 	banked_reward_count = 0
 	_is_level_completion_choice = false
+	_level_completion_context.clear()
+	_predation_pool_pending = false
 
 
 func enter_song_phase(index: int, _phase_data: Dictionary) -> void:
@@ -320,29 +325,47 @@ func _queue_reward_offer() -> void:
 
 
 func get_upgrade_choices(count: int = 3) -> Array[Dictionary]:
+	return _build_upgrade_choices_for_context(count, {})
+
+
+func set_level_completion_context(context: Dictionary) -> void:
+	_level_completion_context = context.duplicate(true)
+	_predation_pool_pending = false
+
+
+func get_level_completion_context() -> Dictionary:
+	return _level_completion_context.duplicate(true)
+
+
+func consume_pending_predation_offers(max_offers: int = 2) -> Array[Dictionary]:
+	if not _predation_pool_pending:
+		return []
+	_predation_pool_pending = false
+	return PREDATION_POOL.build_offers(max_offers)
+
+
+func _build_upgrade_choices_for_context(count: int, context: Dictionary) -> Array[Dictionary]:
 	var choices: Array[Dictionary] = []
-	var pool: Array[String] = []
+	var pool: Array[String] = _build_pool_for_context(context)
 	
-	# Priority 1: Current phase mix
-	for id in _phase_reward_mix:
-		if not _claimed_reward_ids.has(id):
-			pool.append(id)
-	
-	# Priority 2: Full reward order
-	for id in PERFORMANCE_REWARD_CONTENT.REWARD_ORDER:
-		if not _claimed_reward_ids.has(id) and not pool.has(id):
-			pool.append(id)
-			
 	# Pick top N
 	for i in range(min(count, pool.size())):
 		choices.append(PERFORMANCE_REWARD_CONTENT.get_reward(pool[i]))
 		
+	if bool(context.get("elite_reward_tier", false)):
+		_promote_elite_choice(choices, pool)
+
 	return choices
 
 
 func get_level_completion_choices(count: int = 3) -> Array[Dictionary]:
 	_is_level_completion_choice = true
-	return get_upgrade_choices(count)
+	var context: Dictionary = _level_completion_context.duplicate(true)
+	var resolved_count: int = count
+	if bool(context.get("predation_pool", false)):
+		resolved_count = 1
+	_predation_pool_pending = bool(context.get("predation_pool", false))
+	return _build_upgrade_choices_for_context(resolved_count, context)
 
 
 func consume_banked_reward() -> void:
@@ -350,6 +373,43 @@ func consume_banked_reward() -> void:
 		# Structural rewards do not consume banked performance rewards.
 		return
 	banked_reward_count = max(banked_reward_count - 1, 0)
+
+
+func _build_pool_for_context(context: Dictionary) -> Array[String]:
+	var pool: Array[String] = []
+	if bool(context.get("bond_flavored", false)):
+		var bond_priority: Array[String] = ["bond_echo", "hollow_pact", "choir_hook", "graveslip_tendons"]
+		for reward_id in bond_priority:
+			if not _claimed_reward_ids.has(reward_id):
+				pool.append(reward_id)
+	for id in _phase_reward_mix:
+		if not _claimed_reward_ids.has(id) and not pool.has(id):
+			pool.append(id)
+	for id in PERFORMANCE_REWARD_CONTENT.REWARD_ORDER:
+		if not _claimed_reward_ids.has(id) and not pool.has(id):
+			pool.append(id)
+	return pool
+
+
+func _promote_elite_choice(choices: Array[Dictionary], pool: Array[String]) -> void:
+	if choices.size() <= 0:
+		return
+	var elite_priority: Array[String] = ["flayed_vessel", "predators_debt", "hollow_pact"]
+	for reward_id in elite_priority:
+		if not pool.has(reward_id):
+			continue
+		var elite_reward: Dictionary = PERFORMANCE_REWARD_CONTENT.get_reward(reward_id)
+		if elite_reward.is_empty():
+			continue
+		var already_present: bool = false
+		for existing in choices:
+			if String(existing.get("id", "")) == reward_id:
+				already_present = true
+				break
+		if already_present:
+			return
+		choices[0] = elite_reward
+		return
 
 
 func _pick_next_reward_id() -> String:

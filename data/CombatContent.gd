@@ -93,7 +93,8 @@ const CREATURES := {
 		   "effect_id": "ashclaw_strike",
 		   "trigger_on": ["perfect_parry", "perfect_timed_attack"],
 		   "effect_value": 10.0,
-		   "feedback_text": "ASHCLAW"
+		   "feedback_text": "ASHCLAW",
+		   "hud_trigger_hint": "Parry/timed hit"
 	   },
 	   "quig_offer_text": "Quig: \"Mind the claws. It only knows the part after fear.\"",
 	   "wrong_detail": "claws worn completely flat but still cutting"
@@ -136,7 +137,8 @@ const CREATURES := {
 			   "effect_id": "bond_remnant_mend",
 			   "trigger_on": ["damage_taken_when_ready"],
 			   "effect_value": 6.0,
-			   "feedback_text": "REMNANT"
+			   "feedback_text": "REMNANT",
+			   "hud_trigger_hint": "Hit when charged"
 		   },
 		   "quig_offer_text": "Quig: \"Do not stare. It notices being remembered.\"",
 		   "wrong_detail": "teeth set in a jaw that never learned to close"
@@ -165,7 +167,8 @@ const CREATURES := {
 			"effect_id": "gruvek_gorge",
 			"trigger_on": ["enemy_defeated"],
 			"effect_value": 10.0,
-			"feedback_text": "GORGE"
+			"feedback_text": "GORGE",
+			"hud_trigger_hint": "Kill: gorge all"
 		},
 		"quig_offer_text": "Quig: \"You smell that first. Better than feeling it first.\"",
 		"wrong_detail": "jaw unhinged past any angle that should work"
@@ -194,7 +197,8 @@ const CREATURES := {
 			"effect_id": "veilskin_phase",
 			"trigger_on": ["perfect_parry"],
 			"effect_value": 12.0,
-			"feedback_text": "PHASE"
+			"feedback_text": "PHASE",
+			"hud_trigger_hint": "Perf.parry: phase"
 		},
 		"quig_offer_text": "Quig: \"If it blinks, we both missed it.\"",
 		"wrong_detail": "no visible eyes but something tracks every movement"
@@ -223,7 +227,8 @@ const CREATURES := {
 			"effect_id": "thornback_rend",
 			"trigger_on": ["perfect_timed_attack"],
 			"effect_value": 20.0,
-			"feedback_text": "REND"
+			"feedback_text": "REND",
+			"hud_trigger_hint": "Perf.timed: rend"
 		},
 		"quig_offer_text": "Quig: \"Keep your hands where it can count them.\"",
 		"wrong_detail": "spines still growing — some through the wrong layers"
@@ -252,7 +257,8 @@ const CREATURES := {
 			"effect_id": "knellspine_peal",
 			"trigger_on": ["good_timed_attack", "perfect_timed_attack"],
 			"effect_value": 8.0,
-			"feedback_text": "PEAL"
+			"feedback_text": "PEAL",
+			"hud_trigger_hint": "Good+perf.timed"
 		},
 		"quig_offer_text": "Quig: \"When it starts singing, strike first.\"",
 		"wrong_detail": "vertebrae tuned like bells and filed to a point"
@@ -281,7 +287,8 @@ const CREATURES := {
 			"effect_id": "marrowward_ward",
 			"trigger_on": ["player_dodged"],
 			"effect_value": 8.0,
-			"feedback_text": "WARD"
+			"feedback_text": "WARD",
+			"hud_trigger_hint": "Dodge: bone ward"
 		},
 		"quig_offer_text": "Quig: \"Even its shelter looks hungry.\"",
 		"wrong_detail": "bone plates growing inward as if trying to cage the heart"
@@ -310,7 +317,8 @@ const CREATURES := {
 			"effect_id": "gorefane_maul",
 			"trigger_on": ["ultimate_fired"],
 			"effect_value": 14.0,
-			"feedback_text": "MAUL"
+			"feedback_text": "MAUL",
+			"hud_trigger_hint": "Ultimate: maul"
 		},
 		"quig_offer_text": "Quig: \"It smiles before the wound learns its name.\"",
 		"wrong_detail": "second jaw folding out from under the first"
@@ -339,7 +347,8 @@ const CREATURES := {
 			"effect_id": "hushcoil_lull",
 			"trigger_on": ["perfect_parry"],
 			"effect_value": 7.0,
-			"feedback_text": "LULL"
+			"feedback_text": "LULL",
+			"hud_trigger_hint": "Perf.parry: hush"
 		},
 		"quig_offer_text": "Quig: \"Keep your voice down. It likes the part before panic.\"",
 		"wrong_detail": "throat lined with soft tissue that dampens every sound except yours"
@@ -368,7 +377,8 @@ const CREATURES := {
 			"effect_id": "coldvein_expose",
 			"trigger_on": ["perfect_parry"],
 			"effect_value": 11.0,
-			"feedback_text": "EXPOSE"
+			"feedback_text": "EXPOSE",
+			"hud_trigger_hint": "Perf.parry: seam"
 		},
 		"quig_offer_text": "Quig: \"Still enough you'll think it isn't watching. It is. You can't fix that now.\"",
 		"wrong_detail": "pupils gone but something colder left behind in their place"
@@ -433,7 +443,8 @@ const CREATURES := {
 			"effect_id": "siltgrip_drag",
 			"trigger_on": ["enemy_defeated"],
 			"effect_value": 9.0,
-			"feedback_text": "DRAG"
+			"feedback_text": "DRAG",
+			"hud_trigger_hint": "Kill: heal+rend"
 		},
 		"quig_offer_text": "Quig: \"If you stop killing, it notices the rhythm change. Don't stop.\"",
 		"wrong_detail": "claws shaped for closing and not opening again"

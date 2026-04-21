@@ -222,8 +222,10 @@ func refresh_support(current: float, maximum: float, active_species_id: String, 
 	if _support_trigger_label != null:
 		if not active_species_id.is_empty():
 			var support_role: Dictionary = _combat_content.get_support_role(active_species_id)
-			_support_trigger_label.text = compact_hud_copy(
-				_presentation_text.trigger_hint(String(support_role.get("effect_id", ""))), 18)
+			var trigger_hint: String = String(support_role.get("hud_trigger_hint", "")).strip_edges()
+			if trigger_hint.is_empty():
+				trigger_hint = _presentation_text.trigger_hint(String(support_role.get("effect_id", "")))
+			_support_trigger_label.text = compact_hud_copy(trigger_hint, 18)
 		else:
 			var tendency_summary: String = compact_hud_copy(_format_upgrade_summary(run_growth), 18)
 			if tendency_summary.is_empty() or tendency_summary == "--":

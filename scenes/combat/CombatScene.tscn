@@ -9,7 +9,6 @@
 script = ExtResource("1_0x2iq")
 
 [node name="Background" type="ColorRect" parent="." unique_id=634140344]
-anchors_preset = 0
 offset_right = 1280.0
 offset_bottom = 720.0
 grow_horizontal = 2
@@ -17,7 +16,6 @@ grow_vertical = 2
 color = Color(0.13049185, 0.29163104, 0.31003615, 1)
 
 [node name="FlashOverlay" type="ColorRect" parent="." unique_id=1260763640]
-anchors_preset = 0
 offset_right = 1280.0
 offset_bottom = 720.0
 grow_horizontal = 2
@@ -58,8 +56,8 @@ offset_left = -100.0
 offset_top = 20.0
 offset_right = 100.0
 offset_bottom = 50.0
-horizontal_alignment = 1
 text = "Style: Raw"
+horizontal_alignment = 1
 
 [node name="StaminaBar" type="ProgressBar" parent="UI" unique_id=215821771]
 anchors_preset = 1
@@ -86,8 +84,8 @@ offset_left = -320.0
 offset_top = 55.0
 offset_right = -20.0
 offset_bottom = 85.0
-horizontal_alignment = 2
 text = "Ultimate: 0%"
+horizontal_alignment = 2
 
 [node name="ResultLabel" type="Label" parent="UI" unique_id=1625099451]
 anchors_preset = 5

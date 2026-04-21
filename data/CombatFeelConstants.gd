@@ -105,8 +105,12 @@ const SCREEN_FLASH := {
 		"duration": 0.15
 	},
 	"perfect_parry": {
-		"color": Color(0.2, 1.0, 0.8, 0.4),
-		"duration": 0.2
+		"color": Color(1.0, 1.0, 1.0, 0.99), # 0.99 is the signal for Manga Inversion
+		"duration": 0.08
+	},
+	"manga_inversion": {
+		"color": Color(1.0, 1.0, 1.0, 0.99),
+		"duration": 0.08
 	},
 	"ultimate_activation": {
 		"color": Color(1.0, 0.8, 0.2, 0.6),

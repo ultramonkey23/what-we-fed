@@ -6,9 +6,10 @@ var _timing_circle_container: Node2D
 var _attack_fx_container: Node2D
 var _player_combat: Node2D
 var _lane_manager: Node
+var _ui_layer: CanvasLayer # New field
 var _enemy_markers_by_id: Dictionary
 var _ring_highlight_timers: Array[float]
-var _bg_sprite: TextureRect = null
+var _bg_sprite: Control = null
 var _flash_tween: Tween = null
 
 
@@ -19,9 +20,10 @@ func _init(
 	attack_fx_container: Node2D,
 	player_combat: Node2D,
 	lane_manager: Node,
+	ui_layer: CanvasLayer, # New parameter
 	enemy_markers_by_id: Dictionary,
 	ring_highlight_timers: Array[float],
-	bg_sprite: TextureRect = null
+	bg_sprite: Control = null
 ) -> void:
 	_flash_overlay = flash_overlay
 	_camera_2d = camera_2d
@@ -29,6 +31,7 @@ func _init(
 	_attack_fx_container = attack_fx_container
 	_player_combat = player_combat
 	_lane_manager = lane_manager
+	_ui_layer = ui_layer # Set field
 	_enemy_markers_by_id = enemy_markers_by_id
 	_ring_highlight_timers = ring_highlight_timers
 	_bg_sprite = bg_sprite
@@ -80,17 +83,28 @@ func on_screen_flash(color: Color, duration: float) -> void:
 	
 	_flash_overlay.color = color
 	_flash_tween = _flash_overlay.create_tween()
-	_flash_tween.tween_property(_flash_overlay, "color:a", color.a, 0.03)
 	
-	# Simulated chromatic shift jitter: brief camera offset at the peak of the flash.
+	# Manga Inversion: 0.99 alpha is our signal for a sharp white-to-black inversion.
+	var is_manga_inversion: bool = color.a > 0.985
+	if is_manga_inversion:
+		_flash_overlay.color = Color.WHITE
+		_flash_overlay.color.a = 1.0
+		# Flash white instantly, then snap to black, then fade out.
+		_flash_tween.tween_interval(0.015)
+		_flash_tween.tween_property(_flash_overlay, "color", Color.BLACK, 0.01)
+		_flash_tween.tween_interval(duration)
+		_flash_tween.tween_property(_flash_overlay, "color:a", 0.0, 0.15)
+	else:
+		_flash_tween.tween_property(_flash_overlay, "color:a", color.a, 0.03)
+		_flash_tween.tween_interval(duration)
+		_flash_tween.tween_property(_flash_overlay, "color:a", 0.0, 0.12)
+	
+	# Simulated chromatic shift jitter for high-authority hits.
 	if color.a > 0.10:
-		var jitter_offset := Vector2(randf_range(-3.0, 3.0), randf_range(-1.0, 1.0))
+		var jitter_offset := Vector2(randf_range(-4.0, 4.0), randf_range(-2.0, 2.0))
 		var original_cam_offset: Vector2 = _camera_2d.offset
 		_camera_2d.offset += jitter_offset
-		_flash_tween.parallel().tween_property(_camera_2d, "offset", original_cam_offset, 0.08).set_delay(0.04)
-
-	_flash_tween.tween_interval(duration)
-	_flash_tween.tween_property(_flash_overlay, "color:a", 0.0, 0.12)
+		_flash_tween.parallel().tween_property(_camera_2d, "offset", original_cam_offset, 0.10).set_delay(0.02)
 
 
 func on_screen_shake(intensity: float, duration: float) -> void:

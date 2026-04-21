@@ -31,6 +31,7 @@ const SONG_CONDUCTOR_SCRIPT = preload("res://systems/SongConductor.gd")
 const COMBAT_TRANSITION_STATE = preload("res://systems/CombatTransitionState.gd")
 const COMBAT_IMPACT_FEEDBACK = preload("res://systems/CombatImpactFeedback.gd")
 const COMBAT_PRESENTATION_RUNTIME = preload("res://systems/CombatPresentationRuntime.gd")
+const COMBAT_PRESENTATION_CONTROLLER = preload("res://systems/CombatPresentationController.gd")
 const ENCOUNTER_IDENTITY_RUNTIME = preload("res://systems/EncounterIdentityRuntime.gd")
 const UI_STYLE = preload("res://systems/UIStyle.gd")
 const COMBAT_AUDIO_PLAYER = preload("res://systems/CombatAudioPlayer.gd")
@@ -120,10 +121,11 @@ var _battlefield_left_shade: ColorRect = null
 var _battlefield_right_shade: ColorRect = null
 var _battlefield_top_trim: ColorRect = null
 var _battlefield_bottom_trim: ColorRect = null
-var _bg_sprite: TextureRect = null
+var _bg_sprite: Control = null
 var _bonded_creature_sprite: Sprite2D = null
 var _bonded_creature_species: String = ""
 var _presentation_runtime: RefCounted = null
+var _presentation_controller: Node = null
 var _hud_presenter: RefCounted = null
 var _combat_audio_player: Node = null
 var _timing_debug_label: Label = null
@@ -432,6 +434,7 @@ func _on_escalation_feedback_requested(text: String, color: Color, duration: flo
 
 
 func _initialize_ui() -> void:
+	_setup_presentation_controller()
 	_setup_visuals()
 	if not get_viewport().size_changed.is_connected(_sync_fullscreen_underlay_controls):
 		get_viewport().size_changed.connect(_sync_fullscreen_underlay_controls)
@@ -453,6 +456,14 @@ func _initialize_ui() -> void:
 		get_viewport().size_changed.connect(_sync_compact_transient_hud_layout)
 	call_deferred("_sync_compact_transient_hud_layout")
 	_refresh_hud_snapshot(0, 0.0, "stirring")
+
+
+func _setup_presentation_controller() -> void:
+	if _presentation_controller != null and is_instance_valid(_presentation_controller):
+		return
+	_presentation_controller = COMBAT_PRESENTATION_CONTROLLER.new()
+	_presentation_controller.name = "CombatPresentationController"
+	add_child(_presentation_controller)
 
 
 func _initialize_run_state() -> void:
@@ -499,6 +510,23 @@ func _update_presentation_layers() -> void:
 		_update_lane_visual_states()
 	if _enemy_marker_container != null:
 		_update_enemy_marker_threat_states()
+	if _bg_sprite != null:
+		_update_background_effects()
+
+
+func _update_background_effects() -> void:
+	var focus_pos: Vector2 = Vector2.ZERO
+	if player_combat != null:
+		focus_pos = player_combat.global_position
+	else:
+		focus_pos = get_viewport().get_mouse_position()
+	
+	_presentation_controller.update_background_parallax(_bg_sprite, focus_pos)
+	
+	# Only update tendency reaction every few frames to save performance
+	if Engine.get_process_frames() % 30 == 0 and _run_growth != null:
+		var leading: String = _run_growth.call("_get_leading_tendency_id")
+		_presentation_controller.update_background_tendency_reaction(_bg_sprite, leading)
 
 
 func _update_performance_systems(delta: float) -> void:
@@ -600,152 +628,16 @@ func _update_boss_race(delta: float) -> void:
 
 
 func _update_timing_ring_proximity() -> void:
-	var biome: Dictionary = _active_encounter.get("biome", {})
-	var ring_palette: Dictionary = UI_STYLE.get_combat_ring_palette()
-	var active_color: Color = biome.get("ring_active_color", ring_palette.get("active", Color(1.0, 0.95, 0.55, 1.0)))
-	var inactive_color: Color = biome.get("ring_inactive_color", ring_palette.get("inactive", Color(0.7, 0.7, 0.8, 0.45)))
-
-	var intercept_dist: float = lane_manager.get_enemy_x() - lane_manager.get_hit_zone_x()
-	if intercept_dist <= 0.0:
-		return
-
-	var outer_entry: float = 1.0 - COMBAT_FEEL_CONTENT.RING_OUTER_RADIUS / intercept_dist
-	var outer_exit: float = 1.0 + COMBAT_FEEL_CONTENT.RING_OUTER_RADIUS / intercept_dist
-	var perfect_entry: float = 1.0 - COMBAT_FEEL_CONTENT.RING_PERFECT_RADIUS / intercept_dist
-	var perfect_exit: float = 1.0 + COMBAT_FEEL_CONTENT.RING_PERFECT_RADIUS / intercept_dist
-	var approach_start: float = outer_entry - 0.08
-
-	# Beat pulse — brief alpha boost on all receivers each beat.
-	# Phase 0 = beat fired, decays quickly; small anticipation rise near phase 1.
-	# This gives the player a visual metronome without relying on a projectile.
-	var beat_pulse: float = 0.0
-	var bass_throb: float = 0.0
-	if _song_conductor != null and is_instance_valid(_song_conductor) and _song_conductor.is_beat_active():
-		var bp: float = _song_conductor.get_beat_phase()
-		if bp < 0.18:
-			beat_pulse = (1.0 - bp / 0.18) * 0.13
-		elif bp > 0.88:
-			beat_pulse = ((bp - 0.88) / 0.12) * 0.06
-		
-		# V1 Reactive Layer: let the bass frequency add a secondary layer of visual throb.
-		if _song_conductor.has_method("get_bass_magnitude"):
-			bass_throb = _song_conductor.get_bass_magnitude() * 0.15
-
-	beat_pulse = clampf(beat_pulse + bass_throb, 0.0, 0.35)
-
-	# Pre-compute surge window fade factor once — used inside the per-lane loop.
-	var surge_wf: float = clamp(_surge_window_timer / 4.0, 0.0, 1.0) if _surge_window_timer > 0.0 else 0.0
-
-	for lane in range(min(3, _timing_rings_cache.size())):
-		if _ring_highlight_timers[lane] > 0.0:
-			continue
-
-		var cache: Dictionary = _timing_rings_cache[lane]
-		var outer_ring: Line2D = cache["outer"]
-		var perfect_ring: Line2D = cache["perfect"]
-		var receiver_fill: Polygon2D = cache["fill"]
-		var receiver_glow: Polygon2D = cache["glow"]
-		var edge_ring: Line2D = cache["edge"]
-		var beat_mark: Line2D = cache["beat"]
-
-		var base_color: Color = active_color if lane == player_combat.current_lane else inactive_color
-
-		var outer_color: Color = Color(base_color.r, base_color.g, base_color.b, base_color.a * 0.45)
-		var perfect_color: Color = base_color.lightened(0.32)
-		var outer_width: float = 2.2
-		var perfect_width: float = 4.2
-		var receiver_alpha: float = 0.10 if lane == player_combat.current_lane else 0.05
-		var receiver_glow_alpha: float = 0.0
-		var edge_alpha: float = 0.0
-		var beat_color: Color = base_color.lightened(0.06)
-
-		var proj = lane_manager.get_projectile(lane)
-		if proj != null and not proj.is_resolved and not proj.is_reflected:
-			var p: float = proj.progress
-			var telegraph_profile: Dictionary = proj.telegraph_profile
-			var threat_color: Color = Color(telegraph_profile.get("lane_color", active_color))
-			var accent_color: Color = Color(telegraph_profile.get("accent_color", threat_color.lightened(0.18)))
-			var warning_bias: float = max(float(telegraph_profile.get("warning_bias", 1.0)), 0.84)
-
-			if p >= approach_start and p < outer_entry:
-				# Projectile is approaching - fade the receiver into focus gradually.
-				var t: float = clamp(((p - approach_start) / (outer_entry - approach_start)) * warning_bias, 0.0, 1.0)
-				outer_color = outer_color.lerp(threat_color, t)
-				receiver_alpha = lerp(receiver_alpha, 0.18, t)
-				receiver_glow_alpha = lerp(0.0, 0.10, t)
-				beat_color = beat_color.lerp(accent_color, t * 0.55)
-
-			elif p >= outer_entry and p <= outer_exit:
-				# Projectile is inside the outer ring - active threat and edge pressure.
-				outer_color = threat_color.lightened(0.08)
-				receiver_alpha = 0.22
-				receiver_glow_alpha = 0.16
-				beat_color = accent_color.lightened(0.18)
-
-				if p >= perfect_entry and p <= perfect_exit:
-					# Projectile is inside the perfect ring - sharpen the inner receiver truth.
-					perfect_color = accent_color.lightened(0.26)
-					perfect_width = 4.4
-					receiver_alpha = 0.34
-					receiver_glow_alpha = 0.22
-					beat_color = accent_color.lightened(0.34)
-
-				var edge_distance: float = min(abs(p - outer_entry), abs(p - outer_exit))
-				if edge_distance <= COMBAT_FEEL_CONTENT.EDGE_STATE_WIDTH:
-					var edge_t: float = 1.0 - clamp(edge_distance / COMBAT_FEEL_CONTENT.EDGE_STATE_WIDTH, 0.0, 1.0)
-					edge_alpha = 0.20 + (0.30 * edge_t)
-					outer_width = lerp(outer_width, 3.0, edge_t)
-
-		# Apply beat pulse on top of proximity-driven alpha.
-		# The pulse is identical across all lanes — it is a global metronome, not lane-specific.
-		receiver_alpha = minf(receiver_alpha + beat_pulse, 0.52)
-		if beat_pulse > 0.03:
-			beat_color = beat_color.lerp(active_color.lightened(0.38), beat_pulse / 0.13)
-
-		# ── Surge identity window ──────────────────────────────────────────────
-		# After a tendency surge, tint the timing rings toward the tendency's
-		# identity color for 4 s. Fades out linearly via surge_wf.
-		# This presses the run's active character into the most-watched surface
-		# without touching hitbox, timing windows, or lane readability.
-		if surge_wf > 0.0:
-			match _surge_window_tendency:
-				"aggression":
-					# Perfect ring warms to orange-red — attack authority cue.
-					var aggression_color: Color = UI_STYLE.get_tendency_surge_color("aggression")
-					perfect_color = perfect_color.lerp(Color(aggression_color.r, aggression_color.g, aggression_color.b, perfect_color.a), surge_wf * 0.28)
-					perfect_width = minf(perfect_width + surge_wf * 0.8, 6.2)
-				"cadence":
-					# Beat mark brightens to gold — rhythm clarity cue.
-					var cadence_color: Color = UI_STYLE.get_tendency_surge_color("cadence")
-					beat_color = beat_color.lerp(Color(cadence_color.r, cadence_color.g, cadence_color.b, beat_color.a), surge_wf * 0.42)
-					receiver_alpha = minf(receiver_alpha + surge_wf * 0.04, 0.52)
-				"guard":
-					# Receiver fill gets a faint blue wash — defensive awareness cue.
-					# Color applied below at the receiver_fill assignment step.
-					receiver_alpha = minf(receiver_alpha + surge_wf * 0.04, 0.52)
-				"bond":
-					# Beat mark shifts teal — bond partner resonance cue.
-					var bond_color: Color = UI_STYLE.get_tendency_surge_color("bond")
-					beat_color = beat_color.lerp(Color(bond_color.r, bond_color.g, bond_color.b, beat_color.a), surge_wf * 0.38)
-					receiver_alpha = minf(receiver_alpha + surge_wf * 0.03, 0.52)
-
-		var rf_color: Color = Color(active_color.r, active_color.g, active_color.b, receiver_alpha)
-		if proj != null and not proj.is_resolved and not proj.is_reflected:
-			var telegraph_profile: Dictionary = proj.telegraph_profile
-			var threat_color: Color = Color(telegraph_profile.get("lane_color", active_color))
-			rf_color = Color(threat_color.r, threat_color.g, threat_color.b, receiver_alpha)
-		if surge_wf > 0.0 and _surge_window_tendency == "guard":
-			var guard_color: Color = UI_STYLE.get_tendency_surge_color("guard")
-			rf_color = rf_color.lerp(Color(guard_color.r, guard_color.g, guard_color.b, receiver_alpha), surge_wf * 0.20)
-		receiver_fill.color = rf_color
-		receiver_glow.color = Color(rf_color.r, rf_color.g, rf_color.b, receiver_glow_alpha)
-		edge_ring.default_color = Color(rf_color.r, rf_color.g, rf_color.b, edge_alpha)
-		beat_mark.default_color = beat_color
-
-		outer_ring.default_color = outer_color
-		outer_ring.width = outer_width
-		perfect_ring.default_color = perfect_color
-		perfect_ring.width = perfect_width
+	_presentation_controller.update_timing_ring_proximity(
+		_active_encounter,
+		lane_manager,
+		player_combat,
+		_song_conductor,
+		_timing_rings_cache,
+		_ring_highlight_timers,
+		_surge_window_timer,
+		_surge_window_tendency
+	)
 
 
 func _update_lane_visual_states() -> void:
@@ -878,156 +770,42 @@ func _set_shell_treatment(shell: ColorRect, color: Color, border_color: Color) -
 
 
 func _setup_visuals() -> void:
-	background.z_index = -10
-	background.color = UI_STYLE.get_manga_color("ink_black")
-
-	_apply_combat_background()
-
-	var field_rect := Rect2(104.0, 112.0, 1060.0, 464.0)
-
-	# Battlefield panel — kept for reference node but fully transparent.
-	# The background image and lane visuals are visually primary; no center slab overlay.
-	_battlefield_panel = ColorRect.new()
-	_battlefield_panel.name = "BattlefieldPanel"
-	_battlefield_panel.position = field_rect.position
-	_battlefield_panel.size = field_rect.size
-	_battlefield_panel.color = Color(0.0, 0.0, 0.0, 0.0)
-	_battlefield_panel.z_index = -7
-	add_child(_battlefield_panel)
-	# _battlefield_inner_panel removed — redundant slab layer.
-
-	_battlefield_left_shade = ColorRect.new()
-	_battlefield_left_shade.name = "BattlefieldLeftShade"
-	_battlefield_left_shade.position = Vector2(field_rect.position.x + 6.0, field_rect.position.y + 20.0)
-	_battlefield_left_shade.size = Vector2(86.0, field_rect.size.y - 40.0)
-	_battlefield_left_shade.color = Color(0.02, 0.02, 0.03, 0.16)
-	_battlefield_left_shade.z_index = -5
-	add_child(_battlefield_left_shade)
-
-	_battlefield_right_shade = ColorRect.new()
-	_battlefield_right_shade.name = "BattlefieldRightShade"
-	_battlefield_right_shade.position = Vector2(field_rect.end.x - 92.0, field_rect.position.y + 20.0)
-	_battlefield_right_shade.size = Vector2(86.0, field_rect.size.y - 40.0)
-	_battlefield_right_shade.color = Color(0.08, 0.04, 0.10, 0.12)
-	_battlefield_right_shade.z_index = -5
-	add_child(_battlefield_right_shade)
-
-	_battlefield_top_trim = ColorRect.new()
-	_battlefield_top_trim.name = "BattlefieldTopTrim"
-	_battlefield_top_trim.position = field_rect.position + Vector2(76.0, 8.0)
-	_battlefield_top_trim.size = Vector2(field_rect.size.x - 152.0, 2.0)
-	var top_trim_color: Color = UI_STYLE.get_manga_color("alert_gold")
-	_battlefield_top_trim.color = Color(top_trim_color.r, top_trim_color.g, top_trim_color.b, 0.24)
-	_battlefield_top_trim.z_index = -5
-	add_child(_battlefield_top_trim)
-
-	_battlefield_bottom_trim = ColorRect.new()
-	_battlefield_bottom_trim.name = "BattlefieldBottomTrim"
-	_battlefield_bottom_trim.position = Vector2(field_rect.position.x + 96.0, field_rect.end.y - 10.0)
-	_battlefield_bottom_trim.size = Vector2(field_rect.size.x - 192.0, 1.0)
-	var bottom_trim_color: Color = UI_STYLE.get_manga_color("blood_ember")
-	_battlefield_bottom_trim.color = Color(bottom_trim_color.r, bottom_trim_color.g, bottom_trim_color.b, 0.18)
-	_battlefield_bottom_trim.z_index = -5
-	add_child(_battlefield_bottom_trim)
-
-	flash_overlay.color = Color(1.0, 1.0, 1.0, 0.0)
-	flash_overlay.z_index = 100
-	flash_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
-
-	_sync_fullscreen_underlay_controls()
+	var refs: Dictionary = _presentation_controller.setup_visuals(
+		self,
+		background,
+		flash_overlay,
+		_bg_sprite,
+		_battlefield_panel,
+		_battlefield_left_shade,
+		_battlefield_right_shade,
+		_battlefield_top_trim,
+		_battlefield_bottom_trim
+	)
+	_bg_sprite = refs.get("bg_sprite")
+	_battlefield_panel = refs.get("battlefield_panel")
+	_battlefield_left_shade = refs.get("battlefield_left_shade")
+	_battlefield_right_shade = refs.get("battlefield_right_shade")
+	_battlefield_top_trim = refs.get("battlefield_top_trim")
+	_battlefield_bottom_trim = refs.get("battlefield_bottom_trim")
 
 
 func _sync_fullscreen_underlay_controls() -> void:
-	# ColorRect / TextureRect children of Node2D do not get a meaningful anchor parent rect;
-	# match full viewport explicitly (see _apply_combat_background for TextureRect).
-	var vp: Vector2 = get_viewport_rect().size
-	if vp.x <= 0.0 or vp.y <= 0.0:
-		return
-	if is_instance_valid(background):
-		background.set_anchors_preset(Control.PRESET_TOP_LEFT)
-		background.position = Vector2.ZERO
-		background.size = vp
-	if is_instance_valid(flash_overlay):
-		flash_overlay.set_anchors_preset(Control.PRESET_TOP_LEFT)
-		flash_overlay.position = Vector2.ZERO
-		flash_overlay.size = vp
-	if _bg_sprite != null and is_instance_valid(_bg_sprite):
-		_bg_sprite.position = Vector2.ZERO
-		_bg_sprite.size = vp
-	var vignette: Node = get_node_or_null("CombatVignette")
-	if vignette is TextureRect and is_instance_valid(vignette):
-		(vignette as TextureRect).position = Vector2.ZERO
-		(vignette as TextureRect).size = vp
+	_presentation_controller.sync_fullscreen_underlay_controls(
+		self,
+		background,
+		flash_overlay,
+		_bg_sprite
+	)
 
 
 func _apply_combat_background(override_path: String = "") -> void:
-	# Loads and applies a combat background image behind the battlefield.
-	# override_path: pass a specific res:// path to force a particular image.
-	#   e.g. for a boss encounter: _apply_combat_background("res://assets/backgrounds/combat/boss_hollow.png")
-	#   e.g. for a region: _apply_combat_background("res://assets/backgrounds/combat/pale_shelf.png")
-	# Without override, picks randomly from COMBAT_BG_PATHS.
-	if _bg_sprite != null and is_instance_valid(_bg_sprite):
-		_bg_sprite.queue_free()
-		_bg_sprite = null
-	
-	var old_vignette = get_node_or_null("CombatVignette")
-	if is_instance_valid(old_vignette):
-		old_vignette.queue_free()
-
-	var path: String = override_path
-	if path.is_empty():
-		path = COMBAT_FEEL_CONTENT.COMBAT_BG_PATHS[randi() % COMBAT_FEEL_CONTENT.COMBAT_BG_PATHS.size()]
-
-	if not ResourceLoader.exists(path):
-		return
-
-	var tex: Texture2D = load(path) as Texture2D
-	if tex == null:
-		return
-
-	_bg_sprite = TextureRect.new()
-	_bg_sprite.name = "CombatBg"
-	_bg_sprite.texture = tex
-	# Explicit pixel size from viewport — anchor-based sizing on a Control node
-	# dynamically added to a Node2D parent resolves to Vector2(0,0) at _ready() time
-	# because there is no parent Control rect to anchor against. Setting position and
-	# size directly is the reliable path here.
-	_bg_sprite.position = Vector2.ZERO
-	_bg_sprite.size = get_viewport_rect().size
-	# STRETCH_SCALE fills the rect exactly — no cropping, no letterboxing.
-	# The image is always centered and covers the full window.
-	_bg_sprite.stretch_mode = TextureRect.STRETCH_SCALE
-	_bg_sprite.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	_bg_sprite.z_index = -9
-	_bg_sprite.modulate = COMBAT_FEEL_CONTENT.COMBAT_BG_MODULATE
-	add_child(_bg_sprite)
-
-	# ─── BATTLEFIELD DEPTH: STATIC VIGNETTE ─────────────────────────────────────
-	# Sinks the corners and pulls focus toward the lane substrate.
-	var vignette := TextureRect.new()
-	vignette.name = "CombatVignette"
-	vignette.position = Vector2.ZERO
-	vignette.size = get_viewport_rect().size
-	vignette.stretch_mode = TextureRect.STRETCH_SCALE
-	vignette.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	vignette.z_index = -8
-	vignette.mouse_filter = Control.MOUSE_FILTER_IGNORE
-
-	var grad := Gradient.new()
-	grad.colors = [Color(0.0, 0.0, 0.0, 0.0), Color(0.02, 0.02, 0.03, 0.62)]
-	grad.offsets = [0.42, 1.0]
-
-	var grad_tex := GradientTexture2D.new()
-	grad_tex.gradient = grad
-	grad_tex.fill = GradientTexture2D.FILL_RADIAL
-	grad_tex.fill_from = Vector2(0.5, 0.5)
-	grad_tex.fill_to = Vector2(1.0, 1.0)
-	grad_tex.width = 512
-	grad_tex.height = 512
-	vignette.texture = grad_tex
-	add_child(vignette)
-
-	_sync_fullscreen_underlay_controls()
+	_bg_sprite = _presentation_controller.apply_combat_background(
+		self,
+		background,
+		flash_overlay,
+		_bg_sprite,
+		override_path
+	)
 
 
 func _setup_ui_pivots() -> void:
@@ -2221,17 +1999,12 @@ func _create_title_cards() -> void:
 
 
 func _create_timing_circle_container() -> void:
-	_timing_circle_container = Node2D.new()
-	_timing_circle_container.name = "TimingCircles"
-	_timing_circle_container.z_index = 20
-	add_child(_timing_circle_container)
+	_timing_circle_container = _presentation_controller.create_timing_circle_container(self)
+	_timing_rings_cache.clear()
 
 
 func _create_attack_fx_container() -> void:
-	_attack_fx_container = Node2D.new()
-	_attack_fx_container.name = "AttackFX"
-	_attack_fx_container.z_index = 30
-	add_child(_attack_fx_container)
+	_attack_fx_container = _presentation_controller.create_attack_fx_container(self)
 
 
 func _setup_presentation_runtime() -> void:
@@ -2253,211 +2026,41 @@ func _setup_presentation_runtime() -> void:
 
 
 func _create_reward_overlay() -> void:
-	_reward_overlay = ColorRect.new()
-	_reward_overlay.name = "RewardOverlay"
-	_reward_overlay.visible = false
-	_reward_overlay.color = Color(0.01, 0.01, 0.02, 0.88)
-	_reward_overlay.anchor_right = 1.0
-	_reward_overlay.anchor_bottom = 1.0
-	_reward_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	ui_layer.add_child(_reward_overlay)
-
-	_reward_wrapper_shell = PanelContainer.new()
-	_reward_wrapper_shell.name = "RewardWrapperShell"
-	_reward_wrapper_shell.position = Vector2(160.0, 88.0)
-	_reward_wrapper_shell.size = Vector2(960.0, 452.0)
-	var reward_tex: String = COMBAT_FEEL_CONTENT.resolved_hud_reward_panel_path()
-	if reward_tex.is_empty():
-		UI_STYLE.apply_shell_style(_reward_wrapper_shell, "live_reward")
-	else:
-		UI_STYLE.apply_shell_style(
-			_reward_wrapper_shell,
-			"live_reward",
-			"",
-			Color(),
-			Color(),
-			Rect2(),
-			Vector4.ZERO,
-			Vector4.ZERO,
-			Color(),
-			true
-		)
-	_hud_attach_combat_panel_art(_reward_wrapper_shell, reward_tex, COMBAT_FEEL_CONTENT.hud_reward_texture_region())
-	_reward_overlay.add_child(_reward_wrapper_shell)
-
-	var reward_safe_body := MarginContainer.new()
-	reward_safe_body.name = "RewardSafeBody"
-	reward_safe_body.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_apply_wrapper_safe_zone(
-		reward_safe_body,
-		COMBAT_FEEL_CONTENT.HUD_REWARD_CONTENT_MARGIN,
-		Vector4(0.0, 0.0, 0.0, 0.0)
-	)
-	_reward_wrapper_shell.add_child(reward_safe_body)
-
-	_reward_panel = ColorRect.new()
-	_reward_panel.name = "RewardPanel"
-	_set_shell_treatment(_reward_panel, Color(0.09, 0.07, 0.08, 0.86), Color(0.26, 0.20, 0.18, 0.42))
-	_reward_panel.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_reward_panel.offset_left = 0.0
-	_reward_panel.offset_top = 0.0
-	_reward_panel.offset_right = 0.0
-	_reward_panel.offset_bottom = 0.0
-	reward_safe_body.add_child(_reward_panel)
-
-	# Creature portrait — shown when a sprite_path is available for the offered creature.
-	# Positioned in the left column; text labels shift right to accommodate it.
-	_reward_creature_portrait = TextureRect.new()
-	_reward_creature_portrait.name = "CreaturePortrait"
-	_reward_creature_portrait.position = Vector2(42.0, 50.0)
-	_reward_creature_portrait.size = Vector2(152.0, 240.0)
-	_reward_creature_portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	_reward_creature_portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	_reward_creature_portrait.visible = false
-	_reward_panel.add_child(_reward_creature_portrait)
-
-	_reward_creature_tag_label = Label.new()
-	_reward_creature_tag_label.name = "RewardTag"
-	_reward_creature_tag_label.position = Vector2(204.0, 18.0)
-	_reward_creature_tag_label.size = Vector2(250.0, 18.0)
-	_apply_text_role(_reward_creature_tag_label, "caption_strong")
-	_reward_panel.add_child(_reward_creature_tag_label)
-
-	_reward_title_label = Label.new()
-	_reward_title_label.name = "RewardTitle"
-	_reward_title_label.position = Vector2(204.0, 40.0)
-	_reward_title_label.size = Vector2(250.0, 56.0)
-	_apply_text_role(_reward_title_label, "heading")
-	_reward_panel.add_child(_reward_title_label)
-
-	_reward_body_scroll = ScrollContainer.new()
-	_reward_body_scroll.name = "RewardBodyScroll"
-	_reward_body_scroll.position = Vector2(204.0, 98.0)
-	_reward_body_scroll.size = Vector2(250.0, 150.0)
-	_reward_body_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	_reward_body_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
-	_reward_body_scroll.mouse_filter = Control.MOUSE_FILTER_STOP
-	_reward_panel.add_child(_reward_body_scroll)
-
-	_reward_body_label = Label.new()
-	_reward_body_label.name = "RewardBody"
-	_reward_body_label.position = Vector2.ZERO
-	_reward_body_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_reward_body_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_apply_text_role(_reward_body_label, "body")
-	_reward_body_scroll.add_child(_reward_body_label)
-
-	_reward_bond_card = ColorRect.new()
-	_reward_bond_card.name = "RewardBondCard"
-	_reward_bond_card.position = Vector2(468.0, 54.0)
-	_reward_bond_card.size = Vector2(206.0, 244.0)
-	_set_shell_treatment(_reward_bond_card, Color(0.09, 0.10, 0.09, 0.96), Color(0.24, 0.31, 0.25, 0.88))
-	_reward_panel.add_child(_reward_bond_card)
-
-	var bond_accent := ColorRect.new()
-	bond_accent.name = "BondAccent"
-	bond_accent.size = Vector2(206.0, 4.0)
-	bond_accent.position = Vector2.ZERO
-	bond_accent.color = Color(0.80, 0.60, 0.24, 0.90)
-	_reward_bond_card.add_child(bond_accent)
-
-	_reward_bond_label = Label.new()
-	_reward_bond_label.name = "RewardBondLabel"
-	_reward_bond_label.position = Vector2(18.0, 18.0)
-	_reward_bond_label.size = Vector2(168.0, 26.0)
-	_apply_text_role(_reward_bond_label, "bond_heading")
-	_reward_bond_card.add_child(_reward_bond_label)
-
-	_reward_bond_effect_scroll = ScrollContainer.new()
-	_reward_bond_effect_scroll.name = "RewardBondEffectScroll"
-	_reward_bond_effect_scroll.position = Vector2(18.0, 56.0)
-	_reward_bond_effect_scroll.size = Vector2(170.0, 154.0)
-	_reward_bond_effect_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	_reward_bond_effect_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
-	_reward_bond_effect_scroll.mouse_filter = Control.MOUSE_FILTER_STOP
-	_reward_bond_card.add_child(_reward_bond_effect_scroll)
-
-	_reward_bond_effect_label = Label.new()
-	_reward_bond_effect_label.name = "RewardBondEffect"
-	_reward_bond_effect_label.position = Vector2.ZERO
-	_reward_bond_effect_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_reward_bond_effect_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_apply_text_role(_reward_bond_effect_label, "body")
-	_reward_bond_effect_scroll.add_child(_reward_bond_effect_label)
-
-	_reward_eat_card = ColorRect.new()
-	_reward_eat_card.name = "RewardEatCard"
-	_reward_eat_card.position = Vector2(694.0, 54.0)
-	_reward_eat_card.size = Vector2(206.0, 244.0)
-	_set_shell_treatment(_reward_eat_card, Color(0.11, 0.08, 0.07, 0.96), Color(0.36, 0.24, 0.20, 0.92))
-	_reward_panel.add_child(_reward_eat_card)
-
-	var eat_accent := ColorRect.new()
-	eat_accent.name = "EatAccent"
-	eat_accent.size = Vector2(206.0, 4.0)
-	eat_accent.position = Vector2.ZERO
-	eat_accent.color = Color(0.72, 0.22, 0.18, 0.90)
-	_reward_eat_card.add_child(eat_accent)
-
-	_reward_eat_label = Label.new()
-	_reward_eat_label.name = "RewardEatLabel"
-	_reward_eat_label.position = Vector2(18.0, 18.0)
-	_reward_eat_label.size = Vector2(168.0, 26.0)
-	_apply_text_role(_reward_eat_label, "eat_heading")
-	_reward_eat_card.add_child(_reward_eat_label)
-
-	_reward_eat_effect_scroll = ScrollContainer.new()
-	_reward_eat_effect_scroll.name = "RewardEatEffectScroll"
-	_reward_eat_effect_scroll.position = Vector2(18.0, 56.0)
-	_reward_eat_effect_scroll.size = Vector2(170.0, 154.0)
-	_reward_eat_effect_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	_reward_eat_effect_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
-	_reward_eat_effect_scroll.mouse_filter = Control.MOUSE_FILTER_STOP
-	_reward_eat_card.add_child(_reward_eat_effect_scroll)
-
-	_reward_eat_effect_label = Label.new()
-	_reward_eat_effect_label.name = "RewardEatEffect"
-	_reward_eat_effect_label.position = Vector2.ZERO
-	_reward_eat_effect_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_reward_eat_effect_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_apply_text_role(_reward_eat_effect_label, "body")
-	_reward_eat_effect_scroll.add_child(_reward_eat_effect_label)
-
-	_reward_quig_label = Label.new()
-	_reward_quig_label.name = "RewardQuig"
-	_reward_quig_label.position = Vector2(84.0, 316.0)
-	_reward_quig_label.size = Vector2(818.0, 32.0)
-	_apply_text_role(_reward_quig_label, "hint")
-	_reward_panel.add_child(_reward_quig_label)
-
-	_reward_quig_sprite = _build_strip_sprite(
-		"RewardQuigSprite",
-		COMBAT_FEEL_CONTENT.QUIG_SPRITE_PATH,
-		COMBAT_FEEL_CONTENT.QUIG_FRAME_SIZE,
-		0,
-		Vector2(42.0, 312.0),
-		Vector2(32.0, 32.0)
-	)
-	if _reward_quig_sprite != null:
-		_reward_quig_sprite.visible = false
-		_reward_panel.add_child(_reward_quig_sprite)
-
-	_reward_hint_label = Label.new()
-	_reward_hint_label.name = "RewardHint"
-	_reward_hint_label.position = Vector2(42.0, 382.0)
-	_reward_hint_label.size = Vector2(860.0, 26.0)
-	_apply_text_role(_reward_hint_label, "hint")
-	_reward_panel.add_child(_reward_hint_label)
+	var nodes: Dictionary = _presentation_controller.create_reward_overlay(ui_layer)
+	_reward_overlay = nodes.get("reward_overlay")
+	_reward_wrapper_shell = nodes.get("reward_wrapper_shell")
+	_reward_panel = nodes.get("reward_panel")
+	_reward_title_label = nodes.get("reward_title_label")
+	_reward_body_label = nodes.get("reward_body_label")
+	_reward_quig_label = nodes.get("reward_quig_label")
+	_reward_quig_sprite = nodes.get("reward_quig_sprite")
+	_reward_hint_label = nodes.get("reward_hint_label")
+	_reward_bond_card = nodes.get("reward_bond_card")
+	_reward_eat_card = nodes.get("reward_eat_card")
+	_reward_bond_label = nodes.get("reward_bond_label")
+	_reward_eat_label = nodes.get("reward_eat_label")
+	_reward_bond_effect_label = nodes.get("reward_bond_effect_label")
+	_reward_eat_effect_label = nodes.get("reward_eat_effect_label")
+	_reward_creature_tag_label = nodes.get("reward_creature_tag_label")
+	_reward_creature_portrait = nodes.get("reward_creature_portrait")
+	_reward_body_scroll = nodes.get("reward_body_scroll")
+	_reward_bond_effect_scroll = nodes.get("reward_bond_effect_scroll")
+	_reward_eat_effect_scroll = nodes.get("reward_eat_effect_scroll")
 
 
 func _schedule_reward_scroll_reflow() -> void:
-	call_deferred("_reflow_reward_scroll_labels")
+	_presentation_controller.schedule_reward_scroll_reflow(self)
 
 
 func _reflow_reward_scroll_labels() -> void:
-	_reflow_scroll_label_pair(_reward_body_scroll, _reward_body_label)
-	_reflow_scroll_label_pair(_reward_bond_effect_scroll, _reward_bond_effect_label)
-	_reflow_scroll_label_pair(_reward_eat_effect_scroll, _reward_eat_effect_label)
+	_presentation_controller.reflow_reward_scroll_labels(
+		_reward_body_scroll,
+		_reward_body_label,
+		_reward_bond_effect_scroll,
+		_reward_bond_effect_label,
+		_reward_eat_effect_scroll,
+		_reward_eat_effect_label
+	)
 
 
 func _reflow_scroll_label_pair(scroll: ScrollContainer, label: Label) -> void:
@@ -2753,75 +2356,11 @@ func _continue_song_after_run_prep() -> void:
 
 
 func _create_live_reward_shell() -> void:
-	_live_reward_shell = PanelContainer.new()
-	_live_reward_shell.name = "LiveRewardShell"
-	_live_reward_shell.visible = false
-	_live_reward_shell.z_index = 38
-	_live_reward_shell.clip_contents = true
-	_live_reward_shell.anchor_left = 0.0
-	_live_reward_shell.anchor_top = 0.0
-	_live_reward_shell.anchor_right = 0.0
-	_live_reward_shell.anchor_bottom = 0.0
-	var vp0: Vector2 = get_viewport_rect().size
-	_live_reward_shell.position = COMBAT_FEEL_CONTENT.compact_live_reward_position_for_viewport(vp0)
-	_live_reward_shell.size = COMBAT_FEEL_CONTENT.compact_live_reward_size()
-	var reward_tex: String = COMBAT_FEEL_CONTENT.resolved_hud_reward_panel_path()
-	if reward_tex.is_empty():
-		UI_STYLE.apply_shell_style(_live_reward_shell, "live_reward")
-	else:
-		UI_STYLE.apply_shell_style(
-			_live_reward_shell,
-			"live_reward",
-			"",
-			Color(),
-			Color(),
-			Rect2(),
-			Vector4.ZERO,
-			Vector4.ZERO,
-			Color(),
-			true
-		)
-	_hud_attach_combat_panel_art(_live_reward_shell, reward_tex, COMBAT_FEEL_CONTENT.hud_reward_texture_region())
-	ui_layer.add_child(_live_reward_shell)
-
-	var live_reward_safe_body := MarginContainer.new()
-	live_reward_safe_body.name = "LiveRewardSafeBody"
-	live_reward_safe_body.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_apply_wrapper_safe_zone(
-		live_reward_safe_body,
-		COMBAT_FEEL_CONTENT.HUD_REWARD_COMPACT_CONTENT_MARGIN,
-		Vector4(12.0, 8.0, 12.0, 10.0)
-	)
-	_live_reward_shell.add_child(live_reward_safe_body)
-
-	var reward_body := VBoxContainer.new()
-	reward_body.name = "LiveRewardVBox"
-	reward_body.add_theme_constant_override("separation", 4)
-	reward_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	reward_body.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	live_reward_safe_body.add_child(reward_body)
-
-	_live_reward_title_label = Label.new()
-	_live_reward_title_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_live_reward_title_label.custom_minimum_size = Vector2(0.0, 22.0)
-	_apply_text_role(_live_reward_title_label, "subheading")
-	_live_reward_title_label.add_theme_font_size_override("font_size", 16)
-	reward_body.add_child(_live_reward_title_label)
-
-	_live_reward_body_label = Label.new()
-	_live_reward_body_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_live_reward_body_label.custom_minimum_size = Vector2(0.0, 22.0)
-	_live_reward_body_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_apply_text_role(_live_reward_body_label, "body")
-	_live_reward_body_label.add_theme_font_size_override("font_size", 13)
-	reward_body.add_child(_live_reward_body_label)
-
-	_live_reward_hint_label = Label.new()
-	_live_reward_hint_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_live_reward_hint_label.custom_minimum_size = Vector2(0.0, 18.0)
-	_apply_text_role(_live_reward_hint_label, "hint")
-	_live_reward_hint_label.add_theme_font_size_override("font_size", 12)
-	reward_body.add_child(_live_reward_hint_label)
+	var nodes: Dictionary = _presentation_controller.create_live_reward_shell(ui_layer)
+	_live_reward_shell = nodes.get("live_reward_shell")
+	_live_reward_title_label = nodes.get("live_reward_title_label")
+	_live_reward_body_label = nodes.get("live_reward_body_label")
+	_live_reward_hint_label = nodes.get("live_reward_hint_label")
 
 
 func _create_hud_presenter() -> void:
@@ -2946,34 +2485,19 @@ func _setup_performance_hud() -> void:
 
 
 func _sync_compact_transient_hud_layout() -> void:
-	_enforce_top_left_panel_rect()
-	if _live_reward_shell != null and is_instance_valid(_live_reward_shell):
-		var vp: Vector2 = get_viewport_rect().size
-		_live_reward_shell.position = COMBAT_FEEL_CONTENT.compact_live_reward_position_for_viewport(vp)
-		_live_reward_shell.size = COMBAT_FEEL_CONTENT.compact_live_reward_size()
-	_sync_message_lane_ownership()
+	_presentation_controller.sync_compact_transient_hud_layout(
+		_hud_top_left_panel,
+		_live_reward_shell,
+		_performance_hud
+	)
 
 
 func _sync_message_lane_ownership() -> void:
-	var live_lane_active: bool = _live_reward_shell != null and is_instance_valid(_live_reward_shell) and _live_reward_shell.visible
-	if is_instance_valid(_performance_hud) and _performance_hud.has_method("set_message_lane_blocked"):
-		_performance_hud.call("set_message_lane_blocked", live_lane_active)
-	_center_performance_offer_shell()
+	_presentation_controller.sync_message_lane_ownership(_live_reward_shell, _performance_hud)
 
 
 func _center_performance_offer_shell() -> void:
-	if not is_instance_valid(_performance_hud):
-		return
-	var offer_shell: Control = _performance_hud.get_node_or_null("%OfferShell") as Control
-	if offer_shell == null:
-		return
-	if _live_reward_shell != null and is_instance_valid(_live_reward_shell) and _live_reward_shell.visible:
-		offer_shell.visible = false
-		return
-	var vp: Vector2 = get_viewport_rect().size
-	var sz: Vector2 = COMBAT_FEEL_CONTENT.compact_live_reward_size()
-	offer_shell.size = sz
-	offer_shell.global_position = COMBAT_FEEL_CONTENT.compact_live_reward_position_for_viewport(vp)
+	_presentation_controller.center_performance_offer_shell(_live_reward_shell, _performance_hud)
 
 
 func _on_performance_reward_claimed(_reward_data: Dictionary, _source: String) -> void:
@@ -4059,450 +3583,80 @@ func _apply_encounter_presentation() -> void:
 
 
 func _build_arena_visuals() -> void:
-	if not _active_encounter.get("phases", []).is_empty():
-		_enemy_markers_by_id.clear()
-
-	_enemy_max_hp.clear()
-	_lane_strips.clear()
-	_lane_hit_focus.clear()
-
-	if _lane_marker_container != null:
-		_lane_marker_container.queue_free()
-	if _enemy_marker_container != null:
-		_enemy_marker_container.queue_free()
-
-	_lane_marker_container = Node2D.new()
-	_lane_marker_container.name = "LaneMarkers"
-	add_child(_lane_marker_container)
-
-	_enemy_marker_container = Node2D.new()
-	_enemy_marker_container.name = "EnemyMarkers"
-	add_child(_enemy_marker_container)
-
-	var biome: Dictionary = _active_encounter.get("biome", {})
-	var lane_color: Color = biome.get("lane_color", Color(0.30, 0.30, 0.35, 1.0))
-	var inactive_enemy_color: Color = biome.get("enemy_inactive_color", Color(0.40, 0.20, 0.20, 0.5))
-
-	for lane in range(3):
-		# ─── CURSED RIBBONS: PHYSICAL SUBSTRATE ───────────────────────────────
-		# Replacing the invisible math-strip with an authored runway.
-		var lane_group := Node2D.new()
-		lane_group.name = "LaneGroup_%d" % lane
-		_lane_marker_container.add_child(lane_group)
-
-		var lane_strip := TextureRect.new()
-		lane_strip.name = "Strip"
-		lane_strip.size = Vector2(760.0, COMBAT_FEEL_CONTENT.LANE_BAND_HEIGHT)
-		lane_strip.position = Vector2(208.0, lane_manager.get_lane_y(lane) - COMBAT_FEEL_CONTENT.LANE_BAND_HEIGHT * 0.5)
-		lane_strip.pivot_offset = lane_strip.size * 0.5
-		lane_strip.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		lane_strip.stretch_mode = TextureRect.STRETCH_SCALE
-		
-		var ribbon_grad := Gradient.new()
-		ribbon_grad.colors = [Color(1.0, 1.0, 1.0, 0.42), Color(1.0, 1.0, 1.0, 1.0), Color(1.0, 1.0, 1.0, 0.42)]
-		ribbon_grad.offsets = [0.0, 0.5, 1.0]
-		var ribbon_tex := GradientTexture2D.new()
-		ribbon_tex.gradient = ribbon_grad
-		ribbon_tex.fill_from = Vector2(0.5, 0.0)
-		ribbon_tex.fill_to = Vector2(0.5, 1.0)
-		ribbon_tex.width = 16
-		ribbon_tex.height = 32
-		lane_strip.texture = ribbon_tex
-		
-		lane_strip.modulate = Color(lane_color.r, lane_color.g, lane_color.b, COMBAT_FEEL_CONTENT.LANE_IDLE_ALPHA)
-		lane_group.add_child(lane_strip)
-		_lane_strips[lane] = lane_strip
-
-		# Sharp edge highlights to give the ribbon a "physical" presence.
-		var strip_top := ColorRect.new()
-		strip_top.size = Vector2(lane_strip.size.x, 1.0)
-		strip_top.color = Color(lane_color.r, lane_color.g, lane_color.b, 0.12)
-		lane_strip.add_child(strip_top)
-
-		var strip_bottom := ColorRect.new()
-		strip_bottom.size = Vector2(lane_strip.size.x, 1.0)
-		strip_bottom.position = Vector2(0.0, lane_strip.size.y - 1.0)
-		strip_bottom.color = Color(lane_color.r, lane_color.g, lane_color.b, 0.12)
-		lane_strip.add_child(strip_bottom)
-
-		# ─── MANGA-SHARP FOCAL MARKERS ────────────────────────────────────────
-		# Precise, high-contrast brackets that frame the hit zone truth.
-		var focal_root := Node2D.new()
-		focal_root.name = "FocalMarker_%d" % lane
-		focal_root.position = Vector2(lane_manager.get_hit_zone_x(), lane_manager.get_lane_y(lane))
-		_lane_marker_container.add_child(focal_root)
-		_lane_hit_focus[lane] = focal_root
-
-		var marker_size: Vector2 = COMBAT_FEEL_CONTENT.FOCAL_MARKER_SIZE
-		var half: Vector2 = marker_size * 0.5
-		var bracket_len: float = 14.0
-		var tick_len: float = 4.0
-		var marker_color: Color = COMBAT_FEEL_CONTENT.FOCAL_MARKER_COLOR
-
-		# Draw procedural brackets (Top-Left, Top-Right, Bottom-Left, Bottom-Right)
-		for quadrant in range(4):
-			var bracket := Line2D.new()
-			bracket.width = COMBAT_FEEL_CONTENT.FOCAL_MARKER_WIDTH
-			bracket.default_color = marker_color
-			bracket.begin_cap_mode = Line2D.LINE_CAP_ROUND
-			bracket.end_cap_mode = Line2D.LINE_CAP_ROUND
-			
-			var x_sign: float = -1.0 if quadrant % 2 == 0 else 1.0
-			var y_sign: float = -1.0 if quadrant < 2 else 1.0
-			
-			bracket.add_point(Vector2(x_sign * half.x, y_sign * (half.y - bracket_len)))
-			bracket.add_point(Vector2(x_sign * half.x, y_sign * half.y))
-			bracket.add_point(Vector2(x_sign * (half.x - bracket_len), y_sign * half.y))
-			focal_root.add_child(bracket)
-		
-		# Precision Ticks (Top and Bottom center)
-		for i in range(2):
-			var tick := Line2D.new()
-			tick.width = COMBAT_FEEL_CONTENT.FOCAL_MARKER_WIDTH
-			tick.default_color = marker_color
-			var y_sign: float = -1.0 if i == 0 else 1.0
-			tick.add_point(Vector2(0.0, y_sign * half.y))
-			tick.add_point(Vector2(0.0, y_sign * (half.y - tick_len)))
-			focal_root.add_child(tick)
-
-	# Clear and rebuild markers based on the current logical state.
-	# We also check _enemy_markers_by_id to see if any markers were already created
-	# (e.g., during a brief window where the container was null).
-	for enemy_id in _all_enemies_by_id.keys():
-		var enemy: Dictionary = _all_enemies_by_id[enemy_id]
-		var lane: int = int(enemy.get("lane", 0))
-
-		var marker_size: float = 64.0 if _is_boss_encounter else 42.0
-		var marker_data: Dictionary
-		
-		# If a marker was already built but not attached, reuse its root.
-		if _enemy_markers_by_id.has(enemy_id):
-			marker_data = _enemy_markers_by_id[enemy_id]
-			var root = marker_data.get("root")
-			if is_instance_valid(root):
-				if root.get_parent() == null:
-					_enemy_marker_container.add_child(root)
-			else:
-				# Rebuild if the root was freed.
-				marker_data = _build_enemy_marker(enemy_id, lane, enemy, marker_size, inactive_enemy_color)
-				_enemy_marker_container.add_child(marker_data["root"])
-				_enemy_markers_by_id[enemy_id] = marker_data
-		else:
-			marker_data = _build_enemy_marker(enemy_id, lane, enemy, marker_size, inactive_enemy_color)
-			_enemy_marker_container.add_child(marker_data["root"])
-			_enemy_markers_by_id[enemy_id] = marker_data
-		
-		_enemy_max_hp[enemy_id] = float(enemy.get("hp", 1))
-
-	_refresh_enemy_marker_states()
+	var refs: Dictionary = _presentation_controller.build_arena_visuals(
+		self,
+		_active_encounter,
+		lane_manager,
+		_all_enemies_by_id,
+		_enemy_phase_by_id,
+		_enemy_markers_by_id,
+		_enemy_max_hp,
+		_lane_strips,
+		_lane_hit_focus,
+		_status_marker_overrides,
+		_current_phase_index,
+		_is_boss_encounter,
+		_texture_cache,
+		_lane_marker_container,
+		_enemy_marker_container
+	)
+	_lane_marker_container = refs.get("lane_marker_container")
+	_enemy_marker_container = refs.get("enemy_marker_container")
 
 
 func _refresh_enemy_marker_states() -> void:
-	var biome: Dictionary = _active_encounter.get("biome", {})
-	var active_color: Color = biome.get("enemy_active_color", Color(0.76, 0.21, 0.21, 1.0))
-	var inactive_color: Color = biome.get("enemy_inactive_color", Color(0.38, 0.18, 0.18, 0.55))
-
-	for enemy_id in _enemy_markers_by_id.keys():
-		var marker_data: Dictionary = _enemy_markers_by_id[enemy_id]
-		var body_node = marker_data.get("body")
-		if not is_instance_valid(body_node):
-			continue
-			
-		var marker_body: ColorRect = body_node
-		
-		var enemy_phase: int = int(_enemy_phase_by_id.get(enemy_id, -1))
-		if enemy_phase == _current_phase_index:
-			marker_body.color = active_color
-		else:
-			marker_body.color = inactive_color
-
-		# Apply active status color override on top of biome color.
-		if _status_marker_overrides.has(enemy_id):
-			marker_body.color = _status_marker_overrides[enemy_id]
+	_presentation_controller.refresh_enemy_marker_states(
+		_active_encounter,
+		_enemy_markers_by_id,
+		_enemy_phase_by_id,
+		_status_marker_overrides,
+		_current_phase_index
+	)
 
 
 func _build_enemy_marker(enemy_id: int, lane: int, enemy: Dictionary, marker_size: float, base_color: Color) -> Dictionary:
-	var telegraph_profile: Dictionary = COMBAT_CONTENT.get_enemy_telegraph_profile(enemy)
-	var marker_half: float = marker_size * 0.5
-	var marker_root := Node2D.new()
-	marker_root.name = "Enemy_%d" % enemy_id
-	marker_root.position = Vector2(lane_manager.get_enemy_x(), lane_manager.get_lane_y(lane))
-
-	var frame := ColorRect.new()
-	frame.name = "Frame"
-	frame.size = Vector2(marker_size + 4.0, marker_size + 4.0)
-	frame.position = Vector2(-marker_half - 2.0, -marker_half - 2.0)
-	frame.color = Color(0.0, 0.0, 0.0, 0.50)
-	marker_root.add_child(frame)
-
-	var body := ColorRect.new()
-	body.name = "Body"
-	body.size = Vector2(marker_size, marker_size)
-	body.position = Vector2(-marker_half, -marker_half)
-	body.color = base_color
-	body.modulate = enemy.get("marker_modulate", Color(1.0, 1.0, 1.0, 1.0))
-	marker_root.add_child(body)
-
-	var core := ColorRect.new()
-	core.name = "Core"
-	core.size = Vector2(marker_size - 12.0, marker_size - 12.0)
-	core.position = Vector2(-(core.size.x * 0.5), -(core.size.y * 0.5))
-	core.color = Color(0.0, 0.0, 0.0, 0.12)
-	marker_root.add_child(core)
-
-	var edge := ColorRect.new()
-	edge.name = "Edge"
-	edge.size = Vector2(marker_size - 4.0, marker_size - 4.0)
-	edge.position = Vector2(-(edge.size.x * 0.5), -(edge.size.y * 0.5))
-	edge.color = Color(telegraph_profile.get("projectile_color", Color.WHITE))
-	edge.color.a = 0.0
-	marker_root.add_child(edge)
-
-	var accent := ColorRect.new()
-	accent.name = "Accent"
-	accent.color = Color(telegraph_profile.get("marker_color", Color.WHITE))
-	var sigil := ColorRect.new()
-	sigil.name = "Sigil"
-	sigil.color = Color(telegraph_profile.get("accent_color", Color.WHITE))
-	_configure_enemy_marker_shape(accent, sigil, marker_size, String(telegraph_profile.get("family", "fang")))
-	marker_root.add_child(accent)
-	marker_root.add_child(sigil)
-
-	# Creature Silhouette Integration: if this enemy is a specific creature species,
-	# overlay a desaturated/tinted version of its sprite for stronger threat identity.
-	var species_id: String = String(enemy.get("species_id", ""))
-	if not species_id.is_empty():
-		var sprite_path: String = COMBAT_CONTENT.get_creature_art_path(species_id, "battlefield")
-		if not sprite_path.is_empty():
-			var tex: Texture2D = null
-			if _texture_cache.has(sprite_path):
-				tex = _texture_cache[sprite_path]
-			else:
-				tex = load(sprite_path) as Texture2D
-				_texture_cache[sprite_path] = tex
-
-			if tex != null:
-				var sprite := Sprite2D.new()
-				sprite.texture = tex
-				sprite.name = "CreatureSilhouette"
-				# Desaturated, dark silhouette that fits the procedural frame.
-				var render: Dictionary = COMBAT_CONTENT.get_creature_combat_render(species_id)
-				var marker_modulate: Color = Color(render.get("marker_modulate", base_color.darkened(0.4)))
-				sprite.modulate = _tune_enemy_silhouette_color(marker_modulate, base_color)
-				# Enemy silhouettes must stay fully readable at lane scale.
-				sprite.modulate.a = 1.0
-				# Scale to fit inside the marker core.
-				sprite.scale = Vector2(render.get("scale", 0.052), render.get("scale", 0.052)) * (marker_size / 42.0)
-				# Offset it slightly so it doesn't obscure the accent/sigil shapes.
-				sprite.position = Vector2(0.0, -2.0)
-				marker_root.add_child(sprite)
-				marker_root.move_child(sprite, 3) # Put it above the Core but below Accent/Sigil
-
-	return {
-		"root": marker_root,
-		"body": body,
-		"core": core,
-		"edge": edge,
-		"accent": accent,
-		"sigil": sigil
-	}
+	return _presentation_controller._build_enemy_marker(
+		enemy_id,
+		lane,
+		enemy,
+		marker_size,
+		base_color,
+		lane_manager,
+		_texture_cache
+	)
 
 func _configure_enemy_marker_shape(accent: ColorRect, sigil: ColorRect, marker_size: float, family: String) -> void:
-	var half: float = marker_size * 0.5
-	match family:
-		"mass":
-			accent.size = Vector2(marker_size - 10.0, 6.0)
-			accent.position = Vector2(-half + 5.0, -half + 5.0)
-			sigil.size = Vector2(10.0, 10.0)
-			sigil.position = Vector2(-5.0, 6.0)
-		"needle":
-			accent.size = Vector2(5.0, marker_size - 10.0)
-			accent.position = Vector2(-2.5, -half + 5.0)
-			sigil.size = Vector2(marker_size - 12.0, 4.0)
-			sigil.position = Vector2(-half + 6.0, -half + 7.0)
-		"veil":
-			accent.size = Vector2(marker_size - 8.0, 4.0)
-			accent.position = Vector2(-half + 4.0, -2.0)
-			sigil.size = Vector2(6.0, marker_size - 16.0)
-			sigil.position = Vector2(-half + 8.0, -half + 8.0)
-		"chorus":
-			accent.size = Vector2(marker_size - 12.0, 4.0)
-			accent.position = Vector2(-half + 6.0, -half + 7.0)
-			sigil.size = Vector2(marker_size - 16.0, 4.0)
-			sigil.position = Vector2(-half + 8.0, half - 11.0)
-		"sovereign":
-			accent.size = Vector2(marker_size - 10.0, 6.0)
-			accent.position = Vector2(-half + 5.0, -half + 5.0)
-			sigil.size = Vector2(6.0, marker_size - 12.0)
-			sigil.position = Vector2(-3.0, -half + 6.0)
-		_:
-			accent.size = Vector2(marker_size * 0.42, 5.0)
-			accent.position = Vector2(half - accent.size.x - 6.0, half - 10.0)
-			sigil.size = Vector2(5.0, marker_size * 0.52)
-			sigil.position = Vector2(-half + 7.0, -half + 6.0)
-	accent.color.a = 0.18
-	sigil.color.a = 0.22
+	_presentation_controller._configure_enemy_marker_shape(accent, sigil, marker_size, family)
 
 
 func _tune_enemy_silhouette_color(requested: Color, body_color: Color) -> Color:
-	var tuned: Color = requested
-	var body_luma: float = body_color.get_luminance()
-	var tuned_luma: float = tuned.get_luminance()
-
-	# Keep silhouettes readable but prevent eye-searing whites in bright biomes.
-	if tuned_luma < 0.34:
-		tuned = tuned.lightened(min((0.34 - tuned_luma) * 1.15, 0.28))
-	elif tuned_luma > 0.78:
-		tuned = tuned.darkened(min((tuned_luma - 0.78) * 1.35, 0.30))
-
-	tuned_luma = tuned.get_luminance()
-	var luma_delta: float = abs(tuned_luma - body_luma)
-	if luma_delta < 0.16:
-		var push: float = min((0.16 - luma_delta) + 0.06, 0.24)
-		if body_luma >= 0.50:
-			tuned = tuned.darkened(push)
-		else:
-			tuned = tuned.lightened(push)
-
-	return tuned
+	return _presentation_controller._tune_enemy_silhouette_color(requested, body_color)
 
 
 func _update_enemy_marker_threat_states() -> void:
-	for enemy_id in _enemy_markers_by_id.keys():
-		var marker_data: Dictionary = _enemy_markers_by_id[enemy_id]
-		var marker_root = marker_data.get("root")
-		if not is_instance_valid(marker_root):
-			continue
-			
-		var enemy: Dictionary = _all_enemies_by_id.get(enemy_id, {})
-		var lane: int = int(enemy.get("lane", -1))
-		if lane < 0:
-			continue
-		var telegraph_profile: Dictionary = COMBAT_CONTENT.get_enemy_telegraph_profile(enemy)
-		
-		var edge_node = marker_data.get("edge")
-		var accent_node = marker_data.get("accent")
-		var sigil_node = marker_data.get("sigil")
-		var core_node = marker_data.get("core")
-		
-		if not is_instance_valid(edge_node) or not is_instance_valid(accent_node) or \
-		   not is_instance_valid(sigil_node) or not is_instance_valid(core_node):
-			continue
-
-		var edge: ColorRect = edge_node
-		var accent: ColorRect = accent_node
-		var sigil: ColorRect = sigil_node
-		var core: ColorRect = core_node
-
-		var pressure: float = 0.0
-		var imminent: float = 0.0
-		var projectile = lane_manager.get_projectile(lane)
-		if projectile != null and not projectile.is_resolved and not projectile.is_reflected and int(projectile.enemy_id) == enemy_id:
-			var warning_bias: float = max(float(telegraph_profile.get("warning_bias", 1.0)), 0.84)
-			pressure = clamp(((projectile.progress - 0.70) / 0.30) * warning_bias, 0.0, 1.0)
-			imminent = clamp((projectile.progress - 0.96) / 0.08, 0.0, 1.0)
-
-		var threat_color: Color = Color(telegraph_profile.get("projectile_color", Color.WHITE))
-		var accent_color: Color = Color(telegraph_profile.get("accent_color", threat_color.lightened(0.18)))
-		var marker_color: Color = Color(telegraph_profile.get("marker_color", accent_color))
-		edge.color = Color(threat_color.r, threat_color.g, threat_color.b, pressure * 0.12 + imminent * 0.24)
-		accent.color = Color(marker_color.r, marker_color.g, marker_color.b, 0.18 + pressure * 0.30 + imminent * 0.14)
-		sigil.color = Color(accent_color.r, accent_color.g, accent_color.b, 0.22 + pressure * 0.34 + imminent * 0.18)
-		core.color = Color(accent_color.r, accent_color.g, accent_color.b, 0.08 + pressure * 0.08 + imminent * 0.06)
+	_presentation_controller.update_enemy_marker_threat_states(
+		_enemy_markers_by_id,
+		_all_enemies_by_id,
+		lane_manager
+	)
 
 
 func _draw_timing_circles() -> void:
-	for child in _timing_circle_container.get_children():
-		child.queue_free()
-	_timing_rings_cache.clear()
-
-	var biome: Dictionary = _active_encounter.get("biome", {})
-	var active_color: Color = biome.get("ring_active_color", Color(1.0, 0.95, 0.55, 1.0))
-	var inactive_color: Color = biome.get("ring_inactive_color", Color(0.7, 0.7, 0.8, 0.45))
-
-	for lane in range(3):
-		var lane_group := Node2D.new()
-		lane_group.name = "TimingRing_%d" % lane
-		lane_group.position = Vector2(
-			lane_manager.get_hit_zone_x(),
-			lane_manager.get_lane_y(lane)
-		)
-
-		var player_current_lane: int = int(player_combat.get("current_lane"))
-		var is_active_lane: bool = (lane == player_current_lane)
-		var base_color: Color = active_color if is_active_lane else inactive_color
-
-		# Glow and edge rings kept at alpha 0 — they serve as structural nodes for the
-		# proximity animation system in _update_timing_ring_proximity().
-		var receiver_glow := _make_disc_polygon(COMBAT_FEEL_CONTENT.RING_OUTER_RADIUS + 6.0, Color(base_color.r, base_color.g, base_color.b, 0.0))
-		receiver_glow.name = "ReceiverGlow"
-
-		# Inner fill: active lane gets a subtle glow, inactive is nearly invisible.
-		var fill_alpha: float = 0.07 if is_active_lane else 0.03
-		var receiver_fill := _make_disc_polygon(COMBAT_FEEL_CONTENT.RING_PERFECT_RADIUS + 9.0, Color(base_color.r, base_color.g, base_color.b, fill_alpha))
-		receiver_fill.name = "ReceiverFill"
-
-		# Outer ring: boundary marker — slightly thicker for cleaner visibility.
-		var outer_ring := _make_ring_line(COMBAT_FEEL_CONTENT.RING_OUTER_RADIUS, Color(base_color.r, base_color.g, base_color.b, base_color.a * 0.45), 2.2)
-		outer_ring.name = "Outer"
-
-		# Perfect ring: the focal point — thicker and bright, the true target.
-		var perfect_ring := _make_ring_line(COMBAT_FEEL_CONTENT.RING_PERFECT_RADIUS, base_color.lightened(0.32), 4.2)
-		perfect_ring.name = "Perfect"
-
-		var edge_ring := _make_ring_line(COMBAT_FEEL_CONTENT.RING_OUTER_RADIUS + 4.0, Color(base_color.r, base_color.g, base_color.b, 0.0), 1.0)
-		edge_ring.name = "Edge"
-
-		# Beat mark: thin vertical line at the exact hit point.
-		var beat_mark := Line2D.new()
-		beat_mark.name = "BeatMark"
-		beat_mark.default_color = Color(base_color.r, base_color.g, base_color.b, base_color.a * 0.55)
-		beat_mark.width = 1.2
-		beat_mark.add_point(Vector2(0.0, -COMBAT_FEEL_CONTENT.RING_OUTER_RADIUS))
-		beat_mark.add_point(Vector2(0.0, COMBAT_FEEL_CONTENT.RING_OUTER_RADIUS))
-
-		lane_group.add_child(receiver_glow)
-		lane_group.add_child(receiver_fill)
-		lane_group.add_child(edge_ring)
-		lane_group.add_child(outer_ring)
-		lane_group.add_child(perfect_ring)
-		lane_group.add_child(beat_mark)
-		_timing_circle_container.add_child(lane_group)
-
-		_timing_rings_cache.append({
-			"root": lane_group,
-			"outer": outer_ring,
-			"perfect": perfect_ring,
-			"fill": receiver_fill,
-			"glow": receiver_glow,
-			"edge": edge_ring,
-			"beat": beat_mark
-		})
+	_presentation_controller.draw_timing_circles(
+		_timing_circle_container,
+		_timing_rings_cache,
+		_active_encounter,
+		lane_manager,
+		player_combat
+	)
 
 
 func _make_ring_line(radius: float, color: Color, width: float) -> Line2D:
-	var ring := Line2D.new()
-	ring.default_color = color
-	ring.width = width
-
-	for i in range(COMBAT_FEEL_CONTENT.RING_POINT_COUNT + 1):
-		var angle: float = (TAU * float(i)) / float(COMBAT_FEEL_CONTENT.RING_POINT_COUNT)
-		ring.add_point(Vector2(cos(angle), sin(angle)) * radius)
-
-	return ring
+	return _presentation_controller._make_ring_line(radius, color, width)
 
 
 func _make_disc_polygon(radius: float, color: Color) -> Polygon2D:
-	var disc := Polygon2D.new()
-	disc.color = color
-
-	var points := PackedVector2Array()
-	for i in range(COMBAT_FEEL_CONTENT.RING_POINT_COUNT + 1):
-		var angle: float = (TAU * float(i)) / float(COMBAT_FEEL_CONTENT.RING_POINT_COUNT)
-		points.append(Vector2(cos(angle), sin(angle)) * radius)
-
-	disc.polygon = points
-	return disc
+	return _presentation_controller._make_disc_polygon(radius, color)
 
 
 func _prepare_for_encounter(reset_hp: bool) -> void:

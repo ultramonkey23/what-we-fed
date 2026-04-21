@@ -62,8 +62,9 @@ static func build_parry_profile(quality: String, _beat_quality: String) -> Dicti
 	}
 
 	if quality == "perfect":
-		profile["flash_color"] = Color(0.45, 1.0, 0.72, 0.16)
-		profile["flash_duration"] = 0.08
+		var perf_flash: Dictionary = COMBAT_FEEL_CONSTANTS.get_screen_flash_params("perfect_parry")
+		profile["flash_color"] = perf_flash.get("color", Color(1.0, 1.0, 1.0, 0.99))
+		profile["flash_duration"] = perf_flash.get("duration", 0.08)
 		profile["shake_intensity"] = 0.85
 		profile["shake_duration"] = 0.07
 		profile["hitstop_scale"] = 0.65

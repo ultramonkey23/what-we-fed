@@ -52,8 +52,8 @@ func _align_page_to_selection() -> void:
 		_page_start = 0
 		return
 	_selected_index = clampi(_selected_index, 0, n - 1)
-	_page_start = int(_selected_index / CARDS_PER_PAGE) * CARDS_PER_PAGE
-	var max_page_start: int = int((n - 1) / CARDS_PER_PAGE) * CARDS_PER_PAGE
+	_page_start = int(floor(float(_selected_index) / CARDS_PER_PAGE)) * CARDS_PER_PAGE
+	var max_page_start: int = int(floor(float(n - 1) / CARDS_PER_PAGE)) * CARDS_PER_PAGE
 	_page_start = clampi(_page_start, 0, max_page_start)
 
 

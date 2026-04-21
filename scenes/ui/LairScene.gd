@@ -5,6 +5,8 @@ const TITLE_SCENE_PATH: String = "res://scenes/ui/TitleScreen.tscn"
 const MAX_LAIR_DISPLAY: int = 5
 const UI_STYLE = preload("res://systems/UIStyle.gd")
 const PRESENTATION_TEXT = preload("res://data/PresentationTextContent.gd")
+const COMBAT_CONTENT = preload("res://data/CombatContent.gd")
+const POTENTIAL_GATE = preload("res://systems/PotentialGate.gd")
 
 var _creature_cards: Array[ColorRect] = []
 var _card_accents: Array[ColorRect] = []
@@ -159,10 +161,11 @@ func _build_creature_card(canvas: CanvasLayer, creature: Dictionary, index: int,
 	card.add_child(name_label)
 
 	var bond_level: int = int(creature.get("bond_level", 1))
+	var potential_label: String = _get_potential_label_for_species(String(creature.get("species_id", "")))
 	var bl_label: Label = Label.new()
-	bl_label.text = "Bond %d" % bond_level
+	bl_label.text = "Bond %d  |  Pot %s" % [bond_level, potential_label]
 	bl_label.position = Vector2(50.0, 48.0)
-	bl_label.size = Vector2(100.0, 20.0)
+	bl_label.size = Vector2(220.0, 20.0)
 	UI_STYLE.apply_label(bl_label, "card_metric")
 	card.add_child(bl_label)
 
@@ -206,6 +209,16 @@ func _reflow_lair_desc_scroll(scroll: ScrollContainer, label: Label) -> void:
 	label.custom_minimum_size.x = inner_w
 	var content_h: float = label.get_minimum_size().y
 	label.custom_minimum_size.y = maxf(scroll.size.y, content_h)
+
+
+func _get_potential_label_for_species(species_id: String) -> String:
+	if species_id.is_empty():
+		return POTENTIAL_GATE.GRADE_ALPHA.to_upper()
+	var creature_template: Dictionary = COMBAT_CONTENT.get_creature(species_id)
+	var potential_grade: String = POTENTIAL_GATE.normalize_grade_id(
+		String(creature_template.get("potential_max_grade", POTENTIAL_GATE.GRADE_ALPHA))
+	)
+	return potential_grade.to_upper()
 
 
 func _build_bottom_bar(canvas: CanvasLayer, lair: Array) -> void:

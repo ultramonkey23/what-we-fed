@@ -169,29 +169,30 @@ static func support_ready_label(display_name: String) -> String:
 
 
 static func trigger_hint(effect_id: String) -> String:
+	# Fallback when creature data has no hud_trigger_hint; keep compact for HUD.
 	match effect_id:
 		"ashclaw_strike":
-			return "Perfect strike → claw expose"
+			return "Parry/timed: expose"
 		"bond_remnant_mend":
-			return "Damage taken → remnant mend"
+			return "Hit when charged"
 		"gruvek_gorge":
-			return "Kill → gorge all lanes"
+			return "Kill: gorge all"
 		"veilskin_phase":
-			return "Perfect parry → phase bite"
+			return "Perf.parry: phase"
 		"thornback_rend":
-			return "Perfect strike → rend spike"
+			return "Perf.timed: rend"
 		"knellspine_peal":
-			return "Timed hit → bell peal"
+			return "Good+perf.timed"
 		"marrowward_ward":
-			return "Dodge → bone pale ward"
+			return "Dodge: bone ward"
 		"gorefane_maul":
-			return "Ultimate → maul all lanes"
+			return "Ultimate: maul"
 		"hushcoil_lull":
-			return "Perfect parry → hush pale"
+			return "Perf.parry: hush"
 		"coldvein_expose":
-			return "Perfect parry → cold seam"
+			return "Perf.parry: seam"
 		"siltgrip_drag":
-			return "Kill → silt drag rend"
+			return "Kill: heal+rend"
 		_:
 			return "On rhythm"
 

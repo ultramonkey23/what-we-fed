@@ -37,6 +37,7 @@ const COMBAT_AUDIO_PLAYER = preload("res://systems/CombatAudioPlayer.gd")
 const ENCOUNTER_ESCALATION_DIRECTOR = preload("res://systems/EncounterEscalationDirector.gd")
 const SUPPORT_EFFECT_RESOLVER = preload("res://systems/SupportEffectResolver.gd")
 const PATH_RUN_PLAN = preload("res://systems/PathRunPlan.gd")
+const POTENTIAL_GATE = preload("res://systems/PotentialGate.gd")
 
 # ─── CONSTANTS ───────────────────────────────────────────────────────────────
 const RUN_GROWTH_SCRIPT_PATH: String = "res://systems/RunGrowth.gd"
@@ -3031,6 +3032,15 @@ func _start_regular_level(level_index: int, reset_hp: bool) -> void:
 	lane_manager.set_song_mode_enabled(true)
 
 	var encounter_options: Dictionary = Dictionary(_active_path_context.get("encounter_options", {})).duplicate(true)
+	var active_creature: Dictionary = GameState.get_active_bonded_creature()
+	var grade_ceiling_id: String = POTENTIAL_GATE.resolve_grade_ceiling(
+		active_creature,
+		GameState.active_region,
+		int(GameState.run_number),
+		_regular_level_index,
+		bool(encounter_options.get("elite", false))
+	)
+	encounter_options["grade_ceiling_id"] = grade_ceiling_id
 	var song_run: Dictionary = ENCOUNTER_IDENTITY_RUNTIME.build_song_run(_region_id, _regular_level_index, level_duration, encounter_options)
 	_song_phases = song_run.get("phases", [])
 	for i in range(_song_phases.size()):

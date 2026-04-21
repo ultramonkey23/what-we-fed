@@ -64,6 +64,7 @@ const CREATURES := {
 	   "archetypes": ["guardian", "berserker"],
 	   "capture_threshold": 0.30,
 	   "bond_level": 1,
+	   "potential_max_grade": "alpha",
 	   "base_hp": 60.0,
 	   "base_damage": 10.0,
 	   "base_defense": 2.0,
@@ -108,6 +109,7 @@ const CREATURES := {
 		   "archetypes": ["phantom", "anchor"],
 		   "capture_threshold": 0.25,
 		   "bond_level": 1,
+		   "potential_max_grade": "mature",
 		   "base_hp": 52.0,
 		   "base_damage": 7.0,
 		   "base_defense": 3.0,
@@ -428,6 +430,7 @@ const CREATURES := {
 		"archetypes": ["lurker", "carrion"],
 		"capture_threshold": 0.28,
 		"bond_level": 1,
+		"potential_max_grade": "brood",
 		"description": "It waits below where the kills land. Something in the current marks the spot.",
 		"dna_threshold": 11.0,
 		"eat_effect": {"type": "damage_flat", "value": 2.5},
@@ -566,6 +569,7 @@ const ENEMY_TELEGRAPH_PROFILES := {
 		"accent_color": Color(0.98, 0.76, 0.42, 1.0),
 		"lane_color": Color(0.88, 0.40, 0.18, 1.0),
 		"marker_color": Color(0.98, 0.72, 0.44, 1.0),
+		"reflected_color": Color(0.52, 0.98, 0.76, 1.0),
 		"warning_bias": 1.0
 	},
 	"bond_reaper": {
@@ -575,6 +579,7 @@ const ENEMY_TELEGRAPH_PROFILES := {
 		"accent_color": Color(0.62, 0.76, 1.0, 1.0),
 		"lane_color": Color(0.70, 0.80, 0.98, 1.0),
 		"marker_color": Color(0.76, 0.88, 1.0, 1.0),
+		"reflected_color": Color(0.46, 0.92, 1.0, 1.0),
 		"warning_bias": 1.14
 	},
 	"sovereign": {
@@ -584,6 +589,7 @@ const ENEMY_TELEGRAPH_PROFILES := {
 		"accent_color": Color(1.0, 0.88, 0.50, 1.0),
 		"lane_color": Color(0.96, 0.54, 0.16, 1.0),
 		"marker_color": Color(1.0, 0.82, 0.42, 1.0),
+		"reflected_color": Color(0.78, 1.0, 0.58, 1.0),
 		"warning_bias": 1.18
 	},
 	"ashclaw": {
@@ -594,6 +600,7 @@ const ENEMY_TELEGRAPH_PROFILES := {
 		"accent_color": Color(0.98, 0.82, 0.58, 1.0),
 		"lane_color": Color(0.82, 0.48, 0.28, 1.0),
 		"marker_color": Color(0.94, 0.76, 0.52, 1.0),
+		"reflected_color": Color(0.60, 0.98, 0.64, 1.0),
 		"warning_bias": 1.04
 	},
 	"bond_remnant": {
@@ -603,6 +610,7 @@ const ENEMY_TELEGRAPH_PROFILES := {
 		"accent_color": Color(0.66, 0.78, 1.0, 1.0),
 		"lane_color": Color(0.60, 0.68, 0.94, 1.0),
 		"marker_color": Color(0.80, 0.88, 1.0, 1.0),
+		"reflected_color": Color(0.50, 0.88, 1.0, 1.0),
 		"warning_bias": 0.98
 	},
 	"gruvek": {
@@ -612,6 +620,7 @@ const ENEMY_TELEGRAPH_PROFILES := {
 		"accent_color": Color(0.98, 0.78, 0.46, 1.0),
 		"lane_color": Color(0.80, 0.42, 0.14, 1.0),
 		"marker_color": Color(0.94, 0.72, 0.44, 1.0),
+		"reflected_color": Color(0.72, 1.0, 0.56, 1.0),
 		"warning_bias": 0.90
 	},
 	"veilskin": {
@@ -621,6 +630,7 @@ const ENEMY_TELEGRAPH_PROFILES := {
 		"accent_color": Color(0.84, 0.96, 1.0, 1.0),
 		"lane_color": Color(0.62, 0.88, 1.0, 1.0),
 		"marker_color": Color(0.82, 0.96, 1.0, 1.0),
+		"reflected_color": Color(0.42, 0.94, 1.0, 1.0),
 		"warning_bias": 1.20
 	},
 	"thornback": {
@@ -631,6 +641,7 @@ const ENEMY_TELEGRAPH_PROFILES := {
 		"accent_color": Color(1.0, 0.68, 0.48, 1.0),
 		"lane_color": Color(0.88, 0.28, 0.22, 1.0),
 		"marker_color": Color(0.98, 0.56, 0.44, 1.0),
+		"reflected_color": Color(0.88, 1.0, 0.52, 1.0),
 		"warning_bias": 1.08
 	},
 	"knellspine": {
@@ -640,6 +651,7 @@ const ENEMY_TELEGRAPH_PROFILES := {
 		"accent_color": Color(1.0, 0.94, 0.62, 1.0),
 		"lane_color": Color(0.92, 0.76, 0.24, 1.0),
 		"marker_color": Color(1.0, 0.90, 0.56, 1.0),
+		"reflected_color": Color(0.92, 0.96, 0.52, 1.0),
 		"warning_bias": 1.06
 	},
 	"marrowward": {
@@ -649,6 +661,7 @@ const ENEMY_TELEGRAPH_PROFILES := {
 		"accent_color": Color(0.88, 0.96, 0.86, 1.0),
 		"lane_color": Color(0.52, 0.74, 0.62, 1.0),
 		"marker_color": Color(0.82, 0.92, 0.84, 1.0),
+		"reflected_color": Color(0.58, 1.0, 0.80, 1.0),
 		"warning_bias": 0.94
 	},
 	"gorefane": {
@@ -659,6 +672,7 @@ const ENEMY_TELEGRAPH_PROFILES := {
 		"accent_color": Color(1.0, 0.62, 0.46, 1.0),
 		"lane_color": Color(0.92, 0.22, 0.14, 1.0),
 		"marker_color": Color(0.98, 0.50, 0.36, 1.0),
+		"reflected_color": Color(0.68, 1.0, 0.60, 1.0),
 		"warning_bias": 1.10
 	},
 	"hushcoil": {
@@ -668,6 +682,7 @@ const ENEMY_TELEGRAPH_PROFILES := {
 		"accent_color": Color(0.82, 0.94, 0.88, 1.0),
 		"lane_color": Color(0.42, 0.70, 0.62, 1.0),
 		"marker_color": Color(0.76, 0.92, 0.86, 1.0),
+		"reflected_color": Color(0.54, 0.86, 1.0, 1.0),
 		"warning_bias": 0.92
 	},
 	"coldvein": {
@@ -677,6 +692,7 @@ const ENEMY_TELEGRAPH_PROFILES := {
 		"accent_color": Color(0.90, 0.96, 1.0, 1.0),
 		"lane_color": Color(0.54, 0.82, 1.0, 1.0),
 		"marker_color": Color(0.84, 0.94, 1.0, 1.0),
+		"reflected_color": Color(0.44, 0.92, 1.0, 1.0),
 		"warning_bias": 1.18
 	},
 	"pale_shelf_precision_stalker": {
@@ -686,6 +702,7 @@ const ENEMY_TELEGRAPH_PROFILES := {
 		"accent_color": Color(0.92, 0.98, 1.0, 1.0),
 		"lane_color": Color(0.58, 0.84, 1.0, 1.0),
 		"marker_color": Color(0.86, 0.96, 1.0, 1.0),
+		"reflected_color": Color(0.48, 0.90, 1.0, 1.0),
 		"warning_bias": 1.20
 	},
 	"pale_shelf_shardshroud_sentinel": {
@@ -695,6 +712,7 @@ const ENEMY_TELEGRAPH_PROFILES := {
 		"accent_color": Color(0.86, 0.94, 0.88, 1.0),
 		"lane_color": Color(0.50, 0.72, 0.64, 1.0),
 		"marker_color": Color(0.80, 0.90, 0.84, 1.0),
+		"reflected_color": Color(0.56, 1.0, 0.78, 1.0),
 		"warning_bias": 0.96
 	},
 	"siltgrip": {
@@ -704,6 +722,7 @@ const ENEMY_TELEGRAPH_PROFILES := {
 		"accent_color": Color(0.74, 0.90, 0.82, 1.0),
 		"lane_color": Color(0.32, 0.64, 0.54, 1.0),
 		"marker_color": Color(0.64, 0.86, 0.78, 1.0),
+		"reflected_color": Color(0.48, 0.90, 0.80, 1.0),
 		"warning_bias": 0.88
 	}
 }

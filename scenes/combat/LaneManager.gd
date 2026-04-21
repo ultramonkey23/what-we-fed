@@ -438,6 +438,8 @@ func _fire_lane(lane: int) -> void:
 		telegraph_profile["shot_modifier"] = species_mod
 	else:
 		telegraph_profile["shot_modifier"] = section_mod
+	# Routing-only key; Projectile reads shot_modifier (species or section).
+	telegraph_profile.erase("species_shot_modifier")
 
 	combat_scene.add_child(projectile)
 	projectile.setup(

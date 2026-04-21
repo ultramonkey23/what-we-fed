@@ -51,6 +51,7 @@ Use What We Fed as the practical base:
 - reward choice foundation
 - live DNA economy
 - live tendency growth
+- live Potential ceiling scaffolding (creature/world/run threat cap, not flat combat stat)
 - preserve prototype foundation; evolve, do not discard
 
 ## Near-term priority

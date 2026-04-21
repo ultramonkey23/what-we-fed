@@ -4,6 +4,7 @@ const COMBAT_CONTENT = preload("res://data/CombatContent.gd")
 const REGION_SONG_CONTENT = preload("res://data/RegionSongContent.gd")
 const IDENTITY_CONTENT = preload("res://data/EncounterIdentityContent.gd")
 const RUN_PACING_CONTENT = preload("res://data/RunPacingContent.gd")
+const POTENTIAL_GATE = preload("res://systems/PotentialGate.gd")
 
 
 static func build_song_run(region_id: String, regular_level_index: int = 0, level_duration: float = 120.0, options: Dictionary = {}) -> Dictionary:
@@ -174,6 +175,7 @@ static func _build_scaled_song_level_phases(
 	var hp_mult: float = float(scaling.get("enemy_hp_mult", 1.0))
 	var damage_mult: float = float(scaling.get("enemy_damage_mult", 1.0))
 	var projectile_speed_mult: float = float(scaling.get("enemy_projectile_speed_mult", 1.0))
+	var grade_ceiling_id: String = POTENTIAL_GATE.normalize_grade_id(String(options.get("grade_ceiling_id", POTENTIAL_GATE.GRADE_ALPHA)))
 	var elite_mode: bool = bool(options.get("elite", false))
 	if elite_mode:
 		cycle_mult *= float(options.get("cycle_interval_mult", 0.92))
@@ -194,6 +196,8 @@ static func _build_scaled_song_level_phases(
 		var scaled_pool: Array = []
 		for enemy in pool:
 			var scaled_enemy: Dictionary = Dictionary(enemy).duplicate(true)
+			var enemy_grade_id: String = String(scaled_enemy.get("grade", POTENTIAL_GATE.GRADE_MATURE))
+			scaled_enemy["grade"] = POTENTIAL_GATE.clamp_grade_id(enemy_grade_id, grade_ceiling_id)
 			scaled_enemy["hp"] = float(scaled_enemy.get("hp", 28.0)) * hp_mult
 			scaled_enemy["damage"] = float(scaled_enemy.get("damage", 8.0)) * damage_mult
 			if scaled_enemy.has("projectile_speed"):

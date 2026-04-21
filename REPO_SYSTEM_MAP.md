@@ -35,6 +35,7 @@ Song / boss pressure:
 Growth / reward:
 - `systems/RunGrowth.gd`: tendency growth, support charge, growth effects
 - `systems/PerformanceRewardDirector.gd`: performance reward offers and claims
+- `systems/PotentialGate.gd`: layered Potential ceiling resolver (creature/world/run)
 - `data/RunGrowthContent.gd`: growth tuning and effects
 - `data/PerformanceRewardContent.gd`: reward data
 
@@ -75,6 +76,7 @@ Repo-local state:
 Read these before making scope assumptions:
 - `PROJECT_SETUP_AND_VALIDATION.md`: repo workflow entrypoint
 - `docs/GAME_SPINE.md`: current live-build identity
+- `docs/POTENTIAL_SYSTEM_V1.md`: Potential architecture and v1 implementation contract
 - `docs/DEMO_MILESTONE_LADDER.md`: what the current build has already proven
 - `docs/NEXT_PHASE_PLAN.md`: near-term implementation direction
 - `docs/WHAT_WE_FED_FINAL_GAME_SCOPE_CANON_FLAGSHIP.md`: larger flagship canon
@@ -92,6 +94,7 @@ If the task is about:
 - player action correctness -> start at `scenes/combat/PlayerCombat.gd`
 - combo/style/stamina logic -> start at `systems/CombatMeter.gd`
 - growth, bonded support, or run stat progression -> start at `systems/RunGrowth.gd`
+- Potential ceilings or encounter grade caps -> start at `systems/PotentialGate.gd`, then `scenes/combat/CombatScene.gd`, then `systems/EncounterIdentityRuntime.gd`
 - beat timing or phase changes -> start at `systems/SongConductor.gd`
 - content tuning or adding variants -> start in `data/`
 - cross-system coordination -> check `autoloads/EventBus.gd`

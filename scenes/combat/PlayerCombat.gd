@@ -582,6 +582,7 @@ func _resolve_timed_attack(projectile, combo_mult: float, quality: String) -> vo
 func _resolve_early_attack() -> void:
 	combat_meter.call("record_bad_timing")
 	_clear_mastery_context("early_attack", current_lane)
+	EventBus.emit_signal("attack_timing_early_resolved", current_lane)
 	EventBus.emit_signal("screen_flash", Color(1.0, 0.15, 0.15, 0.05), 0.04)
 	chain_bypass_available = false
 	chain_bypass_timer = 0.0

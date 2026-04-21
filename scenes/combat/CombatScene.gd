@@ -1,5 +1,7 @@
 extends Node2D
 
+signal impact_fx_requested(kind: StringName, world_pos: Vector2, direction: Vector2, scale_mult: float)
+
 # ─── ONREADY NODES ───────────────────────────────────────────────────────────
 @onready var background: ColorRect = $Background
 @onready var flash_overlay: ColorRect = $FlashOverlay
@@ -61,6 +63,7 @@ const BOND_REMNANT_IDLE_VFRAMES: int = 4
 const BOND_REMNANT_IDLE_FRAME_DURATION: float = 0.10
 
 const COMBAT_HUD_PRESENTER = preload("res://systems/CombatHUDPresenter.gd")
+const IMPACT_FX_RUNTIME_SCENE: PackedScene = preload("res://systems/presentation/ImpactFxRuntime.tscn")
 
 # ─── STATE VARIABLES ─────────────────────────────────────────────────────────
 var _base_time_scale: float = 1.0
@@ -330,6 +333,8 @@ func _exit_tree() -> void:
 		EventBus.player_attacked.disconnect(_on_player_attacked)
 	if EventBus.timed_attack_resolved.is_connected(_on_timed_attack_resolved):
 		EventBus.timed_attack_resolved.disconnect(_on_timed_attack_resolved)
+	if EventBus.attack_timing_early_resolved.is_connected(_on_attack_timing_early_resolved):
+		EventBus.attack_timing_early_resolved.disconnect(_on_attack_timing_early_resolved)
 	if EventBus.player_parried.is_connected(_on_player_parried):
 		EventBus.player_parried.disconnect(_on_player_parried)
 	if EventBus.player_dodged.is_connected(_on_player_dodged):
@@ -444,6 +449,7 @@ func _initialize_ui() -> void:
 	_create_title_cards()
 	_create_timing_circle_container()
 	_create_attack_fx_container()
+	_create_impact_fx_runtime()
 	_setup_presentation_runtime()
 	_create_reward_overlay()
 	_create_upgrade_overlay()
@@ -2007,6 +2013,14 @@ func _create_attack_fx_container() -> void:
 	_attack_fx_container = _presentation_controller.create_attack_fx_container(self)
 
 
+func _create_impact_fx_runtime() -> void:
+	if get_node_or_null("ImpactFxRuntime") != null:
+		return
+	var ifx: Node = IMPACT_FX_RUNTIME_SCENE.instantiate()
+	ifx.name = "ImpactFxRuntime"
+	add_child(ifx)
+
+
 func _setup_presentation_runtime() -> void:
 	_presentation_runtime = COMBAT_PRESENTATION_RUNTIME.new(
 		flash_overlay,
@@ -2531,6 +2545,7 @@ func _connect_eventbus() -> void:
 	EventBus.slow_motion.connect(_on_slow_motion)
 	EventBus.player_attacked.connect(_on_player_attacked)
 	EventBus.timed_attack_resolved.connect(_on_timed_attack_resolved)
+	EventBus.attack_timing_early_resolved.connect(_on_attack_timing_early_resolved)
 	EventBus.player_parried.connect(_on_player_parried)
 	EventBus.player_dodged.connect(_on_player_dodged)
 	EventBus.player_no_stamina.connect(_on_player_no_stamina)
@@ -4620,6 +4635,7 @@ func _on_enemy_damaged(enemy_id: int, damage: float) -> void:
 	# Apply persistent low-HP tint before the damage flash so the flash restores to it.
 	var lane: int = int(_all_enemies_by_id.get(enemy_id, {}).get("lane", -1))
 	var is_boss_target: bool = _is_boss_encounter and _enemy_phase_by_id.has(enemy_id)
+	var boss_threshold_impact: bool = false
 	if lane >= 0:
 		var max_hp: float = float(_enemy_max_hp.get(enemy_id, 0))
 		if max_hp > 0.0:
@@ -4648,9 +4664,20 @@ func _on_enemy_damaged(enemy_id: int, damage: float) -> void:
 				_performance_reward_director.call("notify_boss_threshold", "sovereign_unleash", 8.0, "BOSS BREAK")
 			_presentation_runtime.apply_impact_profile(COMBAT_IMPACT_FEEDBACK.build_boss_threshold_profile())
 			_trigger_boss_threshold_spectacle()
+			boss_threshold_impact = true
 
 	_spawn_damage_number(enemy_id, damage)
 	_presentation_runtime.apply_impact_profile(COMBAT_IMPACT_FEEDBACK.build_enemy_hit_profile(damage, is_boss_target), lane, enemy_id)
+
+	var impact_pos: Vector2 = _impact_world_pos_for_enemy(enemy_id)
+	if impact_pos != Vector2.ZERO:
+		if is_boss_target:
+			if boss_threshold_impact:
+				impact_fx_requested.emit(&"boss", impact_pos, Vector2.LEFT, 1.36)
+			else:
+				impact_fx_requested.emit(&"boss", impact_pos, Vector2.LEFT, 1.02)
+		elif _enemy_is_elite_for_impact(enemy_id):
+			impact_fx_requested.emit(&"elite", impact_pos, Vector2.LEFT, 0.80)
 
 
 func _spawn_damage_number(enemy_id: int, damage: float) -> void:
@@ -4767,6 +4794,58 @@ func _on_slow_motion(scale: float, duration: float) -> void:
 	)
 
 
+func _impact_lane_forward(lane: int) -> Vector2:
+	if lane_manager == null or player_combat == null:
+		return Vector2.RIGHT
+	var start_point: Vector2 = player_combat.position + Vector2(10.0, -6.0)
+	var end_point: Vector2 = Vector2(
+		lane_manager.get_hit_zone_x() + 8.0,
+		lane_manager.get_lane_y(lane)
+	)
+	var delta: Vector2 = end_point - start_point
+	if delta.length_squared() < 1.0:
+		return Vector2.RIGHT
+	return delta.normalized()
+
+
+func _impact_pos_lane(lane: int, t: float = 0.52) -> Vector2:
+	if lane_manager == null or player_combat == null:
+		return Vector2.ZERO
+	var lane_y: float = lane_manager.get_lane_y(lane)
+	var hz: float = lane_manager.get_hit_zone_x() + 8.0
+	var px: float = player_combat.position.x + 10.0
+	return Vector2(lerpf(px, hz, t), lane_y - 6.0)
+
+
+func _impact_world_pos_for_enemy(enemy_id: int) -> Vector2:
+	var marker_data: Variant = _enemy_markers_by_id.get(enemy_id, null)
+	if marker_data == null or not marker_data is Dictionary:
+		return Vector2.ZERO
+	var root: Node2D = marker_data.get("root")
+	if not is_instance_valid(root):
+		return Vector2.ZERO
+	var body: ColorRect = marker_data.get("body")
+	if is_instance_valid(body):
+		return root.position + body.position + body.size * 0.5
+	return root.position
+
+
+func _enemy_is_elite_for_impact(enemy_id: int) -> bool:
+	var entry: Dictionary = _all_enemies_by_id.get(enemy_id, {})
+	var tags: Variant = entry.get("behaviour_tags", [])
+	if tags is Array:
+		return (tags as Array).has("elite")
+	return false
+
+
+func _on_attack_timing_early_resolved(lane: int) -> void:
+	if lane < 0 or lane > 2:
+		return
+	var fwd: Vector2 = _impact_lane_forward(lane)
+	var jitter: float = 0.06 if lane == 1 else -0.06
+	impact_fx_requested.emit(&"miss", _impact_pos_lane(lane, 0.36), fwd.rotated(jitter), 0.74)
+
+
 func _on_player_attacked(lane: int, _damage: float, was_timed: bool) -> void:
 	if was_timed:
 		_show_feedback("TIMED", Color(1.0, 0.95, 0.55, 1.0), 0.36)
@@ -4805,6 +4884,11 @@ func _on_timed_attack_resolved(lane: int, quality: String, damage: float) -> voi
 			var flow_damage: float = damage * float(flow_effect.get("value", 0.0))
 			lane_manager.damage_enemy(lane, flow_damage)
 
+	if quality == "perfect":
+		impact_fx_requested.emit(&"perfect", _impact_pos_lane(lane, 0.58), _impact_lane_forward(lane), 1.0)
+	elif quality == "good":
+		impact_fx_requested.emit(&"perfect", _impact_pos_lane(lane, 0.52), _impact_lane_forward(lane), 0.78)
+
 	_presentation_runtime.apply_impact_profile(COMBAT_IMPACT_FEEDBACK.build_timed_attack_profile(quality, beat_quality), lane, enemy_id)
 	
 	if quality == "perfect":
@@ -4833,15 +4917,23 @@ func _on_player_parried(lane: int, quality: String, _reflect_damage: float) -> v
 		if bq == "perfect" or bq == "good":
 			_show_beat_feedback("ON BEAT", Color(0.60, 0.94, 0.76, 1.0))
 
+	var parry_scale: float = 1.16 if quality == "perfect" else 1.0
+	impact_fx_requested.emit(&"parry", _impact_pos_lane(lane, 0.56), _impact_lane_forward(lane), parry_scale)
+
 	_presentation_runtime.apply_impact_profile(COMBAT_IMPACT_FEEDBACK.build_parry_profile(quality, bq), lane, enemy_id)
 	
 	if quality == "perfect":
 		_presentation_controller.on_combat_event(_bg_sprite, "perfect")
 
 
-func _on_player_dodged(_from_lane: int, to_lane: int) -> void:
+func _on_player_dodged(from_lane: int, to_lane: int) -> void:
 	_show_feedback("DODGE", Color(0.65, 0.85, 1.0, 1.0), 0.28)
 	_presentation_runtime.highlight_timing_ring(to_lane, Color(0.65, 0.85, 1.0, 1.0), 4.0)
+	var slip: Vector2 = Vector2(0.26, float(to_lane - from_lane))
+	if slip.y == 0.0:
+		slip.y = 1.0
+	var dodge_dir: Vector2 = slip.normalized()
+	impact_fx_requested.emit(&"dodge", _impact_pos_lane(to_lane, 0.40), dodge_dir, 0.90)
 	var bq: String = _get_beat_quality_for_action()
 	if bq == "perfect":
 		_show_beat_feedback("SLIP", Color(0.65, 0.85, 1.0, 1.0))

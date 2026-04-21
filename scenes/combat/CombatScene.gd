@@ -4031,9 +4031,9 @@ func _build_enemy_marker(enemy_id: int, lane: int, enemy: Dictionary, marker_siz
 				# Desaturated, dark silhouette that fits the procedural frame.
 				var render: Dictionary = COMBAT_CONTENT.get_creature_combat_render(species_id)
 				var marker_modulate: Color = Color(render.get("marker_modulate", base_color.darkened(0.4)))
-				sprite.modulate = marker_modulate
-				if not render.has("marker_modulate"):
-					sprite.modulate.a = 0.55
+				sprite.modulate = _tune_enemy_silhouette_color(marker_modulate, base_color)
+				# Enemy silhouettes must stay fully readable at lane scale.
+				sprite.modulate.a = 1.0
 				# Scale to fit inside the marker core.
 				sprite.scale = Vector2(render.get("scale", 0.052), render.get("scale", 0.052)) * (marker_size / 42.0)
 				# Offset it slightly so it doesn't obscure the accent/sigil shapes.
@@ -4085,6 +4085,29 @@ func _configure_enemy_marker_shape(accent: ColorRect, sigil: ColorRect, marker_s
 			sigil.position = Vector2(-half + 7.0, -half + 6.0)
 	accent.color.a = 0.18
 	sigil.color.a = 0.22
+
+
+func _tune_enemy_silhouette_color(requested: Color, body_color: Color) -> Color:
+	var tuned: Color = requested
+	var body_luma: float = body_color.get_luminance()
+	var tuned_luma: float = tuned.get_luminance()
+
+	# Keep silhouettes readable but prevent eye-searing whites in bright biomes.
+	if tuned_luma < 0.34:
+		tuned = tuned.lightened(min((0.34 - tuned_luma) * 1.15, 0.28))
+	elif tuned_luma > 0.78:
+		tuned = tuned.darkened(min((tuned_luma - 0.78) * 1.35, 0.30))
+
+	tuned_luma = tuned.get_luminance()
+	var luma_delta: float = abs(tuned_luma - body_luma)
+	if luma_delta < 0.16:
+		var push: float = min((0.16 - luma_delta) + 0.06, 0.24)
+		if body_luma >= 0.50:
+			tuned = tuned.darkened(push)
+		else:
+			tuned = tuned.lightened(push)
+
+	return tuned
 
 
 func _update_enemy_marker_threat_states() -> void:

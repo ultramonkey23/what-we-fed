@@ -77,7 +77,8 @@ const CREATURES := {
 		   "scale": 0.058,
 		   "world_offset": Vector2(-116.0, 82.0),
 		   "z_index": 6,
-		   "modulate": Color(0.92, 0.91, 0.88, 0.90)
+		   "modulate": Color(0.92, 0.91, 0.88, 0.90),
+		   "marker_modulate": Color(0.96, 0.93, 0.88, 0.94)
 	   },
 	   "eat_effect": {"type": "damage_flat", "value": 2.0},
 	   "mutation": {
@@ -119,7 +120,8 @@ const CREATURES := {
 			   "scale": 0.062,
 			   "world_offset": Vector2(-124.0, 88.0),
 			   "z_index": 6,
-			   "modulate": Color(0.84, 0.88, 1.0, 0.85)
+			   "modulate": Color(0.84, 0.88, 1.0, 0.85),
+			   "marker_modulate": Color(0.88, 0.92, 1.0, 0.93)
 		   },
 		   "eat_effect": {"type": "damage_flat", "value": 1.0},
 		   "mutation": {

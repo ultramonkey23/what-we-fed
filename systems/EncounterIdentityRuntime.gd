@@ -177,6 +177,9 @@ static func _build_scaled_song_level_phases(
 	var projectile_speed_mult: float = float(scaling.get("enemy_projectile_speed_mult", 1.0))
 	var grade_ceiling_id: String = POTENTIAL_GATE.normalize_grade_id(String(options.get("grade_ceiling_id", POTENTIAL_GATE.GRADE_ALPHA)))
 	var elite_mode: bool = bool(options.get("elite", false))
+	var difficulty_modifiers: Dictionary = Dictionary(options.get("difficulty_modifiers", {}))
+	var threat_quality_band: Dictionary = Dictionary(difficulty_modifiers.get("threat_quality", {}))
+	var high_grade_weight_mult: float = clampf(float(threat_quality_band.get("high_grade_weight_mult", 1.0)), 0.7, 2.0)
 	if elite_mode:
 		cycle_mult *= float(options.get("cycle_interval_mult", 0.92))
 		threat_bonus += int(options.get("max_active_threats_bonus", 1))
@@ -198,6 +201,8 @@ static func _build_scaled_song_level_phases(
 			var scaled_enemy: Dictionary = Dictionary(enemy).duplicate(true)
 			var enemy_grade_id: String = String(scaled_enemy.get("grade", POTENTIAL_GATE.GRADE_MATURE))
 			scaled_enemy["grade"] = POTENTIAL_GATE.clamp_grade_id(enemy_grade_id, grade_ceiling_id)
+			if String(scaled_enemy.get("grade", POTENTIAL_GATE.GRADE_BROOD)) == POTENTIAL_GATE.GRADE_ALPHA:
+				scaled_enemy["weight"] = float(scaled_enemy.get("weight", 1.0)) * high_grade_weight_mult
 			scaled_enemy["hp"] = float(scaled_enemy.get("hp", 28.0)) * hp_mult
 			scaled_enemy["damage"] = float(scaled_enemy.get("damage", 8.0)) * damage_mult
 			if scaled_enemy.has("projectile_speed"):

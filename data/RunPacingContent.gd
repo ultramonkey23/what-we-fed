@@ -113,6 +113,81 @@ const REGION_LEVEL_SCALING: Dictionary = {
 	]
 }
 
+# Typed run-pressure bands for Difficulty Modifier Director v1.
+# These bands are consumed by runtime systems (cadence, quality, lane pressure,
+# punish severity, reward pressure) and intentionally avoid broad stat sludge.
+const REGION_DIFFICULTY_BANDS: Dictionary = {
+	"feeding_hollow": [
+		{
+			"threat_cadence": {"cycle_interval_mult": 1.00, "fire_stagger_mult": 1.00, "section_spawn_mult": 1.00},
+			"threat_quality": {"high_grade_weight_mult": 1.00, "clutch_species_weight_mult": 1.00},
+			"lane_pressure": {"respawn_delay_mult": 1.00, "max_active_threats_bonus": 0},
+			"punish_severity": {"projectile_damage_mult": 1.00},
+			"reward_pressure": {"offer_decay_mult": 1.00, "level_choice_delta": 0}
+		},
+		{
+			"threat_cadence": {"cycle_interval_mult": 0.94, "fire_stagger_mult": 0.97, "section_spawn_mult": 0.98},
+			"threat_quality": {"high_grade_weight_mult": 1.10, "clutch_species_weight_mult": 1.08},
+			"lane_pressure": {"respawn_delay_mult": 0.92, "max_active_threats_bonus": 0},
+			"punish_severity": {"projectile_damage_mult": 1.06},
+			"reward_pressure": {"offer_decay_mult": 1.08, "level_choice_delta": 0}
+		},
+		{
+			"threat_cadence": {"cycle_interval_mult": 0.88, "fire_stagger_mult": 0.94, "section_spawn_mult": 0.95},
+			"threat_quality": {"high_grade_weight_mult": 1.20, "clutch_species_weight_mult": 1.15},
+			"lane_pressure": {"respawn_delay_mult": 0.82, "max_active_threats_bonus": 1},
+			"punish_severity": {"projectile_damage_mult": 1.12},
+			"reward_pressure": {"offer_decay_mult": 1.16, "level_choice_delta": -1}
+		}
+	],
+	"pale_shelf": [
+		{
+			"threat_cadence": {"cycle_interval_mult": 1.00, "fire_stagger_mult": 1.00, "section_spawn_mult": 1.00},
+			"threat_quality": {"high_grade_weight_mult": 1.00, "clutch_species_weight_mult": 1.00},
+			"lane_pressure": {"respawn_delay_mult": 1.00, "max_active_threats_bonus": 0},
+			"punish_severity": {"projectile_damage_mult": 1.00},
+			"reward_pressure": {"offer_decay_mult": 1.00, "level_choice_delta": 0}
+		},
+		{
+			"threat_cadence": {"cycle_interval_mult": 0.96, "fire_stagger_mult": 0.98, "section_spawn_mult": 0.99},
+			"threat_quality": {"high_grade_weight_mult": 1.12, "clutch_species_weight_mult": 1.05},
+			"lane_pressure": {"respawn_delay_mult": 0.94, "max_active_threats_bonus": 0},
+			"punish_severity": {"projectile_damage_mult": 1.07},
+			"reward_pressure": {"offer_decay_mult": 1.10, "level_choice_delta": 0}
+		},
+		{
+			"threat_cadence": {"cycle_interval_mult": 0.92, "fire_stagger_mult": 0.96, "section_spawn_mult": 0.96},
+			"threat_quality": {"high_grade_weight_mult": 1.24, "clutch_species_weight_mult": 1.10},
+			"lane_pressure": {"respawn_delay_mult": 0.88, "max_active_threats_bonus": 1},
+			"punish_severity": {"projectile_damage_mult": 1.14},
+			"reward_pressure": {"offer_decay_mult": 1.20, "level_choice_delta": -1}
+		}
+	],
+	"drowned_cut": [
+		{
+			"threat_cadence": {"cycle_interval_mult": 1.00, "fire_stagger_mult": 1.00, "section_spawn_mult": 1.00},
+			"threat_quality": {"high_grade_weight_mult": 1.00, "clutch_species_weight_mult": 1.00},
+			"lane_pressure": {"respawn_delay_mult": 1.00, "max_active_threats_bonus": 0},
+			"punish_severity": {"projectile_damage_mult": 1.00},
+			"reward_pressure": {"offer_decay_mult": 1.00, "level_choice_delta": 0}
+		},
+		{
+			"threat_cadence": {"cycle_interval_mult": 0.93, "fire_stagger_mult": 0.96, "section_spawn_mult": 0.97},
+			"threat_quality": {"high_grade_weight_mult": 1.08, "clutch_species_weight_mult": 1.12},
+			"lane_pressure": {"respawn_delay_mult": 0.88, "max_active_threats_bonus": 0},
+			"punish_severity": {"projectile_damage_mult": 1.05},
+			"reward_pressure": {"offer_decay_mult": 1.12, "level_choice_delta": 0}
+		},
+		{
+			"threat_cadence": {"cycle_interval_mult": 0.86, "fire_stagger_mult": 0.92, "section_spawn_mult": 0.93},
+			"threat_quality": {"high_grade_weight_mult": 1.18, "clutch_species_weight_mult": 1.18},
+			"lane_pressure": {"respawn_delay_mult": 0.78, "max_active_threats_bonus": 1},
+			"punish_severity": {"projectile_damage_mult": 1.10},
+			"reward_pressure": {"offer_decay_mult": 1.18, "level_choice_delta": -1}
+		}
+	]
+}
+
 
 static func get_phase_start_fractions() -> Array[float]:
 	return LEVEL_PHASE_START_FRACTIONS.duplicate()
@@ -122,6 +197,12 @@ static func get_level_scaling(region_id: String, level_index: int) -> Dictionary
 	var region_scaling: Array = REGION_LEVEL_SCALING[region_id] if REGION_LEVEL_SCALING.has(region_id) else REGION_LEVEL_SCALING["feeding_hollow"]
 	var resolved_index: int = clampi(level_index, 0, region_scaling.size() - 1)
 	return Dictionary(region_scaling[resolved_index]).duplicate(true)
+
+
+static func get_level_difficulty_modifiers(region_id: String, level_index: int) -> Dictionary:
+	var region_bands: Array = REGION_DIFFICULTY_BANDS[region_id] if REGION_DIFFICULTY_BANDS.has(region_id) else REGION_DIFFICULTY_BANDS["feeding_hollow"]
+	var resolved_index: int = clampi(level_index, 0, region_bands.size() - 1)
+	return Dictionary(region_bands[resolved_index]).duplicate(true)
 
 
 static func build_regular_level_windows(region_id: String, song_duration: float) -> Array:

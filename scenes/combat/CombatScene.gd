@@ -35,6 +35,8 @@ const ENCOUNTER_IDENTITY_RUNTIME = preload("res://systems/EncounterIdentityRunti
 const UI_STYLE = preload("res://systems/UIStyle.gd")
 const COMBAT_AUDIO_PLAYER = preload("res://systems/CombatAudioPlayer.gd")
 const ENCOUNTER_ESCALATION_DIRECTOR = preload("res://systems/EncounterEscalationDirector.gd")
+const MUSIC_CONTROL_LAYER = preload("res://systems/MusicControlLayer.gd")
+const DIFFICULTY_MODIFIER_DIRECTOR = preload("res://systems/DifficultyModifierDirector.gd")
 const SUPPORT_EFFECT_RESOLVER = preload("res://systems/SupportEffectResolver.gd")
 const PATH_RUN_PLAN = preload("res://systems/PathRunPlan.gd")
 const POTENTIAL_GATE = preload("res://systems/PotentialGate.gd")
@@ -52,6 +54,9 @@ const LIVE_REWARD_WINDOW: float = 10.0
 const DNA_HUD_VISIBLE_SLOTS: int = 2
 const DNA_PER_KILL: float = 2.5
 const HUD_PANEL_VISIBLE_ALPHA_THRESHOLD: float = 0.08
+const BOND_REMNANT_IDLE_HFRAMES: int = 6
+const BOND_REMNANT_IDLE_VFRAMES: int = 4
+const BOND_REMNANT_IDLE_FRAME_DURATION: float = 0.10
 
 const COMBAT_HUD_PRESENTER = preload("res://systems/CombatHUDPresenter.gd")
 
@@ -230,7 +235,12 @@ var _escalation_director: Node = null
 var _support_resolver: RefCounted = null
 var _song_phase_dna_award_index: int = 0
 var _song_section_spawn_mult: float = 1.0
+var _song_level_start_time: float = 0.0
 var _song_level_end_time: float = 0.0
+var _base_difficulty_modifiers: Dictionary = {}
+var _difficulty_modifiers: Dictionary = {}
+var _music_control_layer: RefCounted = null
+var _difficulty_modifier_director: RefCounted = null
 var _last_beat_index: int = -1
 var _song_level_transitioning: bool = false
 var _regular_level_windows: Array = []
@@ -241,6 +251,7 @@ var _quig_anim_accum: float = 0.0
 var _quig_anim_frame: int = 0
 var _dna_anim_accum: float = 0.0
 var _dna_anim_frame: int = 0
+var _bonded_creature_anim_accum: float = 0.0
 
 # ─── BOSS MUSIC & HUD ────────────────────────────────────────────────────────
 var _boss_music_player: AudioStreamPlayer = null
@@ -359,6 +370,7 @@ func _initialize_systems() -> void:
 	_setup_run_stats()
 	_setup_performance_rewards()
 	_setup_escalation_director()
+	_setup_music_difficulty_layers()
 	_setup_support_resolver()
 
 
@@ -395,6 +407,13 @@ func _setup_escalation_director() -> void:
 	_escalation_director.phase_changed.connect(_on_escalation_phase_changed)
 	_escalation_director.spawn_requested.connect(_on_escalation_spawn_requested)
 	_escalation_director.feedback_requested.connect(_on_escalation_feedback_requested)
+
+
+func _setup_music_difficulty_layers() -> void:
+	if _music_control_layer == null:
+		_music_control_layer = MUSIC_CONTROL_LAYER.new()
+	if _difficulty_modifier_director == null:
+		_difficulty_modifier_director = DIFFICULTY_MODIFIER_DIRECTOR.new()
 
 
 func _on_escalation_phase_changed(index: int, _phase_data: Dictionary) -> void:
@@ -449,6 +468,7 @@ func _process(delta: float) -> void:
 	_update_song_logic(delta)
 	_update_boss_race(delta)
 	_tick_hud_sprite_animation(delta)
+	_tick_bonded_creature_animation(delta)
 
 
 func _update_timers(delta: float) -> void:
@@ -493,6 +513,8 @@ func _update_performance_systems(delta: float) -> void:
 func _update_song_logic(delta: float) -> void:
 	if not _song_mode or _run_finished:
 		return
+	if _music_control_layer != null and _music_control_layer.has_method("process_tick"):
+		_music_control_layer.call("process_tick", delta)
 		
 	if not _song_paused:
 		if _song_conductor != null:
@@ -522,6 +544,7 @@ func _update_song_logic(delta: float) -> void:
 		_update_song_hud()
 		_recover_stalled_cycles()
 		_update_timing_debug()
+		_rebuild_music_driven_difficulty()
 
 
 func _update_timing_debug() -> void:
@@ -534,7 +557,27 @@ func _update_timing_debug() -> void:
 
 	var quality: String = _song_conductor.get_beat_quality()
 	var phase: float = _song_conductor.get_beat_phase()
-	_timing_debug_label.text = "Beat: %s (%.2f)" % [quality.to_upper(), phase]
+	var debug_text: String = "Beat: %s (%.2f)" % [quality.to_upper(), phase]
+	if _music_control_layer != null and _difficulty_modifier_director != null and not _base_difficulty_modifiers.is_empty():
+		var music_state: Dictionary = _music_control_layer.call("build_state")
+		var progression_state: Dictionary = _build_music_progression_state()
+		var run_progress: float = float(progression_state.get("run_progress", 0.0))
+		var skill_expression: float = float(progression_state.get("skill_expression", 0.5))
+		var phrase_intensity: float = float(music_state.get("phrase_intensity", 0.0))
+		var section_mood: String = String(music_state.get("section_mood", "steady"))
+		var tempo_band: String = String(music_state.get("tempo_band", "mid"))
+		var accent_window: float = float(music_state.get("accent_window", 0.0))
+		var escalation_window: float = float(music_state.get("escalation_window", 0.0))
+		debug_text += "\nDir: %s/%s  RP %.2f  SK %.2f  PI %.2f  A %.2f  E %.2f" % [
+			tempo_band,
+			section_mood,
+			run_progress,
+			skill_expression,
+			phrase_intensity,
+			accent_window,
+			escalation_window
+		]
+	_timing_debug_label.text = debug_text
 	match quality:
 		"perfect":
 			_timing_debug_label.modulate = Color(0.6, 1.0, 0.6, 0.8)
@@ -2978,6 +3021,12 @@ func _start_song_run() -> void:
 	_song_enemy_lanes.clear()
 	_song_rng.randomize()
 	_song_section_spawn_mult = 1.0
+	_song_level_start_time = 0.0
+	_song_level_end_time = 0.0
+	_base_difficulty_modifiers = {}
+	_difficulty_modifiers = {}
+	if _music_control_layer != null and _music_control_layer.has_method("reset"):
+		_music_control_layer.call("reset")
 	_clear_mastery_context_cache()
 
 	var region_id: String = String(GameState.active_region.get("id", "feeding_hollow"))
@@ -3026,6 +3075,7 @@ func _start_regular_level(level_index: int, reset_hp: bool) -> void:
 	var level_duration: float = float(level_window.get("duration", RUN_PACING_CONTENT.MAX_REGULAR_LEVEL_DURATION_SECONDS))
 	var level_start: float = float(level_window.get("start_time", 0.0))
 	var level_end: float = float(level_window.get("end_time", level_start + level_duration))
+	_song_level_start_time = level_start
 	_song_level_end_time = level_end
 	_song_section_spawn_mult = 1.0
 	_song_phase_index = -1
@@ -3039,6 +3089,8 @@ func _start_regular_level(level_index: int, reset_hp: bool) -> void:
 	lane_manager.set_song_mode_enabled(true)
 
 	var encounter_options: Dictionary = Dictionary(_active_path_context.get("encounter_options", {})).duplicate(true)
+	_base_difficulty_modifiers = _build_level_difficulty_modifiers(encounter_options)
+	encounter_options["difficulty_modifiers"] = _base_difficulty_modifiers.duplicate(true)
 	var active_creature: Dictionary = GameState.get_active_bonded_creature()
 	var grade_ceiling_id: String = POTENTIAL_GATE.resolve_grade_ceiling(
 		active_creature,
@@ -3079,6 +3131,7 @@ func _start_regular_level(level_index: int, reset_hp: bool) -> void:
 	if _escalation_director != null:
 		_escalation_director.setup(_region_id, _song_phases, _song_rng)
 		_escalation_director.start(level_start)
+	_rebuild_music_driven_difficulty()
 
 	lane_manager.set_song_mode_enabled(true)
 
@@ -3467,6 +3520,13 @@ func _start_song_conductor(start_time: float = 0.0, end_time: float = -1.0) -> v
 	_song_conductor.final_movement_reached.connect(_on_conductor_final_movement)
 	_song_conductor.accent_fired.connect(_on_conductor_accent_fired)
 	_song_conductor.start(_active_song_map, start_time, end_time)
+	if _music_control_layer != null:
+		if "BPM" in _active_song_map and _music_control_layer.has_method("set_bpm"):
+			_music_control_layer.call("set_bpm", float(_active_song_map.BPM))
+		if _music_control_layer.has_method("notify_section"):
+			_music_control_layer.call("notify_section", String(_song_conductor.current_section_id), {
+				"intensity": float(_song_conductor.current_intensity)
+			})
 	player_combat.call("set_song_conductor", _song_conductor)
 	if _song_conductor != null:
 		_hud_presenter.update_song_timer(max(_song_conductor.get_final_movement_time() - start_time, 0.0))
@@ -3491,10 +3551,13 @@ func _on_conductor_section_changed(section_id: String, data: Dictionary) -> void
 	# Section changes are used as cadence modulation only.
 	# Regular-level phase transitions are time-authored per level window.
 	_song_section_spawn_mult = float(data.get("spawn_interval_mult", 1.0))
-	if _song_phase_index >= 0 and _song_phase_index < _song_phases.size():
-		_apply_song_phase_cadence(_song_phases[_song_phase_index], _song_section_spawn_mult)
 	if section_id == "final":
 		_song_section_spawn_mult = min(_song_section_spawn_mult, 0.86)
+	if _music_control_layer != null and _music_control_layer.has_method("notify_section"):
+		_music_control_layer.call("notify_section", section_id, data)
+	_rebuild_music_driven_difficulty()
+	if _song_phase_index >= 0 and _song_phase_index < _song_phases.size():
+		_apply_song_phase_cadence(_song_phases[_song_phase_index], _song_section_spawn_mult)
 
 
 func _on_conductor_final_movement() -> void:
@@ -3508,6 +3571,9 @@ func _on_conductor_accent_fired() -> void:
 	# Pull forward the next authored threat cycle.
 	if not _song_mode or _run_finished:
 		return
+	if _music_control_layer != null and _music_control_layer.has_method("notify_accent"):
+		_music_control_layer.call("notify_accent")
+	_rebuild_music_driven_difficulty()
 		
 	if lane_manager != null and is_instance_valid(lane_manager):
 		lane_manager.trigger_accent_burst()
@@ -5557,6 +5623,18 @@ func _tick_hud_sprite_animation(delta: float) -> void:
 		_dna_anim_accum = 0.0
 
 
+func _tick_bonded_creature_animation(delta: float) -> void:
+	if _bonded_creature_sprite == null or not _bonded_creature_sprite.visible:
+		return
+	var frame_count: int = _bonded_creature_sprite.hframes * _bonded_creature_sprite.vframes
+	if frame_count <= 1:
+		return
+	_bonded_creature_anim_accum += delta
+	if _bonded_creature_anim_accum >= BOND_REMNANT_IDLE_FRAME_DURATION:
+		_bonded_creature_anim_accum = fmod(_bonded_creature_anim_accum, BOND_REMNANT_IDLE_FRAME_DURATION)
+		_bonded_creature_sprite.frame = (_bonded_creature_sprite.frame + 1) % frame_count
+
+
 func _apply_strip_frame(target: TextureRect, frame_size: Vector2i, frame: int) -> void:
 	if target == null or not is_instance_valid(target):
 		return
@@ -5618,6 +5696,10 @@ func _refresh_bonded_creature_render(active_species_id: String = "") -> void:
 		_bonded_creature_species = ""
 		_bonded_creature_sprite.visible = false
 		_bonded_creature_sprite.texture = null
+		_bonded_creature_sprite.hframes = 1
+		_bonded_creature_sprite.vframes = 1
+		_bonded_creature_sprite.frame = 0
+		_bonded_creature_anim_accum = 0.0
 		return
 
 	var bonded: Dictionary = GameState.get_active_bonded_creature()
@@ -5626,10 +5708,18 @@ func _refresh_bonded_creature_render(active_species_id: String = "") -> void:
 	var portrait_key: String = "%s_%s" % [species_id, growth_stage]
 
 	var sprite_path: String = COMBAT_CONTENT.get_creature_art_path(species_id, "battlefield", growth_stage)
+	if species_id == "bond_remnant" and growth_stage == "baby":
+		var remnant_fallback_path: String = "res://assets/creatures/bond_remnant/forms/bond_remnant_adult.png"
+		if ResourceLoader.exists(remnant_fallback_path):
+			sprite_path = remnant_fallback_path
 	if sprite_path.is_empty() or not ResourceLoader.exists(sprite_path):
 		_bonded_creature_species = species_id
 		_bonded_creature_sprite.visible = false
 		_bonded_creature_sprite.texture = null
+		_bonded_creature_sprite.hframes = 1
+		_bonded_creature_sprite.vframes = 1
+		_bonded_creature_sprite.frame = 0
+		_bonded_creature_anim_accum = 0.0
 		return
 
 	if portrait_key != _bonded_creature_species:
@@ -5637,9 +5727,21 @@ func _refresh_bonded_creature_render(active_species_id: String = "") -> void:
 		if render_tex == null:
 			_bonded_creature_sprite.visible = false
 			_bonded_creature_sprite.texture = null
+			_bonded_creature_sprite.hframes = 1
+			_bonded_creature_sprite.vframes = 1
+			_bonded_creature_sprite.frame = 0
+			_bonded_creature_anim_accum = 0.0
 			return
 		_bonded_creature_species = portrait_key
 		_bonded_creature_sprite.texture = render_tex
+		if species_id == "bond_remnant" and growth_stage == "baby" and sprite_path.ends_with("bond_remnant_idle.png"):
+			_bonded_creature_sprite.hframes = BOND_REMNANT_IDLE_HFRAMES
+			_bonded_creature_sprite.vframes = BOND_REMNANT_IDLE_VFRAMES
+		else:
+			_bonded_creature_sprite.hframes = 1
+			_bonded_creature_sprite.vframes = 1
+		_bonded_creature_sprite.frame = 0
+		_bonded_creature_anim_accum = 0.0
 
 	var render_config: Dictionary = COMBAT_CONTENT.get_creature_combat_render(species_id)
 	var world_offset: Vector2 = render_config.get("world_offset", Vector2(-108.0, 74.0))
@@ -5659,8 +5761,130 @@ func _refresh_bonded_creature_render(active_species_id: String = "") -> void:
 func _apply_song_phase_cadence(phase: Dictionary, spawn_mult: float = 1.0) -> void:
 	var base_interval: float = float(phase.get("cycle_interval", 2.2))
 	var base_stagger: float = float(phase.get("fire_stagger", 0.45))
-	lane_manager.set_cycle_interval(base_interval * spawn_mult)
-	lane_manager.set_fire_stagger(base_stagger)
+	var cadence_band: Dictionary = Dictionary(_difficulty_modifiers.get("threat_cadence", {}))
+	var cadence_mult: float = clampf(float(cadence_band.get("cycle_interval_mult", 1.0)), 0.75, 1.35)
+	var stagger_mult: float = clampf(float(cadence_band.get("fire_stagger_mult", 1.0)), 0.85, 1.15)
+	lane_manager.set_cycle_interval(base_interval * spawn_mult * cadence_mult)
+	lane_manager.set_fire_stagger(base_stagger * stagger_mult)
+
+
+func _build_music_progression_state() -> Dictionary:
+	var total_levels: int = max(_regular_level_windows.size(), 1)
+	var level_ratio: float = clampf(float(_regular_level_index) / float(max(total_levels - 1, 1)), 0.0, 1.0)
+	var level_duration: float = max(_song_level_end_time - _song_level_start_time, 0.001)
+	var level_progress: float = clampf((_song_elapsed - _song_level_start_time) / level_duration, 0.0, 1.0)
+	var run_progress: float = clampf((float(_regular_level_index) + level_progress) / float(total_levels), 0.0, 1.0)
+	return {
+		"run_progress": run_progress,
+		"level_progress": level_progress,
+		"level_index_ratio": level_ratio,
+		"skill_expression": _estimate_player_skill_expression()
+	}
+
+
+func _estimate_player_skill_expression() -> float:
+	if combat_meter == null or not is_instance_valid(combat_meter):
+		return 0.5
+	var combo_norm: float = clampf(float(combat_meter.get("combo_count")) / 24.0, 0.0, 1.0)
+	var phrase_norm: float = clampf(float(combat_meter.get("phrase_count")) / 8.0, 0.0, 1.0)
+	var tier_value: float = 0.20
+	if combat_meter.has_method("get_current_tier"):
+		match String(combat_meter.call("get_current_tier")):
+			"hunting":
+				tier_value = 0.40
+			"rampage":
+				tier_value = 0.62
+			"apex":
+				tier_value = 0.82
+			"sovereign":
+				tier_value = 0.96
+	var beat_value: float = 0.55
+	if _song_conductor != null and is_instance_valid(_song_conductor) and _song_conductor.has_method("is_beat_active") and _song_conductor.is_beat_active():
+		match String(_song_conductor.get_beat_quality()):
+			"perfect":
+				beat_value = 1.0
+			"good":
+				beat_value = 0.74
+			_:
+				beat_value = 0.38
+	var skill: float = combo_norm * 0.38 + phrase_norm * 0.30 + tier_value * 0.22 + beat_value * 0.10
+	return clampf(skill, 0.0, 1.0)
+
+
+func _rebuild_music_driven_difficulty() -> void:
+	if _difficulty_modifier_director == null or _music_control_layer == null:
+		return
+	if _base_difficulty_modifiers.is_empty():
+		return
+	var music_state: Dictionary = _music_control_layer.call("build_state")
+	var progression_state: Dictionary = _build_music_progression_state()
+	var new_modifiers: Dictionary = _difficulty_modifier_director.call(
+		"compute_active_modifiers",
+		_base_difficulty_modifiers,
+		music_state,
+		progression_state
+	)
+	if new_modifiers == _difficulty_modifiers:
+		return
+	_difficulty_modifiers = new_modifiers
+	_apply_difficulty_modifiers_to_runtime()
+	if _song_phase_index >= 0 and _song_phase_index < _song_phases.size():
+		_apply_song_phase_cadence(_song_phases[_song_phase_index], _song_section_spawn_mult)
+
+
+func _build_level_difficulty_modifiers(encounter_options: Dictionary) -> Dictionary:
+	var scaling: Dictionary = RUN_PACING_CONTENT.get_level_scaling(_region_id, _regular_level_index)
+	var quality_mult_by_level: Array[float] = [1.0, 1.10, 1.20]
+	var clutch_mult_by_level: Array[float] = [1.0, 1.08, 1.15]
+	var respawn_mult_by_level: Array[float] = [1.0, 0.92, 0.82]
+	var reward_decay_by_level: Array[float] = [1.0, 1.08, 1.16]
+	var reward_choice_delta_by_level: Array[int] = [0, 0, -1]
+	var idx: int = clampi(_regular_level_index, 0, quality_mult_by_level.size() - 1)
+	var mods: Dictionary = {
+		"threat_cadence": {
+			"cycle_interval_mult": float(scaling.get("cycle_interval_mult", 1.0)),
+			"fire_stagger_mult": float(scaling.get("fire_stagger_mult", 1.0))
+		},
+		"threat_quality": {
+			"high_grade_weight_mult": quality_mult_by_level[idx],
+			"clutch_species_weight_mult": clutch_mult_by_level[idx]
+		},
+		"lane_pressure": {
+			"respawn_delay_mult": respawn_mult_by_level[idx],
+			"max_active_threats_bonus": int(scaling.get("max_active_threats_bonus", 0))
+		},
+		"punish_severity": {
+			"projectile_damage_mult": float(scaling.get("enemy_damage_mult", 1.0))
+		},
+		"reward_pressure": {
+			"offer_decay_mult": reward_decay_by_level[idx],
+			"level_choice_delta": reward_choice_delta_by_level[idx]
+		}
+	}
+	if bool(encounter_options.get("elite", false)):
+		var quality_band: Dictionary = Dictionary(mods.get("threat_quality", {}))
+		quality_band["high_grade_weight_mult"] = float(quality_band.get("high_grade_weight_mult", 1.0)) * 1.12
+		mods["threat_quality"] = quality_band
+
+		var lane_band: Dictionary = Dictionary(mods.get("lane_pressure", {}))
+		lane_band["respawn_delay_mult"] = float(lane_band.get("respawn_delay_mult", 1.0)) * 0.90
+		lane_band["max_active_threats_bonus"] = int(lane_band.get("max_active_threats_bonus", 0)) + 1
+		mods["lane_pressure"] = lane_band
+
+		var reward_band: Dictionary = Dictionary(mods.get("reward_pressure", {}))
+		reward_band["level_choice_delta"] = int(reward_band.get("level_choice_delta", 0)) - 1
+		mods["reward_pressure"] = reward_band
+	return mods
+
+
+func _apply_difficulty_modifiers_to_runtime() -> void:
+	if _escalation_director != null and is_instance_valid(_escalation_director) and _escalation_director.has_method("set_difficulty_modifiers"):
+		_escalation_director.call("set_difficulty_modifiers", _difficulty_modifiers)
+	if _performance_reward_director != null and is_instance_valid(_performance_reward_director) and _performance_reward_director.has_method("set_difficulty_modifiers"):
+		_performance_reward_director.call("set_difficulty_modifiers", _difficulty_modifiers)
+	if lane_manager != null and is_instance_valid(lane_manager) and lane_manager.has_method("set_punish_damage_mult"):
+		var punish_band: Dictionary = Dictionary(_difficulty_modifiers.get("punish_severity", {}))
+		lane_manager.call("set_punish_damage_mult", float(punish_band.get("projectile_damage_mult", 1.0)))
 
 
 func _clear_mastery_context_cache() -> void:
@@ -5795,6 +6019,9 @@ func _on_bonded_support_triggered(species_id: String, lane: int, effect_id: Stri
 
 
 func _on_phrase_milestone(count: int) -> void:
+	if _music_control_layer != null and _music_control_layer.has_method("notify_phrase_marker"):
+		_music_control_layer.call("notify_phrase_marker", count)
+	_rebuild_music_driven_difficulty()
 	# Consecutive quality action chain announcements.
 	if count >= 8:
 		_show_beat_feedback("FLOW STATE", Color(1.0, 0.88, 0.40, 1.0))

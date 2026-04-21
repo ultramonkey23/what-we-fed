@@ -405,9 +405,9 @@ func _try_parry() -> void:
 	_show_parry_image()
 	_emit_mastery_context("parry", current_lane, quality, beat)
 
-	parry_followup_active = true
-	parry_followup_timer = followup_window
-	parry_followup_damage = reflect_damage
+	# Trigger the new counter-warp v1 automatically on projectile parry.
+	# This consolidates parry and counter into one aggressive motion.
+	_trigger_parry_counter_warp(current_lane, reflect_damage, quality)
 
 	EventBus.emit_signal("player_parried", current_lane, quality, reflect_damage)
 
@@ -615,6 +615,61 @@ func _fire_parry_followup(combo_mult: float) -> void:
 
 	_grant_chain_bypass()
 	_lock_action(TIMED_ATTACK_RECOVERY, "parry_followup")
+
+
+func _trigger_parry_counter_warp(target_lane: int, damage: float, quality: String) -> void:
+	# Automated physical counter-strike on projectile parry.
+	# This feels like one cohesive movement from parry to strike.
+	# Sequencing: Parry Impact -> Short Freeze (Hit-Stop) -> Warp Strike.
+	
+	# 1. Hit-Stop: Momentarily freeze the action to sell the parry's weight.
+	# Perfect parries get a deeper freeze for extra "premium" feel.
+	var is_perfect: bool = (quality == "perfect")
+	var freeze_dur: float = 0.12 if is_perfect else 0.08
+	var freeze_scale: float = 0.05 if is_perfect else 0.12
+	
+	EventBus.emit_signal("slow_motion", freeze_scale, freeze_dur)
+	EventBus.emit_signal("screen_flash", Color(1.0, 1.0, 1.0, 0.20 if is_perfect else 0.12), 0.05)
+
+	# 2. Sequential Strike: Execute the warp-attack after a tiny beat.
+	var warp_timer := get_tree().create_timer(0.06)
+	warp_timer.timeout.connect(func():
+		_play_counter_warp_state(target_lane)
+		
+		# SFX: Dash/Warp sound cue.
+		EventBus.emit_signal("play_sfx", "player_warp")
+		
+		# Ghosting: Flash a bright cyan/white tint during the dash.
+		_flash_sprite_color(Color(1.5, 2.0, 2.0, 1.0), 0.12)
+		
+		# Resolve the physical strike.
+		lane_manager.call("damage_enemy", target_lane, damage)
+		EventBus.emit_signal("player_attacked", target_lane, damage, true)
+		
+		# Feedback: Strong punch for the actual hit resolution.
+		EventBus.emit_signal("screen_shake", 5.0 if is_perfect else 3.0, 0.12 if is_perfect else 0.08)
+		EventBus.emit_signal("screen_flash", Color(1.0, 0.95, 0.70, 0.15 if is_perfect else 0.10), 0.06)
+	)
+
+
+func _play_counter_warp_state(target_lane: int) -> void:
+	# High-speed warp forward and weighted return.
+	# Instead of a hardcoded offset, we reach into the enemy zone.
+	var enemy_x: float = lane_manager.call("get_enemy_x")
+	var hit_zone_x: float = lane_manager.call("get_hit_zone_x")
+	# Strike target is slightly in front of the actual enemy anchor.
+	var strike_x: float = enemy_x - (enemy_x - hit_zone_x) * 0.15
+	# Relative offset from player's anchor for _action_world_position calculation.
+	var local_reach_x: float = strike_x - lane_manager.call("get_player_x")
+
+	_show_attack_image()
+	_play_sprite_pose(ATTACK_SPRITE_POSITION, ATTACK_SPRITE_SCALE, 0.18)
+	_play_world_motion(
+		_action_world_position(target_lane, local_reach_x),
+		_neutral_world_position(),
+		0.05, # Weighty speed (visible dash)
+		0.24  # Snap return
+	)
 
 
 func _take_damage(amount: float, source_lane: int) -> void:

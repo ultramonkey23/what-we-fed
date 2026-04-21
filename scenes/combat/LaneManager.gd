@@ -50,6 +50,7 @@ var _enemies: Array[Dictionary] = []
 var _combat_running: bool = false
 var _song_mode: bool = false
 var _cycle_stalled: bool = false
+var _punish_damage_mult: float = 1.0
 # Per-lane active status. Only one status per lane at a time; new application overwrites.
 # Structure: { "id": String, "hits_remaining": int, "duration": float, "fire_pending": bool }
 var _enemy_statuses: Dictionary = {}
@@ -178,6 +179,10 @@ func start_song_cycle() -> void:
 
 func set_song_mode_enabled(enabled: bool) -> void:
 	_song_mode = enabled
+
+
+func set_punish_damage_mult(mult: float) -> void:
+	_punish_damage_mult = clampf(mult, 0.75, 1.50)
 
 
 func trigger_accent_burst() -> void:
@@ -440,6 +445,7 @@ func _fire_lane(lane: int) -> void:
 		return
 
 	var projectile_damage: float = float(enemy.get("damage", 8.0))
+	projectile_damage *= _punish_damage_mult
 
 	# PALE: halve the damage of the next fired projectile, then consume the status.
 	if _enemy_statuses.has(lane) and _enemy_statuses[lane].get("fire_pending", false):

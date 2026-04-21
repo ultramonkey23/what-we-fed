@@ -46,6 +46,10 @@ var _kill_chain_heavy_count: int = 0
 var _perfect_strike_streak: int = 0
 var _eat_ratchet_stacks: int = 0
 var _wound_hunger_cooldown: float = 0.0
+var _reward_pressure_band: Dictionary = {
+	"offer_decay_mult": 1.0,
+	"level_choice_delta": 0
+}
 
 
 func bind_runtime(combat_meter_ref: Node, run_growth_ref: Node, run_stats_ref: Node = null) -> void:
@@ -54,6 +58,18 @@ func bind_runtime(combat_meter_ref: Node, run_growth_ref: Node, run_stats_ref: N
 	_run_stats = run_stats_ref
 	_connect_eventbus()
 	_connect_run_stats()
+
+
+func set_difficulty_modifiers(mods: Dictionary) -> void:
+	_reward_pressure_band = {
+		"offer_decay_mult": 1.0,
+		"level_choice_delta": 0
+	}
+	if mods.is_empty():
+		return
+	var reward_pressure: Dictionary = Dictionary(mods.get("reward_pressure", {}))
+	_reward_pressure_band["offer_decay_mult"] = clampf(float(reward_pressure.get("offer_decay_mult", 1.0)), 0.7, 1.5)
+	_reward_pressure_band["level_choice_delta"] = clampi(int(reward_pressure.get("level_choice_delta", 0)), -2, 1)
 
 
 func start_song_run(_phases: Array) -> void:
@@ -120,7 +136,8 @@ func process_tick(delta: float) -> void:
 	_wound_hunger_cooldown = max(_wound_hunger_cooldown - delta, 0.0)
 	if _active_offer.is_empty():
 		return
-	_offer_timer = max(_offer_timer - delta, 0.0)
+	var decay_mult: float = float(_reward_pressure_band.get("offer_decay_mult", 1.0))
+	_offer_timer = max(_offer_timer - (delta * decay_mult), 0.0)
 	if _offer_timer <= 0.0:
 		claim_active_offer("auto")
 
@@ -364,6 +381,7 @@ func get_level_completion_choices(count: int = 3) -> Array[Dictionary]:
 	var resolved_count: int = count
 	if bool(context.get("predation_pool", false)):
 		resolved_count = 1
+	resolved_count = clampi(resolved_count + int(_reward_pressure_band.get("level_choice_delta", 0)), 1, 4)
 	_predation_pool_pending = bool(context.get("predation_pool", false))
 	return _build_upgrade_choices_for_context(resolved_count, context)
 

@@ -23,6 +23,10 @@ const SONG_PATH: String = AUDIO_CONTENT.MAIN_RUN_TRACK_PATH
 # 128 BPM = one beat every ~0.469 s. Tune this to match tricky.wav's actual tempo.
 const BPM: float = 128.0
 
+# Threshold for reactive "Accent" bursts (bass/kick detection).
+# 0.0 = always fire; 1.0 = never fire. Tune based on track mastering.
+const BASS_ACCENT_THRESHOLD: float = 0.55
+
 # Boss / final movement triggers at this fraction of total song length.
 # 0.88 = 88% through — leaves the final 12% for the boss encounter.
 # Adjust if the track has a notable climax point at a different position.

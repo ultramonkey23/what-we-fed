@@ -1002,7 +1002,7 @@ static func get_creature_sprite_path(species_id: String) -> String:
 	return String(creature.get("sprite_path", ""))
 
 
-static func get_creature_art_path(species_id: String, context: String = "default") -> String:
+static func get_creature_art_path(species_id: String, context: String = "default", stage: String = "baby") -> String:
 	var creature: Dictionary = get_creature(species_id)
 	if creature.is_empty():
 		return ""
@@ -1011,9 +1011,15 @@ static func get_creature_art_path(species_id: String, context: String = "default
 		"reward":
 			return String(creature.get("reward_portrait_path", creature.get("sprite_path", "")))
 		"support":
-			return String(creature.get("support_portrait_path", creature.get("sprite_path", "")))
+			if stage == "teen" or stage == "adult":
+				return String(creature.get("support_portrait_path", creature.get("sprite_path", "")))
+			return String(creature.get("sprite_path", ""))
 		"battlefield":
-			return String(creature.get("battlefield_sprite_path", creature.get("sprite_path", "")))
+			if stage == "adult":
+				return String(creature.get("battlefield_sprite_path", creature.get("sprite_path", "")))
+			if stage == "teen":
+				return String(creature.get("support_portrait_path", creature.get("sprite_path", "")))
+			return String(creature.get("sprite_path", ""))
 		_:
 			return String(creature.get("sprite_path", ""))
 

@@ -24,6 +24,7 @@ extends Node
 
 signal section_changed(section_id: String, data: Dictionary)
 signal final_movement_reached()
+signal accent_fired()
 
 # Public readable state — safe to poll from CombatScene each frame.
 var current_intensity: float = 0.0
@@ -48,6 +49,13 @@ const BEAT_PERFECT_WINDOW: float = 0.065
 const BEAT_GOOD_WINDOW: float    = 0.130
 var _beat_interval: float = 0.0  # seconds per beat; 0 = no BPM defined for this map
 
+# Analysis layer
+var _analyzer: AudioEffectSpectrumAnalyzerInstance = null
+var _bus_index: int = -1
+var _accent_threshold: float = 0.5
+var _accent_cooldown: float = 0.0
+var _last_beat_count: int = -1
+
 
 func start(song_map_script, start_time: float = 0.0, window_end_time: float = -1.0) -> void:
 	# song_map_script — a preloaded RefCounted script with SONG_PATH, SECTIONS,
@@ -57,6 +65,9 @@ func start(song_map_script, start_time: float = 0.0, window_end_time: float = -1
 	if _stream_player != null and is_instance_valid(_stream_player):
 		_stream_player.queue_free()
 		_stream_player = null
+	
+	# Reset analysis state
+	_analyzer = null
 
 	var song_path: String = String(song_map_script.SONG_PATH)
 	var stream: AudioStream = load(song_path)
@@ -64,9 +75,33 @@ func start(song_map_script, start_time: float = 0.0, window_end_time: float = -1
 		push_error("SongConductor: failed to load audio stream: " + song_path)
 		return
 
+	# Setup persistent MusicAnalysis bus (shared across conductor instances for safety)
+	var bus_name = "MusicAnalysis"
+	_bus_index = AudioServer.get_bus_index(bus_name)
+	if _bus_index == -1:
+		_bus_index = AudioServer.bus_count
+		AudioServer.add_bus(_bus_index)
+		AudioServer.set_bus_name(_bus_index, bus_name)
+		AudioServer.set_bus_send(_bus_index, "Master")
+	
+	# Ensure SpectrumAnalyzer effect exists on the bus
+	var effect_idx = -1
+	for i in range(AudioServer.get_bus_effect_count(_bus_index)):
+		if AudioServer.get_bus_effect(_bus_index, i) is AudioEffectSpectrumAnalyzer:
+			effect_idx = i
+			break
+	
+	if effect_idx == -1:
+		var spectrum_effect = AudioEffectSpectrumAnalyzer.new()
+		AudioServer.add_bus_effect(_bus_index, spectrum_effect)
+		effect_idx = AudioServer.get_bus_effect_count(_bus_index) - 1
+	
+	_analyzer = AudioServer.get_bus_effect_instance(_bus_index, effect_idx)
+
 	_stream_player = AudioStreamPlayer.new()
 	_stream_player.name = "MusicPlayer"
 	_stream_player.stream = stream
+	_stream_player.bus = bus_name
 	_stream_player.volume_db = 0.0
 	add_child(_stream_player)
 
@@ -77,6 +112,12 @@ func start(song_map_script, start_time: float = 0.0, window_end_time: float = -1
 
 	var final_fraction: float = float(song_map_script.FINAL_MOVEMENT_FRACTION)
 	_final_movement_time = final_fraction * _song_duration
+
+	# Accent threshold from song map if present
+	if "BASS_ACCENT_THRESHOLD" in song_map_script:
+		_accent_threshold = float(song_map_script.BASS_ACCENT_THRESHOLD)
+	else:
+		_accent_threshold = 0.5
 
 	# Build sections with absolute start_time computed from fractions.
 	_sections = []
@@ -131,6 +172,7 @@ func stop() -> void:
 	_running = false
 	if _stream_player != null and is_instance_valid(_stream_player):
 		_stream_player.stop()
+	_analyzer = null
 
 
 func get_song_time() -> float:
@@ -190,7 +232,21 @@ func get_beat_quality() -> String:
 	return "off"
 
 
-func _process(_delta: float) -> void:
+func get_bass_magnitude() -> float:
+	if _analyzer == null:
+		return 0.0
+	var mag = _analyzer.get_magnitude_for_frequency_range(20, 200).length()
+	return clampf(mag * 2.0, 0.0, 1.0)
+
+
+func get_mid_magnitude() -> float:
+	if _analyzer == null:
+		return 0.0
+	var mag = _analyzer.get_magnitude_for_frequency_range(200, 2000).length()
+	return clampf(mag * 2.0, 0.0, 1.0)
+
+
+func _process(delta: float) -> void:
 	if not _running or _stream_player == null:
 		return
 
@@ -214,3 +270,14 @@ func _process(_delta: float) -> void:
 	if not _final_triggered and t >= _window_end_time:
 		_final_triggered = true
 		final_movement_reached.emit()
+	
+	# Accent detection
+	if _accent_cooldown > 0.0:
+		_accent_cooldown -= delta
+	
+	if is_beat_active() and _accent_cooldown <= 0.0:
+		var bass = get_bass_magnitude()
+		if bass >= _accent_threshold:
+			accent_fired.emit()
+			# Cooldown: at least 1/2 beat to prevent jitter-firing on the same kick
+			_accent_cooldown = _beat_interval * 0.5

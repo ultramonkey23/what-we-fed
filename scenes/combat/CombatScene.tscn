@@ -44,52 +44,70 @@ anchor_mode = 0
 [node name="UI" type="CanvasLayer" parent="." unique_id=1391267970]
 
 [node name="ComboLabel" type="Label" parent="UI" unique_id=1732307942]
-offset_left = 105.0
-offset_top = 3.0
-offset_right = 199.0
-offset_bottom = 37.0
+offset_left = 20.0
+offset_top = 55.0
+offset_right = 320.0
+offset_bottom = 85.0
 text = "Combo: 0"
 
 [node name="StyleLabel" type="Label" parent="UI" unique_id=911528956]
-offset_left = 493.0
-offset_top = 6.0
-offset_right = 572.0
-offset_bottom = 29.0
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -100.0
+offset_top = 20.0
+offset_right = 100.0
+offset_bottom = 50.0
+horizontal_alignment = 1
 text = "Style: Raw"
 
 [node name="StaminaBar" type="ProgressBar" parent="UI" unique_id=215821771]
-offset_left = 731.0
-offset_top = 27.0
-offset_right = 1228.0
-offset_bottom = 54.0
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -320.0
+offset_top = 20.0
+offset_right = -20.0
+offset_bottom = 47.0
 value = 100.0
 
 [node name="HPBar" type="ProgressBar" parent="UI" unique_id=315643937]
-offset_left = 1.0
-offset_top = 26.0
-offset_right = 501.0
-offset_bottom = 53.0
+offset_left = 20.0
+offset_top = 20.0
+offset_right = 320.0
+offset_bottom = 47.0
 value = 100.0
 
 [node name="UltimateLabel" type="Label" parent="UI" unique_id=1692980448]
-offset_left = 983.0
-offset_top = 3.0
-offset_right = 1082.0
-offset_bottom = 26.0
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -320.0
+offset_top = 55.0
+offset_right = -20.0
+offset_bottom = 85.0
+horizontal_alignment = 2
 text = "Ultimate: 0%"
 
 [node name="ResultLabel" type="Label" parent="UI" unique_id=1625099451]
-offset_left = 417.0
-offset_top = 281.0
-offset_right = 828.0
-offset_bottom = 495.0
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -300.0
+offset_top = 100.0
+offset_right = 300.0
+offset_bottom = 160.0
+horizontal_alignment = 1
 
 [node name="ControlsLabel" type="Label" parent="UI" unique_id=280500784]
-anchors_preset = 0
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
 offset_left = 20.0
-offset_top = 602.0
-offset_right = 1260.0
-offset_bottom = 704.0
+offset_top = -60.0
+offset_right = -20.0
+offset_bottom = -20.0
 text = "A: Attack 
 S: Parry 
 D: Dodge 

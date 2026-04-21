@@ -80,6 +80,15 @@ static func get_bond_level_mult(bond_level: int) -> float:
 	return 1.0 + max(0, bond_level - 1) * 0.20
 
 
+func get_creature_growth_stage(bond_level: int) -> String:
+	# Bond 1: Baby, Bond 2-3: Teen, Bond 4-5: Adult
+	if bond_level <= 1:
+		return "baby"
+	elif bond_level <= 3:
+		return "teen"
+	return "adult"
+
+
 func get_attack_damage() -> float:
 	# Base prototype damage plus any absorbed type bonuses.
 	var total_damage: float = player_base_damage

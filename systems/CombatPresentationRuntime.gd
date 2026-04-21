@@ -131,10 +131,12 @@ func on_beat_pulse(quality: String, strength: float) -> void:
 	var pulse_color: Color = original_modulate
 	
 	match quality:
+		"accent":
+			pulse_color = original_modulate.lightened(0.18 * strength)
 		"perfect":
-			pulse_color = original_modulate.lightened(0.12)
+			pulse_color = original_modulate.lightened(0.12 * strength)
 		"good":
-			pulse_color = original_modulate.lightened(0.06)
+			pulse_color = original_modulate.lightened(0.06 * strength)
 	
 	var tween := _bg_sprite.create_tween()
 	tween.tween_property(_bg_sprite, "modulate", pulse_color, 0.05)

@@ -3,6 +3,10 @@ extends Node2D
 const ROUTE_SCENE_PATH: String = "res://scenes/ui/RouteScene.tscn"
 const TITLE_SCENE_PATH: String = "res://scenes/ui/TitleScreen.tscn"
 const MAX_LAIR_DISPLAY: int = 5
+const SIDEBAR_X: float = 36.0
+const SIDEBAR_W: float = 328.0
+const LIST_X: float = 392.0
+const LIST_W: float = 832.0
 const UI_STYLE = preload("res://systems/UIStyle.gd")
 const PRESENTATION_TEXT = preload("res://data/PresentationTextContent.gd")
 const COMBAT_CONTENT = preload("res://data/CombatContent.gd")
@@ -10,8 +14,16 @@ const POTENTIAL_GATE = preload("res://systems/PotentialGate.gd")
 
 var _creature_cards: Array[ColorRect] = []
 var _card_accents: Array[ColorRect] = []
+var _card_index_labels: Array[Label] = []
+var _active_pills: Array[Label] = []
 var _selected_index: int = -1
 var _can_input: bool = false
+
+var _hub_solo_label: Label
+var _hub_name: Label
+var _hub_identity: Label
+var _hub_support: Label
+var _hub_bond_pot: Label
 
 
 func _ready() -> void:
@@ -61,6 +73,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			_selected_index = index
 			GameState.set_active_lair_creature(String(lair[index].get("species_id", "")))
 		_refresh_card_highlights()
+		_refresh_active_support_panel()
 		get_viewport().set_input_as_handled()
 		return
 
@@ -84,25 +97,36 @@ func _build_ui() -> void:
 	header.text = "THE LAIR"
 	header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	header.size = Vector2(1280.0, 58.0)
-	header.position = Vector2(0.0, 42.0)
+	header.position = Vector2(0.0, 36.0)
 	UI_STYLE.apply_label(header, "screen_title")
 	canvas.add_child(header)
 
 	var sub: Label = Label.new()
 	sub.text = PRESENTATION_TEXT.LAIR_SUBTITLE
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	sub.size = Vector2(1280.0, 28.0)
-	sub.position = Vector2(0.0, 98.0)
+	sub.size = Vector2(920.0, 48.0)
+	sub.position = Vector2(180.0, 92.0)
+	sub.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	UI_STYLE.apply_label(sub, "screen_subtitle")
 	canvas.add_child(sub)
 
 	var lair: Array = GameState.lair_roster
 	if lair.is_empty():
 		_build_empty_state(canvas)
+		_clear_hub_refs()
 	else:
+		_build_den_sidebar(canvas, lair)
 		_build_creature_list(canvas, lair)
 
 	_build_bottom_bar(canvas, lair)
+
+
+func _clear_hub_refs() -> void:
+	_hub_solo_label = null
+	_hub_name = null
+	_hub_identity = null
+	_hub_support = null
+	_hub_bond_pot = null
 
 
 func _build_empty_state(canvas: CanvasLayer) -> void:
@@ -114,16 +138,127 @@ func _build_empty_state(canvas: CanvasLayer) -> void:
 	UI_STYLE.apply_label(empty_label, "subheading")
 	canvas.add_child(empty_label)
 
+	var stub: Label = Label.new()
+	stub.text = "%s\n%s" % [PRESENTATION_TEXT.LAIR_RANCH_STUB_TITLE, PRESENTATION_TEXT.LAIR_RANCH_STUB_BODY]
+	stub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	stub.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+	stub.size = Vector2(560.0, 72.0)
+	stub.position = Vector2(360.0, 420.0)
+	stub.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	UI_STYLE.apply_label(stub, "dim")
+	canvas.add_child(stub)
+
+
+func _build_den_sidebar(canvas: CanvasLayer, lair: Array) -> void:
+	var slab: ColorRect = ColorRect.new()
+	slab.color = Color(0.07, 0.04, 0.05, 0.92)
+	slab.position = Vector2(SIDEBAR_X - 6.0, 118.0)
+	slab.size = Vector2(SIDEBAR_W + 12.0, 498.0)
+	canvas.add_child(slab)
+
+	var rim: ColorRect = ColorRect.new()
+	rim.color = Color(0.34, 0.22, 0.14, 0.45)
+	rim.position = Vector2(SIDEBAR_X - 6.0, 118.0)
+	rim.size = Vector2(SIDEBAR_W + 12.0, 2.0)
+	canvas.add_child(rim)
+
+	var den: Label = Label.new()
+	den.text = PRESENTATION_TEXT.LAIR_DEN_LABEL
+	den.position = Vector2(SIDEBAR_X + 10.0, 128.0)
+	den.size = Vector2(SIDEBAR_W - 20.0, 28.0)
+	UI_STYLE.apply_label(den, "caption_strong")
+	canvas.add_child(den)
+
+	var blurb: Label = Label.new()
+	blurb.text = PRESENTATION_TEXT.LAIR_DEN_BLURB
+	blurb.position = Vector2(SIDEBAR_X + 10.0, 156.0)
+	blurb.size = Vector2(SIDEBAR_W - 20.0, 56.0)
+	blurb.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	UI_STYLE.apply_label(blurb, "dim")
+	canvas.add_child(blurb)
+
+	var act_head: Label = Label.new()
+	act_head.text = PRESENTATION_TEXT.LAIR_ACTIVE_HEAD
+	act_head.position = Vector2(SIDEBAR_X + 10.0, 224.0)
+	act_head.size = Vector2(SIDEBAR_W - 20.0, 26.0)
+	UI_STYLE.apply_label(act_head, "bond_heading")
+	canvas.add_child(act_head)
+
+	var panel: ColorRect = ColorRect.new()
+	panel.color = Color(0.05, 0.03, 0.04, 0.88)
+	panel.position = Vector2(SIDEBAR_X + 8.0, 254.0)
+	panel.size = Vector2(SIDEBAR_W - 16.0, 188.0)
+	canvas.add_child(panel)
+
+	var inset: ColorRect = ColorRect.new()
+	inset.color = Color(0.86, 0.58, 0.22, 0.22)
+	inset.position = Vector2(SIDEBAR_X + 8.0, 254.0)
+	inset.size = Vector2(3.0, 188.0)
+	canvas.add_child(inset)
+
+	_hub_solo_label = Label.new()
+	_hub_solo_label.text = PRESENTATION_TEXT.LAIR_ACTIVE_SOLO
+	_hub_solo_label.position = Vector2(SIDEBAR_X + 20.0, 264.0)
+	_hub_solo_label.size = Vector2(SIDEBAR_W - 36.0, 168.0)
+	_hub_solo_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	UI_STYLE.apply_label(_hub_solo_label, "body")
+	canvas.add_child(_hub_solo_label)
+
+	_hub_name = Label.new()
+	_hub_name.position = Vector2(SIDEBAR_X + 20.0, 262.0)
+	_hub_name.size = Vector2(SIDEBAR_W - 36.0, 32.0)
+	UI_STYLE.apply_label(_hub_name, "primary_value")
+	canvas.add_child(_hub_name)
+
+	_hub_identity = Label.new()
+	_hub_identity.position = Vector2(SIDEBAR_X + 20.0, 296.0)
+	_hub_identity.size = Vector2(SIDEBAR_W - 36.0, 22.0)
+	UI_STYLE.apply_label(_hub_identity, "dim")
+	canvas.add_child(_hub_identity)
+
+	_hub_support = Label.new()
+	_hub_support.position = Vector2(SIDEBAR_X + 20.0, 322.0)
+	_hub_support.size = Vector2(SIDEBAR_W - 36.0, 44.0)
+	_hub_support.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	UI_STYLE.apply_label(_hub_support, "caption")
+	canvas.add_child(_hub_support)
+
+	_hub_bond_pot = Label.new()
+	_hub_bond_pot.position = Vector2(SIDEBAR_X + 20.0, 376.0)
+	_hub_bond_pot.size = Vector2(SIDEBAR_W - 36.0, 56.0)
+	_hub_bond_pot.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	UI_STYLE.apply_label(_hub_bond_pot, "card_metric")
+	canvas.add_child(_hub_bond_pot)
+
+	var ranch_t: Label = Label.new()
+	ranch_t.text = PRESENTATION_TEXT.LAIR_RANCH_STUB_TITLE
+	ranch_t.position = Vector2(SIDEBAR_X + 10.0, 458.0)
+	ranch_t.size = Vector2(SIDEBAR_W - 20.0, 24.0)
+	UI_STYLE.apply_label(ranch_t, "caption_strong")
+	canvas.add_child(ranch_t)
+
+	var ranch_b: Label = Label.new()
+	ranch_b.text = PRESENTATION_TEXT.LAIR_RANCH_STUB_BODY
+	ranch_b.position = Vector2(SIDEBAR_X + 10.0, 484.0)
+	ranch_b.size = Vector2(SIDEBAR_W - 20.0, 110.0)
+	ranch_b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	UI_STYLE.apply_label(ranch_b, "dim")
+	canvas.add_child(ranch_b)
+
+	_refresh_active_support_panel()
+
 
 func _build_creature_list(canvas: CanvasLayer, lair: Array) -> void:
 	_creature_cards.clear()
 	_card_accents.clear()
+	_card_index_labels.clear()
+	_active_pills.clear()
 
-	var card_width: float = 820.0
-	var card_height: float = 94.0
-	var card_gap: float = 10.0
-	var card_x: float = (1280.0 - card_width) * 0.5
-	var list_start_y: float = 148.0
+	var card_width: float = LIST_W
+	var card_height: float = 128.0
+	var card_gap: float = 8.0
+	var card_x: float = LIST_X
+	var list_start_y: float = 146.0
 
 	var count: int = min(lair.size(), MAX_LAIR_DISPLAY)
 	for i in range(count):
@@ -149,41 +284,61 @@ func _build_creature_card(canvas: CanvasLayer, creature: Dictionary, index: int,
 	var num_label: Label = Label.new()
 	num_label.text = str(index + 1)
 	num_label.position = Vector2(14.0, (h - 26.0) * 0.5)
-	num_label.size = Vector2(22.0, 26.0)
+	num_label.size = Vector2(26.0, 26.0)
 	UI_STYLE.apply_label(num_label, "card_index")
 	card.add_child(num_label)
+	_card_index_labels.append(num_label)
+
+	var pill: Label = Label.new()
+	pill.text = "ACTIVE"
+	pill.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	pill.position = Vector2(w - 118.0, 12.0)
+	pill.size = Vector2(96.0, 22.0)
+	UI_STYLE.apply_label(pill, "card_tag")
+	pill.visible = false
+	card.add_child(pill)
+	_active_pills.append(pill)
+
+	var species_id: String = String(creature.get("species_id", ""))
+	var display: String = String(creature.get("display_name", "Unknown"))
 
 	var name_label: Label = Label.new()
-	name_label.text = String(creature.get("display_name", "Unknown"))
-	name_label.position = Vector2(50.0, 11.0)
-	name_label.size = Vector2(240.0, 30.0)
+	name_label.text = display
+	name_label.position = Vector2(50.0, 10.0)
+	name_label.size = Vector2(w - 200.0, 30.0)
 	UI_STYLE.apply_label(name_label, "card_title")
 	card.add_child(name_label)
 
+	var id_label: Label = Label.new()
+	id_label.text = _identity_line(creature, species_id)
+	id_label.position = Vector2(50.0, 40.0)
+	id_label.size = Vector2(w - 90.0, 22.0)
+	UI_STYLE.apply_label(id_label, "dim")
+	card.add_child(id_label)
+
 	var bond_level: int = int(creature.get("bond_level", 1))
-	var potential_label: String = _get_potential_label_for_species(String(creature.get("species_id", "")))
+	var potential_label: String = _get_potential_label_for_species(species_id)
 	var bl_label: Label = Label.new()
-	bl_label.text = "Bond %d  |  Pot %s" % [bond_level, potential_label]
-	bl_label.position = Vector2(50.0, 48.0)
-	bl_label.size = Vector2(220.0, 20.0)
+	bl_label.text = "Bond %d  ·  Potential cap %s" % [bond_level, potential_label]
+	bl_label.position = Vector2(50.0, 62.0)
+	bl_label.size = Vector2(w - 100.0, 22.0)
 	UI_STYLE.apply_label(bl_label, "card_metric")
 	card.add_child(bl_label)
 
-	var support_role: Dictionary = creature.get("support_role", {})
-	var feedback_text: String = String(support_role.get("feedback_text", ""))
-	if not feedback_text.is_empty():
-		var role_label: Label = Label.new()
-		role_label.text = feedback_text
-		role_label.position = Vector2(162.0, 50.0)
-		role_label.size = Vector2(160.0, 20.0)
-		UI_STYLE.apply_label(role_label, "card_tag")
-		card.add_child(role_label)
+	var support_line: String = _support_one_liner(creature, species_id)
+	if not support_line.is_empty():
+		var sup_label: Label = Label.new()
+		sup_label.text = support_line
+		sup_label.position = Vector2(50.0, 84.0)
+		sup_label.size = Vector2(w - 100.0, 22.0)
+		UI_STYLE.apply_label(sup_label, "caption")
+		card.add_child(sup_label)
 
 	var desc: String = String(creature.get("description", ""))
 	if not desc.is_empty():
 		var desc_scroll := ScrollContainer.new()
-		desc_scroll.position = Vector2(348.0, 14.0)
-		desc_scroll.size = Vector2(456.0, 68.0)
+		desc_scroll.position = Vector2(50.0, 104.0)
+		desc_scroll.size = Vector2(w - 70.0, 22.0)
 		desc_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 		desc_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
 		desc_scroll.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -202,10 +357,32 @@ func _build_creature_card(canvas: CanvasLayer, creature: Dictionary, index: int,
 	_card_accents.append(accent)
 
 
+func _identity_line(creature: Dictionary, species_id: String) -> String:
+	var sid_show: String = species_id if not species_id.is_empty() else "—"
+	var p: String = String(creature.get("primary_type", "—")).capitalize()
+	var s: String = String(creature.get("secondary_type", "")).strip_edges()
+	if s.is_empty():
+		return "%s  ·  %s" % [sid_show, p]
+	return "%s  ·  %s / %s" % [sid_show, p, s.capitalize()]
+
+
+func _support_one_liner(creature: Dictionary, species_id: String) -> String:
+	var role: Dictionary = COMBAT_CONTENT.get_support_role(species_id)
+	if role.is_empty():
+		role = creature.get("support_role", {})
+	var readout: String = String(role.get("readout_name", creature.get("display_name", ""))).strip_edges()
+	var hint: String = String(role.get("hud_trigger_hint", "")).strip_edges()
+	if readout.is_empty():
+		return hint
+	if hint.is_empty():
+		return readout
+	return "%s  ·  %s" % [readout, hint]
+
+
 func _reflow_lair_desc_scroll(scroll: ScrollContainer, label: Label) -> void:
 	if scroll == null or label == null:
 		return
-	var inner_w: float = maxf(1.0, scroll.size.x - 10.0)
+	var inner_w: float = maxf(1.0, scroll.size.x - 4.0)
 	label.custom_minimum_size.x = inner_w
 	var content_h: float = label.get_minimum_size().y
 	label.custom_minimum_size.y = maxf(scroll.size.y, content_h)
@@ -226,22 +403,22 @@ func _build_bottom_bar(canvas: CanvasLayer, lair: Array) -> void:
 	note.text = PRESENTATION_TEXT.LAIR_NOTE
 	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	note.size = Vector2(1060.0, 30.0)
-	note.position = Vector2(110.0, 620.0)
+	note.position = Vector2(110.0, 612.0)
 	UI_STYLE.apply_label(note, "note")
 	canvas.add_child(note)
 
 	var count: int = min(lair.size(), MAX_LAIR_DISPLAY)
 	var hint_text: String
 	if count == 0:
-		hint_text = "SPACE / ENTER - enter run  |  ESC - title"
+		hint_text = "SPACE / ENTER — enter run  |  ESC — title"
 	else:
-		hint_text = "1-%d - select / deselect  |  SPACE / ENTER - enter run  |  ESC - title" % count
+		hint_text = "1–%d — assign / clear active support  |  SPACE / ENTER — continue  |  ESC — title" % count
 
 	var hint: Label = Label.new()
 	hint.text = hint_text
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hint.size = Vector2(1280.0, 28.0)
-	hint.position = Vector2(0.0, 660.0)
+	hint.position = Vector2(0.0, 652.0)
 	UI_STYLE.apply_label(hint, "hint")
 	canvas.add_child(hint)
 
@@ -251,6 +428,41 @@ func _refresh_card_highlights() -> void:
 		if not is_instance_valid(_creature_cards[i]):
 			continue
 		var is_selected: bool = (i == _selected_index)
-		_creature_cards[i].color = Color(0.20, 0.13, 0.08, 1.0) if is_selected else Color(0.12, 0.07, 0.07, 1.0)
+		_creature_cards[i].color = Color(0.22, 0.14, 0.09, 1.0) if is_selected else Color(0.12, 0.07, 0.07, 1.0)
 		if i < _card_accents.size() and is_instance_valid(_card_accents[i]):
-			_card_accents[i].color = Color(0.86, 0.60, 0.24, 1.0) if is_selected else Color(0.0, 0.0, 0.0, 0.0)
+			_card_accents[i].color = Color(0.92, 0.62, 0.26, 1.0) if is_selected else Color(0.0, 0.0, 0.0, 0.0)
+		if i < _active_pills.size() and is_instance_valid(_active_pills[i]):
+			_active_pills[i].visible = is_selected
+		if i < _card_index_labels.size() and is_instance_valid(_card_index_labels[i]):
+			UI_STYLE.apply_label(_card_index_labels[i], "warm_value" if is_selected else "card_index")
+
+
+func _refresh_active_support_panel() -> void:
+	if _hub_solo_label == null:
+		return
+	var lair: Array = GameState.lair_roster
+	var has: bool = _selected_index >= 0 and _selected_index < lair.size()
+	_hub_solo_label.visible = not has
+	_hub_name.visible = has
+	_hub_identity.visible = has
+	_hub_support.visible = has
+	_hub_bond_pot.visible = has
+	if not has:
+		return
+	var c: Dictionary = lair[_selected_index]
+	var species_id: String = String(c.get("species_id", ""))
+	_hub_name.text = String(c.get("display_name", "Unknown"))
+	_hub_identity.text = _identity_line(c, species_id)
+	var trig_hint: String = ""
+	var role: Dictionary = COMBAT_CONTENT.get_support_role(species_id)
+	if role.is_empty():
+		role = c.get("support_role", {})
+	trig_hint = String(role.get("hud_trigger_hint", "")).strip_edges()
+	var readout: String = String(role.get("readout_name", c.get("display_name", ""))).strip_edges()
+	if trig_hint.is_empty():
+		_hub_support.text = readout
+	else:
+		_hub_support.text = "%s\n%s" % [readout, PRESENTATION_TEXT.support_trigger_line(trig_hint)]
+	var bond_level: int = int(c.get("bond_level", 1))
+	var pot: String = _get_potential_label_for_species(species_id)
+	_hub_bond_pot.text = "Bond depth %d  ·  Species potential %s\nSame bond carries into the next descent unless you clear it." % [bond_level, pot]

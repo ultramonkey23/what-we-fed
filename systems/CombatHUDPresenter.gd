@@ -189,24 +189,46 @@ func refresh_support(current: float, maximum: float, active_species_id: String, 
 	if _support_name_label != null:
 		if run_growth != null and is_instance_valid(run_growth) and run_growth.has_method("get_active_display_name"):
 			var display_name: String = String(run_growth.call("get_active_display_name"))
+			
+			# Synergy check for HUD readout
+			var synergy_active: bool = false
+			var active_creature: Dictionary = GameState.get_active_bonded_creature()
+			if not active_creature.is_empty():
+				var primary_type: String = String(active_creature.get("primary_type", ""))
+				if not primary_type.is_empty():
+					for eaten in GameState.absorbed_types:
+						if String(eaten.get("type", "")) == primary_type:
+							synergy_active = true
+							break
+
 			if current >= maximum - 0.05 and not active_species_id.is_empty():
 				_support_name_label.text = _presentation_text.support_ready_label(display_name)
+				if synergy_active:
+					_support_name_label.text += " (SYN)"
 			else:
 				var bonded: Dictionary = GameState.get_active_bonded_creature()
 				var bond_level: int = int(bonded.get("bond_level", 1))
+				var short_name: String = display_name.left(5).strip_edges()
 				if bond_level > 1:
-					var short_name: String = display_name.left(5).strip_edges()
 					_support_name_label.text = "%s L%d" % [short_name, bond_level]
 				else:
 					_support_name_label.text = compact_hud_copy(display_name, 7)
+				
+				if synergy_active:
+					_support_name_label.text += " +"
 		else:
 			_support_name_label.text = _presentation_text.SUPPORT_EMPTY_NAME
 
 	if _support_creature_portrait != null:
-		if active_species_id != _support_portrait_species:
-			_support_portrait_species = active_species_id
+		var bonded: Dictionary = GameState.get_active_bonded_creature()
+		var bond_level: int = int(bonded.get("bond_level", 1))
+		var growth_stage: String = GameState.get_creature_growth_stage(bond_level)
+		var portrait_key: String = "%s_%s" % [active_species_id, growth_stage]
+
+		if portrait_key != _support_portrait_species:
+			_support_portrait_species = portrait_key
 			if not active_species_id.is_empty():
-				var portrait_path: String = _combat_content.get_creature_art_path(active_species_id, "support")
+				var portrait_path: String = _combat_content.get_creature_art_path(active_species_id, "support", growth_stage)
 				if not portrait_path.is_empty() and ResourceLoader.exists(portrait_path):
 					var portrait_tex: Texture2D = load(portrait_path) as Texture2D
 					if portrait_tex != null:

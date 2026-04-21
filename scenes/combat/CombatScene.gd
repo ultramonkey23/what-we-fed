@@ -577,12 +577,19 @@ func _update_timing_ring_proximity() -> void:
 	# Phase 0 = beat fired, decays quickly; small anticipation rise near phase 1.
 	# This gives the player a visual metronome without relying on a projectile.
 	var beat_pulse: float = 0.0
+	var bass_throb: float = 0.0
 	if _song_conductor != null and is_instance_valid(_song_conductor) and _song_conductor.is_beat_active():
 		var bp: float = _song_conductor.get_beat_phase()
 		if bp < 0.18:
 			beat_pulse = (1.0 - bp / 0.18) * 0.13
 		elif bp > 0.88:
 			beat_pulse = ((bp - 0.88) / 0.12) * 0.06
+		
+		# V1 Reactive Layer: let the bass frequency add a secondary layer of visual throb.
+		if _song_conductor.has_method("get_bass_magnitude"):
+			bass_throb = _song_conductor.get_bass_magnitude() * 0.15
+
+	beat_pulse = clampf(beat_pulse + bass_throb, 0.0, 0.35)
 
 	# Pre-compute surge window fade factor once — used inside the per-lane loop.
 	var surge_wf: float = clamp(_surge_window_timer / 4.0, 0.0, 1.0) if _surge_window_timer > 0.0 else 0.0
@@ -3458,6 +3465,7 @@ func _start_song_conductor(start_time: float = 0.0, end_time: float = -1.0) -> v
 	add_child(_song_conductor)
 	_song_conductor.section_changed.connect(_on_conductor_section_changed)
 	_song_conductor.final_movement_reached.connect(_on_conductor_final_movement)
+	_song_conductor.accent_fired.connect(_on_conductor_accent_fired)
 	_song_conductor.start(_active_song_map, start_time, end_time)
 	player_combat.call("set_song_conductor", _song_conductor)
 	if _song_conductor != null:
@@ -3493,6 +3501,20 @@ func _on_conductor_final_movement() -> void:
 	# End of the current regular-level window.
 	if not _song_boss_triggered and _song_mode and not _run_finished:
 		_on_regular_level_complete()
+
+
+func _on_conductor_accent_fired() -> void:
+	# Bass drop / accent detected in the WAV.
+	# Pull forward the next authored threat cycle.
+	if not _song_mode or _run_finished:
+		return
+		
+	if lane_manager != null and is_instance_valid(lane_manager):
+		lane_manager.trigger_accent_burst()
+	
+	# Small HUD pulse feedback for the accent
+	if _presentation_runtime != null:
+		_presentation_runtime.on_beat_pulse("accent", 1.2)
 
 
 func _hide_song_hud() -> void:
@@ -4902,6 +4924,15 @@ func _choose_bond() -> void:
 	_reward_eat_label.text = ""
 	_reward_eat_effect_label.text = ""
 	_reward_quig_label.text = PRESENTATION_TEXT.bond_result_quig(_bond_creature_name)
+
+	# Evolutionary update: reflect the new growth stage in the portrait.
+	var _new_growth_stage: String = GameState.get_creature_growth_stage(_new_bond_level)
+	var _new_portrait: String = COMBAT_CONTENT.get_creature_art_path(_bond_species, "support", _new_growth_stage)
+	if not _new_portrait.is_empty() and ResourceLoader.exists(_new_portrait):
+		var _port_tex: Texture2D = load(_new_portrait) as Texture2D
+		if _port_tex != null:
+			_reward_creature_portrait.texture = _port_tex
+
 	_refresh_quig_ui_state()
 	_schedule_reward_scroll_reflow()
 
@@ -5589,20 +5620,25 @@ func _refresh_bonded_creature_render(active_species_id: String = "") -> void:
 		_bonded_creature_sprite.texture = null
 		return
 
-	var sprite_path: String = COMBAT_CONTENT.get_creature_art_path(species_id, "battlefield")
+	var bonded: Dictionary = GameState.get_active_bonded_creature()
+	var bond_level: int = int(bonded.get("bond_level", 1))
+	var growth_stage: String = GameState.get_creature_growth_stage(bond_level)
+	var portrait_key: String = "%s_%s" % [species_id, growth_stage]
+
+	var sprite_path: String = COMBAT_CONTENT.get_creature_art_path(species_id, "battlefield", growth_stage)
 	if sprite_path.is_empty() or not ResourceLoader.exists(sprite_path):
 		_bonded_creature_species = species_id
 		_bonded_creature_sprite.visible = false
 		_bonded_creature_sprite.texture = null
 		return
 
-	if species_id != _bonded_creature_species:
+	if portrait_key != _bonded_creature_species:
 		var render_tex: Texture2D = load(sprite_path) as Texture2D
 		if render_tex == null:
 			_bonded_creature_sprite.visible = false
 			_bonded_creature_sprite.texture = null
 			return
-		_bonded_creature_species = species_id
+		_bonded_creature_species = portrait_key
 		_bonded_creature_sprite.texture = render_tex
 
 	var render_config: Dictionary = COMBAT_CONTENT.get_creature_combat_render(species_id)
@@ -5906,7 +5942,11 @@ func _remove_enemy_marker(enemy_id: int) -> void:
 
 
 func _spawn_support_intervention(species_id: String, lane: int, tint: Color) -> void:
-	var support_art: String = COMBAT_CONTENT.get_creature_art_path(species_id, "support")
+	var bonded: Dictionary = GameState.get_bonded_creature(species_id)
+	var bond_level: int = int(bonded.get("bond_level", 1))
+	var growth_stage: String = GameState.get_creature_growth_stage(bond_level)
+	
+	var support_art: String = COMBAT_CONTENT.get_creature_art_path(species_id, "support", growth_stage)
 	if not support_art.is_empty():
 		_presentation_runtime.spawn_creature_intervention(lane, support_art, tint)
 	else:

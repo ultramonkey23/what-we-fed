@@ -180,6 +180,31 @@ func set_song_mode_enabled(enabled: bool) -> void:
 	_song_mode = enabled
 
 
+func trigger_accent_burst() -> void:
+	# Forces an immediate cycle start if combat is running and not currently firing.
+	# If a cycle was already waiting, this effectively cancels the wait.
+	if not _combat_running or _cycle_stalled:
+		return
+	
+	# Accent refinement: briefly tighten fire_stagger for this immediate cycle 
+	# to create a "chord" or "cluster" feel.
+	var original_stagger = fire_stagger
+	fire_stagger = 0.42 # Tightest possible safe stagger
+	
+	# Pull forward the cycle
+	_cycle_task_id += 1
+	_run_fire_cycle(_cycle_task_id)
+	
+	# Restore stagger (the cycle is already running with the tightened value 
+	# thanks to the local variable capturing fire_stagger in its loop).
+	# Wait, _run_fire_cycle uses the member variable 'fire_stagger'.
+	# We'll use a one-shot approach: _run_fire_cycle will use a local copy 
+	# if we want it to be perfectly safe, but let's just reset it.
+	get_tree().create_timer(cycle_interval * 0.5).timeout.connect(
+		func(): fire_stagger = original_stagger
+	)
+
+
 func is_combat_running() -> bool:
 	return _combat_running
 

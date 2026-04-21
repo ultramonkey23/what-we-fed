@@ -531,12 +531,23 @@ func _gain_support_charge(amount: float) -> void:
 	if not gain_effect.is_empty():
 		gain_mult = float(gain_effect.get("value", 1.0))
 
+	# Species Synergy: Gain +25% support charge if you've eaten a creature of the same primary type.
+	var synergy_bonus: float = 1.0
+	var active_creature: Dictionary = GameState.get_active_bonded_creature()
+	if not active_creature.is_empty():
+		var primary_type: String = String(active_creature.get("primary_type", ""))
+		if not primary_type.is_empty():
+			for eaten in GameState.absorbed_types:
+				if String(eaten.get("type", "")) == primary_type:
+					synergy_bonus = 1.25
+					break
+
 	var flat_bonus: float = 0.0
 	var depth_effect: Dictionary = _get_growth_effect("support_charge_flat_bonus")
 	if not depth_effect.is_empty():
 		flat_bonus = float(depth_effect.get("value", 0.0))
 
-	support_charge = clamp(support_charge + (amount + flat_bonus) * gain_mult, 0.0, GROWTH_CONTENT.SUPPORT_MAX)
+	support_charge = clamp(support_charge + (amount + flat_bonus) * gain_mult * synergy_bonus, 0.0, GROWTH_CONTENT.SUPPORT_MAX)
 	_emit_support_state()
 
 
@@ -683,7 +694,18 @@ func gain_reward_support_charge(amount: float) -> void:
 	if not gain_effect.is_empty():
 		gain_mult = float(gain_effect.get("value", 1.0))
 
-	support_charge = clamp(support_charge + amount * gain_mult, 0.0, GROWTH_CONTENT.SUPPORT_MAX)
+	# Species Synergy: Gain +25% support charge if you've eaten a creature of the same primary type.
+	var synergy_bonus: float = 1.0
+	var active_creature: Dictionary = GameState.get_active_bonded_creature()
+	if not active_creature.is_empty():
+		var primary_type: String = String(active_creature.get("primary_type", ""))
+		if not primary_type.is_empty():
+			for eaten in GameState.absorbed_types:
+				if String(eaten.get("type", "")) == primary_type:
+					synergy_bonus = 1.25
+					break
+
+	support_charge = clamp(support_charge + amount * gain_mult * synergy_bonus, 0.0, GROWTH_CONTENT.SUPPORT_MAX)
 	_emit_support_state()
 
 

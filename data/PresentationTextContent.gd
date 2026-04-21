@@ -171,27 +171,27 @@ static func support_ready_label(display_name: String) -> String:
 static func trigger_hint(effect_id: String) -> String:
 	match effect_id:
 		"ashclaw_strike":
-			return "On perfect strike"
+			return "Perfect strike → claw expose"
 		"bond_remnant_mend":
-			return "On damage taken"
+			return "Damage taken → remnant mend"
 		"gruvek_gorge":
-			return "On enemy kill"
+			return "Kill → gorge all lanes"
 		"veilskin_phase":
-			return "On perfect parry"
+			return "Perfect parry → phase bite"
 		"thornback_rend":
-			return "On perfect strike"
+			return "Perfect strike → rend spike"
 		"knellspine_peal":
-			return "On good timing"
+			return "Timed hit → bell peal"
 		"marrowward_ward":
-			return "On player dodge"
+			return "Dodge → bone pale ward"
 		"gorefane_maul":
-			return "On ultimate"
+			return "Ultimate → maul all lanes"
 		"hushcoil_lull":
-			return "On perfect parry"
+			return "Perfect parry → hush pale"
 		"coldvein_expose":
-			return "On perfect parry"
+			return "Perfect parry → cold seam"
 		"siltgrip_drag":
-			return "On enemy kill"
+			return "Kill → silt drag rend"
 		_:
 			return "On rhythm"
 

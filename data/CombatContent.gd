@@ -559,6 +559,7 @@ const ENEMY_TELEGRAPH_PROFILES := {
 	},
 	"bond_reaper": {
 		"family": "needle",
+		"species_shot_modifier": "needle",
 		"projectile_color": Color(0.82, 0.88, 0.98, 1.0),
 		"accent_color": Color(0.62, 0.76, 1.0, 1.0),
 		"lane_color": Color(0.70, 0.80, 0.98, 1.0),
@@ -567,6 +568,7 @@ const ENEMY_TELEGRAPH_PROFILES := {
 	},
 	"sovereign": {
 		"family": "sovereign",
+		"species_shot_modifier": "sovereign",
 		"projectile_color": Color(0.98, 0.68, 0.16, 1.0),
 		"accent_color": Color(1.0, 0.88, 0.50, 1.0),
 		"lane_color": Color(0.96, 0.54, 0.16, 1.0),
@@ -575,14 +577,17 @@ const ENEMY_TELEGRAPH_PROFILES := {
 	},
 	"ashclaw": {
 		"family": "fang",
-		"projectile_color": Color(0.96, 0.62, 0.26, 1.0),
-		"accent_color": Color(1.0, 0.84, 0.56, 1.0),
-		"lane_color": Color(0.92, 0.42, 0.20, 1.0),
-		"marker_color": Color(0.98, 0.74, 0.46, 1.0),
+		"species_shot_modifier": "fang",
+		# Ash-forward ember: reads as claw/forge grit, not generic orange bolt.
+		"projectile_color": Color(0.90, 0.66, 0.50, 1.0),
+		"accent_color": Color(0.98, 0.82, 0.58, 1.0),
+		"lane_color": Color(0.82, 0.48, 0.28, 1.0),
+		"marker_color": Color(0.94, 0.76, 0.52, 1.0),
 		"warning_bias": 1.04
 	},
 	"bond_remnant": {
 		"family": "veil",
+		"species_shot_modifier": "veil",
 		"projectile_color": Color(0.80, 0.84, 0.96, 1.0),
 		"accent_color": Color(0.66, 0.78, 1.0, 1.0),
 		"lane_color": Color(0.60, 0.68, 0.94, 1.0),
@@ -591,6 +596,7 @@ const ENEMY_TELEGRAPH_PROFILES := {
 	},
 	"gruvek": {
 		"family": "mass",
+		"species_shot_modifier": "mass",
 		"projectile_color": Color(0.90, 0.58, 0.24, 1.0),
 		"accent_color": Color(0.98, 0.78, 0.46, 1.0),
 		"lane_color": Color(0.80, 0.42, 0.14, 1.0),
@@ -599,6 +605,7 @@ const ENEMY_TELEGRAPH_PROFILES := {
 	},
 	"veilskin": {
 		"family": "needle",
+		"species_shot_modifier": "needle",
 		"projectile_color": Color(0.74, 0.92, 1.0, 1.0),
 		"accent_color": Color(0.84, 0.96, 1.0, 1.0),
 		"lane_color": Color(0.62, 0.88, 1.0, 1.0),
@@ -607,14 +614,17 @@ const ENEMY_TELEGRAPH_PROFILES := {
 	},
 	"thornback": {
 		"family": "fang",
-		"projectile_color": Color(0.94, 0.48, 0.30, 1.0),
-		"accent_color": Color(1.0, 0.72, 0.52, 1.0),
-		"lane_color": Color(0.90, 0.34, 0.22, 1.0),
-		"marker_color": Color(0.98, 0.64, 0.52, 1.0),
+		"species_shot_modifier": "needle",
+		# Spine-bite: hotter and more crimson than Ashclaw's ash-ember lane read.
+		"projectile_color": Color(0.96, 0.42, 0.34, 1.0),
+		"accent_color": Color(1.0, 0.68, 0.48, 1.0),
+		"lane_color": Color(0.88, 0.28, 0.22, 1.0),
+		"marker_color": Color(0.98, 0.56, 0.44, 1.0),
 		"warning_bias": 1.08
 	},
 	"knellspine": {
 		"family": "chorus",
+		"species_shot_modifier": "chorus",
 		"projectile_color": Color(0.96, 0.86, 0.42, 1.0),
 		"accent_color": Color(1.0, 0.94, 0.62, 1.0),
 		"lane_color": Color(0.92, 0.76, 0.24, 1.0),
@@ -623,6 +633,7 @@ const ENEMY_TELEGRAPH_PROFILES := {
 	},
 	"marrowward": {
 		"family": "mass",
+		"species_shot_modifier": "mass",
 		"projectile_color": Color(0.74, 0.86, 0.76, 1.0),
 		"accent_color": Color(0.88, 0.96, 0.86, 1.0),
 		"lane_color": Color(0.52, 0.74, 0.62, 1.0),
@@ -631,14 +642,17 @@ const ENEMY_TELEGRAPH_PROFILES := {
 	},
 	"gorefane": {
 		"family": "fang",
-		"projectile_color": Color(0.98, 0.52, 0.30, 1.0),
-		"accent_color": Color(1.0, 0.78, 0.58, 1.0),
-		"lane_color": Color(0.94, 0.30, 0.18, 1.0),
-		"marker_color": Color(0.98, 0.70, 0.52, 1.0),
+		"species_shot_modifier": "mass",
+		# Wet gore weight: heavier silhouette (mass) + saturated arterial read.
+		"projectile_color": Color(0.98, 0.38, 0.26, 1.0),
+		"accent_color": Color(1.0, 0.62, 0.46, 1.0),
+		"lane_color": Color(0.92, 0.22, 0.14, 1.0),
+		"marker_color": Color(0.98, 0.50, 0.36, 1.0),
 		"warning_bias": 1.10
 	},
 	"hushcoil": {
 		"family": "veil",
+		"species_shot_modifier": "veil",
 		"projectile_color": Color(0.62, 0.86, 0.78, 1.0),
 		"accent_color": Color(0.82, 0.94, 0.88, 1.0),
 		"lane_color": Color(0.42, 0.70, 0.62, 1.0),
@@ -647,6 +661,7 @@ const ENEMY_TELEGRAPH_PROFILES := {
 	},
 	"coldvein": {
 		"family": "needle",
+		"species_shot_modifier": "needle",
 		"projectile_color": Color(0.72, 0.88, 1.0, 1.0),
 		"accent_color": Color(0.90, 0.96, 1.0, 1.0),
 		"lane_color": Color(0.54, 0.82, 1.0, 1.0),
@@ -655,6 +670,7 @@ const ENEMY_TELEGRAPH_PROFILES := {
 	},
 	"pale_shelf_precision_stalker": {
 		"family": "needle",
+		"species_shot_modifier": "needle",
 		"projectile_color": Color(0.76, 0.90, 1.0, 1.0),
 		"accent_color": Color(0.92, 0.98, 1.0, 1.0),
 		"lane_color": Color(0.58, 0.84, 1.0, 1.0),
@@ -663,6 +679,7 @@ const ENEMY_TELEGRAPH_PROFILES := {
 	},
 	"pale_shelf_shardshroud_sentinel": {
 		"family": "mass",
+		"species_shot_modifier": "mass",
 		"projectile_color": Color(0.72, 0.84, 0.78, 1.0),
 		"accent_color": Color(0.86, 0.94, 0.88, 1.0),
 		"lane_color": Color(0.50, 0.72, 0.64, 1.0),
@@ -671,6 +688,7 @@ const ENEMY_TELEGRAPH_PROFILES := {
 	},
 	"siltgrip": {
 		"family": "mass",
+		"species_shot_modifier": "mass",
 		"projectile_color": Color(0.54, 0.78, 0.66, 1.0),
 		"accent_color": Color(0.74, 0.90, 0.82, 1.0),
 		"lane_color": Color(0.32, 0.64, 0.54, 1.0),

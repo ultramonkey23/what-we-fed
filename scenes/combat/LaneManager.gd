@@ -429,7 +429,15 @@ func _fire_lane(lane: int) -> void:
 	var section_id: String = ""
 	if combat_scene != null and combat_scene.has_method("get_current_song_section_id"):
 		section_id = String(combat_scene.get_current_song_section_id())
-	telegraph_profile["shot_modifier"] = COMBAT_CONTENT.get_shot_modifier_for_section(section_id)
+	var section_mod: String = COMBAT_CONTENT.get_shot_modifier_for_section(section_id)
+	var species_mod: String = String(telegraph_profile.get("species_shot_modifier", "")).strip_edges()
+	# Species Signature Combat Pass v1: keep song timing, but let each authored enemy keep a
+	# stable shot silhouette (fang / needle / mass / veil / chorus / sovereign) instead of
+	# collapsing to the current song section preset.
+	if not species_mod.is_empty():
+		telegraph_profile["shot_modifier"] = species_mod
+	else:
+		telegraph_profile["shot_modifier"] = section_mod
 
 	combat_scene.add_child(projectile)
 	projectile.setup(

@@ -103,6 +103,18 @@ func get_grade() -> String:
 	return "BARELY HELD"
 
 
+func get_compact_summary() -> Dictionary:
+	var total_perfects: int = perfect_attacks + perfect_parries
+	return {
+		"grade": get_grade(),
+		"score": run_score,
+		"kills": kills,
+		"hits": times_hit,
+		"perfects": total_perfects,
+		"support_triggers": support_triggers
+	}
+
+
 func _add_score(amount: int) -> void:
 	if amount <= 0:
 		return

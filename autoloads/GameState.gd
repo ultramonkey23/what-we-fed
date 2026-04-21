@@ -64,6 +64,17 @@ var active_region: Dictionary = {}
 var run_path_plan: Array[Dictionary] = []
 var run_path_chosen_ids: PackedStringArray = PackedStringArray()
 
+# Between-level growth interstitial staging payload.
+# Shape (minimal): {
+#   "source_flow": String,            # "legacy" | "song"
+#   "advance_target": String,         # "route" | "run_spine"
+#   "advance_to_boss": bool,
+#   "creature": Dictionary,
+#   "performance": Dictionary,
+#   "fail_safe_pass_allowed": bool
+# }
+var growth_choice_intersection_payload: Dictionary = {}
+
 # Base stat values. reset_run_state() resets player_max_hp and player_base_damage
 # to these constants before applying a region modifier, so bonuses never accumulate.
 const BASE_MAX_HP: float = 100.0
@@ -332,6 +343,14 @@ func has_dna_for(species_id: String, threshold: float) -> bool:
 	return get_dna(species_id) >= threshold
 
 
+func set_growth_choice_intersection_payload(payload: Dictionary) -> void:
+	growth_choice_intersection_payload = payload.duplicate(true)
+
+
+func clear_growth_choice_intersection_payload() -> void:
+	growth_choice_intersection_payload.clear()
+
+
 func reset_run_state() -> void:
 	# Resets per-run state. Base stats are restored from constants before region modifiers
 	# are applied, so bonuses never accumulate across repeated runs.
@@ -352,6 +371,7 @@ func reset_run_state() -> void:
 	taken_upgrades.clear()
 	run_path_plan.clear()
 	run_path_chosen_ids.clear()
+	growth_choice_intersection_payload.clear()
 	_bond_order_counter = 0
 	# Re-seed the run roster with the player's selected lair creature, if any.
 	if not active_lair_creature_id.is_empty():

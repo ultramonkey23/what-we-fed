@@ -47,6 +47,7 @@ const PERFORMANCE_REWARD_DIRECTOR_SCRIPT_PATH: String = "res://systems/Performan
 const RUN_STATS_SCRIPT_PATH: String = "res://systems/RunStats.gd"
 const COMBAT_PERFORMANCE_HUD_SCENE: PackedScene = preload("res://scenes/ui/CombatPerformanceHUD.tscn")
 const RUN_SPINE_SCENE: PackedScene = preload("res://scenes/ui/RunSpineScene.tscn")
+const GROWTH_CHOICE_SCENE: PackedScene = preload("res://scenes/ui/GrowthChoiceIntersection.tscn")
 const PREDATION_POOL = preload("res://systems/PredationPool.gd")
 const ENEMY_LOW_HP_THRESHOLD: float = 0.25
 const SUPPORT_MASTERY_CONTEXT_TIMEOUT: float = 1.75
@@ -69,6 +70,7 @@ var _surge_window_timer: float = 0.0
 
 # ─── UI NODES (DYNAMICALLY CREATED) ──────────────────────────────────────────
 var _hud_top_left_container: VBoxContainer = null
+var _hud_top_left_panel: Control = null
 var _hud_top_right_container: VBoxContainer = null
 var _hud_top_right_panel: PanelContainer = null
 var _hud_top_right_accent_host: Control = null
@@ -92,8 +94,6 @@ var _support_shell: ColorRect = null
 var _support_bar: ProgressBar = null
 var _support_value_label: Label = null
 var _support_name_label: Label = null
-var _support_creature_portrait: TextureRect = null
-var _support_portrait_species: String = ""
 var _run_build_shell: ColorRect = null
 var _eaten_value_label: Label = null
 var _upgrade_value_label: Label = null
@@ -103,6 +103,7 @@ var _atk_value_label: Label = null
 var _def_value_label: Label = null
 var _quig_anchor_label: Label = null
 var _quig_anchor_sprite: TextureRect = null
+var _quig_shell: ColorRect = null
 var _hp_value_label: Label = null
 var _exp_value_label: Label = null
 var _dna_route_label: Label = null
@@ -162,6 +163,8 @@ var _active_path_node: Dictionary = {}
 var _active_path_context: Dictionary = {}
 
 var _run_spine_surface: Node = null
+var _growth_choice_surface: Node = null
+var _growth_choice_context: Dictionary = {}
 # Legacy between-level overlay vars retained for non-song upgrade flow compatibility.
 var _run_prep_overlay: ColorRect = null
 var _run_prep_panel: ColorRect = null
@@ -442,6 +445,7 @@ func _initialize_ui() -> void:
 	_create_reward_overlay()
 	_create_upgrade_overlay()
 	_create_run_spine_surface()
+	_create_growth_choice_surface()
 	_create_live_reward_shell()
 	_create_hud_presenter()
 	_setup_performance_hud()
@@ -816,6 +820,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not key_event.pressed or key_event.echo:
 		return
 
+	if _is_growth_choice_active():
+		return
+
 	if _awaiting_reward_choice and not _reward_choice_made:
 		if key_event.keycode == KEY_B:
 			_choose_bond()
@@ -1123,10 +1130,10 @@ func _setup_ui() -> void:
 	ui_layer.add_child(_end_stats_label)
 
 	controls_label.reparent(_hud_bottom_container)
-	controls_label.text = "A S D lane | Left Arrow parry | Right Arrow dodge | R unleash | Q route"
+	controls_label.text = PRESENTATION_TEXT.COMBAT_CONTROLS
 	controls_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_apply_text_role(controls_label, "hint", HORIZONTAL_ALIGNMENT_CENTER)
-	controls_label.add_theme_font_size_override("font_size", 16)
+	controls_label.add_theme_font_size_override("font_size", 14)
 
 	_style_progress_bar(hp_bar, Color(0.18, 0.06, 0.08, 0.88), Color(0.73, 0.24, 0.26, 1.0), 6)
 	_style_progress_bar(stamina_bar, Color(0.08, 0.09, 0.10, 0.82), Color(0.44, 0.66, 0.58, 1.0), 5)
@@ -1138,7 +1145,7 @@ func _setup_ui() -> void:
 		_hud_top_left_container.move_child(stats_row_node, _hud_top_left_container.get_child_count() - 1)
 
 
-func _hud_attach_combat_panel_art(panel: PanelContainer, texture_path: String, region: Rect2) -> void:
+func _hud_attach_combat_panel_art(panel: Control, texture_path: String, region: Rect2) -> void:
 	if texture_path.is_empty():
 		return
 	var existing_backing: Node = panel.get_node_or_null("HudPanelBacking")
@@ -1282,9 +1289,13 @@ func _build_hud_containers() -> void:
 	var right_stack_min_h: float = COMBAT_FEEL_CONTENT.HUD_RIGHT_STACK_MIN_HEIGHT
 	var tr_height: float = hud_th + COMBAT_FEEL_CONTENT.HUD_GAP_BELOW_TOP_BAND + right_stack_min_h
 	# Top Left Stack
-	var tl_panel := PanelContainer.new()
+	var tl_panel := Panel.new()
+	_hud_top_left_panel = tl_panel
 	tl_panel.name = "TopLeftPanel"
 	tl_panel.z_index = 40
+	tl_panel.clip_contents = true
+	tl_panel.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	tl_panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	tl_panel.position = Vector2(hud_m, hud_ty)
 	tl_panel.size = Vector2(hud_tl_w, hud_th)
 	tl_panel.custom_minimum_size = Vector2(hud_tl_w, hud_th)
@@ -1306,6 +1317,7 @@ func _build_hud_containers() -> void:
 		)
 	_hud_attach_combat_panel_art(tl_panel, tl_tex, COMBAT_FEEL_CONTENT.hud_top_left_texture_region())
 	ui_layer.add_child(tl_panel)
+	_enforce_top_left_panel_rect()
 
 	var tl_body := MarginContainer.new()
 	tl_body.name = "TopLeftBody"
@@ -1385,7 +1397,7 @@ func _build_hud_containers() -> void:
 	_hud_right_stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_hud_right_stack.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_hud_right_stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_hud_right_stack.add_theme_constant_override("separation", 8)
+	_hud_right_stack.add_theme_constant_override("separation", 6)
 	tr_stack.add_child(_hud_right_stack)
 
 	var bottom_panel := PanelContainer.new()
@@ -1437,6 +1449,18 @@ func _build_hud_containers() -> void:
 	bottom_body.add_child(_hud_bottom_container)
 
 
+func _enforce_top_left_panel_rect() -> void:
+	if _hud_top_left_panel == null or not is_instance_valid(_hud_top_left_panel):
+		return
+	var hud_m: float = COMBAT_FEEL_CONTENT.HUD_OUTER_MARGIN
+	var hud_ty: float = COMBAT_FEEL_CONTENT.HUD_TOP_BAND_Y
+	var hud_tl_w: float = COMBAT_FEEL_CONTENT.HUD_TOP_PANEL_WIDTH
+	var hud_th: float = COMBAT_FEEL_CONTENT.HUD_TOP_BAND_HEIGHT
+	_hud_top_left_panel.custom_minimum_size = Vector2(hud_tl_w, hud_th)
+	_hud_top_left_panel.position = Vector2(hud_m, hud_ty)
+	_hud_top_left_panel.size = Vector2(hud_tl_w, hud_th)
+
+
 func _build_meter_shell() -> void:
 	_meter_shell = ColorRect.new()
 	_meter_shell.name = "MeterShell"
@@ -1459,7 +1483,7 @@ func _build_meter_shell() -> void:
 	_resource_shell.offset_right = -8.0
 	_resource_shell.offset_bottom = 20.0
 	UI_STYLE.apply_shell_style(_resource_shell, "hud_accent")
-	_resource_shell.color = Color(0.16, 0.10, 0.08, 0.12)
+	_resource_shell.color = Color(0.16, 0.10, 0.08, 0.07)
 	if _hud_top_right_accent_host != null:
 		_hud_top_right_accent_host.add_child(_resource_shell)
 	elif _hud_top_right_panel != null:
@@ -1474,7 +1498,7 @@ func _build_meter_shell() -> void:
 
 	_support_shell = ColorRect.new()
 	_support_shell.name = "SupportShell"
-	_support_shell.custom_minimum_size = Vector2(COMBAT_FEEL_CONTENT.RIGHT_HUD_STACK_WIDTH, 72.0)
+	_support_shell.custom_minimum_size = Vector2(COMBAT_FEEL_CONTENT.RIGHT_HUD_STACK_WIDTH, 64.0)
 	UI_STYLE.apply_shell_style(_support_shell, "support_idle")
 	_hud_right_stack.add_child(_support_shell)
 
@@ -1500,22 +1524,13 @@ func _build_meter_shell() -> void:
 	support_header.add_theme_constant_override("separation", 4)
 	support_vbox.add_child(support_header)
 
-	# Bonded creature portrait
-	_support_creature_portrait = TextureRect.new()
-	_support_creature_portrait.name = "SupportPortrait"
-	_support_creature_portrait.custom_minimum_size = Vector2(20.0, 20.0)
-	_support_creature_portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	_support_creature_portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	_support_creature_portrait.visible = false
-	support_header.add_child(_support_creature_portrait)
-
 	_support_name_label = Label.new()
 	_support_name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_support_name_label.custom_minimum_size = Vector2(0.0, 20.0)
 	_support_name_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_support_name_label.text = PRESENTATION_TEXT.SUPPORT_EMPTY_NAME
 	_apply_text_role(_support_name_label, "secondary_value")
-	_support_name_label.add_theme_font_size_override("font_size", 18)
+	_support_name_label.add_theme_font_size_override("font_size", 15)
 	support_header.add_child(_support_name_label)
 
 	_support_value_label = Label.new()
@@ -1523,7 +1538,7 @@ func _build_meter_shell() -> void:
 	_support_value_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_support_value_label.text = "--"
 	_apply_text_role(_support_value_label, "alert_value", HORIZONTAL_ALIGNMENT_RIGHT)
-	_support_value_label.add_theme_font_size_override("font_size", 20)
+	_support_value_label.add_theme_font_size_override("font_size", 16)
 	support_header.add_child(_support_value_label)
 
 	_support_bar = ProgressBar.new()
@@ -1542,12 +1557,12 @@ func _build_meter_shell() -> void:
 	_support_trigger_label.custom_minimum_size = Vector2(COMBAT_FEEL_CONTENT.RIGHT_HUD_TEXT_WIDTH, 18.0)
 	_support_trigger_label.text = ""
 	_apply_text_role(_support_trigger_label, "status_line")
-	_support_trigger_label.add_theme_font_size_override("font_size", 17)
+	_support_trigger_label.add_theme_font_size_override("font_size", 13)
 	support_vbox.add_child(_support_trigger_label)
 
 	_run_build_shell = ColorRect.new()
 	_run_build_shell.name = "RunBuildShell"
-	_run_build_shell.custom_minimum_size = Vector2(COMBAT_FEEL_CONTENT.RIGHT_HUD_STACK_WIDTH, 64.0)
+	_run_build_shell.custom_minimum_size = Vector2(COMBAT_FEEL_CONTENT.RIGHT_HUD_STACK_WIDTH, 56.0)
 	UI_STYLE.apply_shell_style(_run_build_shell, "run_build")
 	_run_build_shell.visible = false
 	_hud_right_stack.add_child(_run_build_shell)
@@ -1734,7 +1749,7 @@ func _build_meter_shell() -> void:
 
 	_dna_route_shell = ColorRect.new()
 	_dna_route_shell.name = "DnaRouteShell"
-	_dna_route_shell.custom_minimum_size = Vector2(COMBAT_FEEL_CONTENT.RIGHT_HUD_STACK_WIDTH, 44.0)
+	_dna_route_shell.custom_minimum_size = Vector2(COMBAT_FEEL_CONTENT.RIGHT_HUD_STACK_WIDTH, 38.0)
 	UI_STYLE.apply_shell_style(_dna_route_shell, "hud_right")
 	_hud_right_stack.add_child(_dna_route_shell)
 
@@ -1761,7 +1776,7 @@ func _build_meter_shell() -> void:
 	_dna_route_label.text = PRESENTATION_TEXT.DNA_ROUTE_BOND_LABEL
 	_apply_text_role(_dna_route_label, "status_line", HORIZONTAL_ALIGNMENT_CENTER)
 	_dna_route_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_dna_route_label.add_theme_font_size_override("font_size", 16)
+	_dna_route_label.add_theme_font_size_override("font_size", 14)
 	dna_route_vbox.add_child(_dna_route_label)
 
 	# Initialize mutation value label (for enhanced mutation system)
@@ -2030,9 +2045,11 @@ func _build_song_hud() -> void:
 
 func _build_quig_anchor() -> void:
 	var quig_shell := ColorRect.new()
+	_quig_shell = quig_shell
 	quig_shell.name = "QuigShell"
-	quig_shell.custom_minimum_size = Vector2(COMBAT_FEEL_CONTENT.RIGHT_HUD_STACK_WIDTH, 28.0)
+	quig_shell.custom_minimum_size = Vector2(COMBAT_FEEL_CONTENT.RIGHT_HUD_STACK_WIDTH, 24.0)
 	quig_shell.color = Color(0.0, 0.0, 0.0, 0.0)
+	quig_shell.visible = false
 	_hud_right_stack.add_child(quig_shell)
 
 	_quig_anchor_sprite = _build_strip_sprite(
@@ -2047,13 +2064,14 @@ func _build_quig_anchor() -> void:
 		_quig_anchor_sprite.visible = false
 		quig_shell.add_child(_quig_anchor_sprite)
 
-		_timing_debug_label = Label.new()
-		_timing_debug_label.position = Vector2(10.0, 116.0)
-		_timing_debug_label.size = Vector2(240.0, 24.0)
-		_timing_debug_label.add_theme_font_size_override("font_size", 13)
-		_timing_debug_label.modulate = UI_STYLE.get_quality_feedback_color("idle")
-		_timing_debug_label.visible = OS.is_debug_build()
-		ui_layer.add_child(_timing_debug_label)
+		if OS.is_debug_build():
+			_timing_debug_label = Label.new()
+			_timing_debug_label.position = Vector2(10.0, 116.0)
+			_timing_debug_label.size = Vector2(240.0, 24.0)
+			_timing_debug_label.add_theme_font_size_override("font_size", 13)
+			_timing_debug_label.modulate = UI_STYLE.get_quality_feedback_color("idle")
+			_timing_debug_label.visible = true
+			ui_layer.add_child(_timing_debug_label)
 
 	_quig_anchor_label = Label.new()
 	_quig_anchor_label.name = "QuigAnchor"
@@ -2062,14 +2080,14 @@ func _build_quig_anchor() -> void:
 	_quig_anchor_label.size = Vector2(COMBAT_FEEL_CONTENT.RIGHT_HUD_STACK_WIDTH - 28.0, 28.0)
 	_quig_anchor_label.text = ""
 	_apply_text_role(_quig_anchor_label, "dim")
-	_quig_anchor_label.add_theme_font_size_override("font_size", 16)
+	_quig_anchor_label.add_theme_font_size_override("font_size", 13)
 	quig_shell.add_child(_quig_anchor_label)
 
 
 func _build_dna_shell() -> void:
 	_dna_shell = ColorRect.new()
 	_dna_shell.name = "DnaShell"
-	_dna_shell.custom_minimum_size = Vector2(COMBAT_FEEL_CONTENT.RIGHT_HUD_STACK_WIDTH, 52.0)
+	_dna_shell.custom_minimum_size = Vector2(COMBAT_FEEL_CONTENT.RIGHT_HUD_STACK_WIDTH, 46.0)
 	UI_STYLE.apply_shell_style(_dna_shell, "dna")
 	_dna_shell.visible = false
 	_hud_right_stack.add_child(_dna_shell)
@@ -2787,7 +2805,7 @@ func _create_live_reward_shell() -> void:
 	_live_reward_title_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_live_reward_title_label.custom_minimum_size = Vector2(0.0, 22.0)
 	_apply_text_role(_live_reward_title_label, "subheading")
-	_live_reward_title_label.add_theme_font_size_override("font_size", 22)
+	_live_reward_title_label.add_theme_font_size_override("font_size", 16)
 	reward_body.add_child(_live_reward_title_label)
 
 	_live_reward_body_label = Label.new()
@@ -2795,14 +2813,14 @@ func _create_live_reward_shell() -> void:
 	_live_reward_body_label.custom_minimum_size = Vector2(0.0, 22.0)
 	_live_reward_body_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_apply_text_role(_live_reward_body_label, "body")
-	_live_reward_body_label.add_theme_font_size_override("font_size", 19)
+	_live_reward_body_label.add_theme_font_size_override("font_size", 13)
 	reward_body.add_child(_live_reward_body_label)
 
 	_live_reward_hint_label = Label.new()
 	_live_reward_hint_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_live_reward_hint_label.custom_minimum_size = Vector2(0.0, 18.0)
 	_apply_text_role(_live_reward_hint_label, "hint")
-	_live_reward_hint_label.add_theme_font_size_override("font_size", 17)
+	_live_reward_hint_label.add_theme_font_size_override("font_size", 12)
 	reward_body.add_child(_live_reward_hint_label)
 
 
@@ -2825,7 +2843,7 @@ func _create_hud_presenter() -> void:
 		"support_value_label": _support_value_label,
 		"support_name_label": _support_name_label,
 		"support_trigger_label": _support_trigger_label,
-		"support_creature_portrait": _support_creature_portrait,
+		"support_creature_portrait": null,
 		# Run build cluster
 		"run_build_shell": _run_build_shell,
 		"eaten_value_label": _eaten_value_label,
@@ -2924,13 +2942,22 @@ func _setup_performance_hud() -> void:
 		_performance_hud.position = Vector2(COMBAT_FEEL_CONTENT.RIGHT_HUD_STACK_X - 14.0, 238.0)
 	if _performance_reward_director != null and _performance_hud.has_method("bind_runtime"):
 		_performance_hud.bind_runtime(_performance_reward_director)
+	_sync_message_lane_ownership()
 
 
 func _sync_compact_transient_hud_layout() -> void:
+	_enforce_top_left_panel_rect()
 	if _live_reward_shell != null and is_instance_valid(_live_reward_shell):
 		var vp: Vector2 = get_viewport_rect().size
 		_live_reward_shell.position = COMBAT_FEEL_CONTENT.compact_live_reward_position_for_viewport(vp)
 		_live_reward_shell.size = COMBAT_FEEL_CONTENT.compact_live_reward_size()
+	_sync_message_lane_ownership()
+
+
+func _sync_message_lane_ownership() -> void:
+	var live_lane_active: bool = _live_reward_shell != null and is_instance_valid(_live_reward_shell) and _live_reward_shell.visible
+	if is_instance_valid(_performance_hud) and _performance_hud.has_method("set_message_lane_blocked"):
+		_performance_hud.call("set_message_lane_blocked", live_lane_active)
 	_center_performance_offer_shell()
 
 
@@ -2940,10 +2967,13 @@ func _center_performance_offer_shell() -> void:
 	var offer_shell: Control = _performance_hud.get_node_or_null("%OfferShell") as Control
 	if offer_shell == null:
 		return
+	if _live_reward_shell != null and is_instance_valid(_live_reward_shell) and _live_reward_shell.visible:
+		offer_shell.visible = false
+		return
 	var vp: Vector2 = get_viewport_rect().size
-	var sz: Vector2 = COMBAT_FEEL_CONTENT.compact_performance_offer_size()
+	var sz: Vector2 = COMBAT_FEEL_CONTENT.compact_live_reward_size()
 	offer_shell.size = sz
-	offer_shell.global_position = COMBAT_FEEL_CONTENT.compact_performance_offer_global_position_for_viewport(vp)
+	offer_shell.global_position = COMBAT_FEEL_CONTENT.compact_live_reward_position_for_viewport(vp)
 
 
 func _on_performance_reward_claimed(_reward_data: Dictionary, _source: String) -> void:
@@ -3177,14 +3207,20 @@ func _on_regular_level_complete() -> void:
 	if _escalation_director != null:
 		_escalation_director.pause()
 	_set_song_paused(true)
-	
-	# Show structural level completion rewards.
+
+	var reward_creature: Dictionary = _get_level_completion_reward_creature()
+	if not reward_creature.is_empty():
+		_show_growth_choice_intersection(reward_creature, "song", "run_spine", false)
+		return
+
+	# Fallback: if no authored creature is available, keep existing flow.
 	_show_level_completion_rewards()
 
 
 func _show_level_completion_rewards() -> void:
 	_hide_reward_overlay()
 	_hide_run_spine_surface()
+	_hide_growth_choice_surface()
 
 	_pending_upgrades.clear()
 	if _performance_reward_director != null and is_instance_valid(_performance_reward_director):
@@ -3198,6 +3234,66 @@ func _show_level_completion_rewards() -> void:
 			_try_present_path_choice_after_run_spine()
 	_show_feedback("LEVEL COMPLETE", Color(0.85, 0.95, 0.75, 1.0), 0.60)
 	controls_label.text = ""
+
+
+func _get_level_completion_reward_creature() -> Dictionary:
+	var reward_creature: Dictionary = Dictionary(_active_encounter.get("reward_creature", {}))
+	if not reward_creature.is_empty():
+		return reward_creature
+
+	# Approved v1 behavior: deterministic first item from pool when no explicit single creature exists.
+	var pool: Array = _active_encounter.get("reward_creature_pool", [])
+	if pool.is_empty():
+		return {}
+	return Dictionary(pool[0]).duplicate(true)
+
+
+func _show_growth_choice_intersection(
+	creature_data: Dictionary,
+	source_flow: String,
+	advance_target: String,
+	advance_to_boss: bool
+) -> void:
+	if creature_data.is_empty():
+		return
+
+	_pending_reward_creature = creature_data.duplicate(true)
+	_pending_reward_dna_locked = not GameState.has_dna_for(
+		String(_pending_reward_creature.get("species_id", "")),
+		float(_pending_reward_creature.get("dna_threshold", 0.0))
+	)
+	_awaiting_reward_choice = true
+	_reward_choice_made = false
+
+	var perf_summary: Dictionary = {}
+	if _run_stats != null and is_instance_valid(_run_stats) and _run_stats.has_method("get_compact_summary"):
+		perf_summary = _run_stats.call("get_compact_summary")
+
+	_growth_choice_context = {
+		"source_flow": source_flow,
+		"advance_target": advance_target,
+		"advance_to_boss": advance_to_boss
+	}
+
+	var payload: Dictionary = {
+		"source_flow": source_flow,
+		"advance_target": advance_target,
+		"advance_to_boss": advance_to_boss,
+		"creature": _pending_reward_creature.duplicate(true),
+		"performance": perf_summary.duplicate(true),
+		"bond_available": not _pending_reward_dna_locked,
+		"eat_available": not _pending_reward_dna_locked,
+		"fail_safe_pass_allowed": _pending_reward_dna_locked
+	}
+	GameState.set_growth_choice_intersection_payload(payload)
+	EventBus.emit_signal("capture_offered", _pending_reward_creature)
+
+	_hide_reward_overlay()
+	_hide_run_spine_surface()
+	if _growth_choice_surface != null and is_instance_valid(_growth_choice_surface) and _growth_choice_surface.has_method("present"):
+		_growth_choice_surface.call("present")
+	controls_label.text = ""
+	_show_feedback("GROWTH INTERSECTION", Color(0.90, 0.80, 0.64, 1.0), 0.42)
 
 
 func _create_run_spine_surface() -> void:
@@ -3215,6 +3311,64 @@ func _create_run_spine_surface() -> void:
 		_run_spine_surface.connect("predation_selected", Callable(self, "_on_run_spine_predation_selected"))
 	if _run_spine_surface.has_signal("path_node_selected"):
 		_run_spine_surface.connect("path_node_selected", Callable(self, "_on_run_spine_path_node_selected"))
+
+
+func _create_growth_choice_surface() -> void:
+	if _growth_choice_surface != null and is_instance_valid(_growth_choice_surface):
+		return
+	_growth_choice_surface = GROWTH_CHOICE_SCENE.instantiate()
+	_growth_choice_surface.name = "GrowthChoiceSurface"
+	_growth_choice_surface.visible = false
+	add_child(_growth_choice_surface)
+	if _growth_choice_surface.has_signal("growth_choice_selected"):
+		_growth_choice_surface.connect("growth_choice_selected", Callable(self, "_on_growth_choice_selected"))
+
+
+func _is_growth_choice_active() -> bool:
+	return _growth_choice_surface != null and is_instance_valid(_growth_choice_surface) and _growth_choice_surface.visible
+
+
+func _hide_growth_choice_surface() -> void:
+	if _growth_choice_surface != null and is_instance_valid(_growth_choice_surface) and _growth_choice_surface.has_method("hide_surface"):
+		_growth_choice_surface.call("hide_surface")
+
+
+func _on_growth_choice_selected(choice_id: String) -> void:
+	if not _is_growth_choice_active():
+		return
+	if _pending_reward_creature.is_empty():
+		_hide_growth_choice_surface()
+		GameState.clear_growth_choice_intersection_payload()
+		_growth_choice_context.clear()
+		return
+
+	var resolved: bool = false
+	match choice_id:
+		"bond":
+			resolved = _apply_pending_reward_choice("bond")
+		"eat":
+			resolved = _apply_pending_reward_choice("eat")
+		"pass":
+			if _pending_reward_dna_locked:
+				_reward_choice_made = true
+				_awaiting_reward_choice = false
+				resolved = true
+
+	if not resolved:
+		return
+
+	_pending_reward_creature = {}
+	_pending_reward_dna_locked = false
+	_hide_growth_choice_surface()
+	GameState.clear_growth_choice_intersection_payload()
+
+	var source_flow: String = String(_growth_choice_context.get("source_flow", "legacy"))
+	_growth_choice_context.clear()
+
+	if source_flow == "song":
+		_show_level_completion_rewards()
+	else:
+		_check_for_upgrade_choices()
 
 
 func _is_run_spine_active() -> bool:
@@ -3506,7 +3660,7 @@ func _update_song_hud() -> void:
 
 
 func _set_song_controls_text() -> void:
-	_hud_presenter.set_controls_text("A S D choose lane  |  Left Arrow parry  |  Right Arrow dodge  |  R unleash")
+	_hud_presenter.set_controls_text(PRESENTATION_TEXT.COMBAT_CONTROLS)
 
 
 func _start_song_conductor(start_time: float = 0.0, end_time: float = -1.0) -> void:
@@ -3743,6 +3897,9 @@ func _start_mini_run() -> void:
 	_song_level_transitioning = false
 	_hide_live_reward_shell()
 	_hide_run_spine_surface()
+	_hide_growth_choice_surface()
+	_growth_choice_context.clear()
+	GameState.clear_growth_choice_intersection_payload()
 	_refresh_run_build_readout()
 	_start_song_run()
 
@@ -4374,9 +4531,9 @@ func _set_combat_controls_text() -> void:
 		_set_song_controls_text()
 		return
 	if _is_boss_encounter:
-		controls_label.text = "Boss encounter  |  A S D choose lane  |  Left Arrow parry  |  Right Arrow dodge  |  R unleash"
+		controls_label.text = PRESENTATION_TEXT.COMBAT_BOSS_CONTROLS
 	else:
-		controls_label.text = "A S D choose lane  |  Left Arrow parry  |  Right Arrow dodge  |  R unleash"
+		controls_label.text = PRESENTATION_TEXT.COMBAT_CONTROLS
 
 
 func _start_current_phase() -> void:
@@ -4476,7 +4633,7 @@ func _complete_current_encounter() -> void:
 		if not pool.is_empty():
 			reward_creature = pool[randi() % pool.size()]
 	if not reward_creature.is_empty():
-		_offer_victory_reward(reward_creature)
+		_show_growth_choice_intersection(reward_creature, "legacy", "route", false)
 		return
 
 	_refresh_run_build_readout()
@@ -4511,7 +4668,7 @@ func _show_upgrade_choices() -> void:
 			card.visible = false
 			
 	_upgrade_overlay.visible = true
-	controls_label.text = "1 / 2 / 3 - Select Evolution"
+	controls_label.text = PRESENTATION_TEXT.RUN_SPINE_EVOLUTION_CONTROLS
 
 
 func _choose_upgrade(index: int) -> void:
@@ -4548,6 +4705,9 @@ func _finish_run(victory: bool) -> void:
 	_combat_finished = true
 	_phase_transitioning = false
 	_hide_run_spine_surface()
+	_hide_growth_choice_surface()
+	_growth_choice_context.clear()
+	GameState.clear_growth_choice_intersection_payload()
 	GameState.run_in_progress = false
 
 	_stop_boss_music()
@@ -4565,12 +4725,12 @@ func _finish_run(victory: bool) -> void:
 		result_label.text = "RUN COMPLETE"
 		result_label.visible = true
 		_show_feedback("THE HOLLOW REMEMBERS YOU", Color(0.85, 1.0, 0.75, 1.0), 0.70)
-		controls_label.text = "Run complete  |  R restart  |  T return to lair"
+		controls_label.text = PRESENTATION_TEXT.RUN_END_CONTROLS_VICTORY
 	else:
 		result_label.text = "RUN FAILED"
 		result_label.visible = true
 		_show_feedback("RUN FAILED", Color(1.0, 0.45, 0.45, 1.0), 0.65)
-		controls_label.text = "Run failed  |  R restart  |  T return to lair"
+		controls_label.text = PRESENTATION_TEXT.RUN_END_CONTROLS_FAILURE
 
 	_show_end_stats()
 	_hide_reward_overlay()
@@ -4888,6 +5048,7 @@ func _show_live_reward_offer(creature_data: Dictionary) -> void:
 	_refresh_dna_hud()
 	_refresh_song_controls_text()
 	_refresh_quig_ui_state()
+	_sync_message_lane_ownership()
 
 
 func _refresh_live_reward_shell() -> void:
@@ -4922,6 +5083,7 @@ func _hide_live_reward_shell() -> void:
 		_live_reward_shell.visible = false
 	_live_reward_offer_timer = 0.0
 	_refresh_quig_ui_state()
+	_sync_message_lane_ownership()
 
 
 func _refresh_song_controls_text() -> void:
@@ -4958,26 +5120,65 @@ func _describe_creature_offer_context(creature_data: Dictionary) -> String:
 	return COMBAT_CONTENT.get_creature_encounter_summary(species_id)
 
 
+func _apply_pending_reward_choice(choice_id: String) -> bool:
+	if not _awaiting_reward_choice or _reward_choice_made:
+		return false
+	if choice_id != "bond" and choice_id != "eat":
+		return false
+
+	var species_id: String = String(_pending_reward_creature.get("species_id", ""))
+	var threshold: float = float(_pending_reward_creature.get("dna_threshold", 0.0))
+	if not GameState.has_dna_for(species_id, threshold):
+		_pending_reward_dna_locked = true
+		return false
+
+	GameState.spend_dna(species_id, threshold)
+	_pending_reward_dna_locked = false
+
+	if choice_id == "bond":
+		var updated_creature: Dictionary = GameState.add_bonded_creature(_pending_reward_creature)
+		EventBus.emit_signal("creature_bonded", updated_creature)
+		_reward_choice_made = true
+		_awaiting_reward_choice = false
+		_refresh_run_build_readout()
+		return true
+
+	var absorbed_entry: Dictionary = GameState.absorb_creature_type(_pending_reward_creature)
+	if String(absorbed_entry.get("eat_type", "")) == "hp_restore":
+		var healed: float = float(absorbed_entry.get("heal_applied", 0.0))
+		if healed > 0.0:
+			EventBus.emit_signal("player_healed", healed)
+	elif String(absorbed_entry.get("eat_type", "")) == "max_hp_flat":
+		EventBus.emit_signal("player_healed", float(absorbed_entry.get("heal_applied", 0.0)))
+	elif String(absorbed_entry.get("eat_type", "")) == "support_charge":
+		if _run_growth != null and is_instance_valid(_run_growth) and _run_growth.has_method("gain_support_charge_direct"):
+			_run_growth.call("gain_support_charge_direct", float(absorbed_entry.get("support_charge_bonus", 0.0)))
+
+	# Hollow Feed upgrade: extra heal on any eat.
+	var hollow_feed_effect: Dictionary = _get_growth_effect("eat_hp_restore")
+	if not hollow_feed_effect.is_empty():
+		var feed_healed: float = GameState.heal_player(float(hollow_feed_effect.get("value", 0.0)))
+		if feed_healed > 0.0:
+			EventBus.emit_signal("player_healed", feed_healed)
+
+	EventBus.emit_signal("creature_eaten", _pending_reward_creature)
+	_reward_choice_made = true
+	_awaiting_reward_choice = false
+	_refresh_run_build_readout()
+	return true
+
+
 func _choose_bond() -> void:
 	if not _awaiting_reward_choice or _reward_choice_made:
 		return
 
-	# DNA gate: bond costs the creature's dna_threshold in species-specific DNA.
 	var _bond_species: String = String(_pending_reward_creature.get("species_id", ""))
-	var _bond_threshold: float = float(_pending_reward_creature.get("dna_threshold", 0.0))
-	if not GameState.has_dna_for(_bond_species, _bond_threshold):
+	if not _apply_pending_reward_choice("bond"):
 		_show_feedback("NOT ENOUGH DNA", Color(0.92, 0.46, 0.28, 1.0), 0.42)
 		return
 
-	GameState.spend_dna(_bond_species, _bond_threshold)
-
-	var updated_creature: Dictionary = GameState.add_bonded_creature(_pending_reward_creature)
-	EventBus.emit_signal("creature_bonded", updated_creature)
-
-	_reward_choice_made = true
-	_awaiting_reward_choice = false
-
 	var _bond_creature_name: String = String(_pending_reward_creature.get("display_name", "creature"))
+	var updated_creature: Dictionary = GameState.get_bonded_creature(_bond_species)
 	var _new_bond_level: int = int(updated_creature.get("bond_level", 1))
 	var _bond_deepened: bool = _new_bond_level > 1
 	_reward_creature_tag_label.text = PRESENTATION_TEXT.REWARD_TAG_BONDED
@@ -5016,39 +5217,13 @@ func _choose_eat() -> void:
 	if not _awaiting_reward_choice or _reward_choice_made:
 		return
 
-	# DNA gate: eat costs the creature's dna_threshold in species-specific DNA.
-	var _eat_species: String = String(_pending_reward_creature.get("species_id", ""))
-	var _eat_threshold: float = float(_pending_reward_creature.get("dna_threshold", 0.0))
-	if not GameState.has_dna_for(_eat_species, _eat_threshold):
+	if not _apply_pending_reward_choice("eat"):
 		_show_feedback("NOT ENOUGH DNA", Color(0.92, 0.46, 0.28, 1.0), 0.42)
 		return
 
-	GameState.spend_dna(_eat_species, _eat_threshold)
-
-	var absorbed_entry: Dictionary = GameState.absorb_creature_type(_pending_reward_creature)
-	if String(absorbed_entry.get("eat_type", "")) == "hp_restore":
-		var healed: float = float(absorbed_entry.get("heal_applied", 0.0))
-		if healed > 0.0:
-			EventBus.emit_signal("player_healed", healed)
-	elif String(absorbed_entry.get("eat_type", "")) == "max_hp_flat":
-		EventBus.emit_signal("player_healed", float(absorbed_entry.get("heal_applied", 0.0)))
-	elif String(absorbed_entry.get("eat_type", "")) == "support_charge":
-		if _run_growth != null and is_instance_valid(_run_growth) and _run_growth.has_method("gain_support_charge_direct"):
-			_run_growth.call("gain_support_charge_direct", float(absorbed_entry.get("support_charge_bonus", 0.0)))
-
-	# Hollow Feed upgrade: extra heal on any eat.
-	var hollow_feed_effect: Dictionary = _get_growth_effect("eat_hp_restore")
-	if not hollow_feed_effect.is_empty():
-		var feed_healed: float = GameState.heal_player(float(hollow_feed_effect.get("value", 0.0)))
-		if feed_healed > 0.0:
-			EventBus.emit_signal("player_healed", feed_healed)
-
-	EventBus.emit_signal("creature_eaten", _pending_reward_creature)
-	_refresh_dna_hud()
-
-	_reward_choice_made = true
-	_awaiting_reward_choice = false
-
+	var absorbed_entry: Dictionary = {}
+	if not GameState.absorbed_types.is_empty():
+		absorbed_entry = Dictionary(GameState.absorbed_types[GameState.absorbed_types.size() - 1]).duplicate(true)
 	var _eat_creature_name: String = String(_pending_reward_creature.get("display_name", "creature"))
 	_reward_creature_tag_label.text = PRESENTATION_TEXT.REWARD_TAG_EATEN
 	_reward_title_label.text = "%s consumed." % _eat_creature_name
@@ -5089,8 +5264,6 @@ func _choose_eat() -> void:
 	_reward_hint_label.text = PRESENTATION_TEXT.REWARD_HINT_WAIT
 	_refresh_quig_ui_state()
 	_schedule_reward_scroll_reflow()
-
-	_refresh_run_build_readout()
 
 	if _song_reward_pending:
 		_show_feedback("%s CONSUMED" % _eat_creature_name.to_upper(), Color(0.94, 0.62, 0.30, 1.0), 0.34)
@@ -5237,7 +5410,7 @@ func _on_player_took_damage(_amount: float, source_lane: int) -> void:
 		_flash_meter_shell(Color(0.18, 0.18, 0.38, 0.96), 0.22)
 		EventBus.emit_signal("screen_flash", Color(0.38, 0.40, 0.62, 0.18), 0.28)
 	else:
-		_show_feedback("STRUCK", Color(0.96, 0.44, 0.40, 1.0), 0.34)
+		_show_feedback("STRUCK", Color(0.96, 0.44, 0.40, 1.0), 0.24)
 		_presentation_runtime.highlight_timing_ring(source_lane, Color(1.0, 0.25, 0.25, 1.0), 5.0)
 		_flash_meter_shell(Color(0.42, 0.10, 0.11, 0.94), 0.18)
 
@@ -5657,6 +5830,8 @@ func _has_active_quig_ui() -> bool:
 
 func _refresh_quig_ui_state() -> void:
 	var anchor_live: bool = _quig_anchor_label != null and _quig_anchor_label.visible and not _quig_anchor_label.text.is_empty()
+	if _quig_shell != null:
+		_quig_shell.visible = anchor_live
 	if _quig_anchor_sprite != null:
 		_quig_anchor_sprite.visible = anchor_live
 		if anchor_live:

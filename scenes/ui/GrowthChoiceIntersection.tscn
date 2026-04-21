@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenes/ui/GrowthChoiceIntersection.gd" id="1_a0j7d"]
+
+[node name="GrowthChoiceIntersection" type="Node2D"]
+script = ExtResource("1_a0j7d")

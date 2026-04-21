@@ -6,6 +6,7 @@ const UI_STYLE = preload("res://systems/UIStyle.gd")
 var _director: Node = null
 var _proc_chip_timer: float = 0.0
 var _proc_tween: Tween = null
+var _message_lane_blocked: bool = false
 
 var _shell: Control = null
 var _caption: Label = null
@@ -148,20 +149,20 @@ func _apply_styles() -> void:
 		_caption.text = "PREDATION METER"
 		_caption.add_theme_font_size_override("font_size", 12)
 	if _progress_label != null:
-		_progress_label.add_theme_font_size_override("font_size", 18)
+		_progress_label.add_theme_font_size_override("font_size", 16)
 	if _status_label != null:
-		_status_label.add_theme_font_size_override("font_size", 14)
+		_status_label.add_theme_font_size_override("font_size", 13)
 	if _claims_label != null:
 		_claims_label.add_theme_font_size_override("font_size", 12)
 	if _proc_chip_label != null:
 		_proc_chip_label.add_theme_font_size_override("font_size", 12)
 
 	if _offer_title_label != null:
-		_offer_title_label.add_theme_font_size_override("font_size", 20)
+		_offer_title_label.add_theme_font_size_override("font_size", 14)
 	if _offer_body_label != null:
-		_offer_body_label.add_theme_font_size_override("font_size", 16)
+		_offer_body_label.add_theme_font_size_override("font_size", 12)
 	if _offer_hint_label != null:
-		_offer_hint_label.add_theme_font_size_override("font_size", 14)
+		_offer_hint_label.add_theme_font_size_override("font_size", 11)
 
 
 func bind_runtime(director: Node) -> void:
@@ -185,7 +186,9 @@ func process_tick(delta: float, song_mode: bool, run_finished: bool, awaiting_ch
 	if _director == null or not is_instance_valid(_director):
 		return
 
-	if song_mode and not run_finished:
+	if _message_lane_blocked:
+		_hide_offer()
+	elif song_mode and not run_finished:
 		if _director.has_method("has_active_offer") and _director.call("has_active_offer"):
 			_refresh_offer(awaiting_choice)
 		else:
@@ -267,6 +270,9 @@ func _on_offer_started(_reward_data: Dictionary) -> void:
 func _refresh_offer(awaiting_choice: bool) -> void:
 	if _director == null or not is_instance_valid(_director):
 		return
+	if _message_lane_blocked:
+		_hide_offer()
+		return
 	if awaiting_choice:
 		_hide_offer()
 		return
@@ -283,16 +289,15 @@ func _refresh_offer(awaiting_choice: bool) -> void:
 		_offer_shell.visible = true
 	
 	if _offer_title_label != null:
-		_offer_title_label.text = "%s - %s" % [
-			_compact_hud_copy(String(reward_data.get("title", "Reward")), 16).to_upper(),
-			String(reward_data.get("tag", "MARK"))
-		]
+		var offer_title: String = _compact_hud_copy(String(reward_data.get("title", "Reward")), 12).to_upper()
+		var offer_tag: String = _compact_hud_copy(String(reward_data.get("tag", "MARK")), 6)
+		_offer_title_label.text = "%s %s" % [offer_title, offer_tag]
 	
 	if _offer_body_label != null:
-		_offer_body_label.text = String(reward_data.get("summary", ""))
+		_offer_body_label.text = _compact_hud_copy(String(reward_data.get("summary", "")), 40)
 	
 	if _offer_hint_label != null:
-		_offer_hint_label.text = "AUTO-CLAIM IN %.1fs" % time_left
+		_offer_hint_label.text = "AUTO %.1fs" % time_left
 		
 	if _offer_progress_bar != null:
 		_offer_progress_bar.value = clamp(time_left / total_time, 0.0, 1.0)
@@ -301,6 +306,12 @@ func _refresh_offer(awaiting_choice: bool) -> void:
 func _hide_offer() -> void:
 	if _offer_shell != null:
 		_offer_shell.visible = false
+
+
+func set_message_lane_blocked(blocked: bool) -> void:
+	_message_lane_blocked = blocked
+	if blocked:
+		_hide_offer()
 
 
 func _on_proc_feedback(text: String, color: Color) -> void:

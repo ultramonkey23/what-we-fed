@@ -1,4 +1,4 @@
-extends Control
+extends VBoxContainer
 
 const PERFORMANCE_REWARD_CONTENT = preload("res://data/PerformanceRewardContent.gd")
 const UI_STYLE = preload("res://systems/UIStyle.gd")

@@ -371,6 +371,42 @@ const CREATURES := {
 		"quig_offer_text": "Quig: \"Still enough you'll think it isn't watching. It is. You can't fix that now.\"",
 		"wrong_detail": "pupils gone but something colder left behind in their place"
 	},
+	"pale_shelf_precision_stalker": {
+		"species_id": "pale_shelf_precision_stalker",
+		"display_name": "Precision Stalker",
+		"base_hp": 30.0,
+		"base_damage": 10.0,
+		"base_defense": 1.0,
+		"dna_threshold": 9.0,
+		"description": "A narrow frame that commits only when your timing opens.",
+		"sprite_path": "res://assets/creatures/pale_shelf/enemies/pale_shelf_precision_stalker.png",
+		"battlefield_sprite_path": "res://assets/creatures/pale_shelf/enemies/pale_shelf_precision_stalker.png",
+		"combat_render": {
+			"scale": 0.052,
+			"world_offset": Vector2(-108.0, 74.0),
+			"z_index": 5,
+			"modulate": Color(0.84, 0.96, 1.0, 0.88),
+			"marker_modulate": Color(0.82, 0.96, 1.0, 0.92)
+		}
+	},
+	"pale_shelf_shardshroud_sentinel": {
+		"species_id": "pale_shelf_shardshroud_sentinel",
+		"display_name": "Shardshroud Sentinel",
+		"base_hp": 38.0,
+		"base_damage": 10.0,
+		"base_defense": 2.0,
+		"dna_threshold": 8.0,
+		"description": "A plated watcher that waits for panic, then closes the lane.",
+		"sprite_path": "res://assets/creatures/pale_shelf/enemies/pale_shelf_shardshroud_sentinel.png",
+		"battlefield_sprite_path": "res://assets/creatures/pale_shelf/enemies/pale_shelf_shardshroud_sentinel.png",
+		"combat_render": {
+			"scale": 0.054,
+			"world_offset": Vector2(-108.0, 74.0),
+			"z_index": 5,
+			"modulate": Color(0.86, 0.92, 0.88, 0.88),
+			"marker_modulate": Color(0.88, 0.95, 0.90, 0.94)
+		}
+	},
 	"siltgrip": {
 		"species_id": "siltgrip",
 		"display_name": "Siltgrip",
@@ -474,6 +510,10 @@ const SECTION_SHOT_MODIFIER := {
 }
 
 const DEFAULT_PROJECTILE_BODY_PATH: String = "res://assets/sprites/projectile_bodies/dreg.png"
+const PROJECTILE_BODY_ALIASES := {
+	"pale_shelf_precision_stalker": "veilskin",
+	"pale_shelf_shardshroud_sentinel": "marrowward"
+}
 
 
 static func get_shot_modifier_for_section(section_id: String) -> String:
@@ -496,6 +536,11 @@ static func get_projectile_body_resource_path(enemy: Dictionary) -> String:
 	var lower: String = key.to_lower()
 	if lower != key:
 		path = "res://assets/sprites/projectile_bodies/%s.png" % lower
+		if ResourceLoader.exists(path):
+			return path
+	if PROJECTILE_BODY_ALIASES.has(key):
+		var alias_key: String = String(PROJECTILE_BODY_ALIASES[key])
+		path = "res://assets/sprites/projectile_bodies/%s.png" % alias_key
 		if ResourceLoader.exists(path):
 			return path
 	return DEFAULT_PROJECTILE_BODY_PATH
@@ -606,6 +651,22 @@ const ENEMY_TELEGRAPH_PROFILES := {
 		"marker_color": Color(0.84, 0.94, 1.0, 1.0),
 		"warning_bias": 1.18
 	},
+	"pale_shelf_precision_stalker": {
+		"family": "needle",
+		"projectile_color": Color(0.76, 0.90, 1.0, 1.0),
+		"accent_color": Color(0.92, 0.98, 1.0, 1.0),
+		"lane_color": Color(0.58, 0.84, 1.0, 1.0),
+		"marker_color": Color(0.86, 0.96, 1.0, 1.0),
+		"warning_bias": 1.20
+	},
+	"pale_shelf_shardshroud_sentinel": {
+		"family": "mass",
+		"projectile_color": Color(0.72, 0.84, 0.78, 1.0),
+		"accent_color": Color(0.86, 0.94, 0.88, 1.0),
+		"lane_color": Color(0.50, 0.72, 0.64, 1.0),
+		"marker_color": Color(0.80, 0.90, 0.84, 1.0),
+		"warning_bias": 0.96
+	},
 	"siltgrip": {
 		"family": "mass",
 		"projectile_color": Color(0.54, 0.78, 0.66, 1.0),
@@ -679,6 +740,19 @@ const CREATURE_ENCOUNTER_PROFILES := {
 		"marker_modulate": Color(0.78, 0.90, 1.0, 0.98),
 		"status_flags": {"expose_duration_mult": 0.55},
 		"encounter_summary": "Cold and still until the moment opens. The moment does not re-open."
+	},
+	"pale_shelf_precision_stalker": {
+		"projectile_speed": 430.0,
+		"dna_reward": 2.75,
+		"marker_modulate": Color(0.82, 0.94, 1.0, 0.98),
+		"status_flags": {"expose_duration_mult": 0.55},
+		"encounter_summary": "Fast precision pressure that strips safe timing windows."
+	},
+	"pale_shelf_shardshroud_sentinel": {
+		"projectile_speed": 286.0,
+		"dna_reward": 2.75,
+		"marker_modulate": Color(0.84, 0.90, 0.86, 0.96),
+		"encounter_summary": "Defensive lane anchor that punishes rushed counterplay."
 	},
 	"siltgrip": {
 		"projectile_speed": 258.0,

@@ -125,8 +125,8 @@ const SONG_PHASES_BY_REGION: Dictionary = {
 			"max_active_threats": 2,
 			"enemy_pool": [
 				{"species_id": "bond_remnant", "hp": 36.0, "damage": 10.0, "weight": 0.38},
-				{"species_id": "marrowward", "hp": 38.0, "damage": 10.0, "weight": 0.34},
-				{"species_id": "veilskin", "grade": "brood", "hp": 28.0, "damage": 9.0, "weight": 0.28}
+				{"species_id": "pale_shelf_shardshroud_sentinel", "reward_species_id": "marrowward", "hp": 38.0, "damage": 10.0, "weight": 0.34},
+				{"species_id": "pale_shelf_precision_stalker", "reward_species_id": "veilskin", "grade": "brood", "hp": 28.0, "damage": 9.0, "weight": 0.28}
 			],
 			"intro_text": "Nothing hides here. Neither do you.",
 			"reward_pool": ["bond_remnant", "marrowward", "veilskin", "coldvein"]
@@ -139,10 +139,10 @@ const SONG_PHASES_BY_REGION: Dictionary = {
 			"fire_stagger": 0.62,
 			"max_active_threats": 2,
 			"enemy_pool": [
-				{"species_id": "veilskin", "hp": 30.0, "damage": 10.0, "weight": 0.32},
+				{"species_id": "pale_shelf_precision_stalker", "reward_species_id": "veilskin", "hp": 30.0, "damage": 10.0, "weight": 0.32},
 				{"species_id": "knellspine", "hp": 31.0, "damage": 10.0, "weight": 0.28},
 				{"species_id": "hushcoil", "hp": 34.0, "damage": 10.0, "weight": 0.20},
-				{"species_id": "marrowward", "grade": "brood", "hp": 36.0, "damage": 9.0, "weight": 0.20},
+				{"species_id": "pale_shelf_shardshroud_sentinel", "reward_species_id": "marrowward", "grade": "brood", "hp": 36.0, "damage": 9.0, "weight": 0.20},
 				{"species_id": "coldvein", "grade": "brood", "hp": 29.0, "damage": 9.0, "weight": 0.18}
 			],
 			"intro_text": "The shelf offers no cover.",
@@ -156,8 +156,8 @@ const SONG_PHASES_BY_REGION: Dictionary = {
 			"fire_stagger": 0.55,
 			"max_active_threats": 3,
 			"enemy_pool": [
-				{"species_id": "veilskin", "grade": "alpha", "hp": 30.0, "damage": 10.0, "weight": 0.26},
-				{"species_id": "marrowward", "hp": 39.0, "damage": 11.0, "weight": 0.24},
+				{"species_id": "pale_shelf_precision_stalker", "reward_species_id": "veilskin", "grade": "alpha", "hp": 30.0, "damage": 10.0, "weight": 0.26},
+				{"species_id": "pale_shelf_shardshroud_sentinel", "reward_species_id": "marrowward", "hp": 39.0, "damage": 11.0, "weight": 0.24},
 				{"species_id": "hushcoil", "hp": 35.0, "damage": 10.0, "weight": 0.22},
 				{"species_id": "knellspine", "hp": 33.0, "damage": 11.0, "weight": 0.18},
 				{"species_id": "bond_remnant", "grade": "alpha", "hp": 40.0, "damage": 11.0, "weight": 0.10},
@@ -176,7 +176,7 @@ const SONG_PHASES_BY_REGION: Dictionary = {
 			"enemy_pool": [
 				{"species_id": "bond_remnant", "hp": 37.0, "damage": 10.0, "weight": 0.32},
 				{"species_id": "knellspine", "hp": 32.0, "damage": 10.0, "weight": 0.24},
-				{"species_id": "marrowward", "hp": 38.0, "damage": 10.0, "weight": 0.24},
+				{"species_id": "pale_shelf_shardshroud_sentinel", "reward_species_id": "marrowward", "hp": 38.0, "damage": 10.0, "weight": 0.24},
 				{"species_id": "hushcoil", "grade": "brood", "hp": 32.0, "damage": 9.0, "weight": 0.20},
 				{"species_id": "coldvein", "grade": "brood", "hp": 28.0, "damage": 9.0, "weight": 0.18}
 			],
@@ -191,8 +191,8 @@ const SONG_PHASES_BY_REGION: Dictionary = {
 			"fire_stagger": 0.50,
 			"max_active_threats": 3,
 			"enemy_pool": [
-				{"species_id": "veilskin", "grade": "alpha", "hp": 31.0, "damage": 11.0, "weight": 0.26},
-				{"species_id": "marrowward", "grade": "alpha", "hp": 39.0, "damage": 11.0, "weight": 0.24},
+				{"species_id": "pale_shelf_precision_stalker", "reward_species_id": "veilskin", "grade": "alpha", "hp": 31.0, "damage": 11.0, "weight": 0.26},
+				{"species_id": "pale_shelf_shardshroud_sentinel", "reward_species_id": "marrowward", "grade": "alpha", "hp": 39.0, "damage": 11.0, "weight": 0.24},
 				{"species_id": "hushcoil", "grade": "alpha", "hp": 35.0, "damage": 10.0, "weight": 0.22},
 				{"species_id": "bond_remnant", "grade": "alpha", "hp": 40.0, "damage": 11.0, "weight": 0.16},
 				{"species_id": "knellspine", "grade": "alpha", "hp": 33.0, "damage": 11.0, "weight": 0.12},

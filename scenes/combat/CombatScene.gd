@@ -4029,10 +4029,12 @@ func _build_enemy_marker(enemy_id: int, lane: int, enemy: Dictionary, marker_siz
 				sprite.texture = tex
 				sprite.name = "CreatureSilhouette"
 				# Desaturated, dark silhouette that fits the procedural frame.
-				sprite.modulate = base_color.darkened(0.4)
-				sprite.modulate.a = 0.55
-				# Scale to fit inside the marker core.
 				var render: Dictionary = COMBAT_CONTENT.get_creature_combat_render(species_id)
+				var marker_modulate: Color = Color(render.get("marker_modulate", base_color.darkened(0.4)))
+				sprite.modulate = marker_modulate
+				if not render.has("marker_modulate"):
+					sprite.modulate.a = 0.55
+				# Scale to fit inside the marker core.
 				sprite.scale = Vector2(render.get("scale", 0.052), render.get("scale", 0.052)) * (marker_size / 42.0)
 				# Offset it slightly so it doesn't obscure the accent/sigil shapes.
 				sprite.position = Vector2(0.0, -2.0)

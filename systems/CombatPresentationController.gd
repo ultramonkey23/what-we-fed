@@ -209,6 +209,15 @@ func apply_combat_background(
 		layer.position = (vp - layer.size) * 0.5 + layer_data.get("offset", Vector2.ZERO)
 		
 		bg_sprite.add_child(layer)
+		
+		# Premium: Inject atmospheric haze after the sky layer
+		if layer_data.id == "sky":
+			var haze := ColorRect.new()
+			haze.name = "AtmosphericHaze"
+			haze.set_anchors_preset(Control.PRESET_FULL_RECT)
+			haze.color = env.get("haze_color", Color(0.0, 0.0, 0.0, 0.3))
+			haze.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			bg_sprite.add_child(haze)
 
 	# Create particles
 	for part_data in env.get("particles", []):
@@ -276,23 +285,34 @@ func update_background_parallax(bg_sprite: Control, focus_pos: Vector2) -> void:
 	var center: Vector2 = vp * 0.5
 	var offset: Vector2 = focus_pos - center
 	
+	# Music Reactivity: Get beat phase from GameState if available
+	var beat_pulse: float = 0.0
+	if GameState.has_method("is_beat_active") and GameState.call("is_beat_active"):
+		# We'll use a simple sine wave pulse based on time if we don't have a direct phase
+		beat_pulse = abs(sin(Time.get_ticks_msec() * 0.008)) * 0.04
+	
 	for child in bg_sprite.get_children():
-		if not child is TextureRect:
-			continue
+		if child is TextureRect:
+			var layer_id = child.name
+			var layer_data = {}
+			for l in _active_bg_env.get("layers", []):
+				if l.id == layer_id:
+					layer_data = l
+					break
 			
-		var layer_id = child.name
-		var layer_data = {}
-		for l in _active_bg_env.get("layers", []):
-			if l.id == layer_id:
-				layer_data = l
-				break
-		
-		if layer_data.is_empty():
-			continue
+			if layer_data.is_empty():
+				continue
+				
+			var p_factor: Vector2 = layer_data.get("parallax", Vector2.ZERO)
+			var base_pos: Vector2 = (vp - child.size) * 0.5 + layer_data.get("offset", Vector2.ZERO)
 			
-		var p_factor: Vector2 = layer_data.get("parallax", Vector2.ZERO)
-		var base_pos: Vector2 = (vp - child.size) * 0.5 + layer_data.get("offset", Vector2.ZERO)
-		child.position = base_pos + offset * p_factor
+			# Apply parallax + subtle beat scale pulse
+			child.position = base_pos + offset * p_factor
+			if layer_id == "sky": # Farthest layer pulses most for depth
+				child.scale = layer_data.get("scale", Vector2.ONE) * (1.0 + beat_pulse)
+		elif child is CPUParticles2D:
+			# Particles react to beat by speeding up slightly
+			child.speed_scale = 0.5 + (beat_pulse * 2.0)
 
 
 func update_background_tendency_reaction(bg_sprite: Control, leading_tendency: String) -> void:
@@ -324,6 +344,19 @@ func update_background_tendency_reaction(bg_sprite: Control, leading_tendency: S
 			tween.tween_property(child, "modulate", target_modulate, 2.0).set_trans(Tween.TRANS_SINE)
 		elif child is CPUParticles2D:
 			child.speed_scale = 0.5 * speed_mult
+
+
+func on_combat_event(bg_sprite: Control, event_type: String) -> void:
+	if bg_sprite == null or not is_instance_valid(bg_sprite):
+		return
+	
+	if event_type == "perfect":
+		for child in bg_sprite.get_children():
+			if child is CPUParticles2D:
+				var original_speed = child.speed_scale
+				var tween = child.create_tween()
+				tween.tween_property(child, "speed_scale", original_speed * 4.0, 0.1)
+				tween.tween_property(child, "speed_scale", original_speed, 0.6)
 
 
 func create_timing_circle_container(host: Node2D) -> Node2D:

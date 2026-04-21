@@ -2015,6 +2015,7 @@ func _setup_presentation_runtime() -> void:
 		_attack_fx_container,
 		player_combat,
 		lane_manager,
+		ui_layer,
 		_enemy_markers_by_id,
 		_ring_highlight_timers,
 		_bg_sprite
@@ -2526,6 +2527,7 @@ func _connect_eventbus() -> void:
 	EventBus.enemy_status_applied_requested.connect(_on_enemy_status_applied_requested)
 	EventBus.screen_flash.connect(_presentation_runtime.on_screen_flash)
 	EventBus.screen_shake.connect(_presentation_runtime.on_screen_shake)
+	EventBus.ui_shake.connect(_presentation_runtime.on_ui_shake)
 	EventBus.slow_motion.connect(_on_slow_motion)
 	EventBus.player_attacked.connect(_on_player_attacked)
 	EventBus.timed_attack_resolved.connect(_on_timed_attack_resolved)
@@ -4804,6 +4806,9 @@ func _on_timed_attack_resolved(lane: int, quality: String, damage: float) -> voi
 			lane_manager.damage_enemy(lane, flow_damage)
 
 	_presentation_runtime.apply_impact_profile(COMBAT_IMPACT_FEEDBACK.build_timed_attack_profile(quality, beat_quality), lane, enemy_id)
+	
+	if quality == "perfect":
+		_presentation_controller.on_combat_event(_bg_sprite, "perfect")
 
 
 func _on_player_parried(lane: int, quality: String, _reflect_damage: float) -> void:
@@ -4829,6 +4834,9 @@ func _on_player_parried(lane: int, quality: String, _reflect_damage: float) -> v
 			_show_beat_feedback("ON BEAT", Color(0.60, 0.94, 0.76, 1.0))
 
 	_presentation_runtime.apply_impact_profile(COMBAT_IMPACT_FEEDBACK.build_parry_profile(quality, bq), lane, enemy_id)
+	
+	if quality == "perfect":
+		_presentation_controller.on_combat_event(_bg_sprite, "perfect")
 
 
 func _on_player_dodged(_from_lane: int, to_lane: int) -> void:

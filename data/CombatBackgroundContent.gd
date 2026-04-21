@@ -10,6 +10,7 @@ const ENVIRONMENTS = {
 		"description": "Ancient hunting territory, marked by countless battles.",
 		"base_color": Color(0.10, 0.05, 0.06, 1.0),
 		"vignette_color": Color(0.02, 0.01, 0.01, 0.72),
+		"haze_color": Color(0.15, 0.08, 0.08, 0.45),
 		"layers": [
 			{
 				"id": "sky",
@@ -56,6 +57,7 @@ const ENVIRONMENTS = {
 		"description": "Biological transformation zone, unstable and dangerous.",
 		"base_color": Color(0.06, 0.06, 0.10, 1.0),
 		"vignette_color": Color(0.01, 0.01, 0.02, 0.75),
+		"haze_color": Color(0.08, 0.12, 0.10, 0.40),
 		"layers": [
 			{
 				"id": "sky",
@@ -94,6 +96,7 @@ const ENVIRONMENTS = {
 		"description": "Final proving ground, where monsters are forged.",
 		"base_color": Color(0.04, 0.07, 0.08, 1.0),
 		"vignette_color": Color(0.01, 0.02, 0.02, 0.80),
+		"haze_color": Color(0.12, 0.08, 0.15, 0.35),
 		"layers": [
 			{
 				"id": "sky",

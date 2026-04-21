@@ -125,11 +125,39 @@ func on_screen_shake(intensity: float, duration: float) -> void:
 		var half: float = duration * 0.5
 		tween.tween_property(_camera_2d, "offset", original_offset + Vector2(intensity, y_factor), half)
 		tween.tween_property(_camera_2d, "offset", original_offset - Vector2(intensity * 0.5, y_factor * 0.4), half * 0.6)
-		tween.tween_property(_camera_2d, "offset", original_offset, half * 0.4)
+		tween.tween_property(_camera_2d, "offset", original_offset, half)
 
-	tween.tween_callback(func() -> void:
-		_camera_2d.offset = original_offset
-	)
+
+func on_ui_shake(intensity: float, duration: float) -> void:
+	if _ui_layer == null:
+		return
+	
+	var high_impact: bool = intensity >= 1.2
+	
+	# Shake all direct control children of the UI layer
+	for child in _ui_layer.get_children():
+		if child is Control:
+			var original_pos: Vector2 = child.position
+			var tween := child.create_tween()
+			var step: float = duration / (4.0 if high_impact else 2.0)
+			
+			if high_impact:
+				# Sharp, jagged shake for heavy hits
+				tween.tween_property(child, "position", original_pos + Vector2(intensity * 1.5, -intensity), step)
+				tween.tween_property(child, "position", original_pos + Vector2(-intensity, intensity * 1.2), step)
+				tween.tween_property(child, "position", original_pos + Vector2(intensity * 0.5, intensity * 0.5), step)
+				tween.tween_property(child, "position", original_pos, step)
+				
+				# If it's a label, add a brief "digital jitter" color shift
+				if child is Label:
+					var original_color: Color = child.modulate
+					var jitter_tween := child.create_tween()
+					jitter_tween.tween_property(child, "modulate", Color(1.5, 0.5, 0.5, 1.0), 0.04)
+					jitter_tween.tween_property(child, "modulate", original_color, 0.08)
+			else:
+				# Smooth bounce for light hits
+				tween.tween_property(child, "position", original_pos + Vector2(intensity, intensity * 0.5), step)
+				tween.tween_property(child, "position", original_pos, step)
 
 
 func on_timing_ring_pressed(lane: int) -> void:
@@ -301,6 +329,9 @@ func apply_impact_profile(profile: Dictionary, lane: int = -1, enemy_id: int = -
 	var shake_intensity: float = float(profile.get("shake_intensity", 0.0))
 	if shake_intensity > 0.0:
 		EventBus.emit_signal("screen_shake", shake_intensity, float(profile.get("shake_duration", 0.08)))
+		# Premium: heavy hits also shake the UI slightly
+		if shake_intensity >= 0.8:
+			EventBus.emit_signal("ui_shake", shake_intensity * 0.5, float(profile.get("shake_duration", 0.08)) * 1.5)
 
 	var hitstop_scale: float = float(profile.get("hitstop_scale", 1.0))
 	if hitstop_scale > 0.0 and hitstop_scale < 0.999:

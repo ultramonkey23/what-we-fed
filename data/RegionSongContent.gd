@@ -35,6 +35,9 @@ const SONG_PHASES_BY_REGION: Dictionary = {
 			"cycle_interval": 2.3,
 			"fire_stagger": 0.52,
 			"max_active_threats": 2,
+			"population_target": 4,
+			"authority_target": 2,
+			"pressure_cap": 1.65,
 			"enemy_pool": [
 				{"species_id": "ashclaw", "grade": "brood", "hp": 28.0, "damage": 7.0, "weight": 0.50},
 				{"species_id": "gruvek", "grade": "brood", "hp": 30.0, "damage": 8.0, "weight": 0.25},
@@ -50,6 +53,9 @@ const SONG_PHASES_BY_REGION: Dictionary = {
 			"cycle_interval": 1.9,
 			"fire_stagger": 0.50,
 			"max_active_threats": 3,
+			"population_target": 5,
+			"authority_target": 2,
+			"pressure_cap": 2.00,
 			"enemy_pool": [
 				{"species_id": "ashclaw", "hp": 31.0, "damage": 8.0, "weight": 0.36},
 				{"species_id": "gruvek", "hp": 34.0, "damage": 9.0, "weight": 0.20},
@@ -66,6 +72,9 @@ const SONG_PHASES_BY_REGION: Dictionary = {
 			"cycle_interval": 1.5,
 			"fire_stagger": 0.46,
 			"max_active_threats": 3,
+			"population_target": 6,
+			"authority_target": 2,
+			"pressure_cap": 2.25,
 			"enemy_pool": [
 				{"species_id": "gruvek", "hp": 36.0, "damage": 10.0, "weight": 0.28},
 				{"species_id": "gorefane", "hp": 35.0, "damage": 9.0, "weight": 0.24},
@@ -82,6 +91,9 @@ const SONG_PHASES_BY_REGION: Dictionary = {
 			"cycle_interval": 1.8,
 			"fire_stagger": 0.54,
 			"max_active_threats": 2,
+			"population_target": 5,
+			"authority_target": 2,
+			"pressure_cap": 1.90,
 			"enemy_pool": [
 				{"species_id": "ashclaw", "hp": 30.0, "damage": 8.0, "weight": 0.32},
 				{"species_id": "bond_remnant", "hp": 42.0, "damage": 11.0, "weight": 0.30},
@@ -98,6 +110,9 @@ const SONG_PHASES_BY_REGION: Dictionary = {
 			"cycle_interval": 1.2,
 			"fire_stagger": 0.44,
 			"max_active_threats": 4,
+			"population_target": 7,
+			"authority_target": 3,
+			"pressure_cap": 2.75,
 			"enemy_pool": [
 				{"species_id": "ashclaw", "grade": "alpha", "hp": 34.0, "damage": 10.0, "weight": 0.18},
 				{"species_id": "gruvek", "grade": "alpha", "hp": 38.0, "damage": 11.0, "weight": 0.18},
@@ -123,6 +138,9 @@ const SONG_PHASES_BY_REGION: Dictionary = {
 			"cycle_interval": 2.6,
 			"fire_stagger": 0.65,
 			"max_active_threats": 2,
+			"population_target": 3,
+			"authority_target": 1,
+			"pressure_cap": 1.45,
 			"enemy_pool": [
 				{"species_id": "bond_remnant", "hp": 36.0, "damage": 10.0, "weight": 0.38},
 				{"species_id": "pale_shelf_shardshroud_sentinel", "reward_species_id": "marrowward", "hp": 38.0, "damage": 10.0, "weight": 0.34},
@@ -138,6 +156,9 @@ const SONG_PHASES_BY_REGION: Dictionary = {
 			"cycle_interval": 2.2,
 			"fire_stagger": 0.62,
 			"max_active_threats": 2,
+			"population_target": 4,
+			"authority_target": 2,
+			"pressure_cap": 1.70,
 			"enemy_pool": [
 				{"species_id": "pale_shelf_precision_stalker", "reward_species_id": "veilskin", "hp": 30.0, "damage": 10.0, "weight": 0.32},
 				{"species_id": "knellspine", "hp": 31.0, "damage": 10.0, "weight": 0.28},
@@ -155,6 +176,9 @@ const SONG_PHASES_BY_REGION: Dictionary = {
 			"cycle_interval": 1.7,
 			"fire_stagger": 0.55,
 			"max_active_threats": 3,
+			"population_target": 5,
+			"authority_target": 2,
+			"pressure_cap": 2.10,
 			"enemy_pool": [
 				{"species_id": "pale_shelf_precision_stalker", "reward_species_id": "veilskin", "grade": "alpha", "hp": 30.0, "damage": 10.0, "weight": 0.26},
 				{"species_id": "pale_shelf_shardshroud_sentinel", "reward_species_id": "marrowward", "hp": 39.0, "damage": 11.0, "weight": 0.24},
@@ -173,6 +197,9 @@ const SONG_PHASES_BY_REGION: Dictionary = {
 			"cycle_interval": 2.0,
 			"fire_stagger": 0.62,
 			"max_active_threats": 2,
+			"population_target": 4,
+			"authority_target": 2,
+			"pressure_cap": 1.72,
 			"enemy_pool": [
 				{"species_id": "bond_remnant", "hp": 37.0, "damage": 10.0, "weight": 0.32},
 				{"species_id": "knellspine", "hp": 32.0, "damage": 10.0, "weight": 0.24},
@@ -190,6 +217,9 @@ const SONG_PHASES_BY_REGION: Dictionary = {
 			"cycle_interval": 1.4,
 			"fire_stagger": 0.50,
 			"max_active_threats": 3,
+			"population_target": 6,
+			"authority_target": 3,
+			"pressure_cap": 2.40,
 			"enemy_pool": [
 				{"species_id": "pale_shelf_precision_stalker", "reward_species_id": "veilskin", "grade": "alpha", "hp": 31.0, "damage": 11.0, "weight": 0.26},
 				{"species_id": "pale_shelf_shardshroud_sentinel", "reward_species_id": "marrowward", "grade": "alpha", "hp": 39.0, "damage": 11.0, "weight": 0.24},
@@ -216,6 +246,9 @@ const SONG_PHASES_BY_REGION: Dictionary = {
 			"cycle_interval": 1.9,
 			"fire_stagger": 0.50,
 			"max_active_threats": 3,
+			"population_target": 5,
+			"authority_target": 2,
+			"pressure_cap": 2.00,
 			"enemy_pool": [
 				{"species_id": "gruvek", "grade": "brood", "hp": 24.0, "damage": 6.0, "weight": 0.30},
 				{"species_id": "knellspine", "grade": "brood", "hp": 22.0, "damage": 6.0, "weight": 0.40},
@@ -232,6 +265,9 @@ const SONG_PHASES_BY_REGION: Dictionary = {
 			"cycle_interval": 1.6,
 			"fire_stagger": 0.47,
 			"max_active_threats": 3,
+			"population_target": 6,
+			"authority_target": 2,
+			"pressure_cap": 2.15,
 			"enemy_pool": [
 				{"species_id": "ashclaw", "grade": "brood", "hp": 24.0, "damage": 7.0, "weight": 0.24},
 				{"species_id": "knellspine", "hp": 24.0, "damage": 7.0, "weight": 0.30},
@@ -249,6 +285,9 @@ const SONG_PHASES_BY_REGION: Dictionary = {
 			"cycle_interval": 1.3,
 			"fire_stagger": 0.45,
 			"max_active_threats": 3,
+			"population_target": 7,
+			"authority_target": 2,
+			"pressure_cap": 2.35,
 			"enemy_pool": [
 				{"species_id": "thornback", "grade": "brood", "hp": 26.0, "damage": 7.0, "weight": 0.24},
 				{"species_id": "gorefane", "hp": 27.0, "damage": 7.0, "weight": 0.24},
@@ -266,6 +305,9 @@ const SONG_PHASES_BY_REGION: Dictionary = {
 			"cycle_interval": 1.8,
 			"fire_stagger": 0.50,
 			"max_active_threats": 2,
+			"population_target": 5,
+			"authority_target": 2,
+			"pressure_cap": 1.92,
 			"enemy_pool": [
 				{"species_id": "veilskin", "grade": "brood", "hp": 22.0, "damage": 6.0, "weight": 0.22},
 				{"species_id": "hushcoil", "hp": 24.0, "damage": 6.0, "weight": 0.32},
@@ -283,6 +325,9 @@ const SONG_PHASES_BY_REGION: Dictionary = {
 			"cycle_interval": 0.9,
 			"fire_stagger": 0.44,
 			"max_active_threats": 4,
+			"population_target": 8,
+			"authority_target": 3,
+			"pressure_cap": 2.80,
 			"enemy_pool": [
 				{"species_id": "gruvek", "grade": "alpha", "hp": 29.0, "damage": 8.0, "weight": 0.20},
 				{"species_id": "gorefane", "grade": "alpha", "hp": 28.0, "damage": 8.0, "weight": 0.20},

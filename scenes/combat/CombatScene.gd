@@ -1042,6 +1042,9 @@ func _update_timing_debug() -> void:
 			accent_window,
 			escalation_window
 		]
+		if _escalation_director != null and _escalation_director.has_method("get_kill_momentum_ratio"):
+			var momentum_ratio: float = float(_escalation_director.call("get_kill_momentum_ratio"))
+			debug_text += "\nEco: M %.2f" % momentum_ratio
 	_timing_debug_label.text = debug_text
 	_timing_debug_label.modulate = UI_STYLE.get_quality_feedback_color(quality)
 
@@ -5106,10 +5109,11 @@ func _on_stamina_changed(current: float, maximum: float) -> void:
 	_hud_presenter.refresh_stamina(current, maximum)
 
 
-func _on_player_took_damage(_amount: float, source_lane: int) -> void:
+func _on_player_took_damage(amount: float, source_lane: int) -> void:
 	_hud_presenter.refresh_hp(GameState.player_hp, GameState.player_max_hp)
 	if _escalation_director != null:
 		_escalation_director.notify_player_hp_changed(GameState.get_hp_percent())
+		_escalation_director.notify_player_took_damage(amount, source_lane)
 	# Pale Shelf: hits feel clinical and punishing — "EXPOSED" in cold blue, harder flash.
 	# All other regions: standard warm "STRUCK".
 	if _region_id == "pale_shelf":

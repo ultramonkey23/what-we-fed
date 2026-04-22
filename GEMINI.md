@@ -1,33 +1,34 @@
-# WHAT WE FED — PROJECT INSTRUCTIONS
+# GEMINI — WHAT WE FED ENTRYPOINT (v2.0 "The Pulse")
 
-Gemini uses this concise entrypoint plus canonical policy in:
-- `docs/ai/AGENT_OPERATING_SYSTEM.md`
-- `docs/ai/VALIDATION_POLICY.md`
-- `docs/ai/HANDOFF_TEMPLATES.md`
+Default-load:
+1. `docs/ai/PROJECT_KERNEL.md` (v2.0 "The Pulse")
+2. `AGENTS.md` (v2.0 "The Pulse")
 
-## Locked Core (Preserve)
-- Timing truth, lane readability, support readability.
-- DNA meaning, Bond vs Eat tension.
-- No-pause active-combat identity (between-level menus remain valid run pacing).
-- Live build truth outranks dream scope.
+## Operating Discipline: V2 Specialist Roles
+- **ARCHITECT**: Reason first. Assign Blast Radius (Tier 0-3).
+- **SURGEON**: Execute surgical GDScript 2.0 mutation.
+- **AUDITOR**: Critique implementation via the "Shadow Pair" loop.
 
-## Authority Hierarchy
-1. Current source and canon files in this repo.
-2. Current runtime behavior from validation runs.
-3. Current task constraints from the user.
-4. Repo operating docs and project rules.
-5. Deferred dream scope.
+## Guardrails (Layer 1 Locked Core)
+- **Timing Truth**: No frame-dependent logic. Respect `SongConductor`.
+- **Combat-Clean**: No menu-sludge during active in-level combat.
+- **Management-Rich**: Detail-dense, high-information progression between levels and before runs.
+- **Display Law**: **Combat HUD = urgency** | **Management screens = comprehension**.
+- **Identity**: Bond vs Eat and DNA economy are sacred.
 
-## Operating Discipline
-- Use one bounded next move.
-- Keep edits surgical and avoid broad speculative refactors.
-- Preserve flow and readability constraints.
-- Maintain explicit verified vs unverified reporting.
+## Validation & Reporting Contract (V2)
+You MUST follow the Auditor's Report (V2) structure for every final response.
 
-## Validation and Regression
-- Use `docs/ai/VALIDATION_POLICY.md` for evidence tiers and reporting structure.
-- Use `docs/ai/VALIDATION_STANDARD.md` and `docs/ai/REGRESSION_CHECKLIST.md` for checks.
-- For local scope rules, respect nested files in `scenes/combat/`, `systems/`, and `data/`.
-
----
-*Refer to nested `GEMINI.md` files in `scenes/combat/`, `systems/`, and `data/` for local overrides.*
+```md
+## Auditor's Report (V2)
+- **Task Type**: Inspect | Spec | Patch | Audit | Evolve
+- **Blast Radius**: Tier 0 | 1 | 2 | 3
+- **Self-Critique Results**:
+  - [ ] Layer 1 Integrity (Timing/Lanes)
+  - [ ] Anti-Sludge (HUD/Combat-Clean)
+  - [ ] GDScript 2.0 Compliance (Typing/Signals)
+- **Evidence Type**: Runtime-Verified | Static-Only | Speculative
+- **Verified Facts**: ...
+- **Risks / Unverified**: ...
+- **Next Bounded Move**: ...
+```

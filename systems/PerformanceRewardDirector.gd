@@ -1,8 +1,36 @@
 extends Node
 
 const PERFORMANCE_REWARD_CONTENT = preload("res://data/PerformanceRewardContent.gd")
+const RITUAL_CONTENT = preload("res://data/RitualConsumableContent.gd")
 const PREDATION_POOL = preload("res://systems/PredationPool.gd")
 const WOUND_HUNGER_COOLDOWN: float = 1.25
+const WEIGHT_PERFORMANCE: float = 0.40
+const WEIGHT_KILL_PRESSURE: float = 0.20
+const WEIGHT_FAMILY_AFFINITY: float = 0.20
+const WEIGHT_BOND_EAT: float = 0.15
+const WEIGHT_TENDENCY: float = 0.05
+# Predatory Tempo Architecture v1 mapping:
+# - puncture: micro-time combat punctuation
+# - void: Suspension (slowed high-value choices under pressure)
+# - decree: boss/world law shifts
+const TEMPO_MASTERY_PER_PHASE_CAP: Dictionary = {
+	"puncture": 3,
+	"void": 2,
+	"decree": 2
+}
+const TEMPO_MASTERY_POINTS: Dictionary = {
+	"puncture": {
+		"perfect_hit": 1.0,
+		"perfect_parry": 1.25
+	},
+	"void": {
+		"choice_commit": 0.0,
+		"choice_timeout": 0.0
+	},
+	"decree": {
+		"law_response": 1.5
+	}
+}
 
 signal state_changed()
 signal offer_started(reward_data: Dictionary)
@@ -28,7 +56,7 @@ var _boss_awards_fired: Dictionary = {}
 var _phase_clutch_spent: bool = false
 var _exhaustion_announced: bool = false
 
-var offers_enabled: bool = true
+var offers_enabled: bool = false
 var banked_reward_count: int = 0
 var _is_level_completion_choice: bool = false
 var _level_completion_context: Dictionary = {}
@@ -40,6 +68,7 @@ var _queued_offer_ids: Array[String] = []
 var _reserved_reward_ids: Array[String] = []
 var _claimed_reward_ids: Array[String] = []
 var _claimed_rewards: Array[Dictionary] = []
+var _claimed_ritual_ids: Array[String] = []
 var _runtime_effects: Dictionary = {}
 var _kill_chain_count: int = 0
 var _kill_chain_heavy_count: int = 0
@@ -50,6 +79,12 @@ var _reward_pressure_band: Dictionary = {
 	"offer_decay_mult": 1.0,
 	"level_choice_delta": 0
 }
+var _tempo_mastery_claimed_per_phase: Dictionary = {
+	"puncture": 0,
+	"void": 0,
+	"decree": 0
+}
+var _tempo_decree_event_claims: Dictionary = {}
 
 
 func bind_runtime(combat_meter_ref: Node, run_growth_ref: Node, run_stats_ref: Node = null) -> void:
@@ -103,6 +138,12 @@ func start_song_run(_phases: Array) -> void:
 	_perfect_strike_streak = 0
 	_eat_ratchet_stacks = 0
 	_wound_hunger_cooldown = 0.0
+	_tempo_mastery_claimed_per_phase = {
+		"puncture": 0,
+		"void": 0,
+		"decree": 0
+	}
+	_tempo_decree_event_claims.clear()
 	_emit_state_changed()
 
 
@@ -110,6 +151,7 @@ func reset_full_run_data() -> void:
 	_reserved_reward_ids.clear()
 	_claimed_reward_ids.clear()
 	_claimed_rewards.clear()
+	_claimed_ritual_ids.clear()
 	_runtime_effects.clear()
 	banked_reward_count = 0
 	_is_level_completion_choice = false
@@ -129,6 +171,11 @@ func enter_song_phase(index: int, _phase_data: Dictionary) -> void:
 	_phase_reward_mix = PERFORMANCE_REWARD_CONTENT.get_phase_mix_for_affinity(affinity, index)
 	_tier_awards_this_phase.clear()
 	_phase_clutch_spent = false
+	_tempo_mastery_claimed_per_phase = {
+		"puncture": 0,
+		"void": 0,
+		"decree": 0
+	}
 	_emit_state_changed()
 
 
@@ -150,17 +197,34 @@ func claim_active_offer(source: String = "manual") -> void:
 	if _active_offer.is_empty():
 		return
 	var reward_data: Dictionary = _active_offer.duplicate(true)
+	var lane: String = String(reward_data.get("lane", ""))
+	var reward_id: String = String(reward_data.get("id", ""))
+	var ecology_result: Dictionary = {"accepted": true}
+	if GameState.has_method("add_reward_to_ecology"):
+		ecology_result = GameState.add_reward_to_ecology(reward_data)
+	if not bool(ecology_result.get("accepted", true)):
+		_active_offer.clear()
+		_offer_timer = 0.0
+		emit_signal("proc_feedback", "SLOTS SEALED", Color(0.86, 0.58, 0.58, 1.0))
+		_emit_state_changed()
+		emit_signal("offer_ended")
+		_show_next_queued_offer()
+		return
+
 	var effect: Dictionary = reward_data.get("effect", {})
 	var effect_type: String = String(effect.get("type", ""))
-	if not effect_type.is_empty():
+	if lane != "consumable" and not effect_type.is_empty():
 		_runtime_effects[effect_type] = effect.duplicate(true)
-	var reward_id: String = String(reward_data.get("id", ""))
 	if not reward_id.is_empty():
-		if GameState.has_method("add_upgrade"):
+		if lane != "consumable" and GameState.has_method("add_upgrade"):
 			GameState.add_upgrade(reward_id)
-		if not _claimed_reward_ids.has(reward_id):
+		if lane == "consumable":
+			if not _claimed_ritual_ids.has(reward_id):
+				_claimed_ritual_ids.append(reward_id)
+		elif not _claimed_reward_ids.has(reward_id):
 			_claimed_reward_ids.append(reward_id)
-	_claimed_rewards.append(reward_data)
+	if lane != "consumable":
+		_claimed_rewards.append(reward_data)
 	_active_offer.clear()
 	_offer_timer = 0.0
 	_is_level_completion_choice = false
@@ -326,6 +390,7 @@ func _check_thresholds() -> void:
 func _queue_reward_offer() -> void:
 	if not offers_enabled:
 		banked_reward_count += 1
+		emit_signal("proc_feedback", "REWARD BANKED", Color(0.92, 0.76, 0.42, 1.0))
 		return
 		
 	var reward_id: String = _pick_next_reward_id()
@@ -365,10 +430,16 @@ func _build_upgrade_choices_for_context(count: int, context: Dictionary) -> Arra
 	var choices: Array[Dictionary] = []
 	var pool: Array[String] = _build_pool_for_context(context)
 	
-	# Pick top N
 	for i in range(min(count, pool.size())):
 		choices.append(PERFORMANCE_REWARD_CONTENT.get_reward(pool[i]))
-		
+
+	var ritual_offer: Dictionary = _pick_ritual_offer(context)
+	if not ritual_offer.is_empty():
+		if choices.size() >= count and count > 0:
+			choices[count - 1] = ritual_offer
+		else:
+			choices.append(ritual_offer)
+
 	if bool(context.get("elite_reward_tier", false)):
 		_promote_elite_choice(choices, pool)
 
@@ -394,18 +465,36 @@ func consume_banked_reward() -> void:
 
 
 func _build_pool_for_context(context: Dictionary) -> Array[String]:
-	var pool: Array[String] = []
-	if bool(context.get("bond_flavored", false)):
-		var bond_priority: Array[String] = ["bond_echo", "hollow_pact", "choir_hook", "graveslip_tendons"]
-		for reward_id in bond_priority:
-			if not _claimed_reward_ids.has(reward_id):
-				pool.append(reward_id)
-	for id in _phase_reward_mix:
-		if not _claimed_reward_ids.has(id) and not pool.has(id):
-			pool.append(id)
+	var scored_pool: Array[Dictionary] = []
+	var active_affinity: String = _get_active_affinity()
+	var tendency_id: String = _get_leading_tendency_id()
+	var weight_profile: Dictionary = GameState.get_reward_weight_profile() if GameState.has_method("get_reward_weight_profile") else {}
 	for id in PERFORMANCE_REWARD_CONTENT.REWARD_ORDER:
-		if not _claimed_reward_ids.has(id) and not pool.has(id):
-			pool.append(id)
+		if _claimed_reward_ids.has(id):
+			continue
+		var reward_data: Dictionary = PERFORMANCE_REWARD_CONTENT.get_reward(id)
+		if reward_data.is_empty():
+			continue
+		if GameState.has_method("is_reward_offer_eligible") and not GameState.is_reward_offer_eligible(reward_data):
+			continue
+		var score: float = _score_offer(
+			reward_data,
+			active_affinity,
+			tendency_id,
+			weight_profile,
+			context
+		)
+		scored_pool.append({
+			"id": id,
+			"score": score
+		})
+
+	scored_pool.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		return float(a.get("score", 0.0)) > float(b.get("score", 0.0))
+	)
+	var pool: Array[String] = []
+	for row in scored_pool:
+		pool.append(String(row.get("id", "")))
 	return pool
 
 
@@ -430,6 +519,123 @@ func _promote_elite_choice(choices: Array[Dictionary], pool: Array[String]) -> v
 		return
 
 
+func _pick_ritual_offer(context: Dictionary) -> Dictionary:
+	if bool(context.get("predation_pool", false)):
+		return {}
+	if not _should_offer_ritual():
+		return {}
+	var active_affinity: String = _get_active_affinity()
+	var tendency_id: String = _get_leading_tendency_id()
+	var weight_profile: Dictionary = GameState.get_reward_weight_profile() if GameState.has_method("get_reward_weight_profile") else {}
+	var candidate_rows: Array[Dictionary] = []
+	for ritual in RITUAL_CONTENT.get_all_rituals():
+		var ritual_id: String = String(ritual.get("id", ""))
+		if _claimed_ritual_ids.has(ritual_id):
+			continue
+		if GameState.has_method("is_reward_offer_eligible") and not GameState.is_reward_offer_eligible(ritual):
+			continue
+		var score: float = _score_offer(ritual, active_affinity, tendency_id, weight_profile, context)
+		candidate_rows.append({
+			"ritual": ritual,
+			"score": score
+		})
+	if candidate_rows.is_empty():
+		return {}
+	candidate_rows.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		return float(a.get("score", 0.0)) > float(b.get("score", 0.0))
+	)
+	return Dictionary(candidate_rows[0].get("ritual", {})).duplicate(true)
+
+
+func _should_offer_ritual() -> bool:
+	var score_ratio: float = clampf(_run_progress / 1100.0, 0.0, 1.0)
+	var threshold: float = 0.35 - 0.20 * score_ratio
+	if _run_stats != null and is_instance_valid(_run_stats):
+		var kills: int = int(_run_stats.get("kills"))
+		if kills >= 8:
+			threshold -= 0.08
+	var roll: float = randf()
+	return roll <= clampf(threshold, 0.10, 0.40)
+
+
+func _score_offer(
+	offer_data: Dictionary,
+	active_affinity: String,
+	tendency_id: String,
+	weight_profile: Dictionary,
+	context: Dictionary
+) -> float:
+	var performance_score: float = clampf(_run_progress / 1200.0, 0.0, 1.0)
+	var kill_pressure: float = 0.0
+	if _run_stats != null and is_instance_valid(_run_stats):
+		kill_pressure = clampf(float(_run_stats.get("kills")) / 25.0, 0.0, 1.0)
+
+	var family_affinity: float = 0.35
+	var family_bias: Array = offer_data.get("family_bias", [])
+	if not active_affinity.is_empty():
+		for family in family_bias:
+			if String(family) == active_affinity:
+				family_affinity = 1.0
+				break
+
+	var bond_eat_alignment: float = 0.5
+	var path_bias: String = String(offer_data.get("path_bias", "neutral"))
+	var bond_streak: int = int(weight_profile.get("bond_streak", 0))
+	var eat_streak: int = int(weight_profile.get("eat_streak", 0))
+	if path_bias == "bond":
+		bond_eat_alignment = clampf(0.35 + float(bond_streak) * 0.25, 0.0, 1.0)
+	elif path_bias == "eat":
+		bond_eat_alignment = clampf(0.35 + float(eat_streak) * 0.25, 0.0, 1.0)
+	else:
+		bond_eat_alignment = 0.55
+
+	var tendency_alignment: float = 0.35
+	var tendency_bias: Array = offer_data.get("tendency_bias", [])
+	for tendency in tendency_bias:
+		if String(tendency) == tendency_id:
+			tendency_alignment = 1.0
+			break
+
+	var phase_bonus: float = 0.0
+	var offer_id: String = String(offer_data.get("id", ""))
+	if _phase_reward_mix.has(offer_id):
+		phase_bonus += 0.12
+	if bool(context.get("bond_flavored", false)) and path_bias == "bond":
+		phase_bonus += 0.12
+	if bool(context.get("elite_reward_tier", false)):
+		phase_bonus += 0.08 * float(offer_data.get("power_tier", 1))
+
+	return (
+		WEIGHT_PERFORMANCE * performance_score +
+		WEIGHT_KILL_PRESSURE * kill_pressure +
+		WEIGHT_FAMILY_AFFINITY * family_affinity +
+		WEIGHT_BOND_EAT * bond_eat_alignment +
+		WEIGHT_TENDENCY * tendency_alignment +
+		phase_bonus
+	)
+
+
+func _get_active_affinity() -> String:
+	var bonded: Dictionary = GameState.get_active_bonded_creature()
+	return String(bonded.get("affinity", ""))
+
+
+func _get_leading_tendency_id() -> String:
+	if _run_growth == null or not is_instance_valid(_run_growth) or not _run_growth.has_method("get_tendency_snapshot"):
+		return ""
+	var snapshot: Dictionary = _run_growth.call("get_tendency_snapshot")
+	var points: Dictionary = snapshot.get("points", {})
+	var levels: Dictionary = snapshot.get("levels", {})
+	var best_id: String = ""
+	var best_score: float = -1.0
+	for tendency_id in points.keys():
+		var score: float = float(points.get(tendency_id, 0.0)) + float(levels.get(tendency_id, 0)) * 2.0
+		if score > best_score:
+			best_score = score
+			best_id = String(tendency_id)
+	return best_id
+
+
 func _pick_next_reward_id() -> String:
 	for reward_id in _phase_reward_mix:
 		if not _reserved_reward_ids.has(reward_id):
@@ -450,6 +656,67 @@ func notify_boss_threshold(threshold_id: String, points: float, feedback_text: S
 	_add_bonus_progress(bonus_points)
 	if not feedback_text.is_empty():
 		emit_signal("proc_feedback", feedback_text, Color(0.94, 0.56, 0.18, 1.0))
+
+
+func notify_tempo_mastery(family: String, event_id: String, payload: Dictionary = {}) -> void:
+	if not _song_started or _phase_index < 0:
+		return
+	var family_id: String = family.to_lower()
+	if not TEMPO_MASTERY_PER_PHASE_CAP.has(family_id):
+		return
+	var cap: int = int(TEMPO_MASTERY_PER_PHASE_CAP.get(family_id, 0))
+	var claimed: int = int(_tempo_mastery_claimed_per_phase.get(family_id, 0))
+	if claimed >= cap:
+		return
+	var points: float = _resolve_tempo_mastery_points(family_id, event_id, payload)
+	if points <= 0.0:
+		return
+	if family_id == "decree":
+		var decree_key: String = "%s|%s|%s" % [event_id, String(payload.get("response", "")), String(payload.get("quality", ""))]
+		if _tempo_decree_event_claims.get(decree_key, false):
+			return
+		_tempo_decree_event_claims[decree_key] = true
+	_tempo_mastery_claimed_per_phase[family_id] = claimed + 1
+	_add_bonus_progress(points)
+	match family_id:
+		"puncture":
+			emit_signal("proc_feedback", "TEMPO REND", Color(0.98, 0.80, 0.42, 1.0))
+		"void":
+			emit_signal("proc_feedback", "TEMPO CHOICE", Color(0.72, 0.92, 1.0, 1.0))
+		"decree":
+			emit_signal("proc_feedback", "DECREE ANSWERED", Color(0.98, 0.56, 0.24, 1.0))
+
+
+func _resolve_tempo_mastery_points(family_id: String, event_id: String, payload: Dictionary) -> float:
+	if family_id == "void":
+		if event_id != "choice_commit":
+			return 0.0
+		var choice_id: String = String(payload.get("choice", ""))
+		var elapsed_seconds: float = maxf(float(payload.get("elapsed_seconds", 99.0)), 0.0)
+		if choice_id == "pass":
+			return 0.0
+		if elapsed_seconds <= 1.4:
+			return 1.45
+		if elapsed_seconds <= 2.6:
+			return 1.10
+		if elapsed_seconds <= 4.0:
+			return 0.75
+		return 0.5
+	var family_points: Dictionary = Dictionary(TEMPO_MASTERY_POINTS.get(family_id, {}))
+	if not family_points.has(event_id):
+		return 0.0
+	var base_points: float = float(family_points.get(event_id, 0.0))
+	if family_id == "puncture":
+		var beat_quality: String = String(payload.get("beat_quality", "off"))
+		if beat_quality != "perfect" and beat_quality != "good":
+			return 0.0
+	if family_id == "decree":
+		var quality: String = String(payload.get("quality", "off"))
+		if quality == "perfect":
+			base_points += 0.5
+		elif quality == "good":
+			base_points += 0.2
+	return base_points
 
 
 func _start_offer(reward_id: String) -> void:

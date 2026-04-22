@@ -393,7 +393,7 @@ func _run_fire_cycle(task_id: int) -> void:
 	# Pause-aware firing: if the song is paused (e.g. reward screen), skip this cycle's 
 	# firing but keep the recursion alive.
 	var paused: bool = false
-	if combat_scene != null and combat_scene.has_method("is_song_paused"):
+	if _song_mode and combat_scene != null and combat_scene.has_method("is_song_paused"):
 		paused = combat_scene.is_song_paused()
 
 	if not paused:
@@ -488,6 +488,16 @@ func _fire_lane(lane: int) -> void:
 	projectile.resolved.connect(_on_projectile_resolved.bind(lane))
 	projectile.enemy_contact.connect(_on_projectile_enemy_contact.bind(lane))
 	_projectile_slots[lane] = projectile
+
+	# ABSOLUTE SONG SYNC:
+	# Calculate when this projectile SHOULD hit the player in song-time.
+	if _song_mode and combat_scene != null and combat_scene.has_method("get_song_conductor"):
+		var conductor: Node = combat_scene.get_song_conductor()
+		if conductor != null and conductor.has_method("get_song_elapsed"):
+			var travel_time: float = _travel_time_to_hit_zone(projectile_speed)
+			var song_now: float = conductor.call("get_song_elapsed")
+			var hit_time: float = song_now + travel_time
+			projectile.call("set_song_sync", conductor, hit_time)
 
 	EventBus.emit_signal("projectile_fired", lane, enemy_id)
 

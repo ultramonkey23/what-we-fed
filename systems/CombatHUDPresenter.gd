@@ -15,6 +15,8 @@ var _controls_label: Label
 # Dynamic readout labels
 var _hp_value_label: Label
 var _exp_value_label: Label
+var _power_scouter_label: Label
+var _scouter_shell: Panel
 
 # Support readout cluster
 var _support_shell: ColorRect
@@ -62,7 +64,48 @@ func _init(combat_content: GDScript, presentation_text: GDScript, ui_style: GDSc
 	_ui_style = ui_style
 
 
+#region agent log
+func _agent_debug_log(run_id: String, hypothesis_id: String, location: String, message: String, data: Dictionary) -> void:
+	var payload: Dictionary = {
+		"sessionId": "6fee2f",
+		"runId": run_id,
+		"hypothesisId": hypothesis_id,
+		"location": location,
+		"message": message,
+		"data": data,
+		"timestamp": Time.get_unix_time_from_system() * 1000.0
+	}
+	var file := FileAccess.open("C:/Users/harin/OneDrive/Desktop/gamesdevs/What We Fed/what-we-fed/debug-6fee2f.log", FileAccess.READ_WRITE)
+	if file == null:
+		file = FileAccess.open("C:/Users/harin/OneDrive/Desktop/gamesdevs/What We Fed/what-we-fed/debug-6fee2f.log", FileAccess.WRITE)
+	if file == null:
+		return
+	file.seek_end()
+	file.store_line(JSON.stringify(payload))
+	file.close()
+#endregion
+
+
 func bind_nodes(nodes: Dictionary) -> void:
+	#region agent log
+	var scouter_node: Variant = nodes.get("scouter_shell")
+	var support_node: Variant = nodes.get("support_shell")
+	var run_build_node: Variant = nodes.get("run_build_shell")
+	var dna_node: Variant = nodes.get("dna_shell")
+	_agent_debug_log(
+		"pre-fix",
+		"H_BIND_TYPES",
+		"CombatHUDPresenter.gd:bind_nodes",
+		"Binding HUD shell node types",
+		{
+			"scouter_type": scouter_node.get_class() if scouter_node is Object else "null_or_non_object",
+			"support_type": support_node.get_class() if support_node is Object else "null_or_non_object",
+			"run_build_type": run_build_node.get_class() if run_build_node is Object else "null_or_non_object",
+			"dna_type": dna_node.get_class() if dna_node is Object else "null_or_non_object",
+			"scouter_equals_support": scouter_node == support_node
+		}
+	)
+	#endregion
 	# Static @onready nodes
 	_combo_label = nodes.get("combo_label")
 	_style_label = nodes.get("style_label")
@@ -73,6 +116,8 @@ func bind_nodes(nodes: Dictionary) -> void:
 	# Resource readout
 	_hp_value_label = nodes.get("hp_value_label")
 	_exp_value_label = nodes.get("exp_value_label")
+	_power_scouter_label = nodes.get("power_scouter_label")
+	_scouter_shell = nodes.get("scouter_shell")
 	# Support cluster
 	_support_shell = nodes.get("support_shell")
 	_support_bar = nodes.get("support_bar")
@@ -119,6 +164,50 @@ func refresh_stamina(current: float, maximum: float) -> void:
 		_stamina_bar.value = current
 
 
+func refresh_power_level(power_level: float) -> void:
+	if _power_scouter_label == null:
+		return
+	
+	var displayed_power: int = int(power_level)
+	var current_text: String = _power_scouter_label.text.replace("POWER LEVEL: ", "").replace("!!! ", "").replace(" !!!", "")
+	var current_val: int = int(current_text)
+	
+	_power_scouter_label.text = "POWER LEVEL: %d" % displayed_power
+	
+	# Power Level HUD Update (Digital Scouter Feel)
+	if displayed_power != current_val:
+		var tween := _power_scouter_label.create_tween()
+		var scouter_color: Color = Color(1.0, 0.85, 0.20, 1.0) # High-contrast Amber
+		
+		if displayed_power > current_val:
+			# Surge effect: Flashing overbright white/yellow
+			_power_scouter_label.modulate = Color(2.0, 2.0, 1.0, 1.0) 
+			_power_scouter_label.scale = Vector2(1.1, 1.1)
+			_power_scouter_label.pivot_offset = _power_scouter_label.size * 0.5
+			tween.tween_property(_power_scouter_label, "scale", Vector2.ONE, 0.08)
+			tween.parallel().tween_property(_power_scouter_label, "modulate", scouter_color, 0.2)
+			
+			if _scouter_shell != null:
+				var shell_tween := _scouter_shell.create_tween()
+				shell_tween.tween_property(_scouter_shell, "modulate:a", 1.0, 0.05)
+				shell_tween.tween_property(_scouter_shell, "modulate:a", 0.8, 0.15)
+		
+		# If power is "Over 9000", add an alert effect
+		if displayed_power > 9000:
+			_power_scouter_label.modulate = Color(1.0, 0.2, 0.2, 1.0)
+			_power_scouter_label.text = "!!! POWER LEVEL: %d !!!" % displayed_power
+			EventBus.emit_signal("ui_shake", 1.5, 0.2)
+			if _scouter_shell != null:
+				_scouter_shell.color = Color(0.2, 0.02, 0.02, 0.7)
+	
+	# Digital Noise / Jitter (Always active but subtle)
+	if randf() < 0.05:
+		_power_scouter_label.position.x += randf_range(-1.0, 1.0)
+		_power_scouter_label.position.y += randf_range(-0.5, 0.5)
+	else:
+		_power_scouter_label.position = Vector2(8.0, 2.0)
+
+
 func refresh_combo(count: int, tier: String = "") -> void:
 	if _combo_label != null:
 		var old_count: int = int(_combo_label.text)
@@ -134,7 +223,10 @@ func refresh_combo(count: int, tier: String = "") -> void:
 
 func refresh_style(tier: String) -> void:
 	if _style_label != null:
-		_style_label.text = _ui_style.get_tier_label(tier)
+		var compact: String = _ui_style.get_tier_label(tier)
+		if compact.length() > 4:
+			compact = compact.left(4)
+		_style_label.text = compact
 		_style_label.modulate = _ui_style.get_tier_color(tier)
 
 
@@ -168,8 +260,8 @@ func refresh_stats(atk: float, def: float) -> void:
 
 func refresh_support(current: float, maximum: float, active_species_id: String, run_growth: Node) -> void:
 	if _support_bar != null:
-		_support_bar.max_value = maximum
-		_support_bar.value = current
+		_support_bar.max_value = maxf(maximum, 0.0)
+		_support_bar.value = maxf(current, 0.0)
 
 	if _support_value_label != null:
 		var was_ready: bool = _support_value_label.text == "RDY"
@@ -182,6 +274,9 @@ func refresh_support(current: float, maximum: float, active_species_id: String, 
 				var tween := _support_value_label.create_tween()
 				_support_value_label.scale = Vector2(1.3, 1.3)
 				tween.tween_property(_support_value_label, "scale", Vector2.ONE, 0.15)
+		elif maximum <= 0.0:
+			_support_value_label.text = "0"
+			_support_value_label.modulate = Color(0.98, 0.82, 0.58, 1.0)
 		else:
 			_support_value_label.text = "%d" % int(floor((current / maximum) * 100.0))
 			_support_value_label.modulate = Color(0.98, 0.82, 0.58, 1.0)

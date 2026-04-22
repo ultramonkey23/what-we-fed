@@ -21,5 +21,7 @@
 ## 4. Identity Check
 - [ ] Lane indicators are clearly visible.
 - [ ] Timing feel matches the beat.
-- [ ] No pausing or menu interruption **during** an active combat level (between-level reward/inventory menus are OK by design).
+- [ ] No pausing or menu interruption **during** an active in-level combat level (between-level and pre-run management-rich menus are OK and encouraged).
+- [ ] **Display Law**: **Combat HUD = Urgency** (live action) | **Management Screens = Comprehension** (between-level strategy).
+- [ ] Active combat remains fast, readable, and minimally interrupted.
 - [ ] Atmosphere feels dark/oppressive, not "safe."

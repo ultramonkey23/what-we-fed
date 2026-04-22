@@ -63,6 +63,9 @@ var hit_zone_x: float = 0.0
 var player_x: float = 0.0
 
 var progress: float = 0.0
+var target_beat_time: float = -1.0
+var fire_song_time: float = 0.0
+var conductor_ref: Node = null
 var is_resolved: bool = false
 var is_reflected: bool = false
 var reflected_damage: float = 0.0
@@ -159,7 +162,7 @@ func _process(delta: float) -> void:
 	if is_reflected:
 		_process_reflected(delta)
 	else:
-		_process_incoming(delta)
+		_process_incoming_song_synced(delta)
 
 
 func setup(
@@ -273,15 +276,29 @@ func resolve(result: String) -> void:
 	timer.timeout.connect(queue_free)
 
 
-func _process_incoming(delta: float) -> void:
+func _process_incoming_song_synced(delta: float) -> void:
 	if enemy_x <= player_x:
 		return
 
-	position.x -= speed * delta
-
-	var intercept_distance: float = enemy_x - hit_zone_x
-	if intercept_distance > 0.0:
-		progress = (enemy_x - position.x) / intercept_distance
+	if conductor_ref != null and target_beat_time > 0.0:
+		# ABSOLUTE SONG SYNC: 
+		# Move the projectile based on the current song position vs its fire/target time.
+		var song_now: float = conductor_ref.call("get_song_elapsed")
+		var total_flight_duration: float = target_beat_time - fire_song_time
+		if total_flight_duration > 0.0:
+			progress = (song_now - fire_song_time) / total_flight_duration
+		else:
+			progress = 1.0
+		
+		# Map progress to physical position
+		var intercept_distance: float = enemy_x - hit_zone_x
+		position.x = enemy_x - (intercept_distance * progress)
+	else:
+		# Fallback to speed-based delta movement if not in song mode or missing conductor.
+		position.x -= speed * delta
+		var intercept_distance: float = enemy_x - hit_zone_x
+		if intercept_distance > 0.0:
+			progress = (enemy_x - position.x) / intercept_distance
 
 	if not _reported_hit_zone and position.x <= hit_zone_x:
 		_reported_hit_zone = true
@@ -302,6 +319,13 @@ func _process_incoming(delta: float) -> void:
 				evaluate_parry_timing(),
 				progress - 1.0
 			]
+
+
+func set_song_sync(conductor: Node, hit_time: float) -> void:
+	conductor_ref = conductor
+	target_beat_time = hit_time
+	if conductor_ref != null and conductor_ref.has_method("get_song_elapsed"):
+		fire_song_time = conductor_ref.call("get_song_elapsed")
 
 
 func _process_reflected(delta: float) -> void:
@@ -338,6 +362,10 @@ func _update_visual_state(reflected: bool) -> void:
 		base_color = _reflected_body_color()
 
 	var pressure_start: float = float(telegraph_profile.get("pressure_start", 0.72))
+	# Eye (Intelligence) makes telegraphs start earlier
+	var eye_bias: float = clamp(GameState.stat_intelligence - 1.0, 0.0, 0.5)
+	pressure_start = max(0.1, pressure_start - eye_bias)
+	
 	var pressure_gain: float = max(float(telegraph_profile.get("pressure_gain", 1.0)), 0.6)
 	var pressure: float = 0.85 if reflected else clamp(((progress - pressure_start) / (1.0 - pressure_start)) * pressure_gain, 0.0, 1.0)
 	var imminent: float = 0.0 if reflected else clamp((progress - 0.96) / 0.08, 0.0, 1.0)

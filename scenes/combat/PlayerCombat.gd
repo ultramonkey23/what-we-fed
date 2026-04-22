@@ -1,16 +1,16 @@
 extends Node2D
 
 @onready var sprite: ColorRect = $Sprite
-
-const FOLLOW_UP_WINDOW: float = 0.55
+const COMBAT_FEEL_CONSTANTS = preload("res://data/CombatFeelConstants.gd")
+const COMBAT_FEEL_CONTENT = preload("res://data/CombatFeelContent.gd")
 
 # Combat result tuning.
 const TIMED_ATTACK_DAMAGE_RATIO: float = 0.5
-const PLAYER_DAMAGE_TO_TIMED_RATIO: float = 0.42
+const PLAYER_DAMAGE_TO_TIMED_RATIO: float = 0.68
 const LATE_ATTACK_PUNISH_RATIO: float = 0.18
 const GOOD_PARRY_REFLECT_MULT: float = 1.2
 const PERFECT_PARRY_REFLECT_MULT: float = 2.0
-const IDLE_ATTACK_DAMAGE_RATIO: float = 0.05
+const IDLE_ATTACK_DAMAGE_RATIO: float = 0.14
 
 # Recovery / anti-spam tuning.
 const BASIC_ATTACK_RECOVERY: float = 0.28
@@ -23,7 +23,10 @@ const GOOD_PARRY_RECOVERY: float = 0.22
 const PERFECT_PARRY_RECOVERY: float = 0.14
 const FAILED_PARRY_RECOVERY: float = 0.32
 
-const DODGE_RECOVERY: float = 0.22
+const DODGE_RECOVERY: float = 0.30
+const DODGE_GOOD_RECOVERY: float = 0.18
+const DODGE_IFRAME_WINDOW: float = 0.11
+const DODGE_IFRAME_WINDOW_ON_BEAT: float = 0.15
 const ULTIMATE_RECOVERY: float = 0.45
 
 const CHAIN_BYPASS_WINDOW: float = 0.60
@@ -78,6 +81,7 @@ var parry_followup_damage: float = 0.0
 
 var action_lock_timer: float = 0.0
 var current_action_state: String = "idle"
+var dodge_invuln_timer: float = 0.0
 
 var chain_bypass_available: bool = false
 var chain_bypass_timer: float = 0.0
@@ -87,16 +91,21 @@ var _sprite_pose_tween: Tween = null
 var _world_motion_tween: Tween = null
 
 var _player_sprite: Sprite2D = null
+var _energy_aura: GPUParticles2D = null
 var _idle_tex: Texture2D = null
 var _attack_tex: Texture2D = null
 var _parry_tex: Texture2D = null
 var _hurt_tex: Texture2D = null
 var _image_restore_tween: Tween = null
+var _buffered_dodge_lane: int = -1
+var _buffered_dodge_dir: int = 0
+var _buffered_dodge_timer: float = 0.0
 
 
 func _ready() -> void:
 	sprite.visible = false  # hide placeholder ColorRect; Sprite2D takes over
 	_setup_player_sprite()
+	_setup_energy_aura()
 	_return_to_neutral_state(true)
 
 
@@ -110,6 +119,12 @@ func _process(delta: float) -> void:
 		action_lock_timer = max(action_lock_timer - delta, 0.0)
 		if action_lock_timer <= 0.0:
 			current_action_state = "idle"
+	if dodge_invuln_timer > 0.0:
+		dodge_invuln_timer = max(dodge_invuln_timer - delta, 0.0)
+	if _buffered_dodge_timer > 0.0:
+		_buffered_dodge_timer = max(_buffered_dodge_timer - delta, 0.0)
+		if _buffered_dodge_timer <= 0.0:
+			_clear_buffered_dodge()
 
 	if parry_followup_active:
 		parry_followup_timer -= delta
@@ -124,6 +139,9 @@ func _process(delta: float) -> void:
 			chain_bypass_available = false
 			chain_bypass_timer = 0.0
 
+	if _buffered_dodge_timer > 0.0 and _can_accept_action() and combat_enabled and lane_manager != null and combat_meter != null:
+		_execute_buffered_dodge()
+
 
 func _unhandled_input(event: InputEvent) -> void:
 	if not combat_enabled:
@@ -132,25 +150,22 @@ func _unhandled_input(event: InputEvent) -> void:
 	if lane_manager == null or combat_meter == null:
 		return
 
+	var lane_press: int = _read_lane_press(event)
+	if lane_press >= 0:
+		if not _can_accept_action():
+			if Input.is_action_pressed("mod_forward"):
+				_queue_buffered_dodge(lane_press, _read_dodge_direction())
+			return
+		_handle_lane_action(lane_press)
+		return
+
 	if not _can_accept_action():
 		return
 
 	if event.is_action_pressed("action_ultimate"):
+		_clear_buffered_dodge()
 		_try_ultimate()
 		return
-
-	if event.is_action_pressed("lane_attack_0"):
-		_handle_lane_action(0)
-		return
-
-	if event.is_action_pressed("lane_attack_1"):
-		_handle_lane_action(1)
-		return
-
-	if event.is_action_pressed("lane_attack_2"):
-		_handle_lane_action(2)
-		return
-
 
 func setup(new_lane_manager: Node, new_combat_meter: Node) -> void:
 	lane_manager = new_lane_manager
@@ -160,6 +175,12 @@ func setup(new_lane_manager: Node, new_combat_meter: Node) -> void:
 
 	if not EventBus.projectile_fired.is_connected(_on_projectile_fired):
 		EventBus.projectile_fired.connect(_on_projectile_fired)
+	
+	if not EventBus.combo_changed.is_connected(_on_combo_changed):
+		EventBus.combo_changed.connect(_on_combo_changed)
+	
+	if not EventBus.song_beat_pulse.is_connected(_on_song_beat_pulse):
+		EventBus.song_beat_pulse.connect(_on_song_beat_pulse)
 
 	for lane in range(3):
 		var projectile: Projectile = lane_manager.get_projectile(lane) as Projectile
@@ -175,11 +196,13 @@ func set_combat_enabled(enabled: bool) -> void:
 	if not combat_enabled:
 		action_lock_timer = 0.0
 		current_action_state = "idle"
+		dodge_invuln_timer = 0.0
 		chain_bypass_available = false
 		chain_bypass_timer = 0.0
 		parry_followup_active = false
 		parry_followup_timer = 0.0
 		parry_followup_damage = 0.0
+		_clear_buffered_dodge()
 		_return_to_neutral_state(true)
 
 
@@ -213,13 +236,22 @@ func _get_phrase_window() -> String:
 func _get_cadence_window() -> String:
 	if _song_conductor == null or not is_instance_valid(_song_conductor):
 		return ""
-	var section_id: String = String(_song_conductor.get("current_section_id"))
-	var intensity: float = float(_song_conductor.get("current_intensity"))
-	if section_id == "final" or intensity >= 0.85:
-		return "surge"
-	if section_id == "chorus" or intensity >= 0.62:
-		return "drive"
+	if _song_conductor.has_method("resolve_cadence_window"):
+		return String(_song_conductor.resolve_cadence_window(
+			String(_song_conductor.get("current_section_id")),
+			float(_song_conductor.get("current_intensity"))
+		))
+	if "current_cadence_window" in _song_conductor:
+		return String(_song_conductor.get("current_cadence_window"))
 	return ""
+
+
+func _emit_slowmo_context(context_id: String, fallback_scale: float, fallback_duration: float) -> void:
+	var preset: Dictionary = COMBAT_FEEL_CONTENT.get_slowmo_preset(context_id, {
+		"scale": fallback_scale,
+		"duration": fallback_duration
+	})
+	EventBus.emit_signal("slow_motion", float(preset.get("scale", fallback_scale)), float(preset.get("duration", fallback_duration)))
 
 
 func _emit_mastery_context(event_id: String, lane: int, action_quality: String, beat_quality: String) -> void:
@@ -278,24 +310,26 @@ func _grant_chain_bypass() -> void:
 
 
 func _lock_action(duration: float, state: String) -> void:
-	action_lock_timer = max(duration, 0.0)
+	var nerve_mult: float = 1.0 / max(GameState.stat_swiftness, 0.1)
+	action_lock_timer = max(duration * nerve_mult, 0.0)
 	current_action_state = state
 
 
 func _handle_lane_action(target_lane: int) -> void:
 	target_lane = clampi(target_lane, 0, 2)
+	_clear_buffered_dodge()
 	_consume_chain_bypass_if_needed()
-	_select_action_lane(target_lane)
-
 	# Immediate ring feedback on button press.
-	EventBus.emit_signal("timing_ring_pressed", current_lane)
+	EventBus.emit_signal("timing_ring_pressed", target_lane)
+
+	if Input.is_action_pressed("mod_forward"):
+		_try_dodge(target_lane, _read_dodge_direction())
+		return
+
+	_select_action_lane(target_lane)
 
 	if Input.is_action_pressed("mod_back"):
 		_try_parry()
-		return
-
-	if Input.is_action_pressed("mod_forward"):
-		_try_dodge()
 		return
 
 	_try_attack()
@@ -365,7 +399,7 @@ func _try_parry() -> void:
 	var combo_mult: float = float(combat_meter.call("damage_multiplier"))
 	var reflect_mult: float = GOOD_PARRY_REFLECT_MULT
 	var recovery: float = GOOD_PARRY_RECOVERY
-	var followup_window: float = FOLLOW_UP_WINDOW
+	var followup_window: float = COMBAT_FEEL_CONTENT.PARRY_FOLLOWUP_WINDOW_BASE
 
 	if quality == "perfect":
 		reflect_mult = PERFECT_PARRY_REFLECT_MULT
@@ -374,7 +408,7 @@ func _try_parry() -> void:
 	# On-beat perfect: bonus reflect and extended counter window.
 	if quality == "perfect" and (beat == "perfect" or beat == "good"):
 		reflect_mult *= 1.25
-		followup_window = 0.85
+		followup_window = COMBAT_FEEL_CONTENT.PARRY_FOLLOWUP_WINDOW_ON_BEAT
 
 	# Mutation Pass: Parry
 	if _run_growth != null:
@@ -402,7 +436,7 @@ func _try_parry() -> void:
 	lane_manager.call("clear_slot", current_lane)
 	combat_meter.call("record_parry", quality)
 	combat_meter.call("record_phrase_action", quality)
-	_show_parry_image()
+	_show_parry_image(quality)
 	_emit_mastery_context("parry", current_lane, quality, beat)
 
 	# Trigger the new counter-warp v1 automatically on projectile parry.
@@ -415,11 +449,11 @@ func _try_parry() -> void:
 		_flash_sprite_color(Color(0.55, 1.0, 0.72, 1.0), 0.14)
 		EventBus.emit_signal("screen_flash", Color(0.45, 1.0, 0.75, 0.16), 0.08)
 		if beat == "perfect":
-			EventBus.emit_signal("slow_motion", 0.52, 0.10)
+			_emit_slowmo_context("parry_perfect_beat_perfect", 0.52, 0.10)
 		elif beat == "good":
-			EventBus.emit_signal("slow_motion", 0.64, 0.08)
+			_emit_slowmo_context("parry_perfect_beat_good", 0.64, 0.08)
 		else:
-			EventBus.emit_signal("slow_motion", 0.76, 0.08)
+			_emit_slowmo_context("parry_perfect_offbeat", 0.76, 0.08)
 	else:
 		_flash_sprite_color(Color(0.45, 0.88, 0.62, 1.0), 0.10)
 		EventBus.emit_signal("screen_flash", Color(0.45, 1.0, 0.75, 0.10), 0.06)
@@ -427,21 +461,30 @@ func _try_parry() -> void:
 	_lock_action(recovery, "parry")
 
 
-func _try_dodge() -> void:
-	var from_lane: int = current_lane
-	var to_lane: int = current_lane + 1
+func _try_dodge(action_lane: int, direction_hint: int = 0) -> void:
+	action_lane = clampi(action_lane, 0, 2)
+	var from_lane: int = action_lane
+	var to_lane: int = action_lane + 1
 
-	if Input.is_action_pressed("mod_up"):
-		to_lane = current_lane - 1
-	elif Input.is_action_pressed("mod_down"):
-		to_lane = current_lane + 1
+	if direction_hint < 0:
+		to_lane = action_lane - 1
+	elif direction_hint > 0:
+		to_lane = action_lane + 1
 	else:
-		to_lane = current_lane + 1 if current_lane < 2 else current_lane - 1
+		to_lane = action_lane + 1 if action_lane < 2 else action_lane - 1
 
 	to_lane = clampi(to_lane, 0, 2)
 
 	if to_lane == from_lane:
 		return
+
+	if not combat_meter.call("spend_stamina_for_dodge"):
+		return
+
+	if current_lane != action_lane:
+		var previous_lane: int = current_lane
+		current_lane = action_lane
+		EventBus.emit_signal("player_teleported", previous_lane, action_lane)
 
 	current_lane = to_lane
 	EventBus.emit_signal("player_teleported", from_lane, to_lane)
@@ -457,21 +500,29 @@ func _try_dodge() -> void:
 	combat_meter.call("record_phrase_action", "good")
 	_emit_mastery_context("dodge", to_lane, "good", beat)
 	EventBus.emit_signal("player_dodged", from_lane, to_lane)
+	dodge_invuln_timer = DODGE_IFRAME_WINDOW_ON_BEAT if (beat == "perfect" or beat == "good") else DODGE_IFRAME_WINDOW
 
 	if beat == "perfect" or beat == "good":
 		_flash_sprite_color(Color(0.55, 0.82, 1.0, 1.0), 0.10)
 		EventBus.emit_signal("screen_flash", Color(0.55, 0.75, 1.0, 0.10), 0.06)
-		_lock_action(0.12, "dodge")
+		_lock_action(DODGE_GOOD_RECOVERY, "dodge")
 	else:
 		EventBus.emit_signal("screen_flash", Color(0.65, 0.85, 1.0, 0.06), 0.05)
 		_lock_action(DODGE_RECOVERY, "dodge")
 
 
 func _try_ultimate() -> void:
-	_play_attack_state(current_lane)
-
 	if not combat_meter.call("is_ultimate_available"):
 		return
+
+	_show_player_image(_attack_tex, ULTIMATE_RECOVERY)
+	_play_sprite_pose(ATTACK_SPRITE_POSITION, ATTACK_SPRITE_SCALE * 1.5, 0.4) # Dramatic pose
+	_play_world_motion(
+		_action_world_position(NEUTRAL_LANE, ATTACK_WORLD_X_OFFSET * 2.0),
+		_neutral_world_position(),
+		0.1,
+		0.4
+	)
 
 	var beat: String = _get_beat_quality()
 	var multiplier: float = float(combat_meter.call("consume_ultimate"))
@@ -485,7 +536,7 @@ func _try_ultimate() -> void:
 	elif beat == "good":
 		beat_mult = 1.10
 
-	var total_damage: float = GameState.get_attack_damage() * multiplier * beat_mult
+	var total_damage: float = GameState.get_attack_damage() * multiplier * beat_mult * GameState.stat_intelligence
 	total_damage += _get_creature_bonus()
 
 	for lane in range(3):
@@ -527,14 +578,24 @@ func _resolve_timed_attack(projectile, combo_mult: float, quality: String) -> vo
 	elif beat == "perfect" or beat == "good":
 		beat_mult = 1.15
 
-	# Tendency growth multiplier: aggression adds flat % to all timed hits;
+	# Growth multiplier: aggression adds flat % to all timed hits;
 	# cadence adds additional flat % to good and perfect hits only.
+	# Resolve through RunGrowth's public effect bridge so legacy compatibility
+	# and live surges share one authoritative source.
 	var growth_mult: float = 1.0
-	if _run_growth != null and _run_growth.has_method("get_runtime_effect"):
-		var aggr_effect: Dictionary = _run_growth.get_runtime_effect("timed_attack_bonus_damage")
+	if _run_growth != null:
+		var aggr_effect: Dictionary = {}
+		if _run_growth.has_method("get_growth_effect"):
+			aggr_effect = Dictionary(_run_growth.call("get_growth_effect", "timed_attack_bonus_damage"))
+		elif _run_growth.has_method("get_runtime_effect"):
+			aggr_effect = Dictionary(_run_growth.call("get_runtime_effect", "timed_attack_bonus_damage"))
 		growth_mult += float(aggr_effect.get("value", 0.0))
 		if quality == "good" or quality == "perfect":
-			var cad_effect: Dictionary = _run_growth.get_runtime_effect("good_timed_bonus_damage")
+			var cad_effect: Dictionary = {}
+			if _run_growth.has_method("get_growth_effect"):
+				cad_effect = Dictionary(_run_growth.call("get_growth_effect", "good_timed_bonus_damage"))
+			elif _run_growth.has_method("get_runtime_effect"):
+				cad_effect = Dictionary(_run_growth.call("get_runtime_effect", "good_timed_bonus_damage"))
 			growth_mult += float(cad_effect.get("value", 0.0))
 
 	# Player attack damage (base + absorbed) now cashes out directly in timed attacks.
@@ -548,7 +609,7 @@ func _resolve_timed_attack(projectile, combo_mult: float, quality: String) -> vo
 		if mutation_bonus > 0.0:
 			_run_growth.consume_mutation_charges("timed_damage_flat", 1, {"quality": quality})
 
-	var timed_damage: float = ((float(projectile.get("damage")) * TIMED_ATTACK_DAMAGE_RATIO) + (base_atk * PLAYER_DAMAGE_TO_TIMED_RATIO)) * combo_mult * (1.0 + phrase_bonus) * beat_mult * growth_mult + _get_timed_damage_bonus() + mutation_bonus
+	var timed_damage: float = ((float(projectile.get("damage")) * TIMED_ATTACK_DAMAGE_RATIO) + (base_atk * PLAYER_DAMAGE_TO_TIMED_RATIO)) * combo_mult * (1.0 + phrase_bonus) * beat_mult * growth_mult * GameState.stat_adaptability + _get_timed_damage_bonus() + mutation_bonus
 	var recovery: float = TIMED_ATTACK_RECOVERY
 
 
@@ -567,20 +628,26 @@ func _resolve_timed_attack(projectile, combo_mult: float, quality: String) -> vo
 		EventBus.emit_signal("screen_flash", Color(1.0, 0.85, 0.35, 0.14), 0.08)
 		recovery = PERFECT_ATTACK_RECOVERY
 		if beat == "perfect":
-			EventBus.emit_signal("slow_motion", 0.68, 0.08)
+			_emit_slowmo_context("timed_attack_perfect_beat_perfect", 0.68, 0.08)
 		else:
-			EventBus.emit_signal("slow_motion", 0.80, 0.06)
+			_emit_slowmo_context("timed_attack_perfect_other", 0.80, 0.06)
 	else:
 		_flash_sprite_color(Color(0.95, 0.62, 0.18, 1.0), 0.10)
 		EventBus.emit_signal("screen_flash", Color(1.0, 0.95, 0.55, 0.12), 0.07)
-		EventBus.emit_signal("slow_motion", 0.88, 0.04)
+		_emit_slowmo_context("timed_attack_good", 0.88, 0.04)
 
 	_grant_chain_bypass()
 	_lock_action(recovery, "timed_attack")
 
 
 func _resolve_early_attack() -> void:
-	combat_meter.call("record_bad_timing")
+	var armor_chance: float = clamp(GameState.stat_adaptability - 1.0, 0.0, 0.85)
+	if randf() < armor_chance:
+		# Combo Armor triggered: do not call record_bad_timing
+		EventBus.emit_signal("proc_feedback_requested", "FORM ARMOR", Color(0.42, 0.85, 0.72, 1.0))
+	else:
+		combat_meter.call("record_bad_timing")
+		
 	_clear_mastery_context("early_attack", current_lane)
 	EventBus.emit_signal("attack_timing_early_resolved", current_lane)
 	EventBus.emit_signal("screen_flash", Color(1.0, 0.15, 0.15, 0.05), 0.04)
@@ -592,7 +659,14 @@ func _resolve_early_attack() -> void:
 func _resolve_late_attack(projectile: Node) -> void:
 	var punish_damage: float = float(projectile.get("damage")) * LATE_ATTACK_PUNISH_RATIO
 	_take_damage(punish_damage, current_lane)
-	combat_meter.call("record_bad_timing")
+	
+	var armor_chance: float = clamp(GameState.stat_adaptability - 1.0, 0.0, 0.85)
+	if randf() < armor_chance:
+		# Combo Armor triggered
+		EventBus.emit_signal("proc_feedback_requested", "FORM ARMOR", Color(0.42, 0.85, 0.72, 1.0))
+	else:
+		combat_meter.call("record_bad_timing")
+		
 	_clear_mastery_context("late_attack", current_lane)
 	EventBus.emit_signal("screen_flash", Color(1.0, 0.15, 0.15, 0.10), 0.06)
 	chain_bypass_available = false
@@ -608,7 +682,7 @@ func _fire_parry_followup(combo_mult: float) -> void:
 	combat_meter.call("record_lane_read")
 	EventBus.emit_signal("player_attacked", current_lane, followup_damage, true)
 	EventBus.emit_signal("screen_flash", Color(1.0, 0.95, 0.65, 0.08), 0.05)
-	EventBus.emit_signal("slow_motion", 0.86, 0.04)
+	_emit_slowmo_context("parry_followup", 0.86, 0.04)
 
 	parry_followup_active = false
 	parry_followup_timer = 0.0
@@ -626,8 +700,13 @@ func _trigger_parry_counter_warp(target_lane: int, damage: float, quality: Strin
 	# 1. Hit-Stop: Momentarily freeze the action to sell the parry's weight.
 	# Perfect parries get a deeper freeze for extra "premium" feel.
 	var is_perfect: bool = (quality == "perfect")
-	var freeze_dur: float = 0.12 if is_perfect else 0.08
-	var freeze_scale: float = 0.05 if is_perfect else 0.12
+	var preset_id: String = "counter_warp_perfect" if is_perfect else "counter_warp_good"
+	var preset: Dictionary = COMBAT_FEEL_CONTENT.get_slowmo_preset(preset_id, {
+		"scale": 0.05 if is_perfect else 0.12,
+		"duration": 0.12 if is_perfect else 0.08
+	})
+	var freeze_dur: float = float(preset.get("duration", 0.12 if is_perfect else 0.08))
+	var freeze_scale: float = float(preset.get("scale", 0.05 if is_perfect else 0.12))
 	
 	EventBus.emit_signal("slow_motion", freeze_scale, freeze_dur)
 	EventBus.emit_signal("screen_flash", Color(1.0, 1.0, 1.0, 0.20 if is_perfect else 0.12), 0.05)
@@ -789,6 +868,9 @@ func _setup_player_sprite() -> void:
 	_player_sprite = Sprite2D.new()
 	_player_sprite.name = "PlayerSprite"
 	_player_sprite.texture = _idle_tex
+	# Single images: 1 frame each
+	_player_sprite.hframes = 1
+	_player_sprite.vframes = 1
 	# flip_h = false keeps the character facing right (toward enemy side).
 	_player_sprite.flip_h = false
 	_player_sprite.position = NEUTRAL_SPRITE_POSITION
@@ -797,9 +879,6 @@ func _setup_player_sprite() -> void:
 
 
 func _show_player_image(tex: Texture2D, duration: float) -> void:
-	# Central helper for all temporary image states. Kills any in-flight restore,
-	# swaps to tex, then returns to idle after duration seconds.
-	# Each state call naturally overrides the previous one — latest call wins.
 	if _player_sprite == null or tex == null:
 		return
 	_player_sprite.texture = tex
@@ -817,20 +896,91 @@ func _show_attack_image() -> void:
 	_show_player_image(_attack_tex, ATTACK_IMAGE_DURATION)
 
 
-func _show_parry_image() -> void:
-	# Only called on successful parry (good or perfect) — not on failed parry attempts.
+func _show_parry_image(quality: String = "good") -> void:
 	_show_player_image(_parry_tex, PARRY_IMAGE_DURATION)
 
 
 func _show_hurt_image() -> void:
-	# Hurt overrides any ongoing attack or parry image — damage always registers visually.
 	_show_player_image(_hurt_tex, HURT_IMAGE_DURATION)
+
+
+func _setup_energy_aura() -> void:
+	_energy_aura = GPUParticles2D.new()
+	_energy_aura.name = "EnergyAura"
+	_energy_aura.amount = 100
+	_energy_aura.lifetime = 1.2
+	_energy_aura.preprocess = 0.5
+	_energy_aura.visibility_rect = Rect2(-100, -100, 200, 200)
+	
+	var mat = ParticleProcessMaterial.new()
+	mat.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_RING
+	mat.emission_ring_radius = 40.0
+	mat.emission_ring_inner_radius = 30.0
+	mat.direction = Vector3(0, -1, 0)
+	mat.spread = 20.0
+	mat.initial_velocity_min = 40.0
+	mat.initial_velocity_max = 80.0
+	mat.gravity = Vector3(0, -20, 0)
+	mat.scale_min = 2.0
+	mat.scale_max = 4.0
+	mat.color = Color(0.24, 0.86, 0.74, 0.4) # Starting Cyan
+	
+	_energy_aura.process_material = mat
+	add_child(_energy_aura)
+	_energy_aura.position = Vector2.ZERO
+	_energy_aura.emitting = true
+
+
+func _update_aura_by_tier(tier: String) -> void:
+	if _energy_aura == null: return
+	
+	var mat = _energy_aura.process_material as ParticleProcessMaterial
+	if mat == null: return
+	
+	# Use UI_STYLE directly as it is the authoritative source for tier colors in the HUD/Visuals
+	var UI_STYLE = load("res://systems/UIStyle.gd")
+	var tier_color: Color = UI_STYLE.get_tier_color(tier)
+
+	match tier:
+		"stirring", "hunting":
+			_energy_aura.amount = 100
+		"rampage":
+			_energy_aura.amount = 150
+		"apex":
+			_energy_aura.amount = 200
+		"sovereign":
+			_energy_aura.amount = 300
+			
+	var tween = create_tween().set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUART)
+	tween.tween_property(mat, "color", tier_color, 0.5)
+
+
+func _on_song_beat_pulse(beat_index: int, intensity: float) -> void:
+	if _energy_aura == null: return
+	
+	var mat = _energy_aura.process_material as ParticleProcessMaterial
+	if mat == null: return
+	
+	# Pulse intensity based on song energy
+	var pulse_scale: float = 1.0 + (intensity * 0.15)
+	var tween = create_tween().set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_EXPO)
+	tween.tween_property(_energy_aura, "scale", Vector2(pulse_scale, pulse_scale), 0.05)
+	tween.tween_property(_energy_aura, "scale", Vector2.ONE, 0.15)
+	
+	# Scale particle speed with beat
+	var base_vel = mat.initial_velocity_max
+	tween.parallel().tween_property(mat, "initial_velocity_max", base_vel * 1.4, 0.05)
+	tween.tween_property(mat, "initial_velocity_max", base_vel, 0.15)
+
+
+func _on_combo_changed(_count: int, tier: String) -> void:
+	_update_aura_by_tier(tier)
 
 
 func _return_to_neutral_state(immediate: bool = false) -> void:
 	current_lane = NEUTRAL_LANE
 
-	var vis_node = _player_sprite if _player_sprite != null else sprite
+	var vis_node: CanvasItem = (_player_sprite as CanvasItem) if _player_sprite != null else (sprite as CanvasItem)
 	var neutral_s: Vector2 = NEUTRAL_SPRITE_SCALE * (PLAYER_SPRITE_SCALE_BASE if _player_sprite != null else 1.0)
 
 	if immediate:
@@ -865,12 +1015,13 @@ func _play_parry_state(target_lane: int) -> void:
 
 
 func _play_dodge_state(target_lane: int) -> void:
+	_spawn_dodge_afterimage()
 	_play_sprite_pose(DODGE_SPRITE_POSITION, DODGE_SPRITE_SCALE, 0.10)
 	_play_world_motion(
 		_action_world_position(target_lane, DODGE_WORLD_X_OFFSET),
 		_neutral_world_position(),
-		0.03,
-		0.12
+		0.05,
+		0.16
 	)
 
 
@@ -888,7 +1039,7 @@ func _play_sprite_pose(target_position: Vector2, target_scale: Vector2, return_t
 	if _sprite_pose_tween != null:
 		_sprite_pose_tween.kill()
 
-	var vis_node = _player_sprite if _player_sprite != null else sprite
+	var vis_node: CanvasItem = (_player_sprite as CanvasItem) if _player_sprite != null else (sprite as CanvasItem)
 	# Scale constants are squash-stretch multipliers; apply PLAYER_SPRITE_SCALE_BASE
 	# so the Sprite2D stays at the right display size through the pose animation.
 	var action_s: Vector2 = target_scale * (PLAYER_SPRITE_SCALE_BASE if _player_sprite != null else 1.0)
@@ -947,8 +1098,80 @@ func _on_projectile_player_contact(projectile: Node) -> void:
 	var proj_damage: float = float(projectile.get("damage"))
 	var proj_lane: int = int(projectile.get("lane"))
 
+	if dodge_invuln_timer > 0.0:
+		projectile.call("resolve", "dodged_through")
+		lane_manager.call("clear_slot", proj_lane)
+		EventBus.emit_signal("screen_flash", Color(0.50, 0.70, 1.0, 0.04), 0.03)
+		return
+
 	if combat_enabled:
 		_take_damage(proj_damage, proj_lane)
 	
 	projectile.call("resolve", "miss")
 	lane_manager.call("clear_slot", proj_lane)
+
+
+func _read_lane_press(event: InputEvent) -> int:
+	if event.is_action_pressed("lane_attack_0"):
+		return 0
+	if event.is_action_pressed("lane_attack_1"):
+		return 1
+	if event.is_action_pressed("lane_attack_2"):
+		return 2
+	return -1
+
+
+func _read_dodge_direction() -> int:
+	if Input.is_action_pressed("mod_up"):
+		return -1
+	if Input.is_action_pressed("mod_down"):
+		return 1
+	return 0
+
+
+func _queue_buffered_dodge(target_lane: int, direction_hint: int) -> void:
+	var buffer_ms: float = float(COMBAT_FEEL_CONSTANTS.get_timing_window_ms("dodge_buffer_ms"))
+	if buffer_ms <= 0.0:
+		return
+	_buffered_dodge_lane = clampi(target_lane, 0, 2)
+	_buffered_dodge_dir = clampi(direction_hint, -1, 1)
+	_buffered_dodge_timer = buffer_ms / 1000.0
+
+
+func _clear_buffered_dodge() -> void:
+	_buffered_dodge_lane = -1
+	_buffered_dodge_dir = 0
+	_buffered_dodge_timer = 0.0
+
+
+func _execute_buffered_dodge() -> void:
+	if _buffered_dodge_lane < 0:
+		_clear_buffered_dodge()
+		return
+
+	var target_lane: int = _buffered_dodge_lane
+	var direction_hint: int = _buffered_dodge_dir
+	_clear_buffered_dodge()
+
+	_consume_chain_bypass_if_needed()
+	EventBus.emit_signal("timing_ring_pressed", target_lane)
+	_try_dodge(target_lane, direction_hint)
+
+
+func _spawn_dodge_afterimage() -> void:
+	if _player_sprite == null or _player_sprite.texture == null:
+		return
+	var ghost := Sprite2D.new()
+	ghost.texture = _player_sprite.texture
+	ghost.flip_h = _player_sprite.flip_h
+	ghost.position = _player_sprite.position
+	ghost.scale = _player_sprite.scale
+	ghost.modulate = Color(0.72, 0.86, 1.0, 0.34)
+	add_child(ghost)
+	var tween := create_tween()
+	tween.tween_property(ghost, "modulate:a", 0.0, 0.14)
+	tween.parallel().tween_property(ghost, "scale", _player_sprite.scale * 1.06, 0.14)
+	tween.tween_callback(func() -> void:
+		if is_instance_valid(ghost):
+			ghost.queue_free()
+	)

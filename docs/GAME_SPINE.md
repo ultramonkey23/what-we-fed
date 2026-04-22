@@ -1,78 +1,71 @@
 # GAME SPINE
 
 ## Project identity
-This game is evolving toward a dark RPG roguelite where creature identity, predation, and **no-pause lane-timing combat during active levels** are deeply fused. **Between levels**, the run uses intentional menus (reward choice, inventory / resource management) before the next song—this is authored pacing, not drift into generic menu soup.
-The current style emphasis is shifting from brutal horror-first toward dark cool creature power fantasy, while preserving danger, readability, and predatory consequence.
+WHAT WE FED is a dark RPG roguelite: **combat-clean, management-rich**.
 
-## Run cadence (design target)
-- **One run** = **9 regular levels** + **1 boss level** (10 combat encounters).
-- **Regular levels**: lane combat plays to an **authored segment under ~2 minutes** (a slice of the track, not the full song). Flow after each: **reward selection** → **inventory / resource management** → next level’s song.
-- **Boss level (10th)**: uses the **full song** for that fight (not the short slice), still real-time lane combat with timing truth for the whole performance.
+---
 
-## Genre hierarchy
-- RPG first
-- Roguelite second
-- Creature-driven progression game third
-- Lane-timing action combat as the signature expression layer
+# 1. Operational Loop Split
 
-## Core fantasy
-The player starts weak, incomplete, or low-status and becomes feared through adaptation, mastery, feeding, mutation, and creature-shaped power growth.
+- **Pre-run (Strategy)**: Planning, bonded creature/collar selection, loadout/equipment review.
+- **In-level Combat (Urgency)**: Pressure-first, readable lane combat, stripped HUD, minimal interruption.
+- **Between-level Management (Comprehension)**: Management-rich breathing room for loot/artifact/collar decisions and build-shaping.
+- **Return to Combat**: Restore urgency quickly; keep admin logic out of active lane flow.
 
-## Desired long-term emotional feel
-- pressure
-- hunger
-- rhythm
-- escalation
-- mutation
-- dread
-- domination
-- ascendance
-- iconic becoming
+---
 
-## Long-term flagship direction
-The larger flagship version should eventually merge:
-- RPG build identity and creature authorship
-- roguelite run escalation and adaptation pressure
-- timing/rhythm-based combat feel
-- mutation and creature systems
-- enemy species that shape the musical/ecological identity of the battlefield
-- bosses that seize control of the arena’s vibe and force breakdowns, drones, grooves, solos, blast-beat surges, or piercing tech-riff states
-- influence vectors (not copy targets): Solo Leveling, Digimon, My Hero Academia, Ben 10, interpreted through WHAT WE FED's dark creature DNA
+# 2. Run Cadence (Design Target)
+- **One run** = 9 regular levels + 1 boss level.
+- **Regular levels**: authored track slice (~2 min). Flow: reward selection → management-rich menu → next song.
+- **Boss level (10th)**: full song, flagship pressure.
 
-## Important rule
-This is a long-term direction, not a permission slip to rewrite the current prototype all at once.
+---
 
-## Current base
-Use What We Fed as the practical base:
-- lane combat
-- timing windows
-- EventBus pattern
-- dark creature-feeding theme
-- reward choice foundation
-- live DNA economy
-- live tendency growth
-- live Potential ceiling scaffolding (creature/world/run threat cap, not flat combat stat)
-- preserve prototype foundation; evolve, do not discard
+# 3. Predatory Tempo Doctrine
+- **Puncture**: Micro-time violence (perfect timing punctuation).
+- **Suspension**: Slowed high-value choice under pressure.
+- **Decree**: Boss/world authority law shifts.
 
-## Near-term priority
-Before expanding toward the full flagship vision:
-- improve clarity
-- reduce hardcoded content
-- preserve what already works
-- make small safe upgrades
-- learn the project structure
-- strengthen RPG-readable build identity through existing run systems instead of broad scope expansion
+---
 
-## Long-term build identities to preserve
-- Flesh
-- Bond
-- Blight
-- Omen
+# 4. Near-Term Expansion Anchors (Evolving Spine)
 
-## Quig
-Quig is a controlled mascot-guide:
-- humorous
-- weird
-- useful
-- not constant
-- never allowed to destroy the game’s tone
+These are priority anchors for the evolving spine:
+
+- **Creature Grades**: Brood / Mature / Alpha tiered lifeforms affect strength, DNA yield, and desirability.
+- **Region Ecosystems**: Distinct pressure identities (Feeding Hollow, Pale Shelf, Drowned Cut).
+- **Support Specialization**: Deeper roles (cadence amplification, survival stabilization, predation payoff).
+- **Bosses as Battlefield Law**: Bosses aren't just big enemies; they rewrite the law of the arena.
+- **Performance Reward Pack v1**: Stronger score/kill payoffs into artifacts, weapons, and run depth.
+- **Unused DNA**: Routed into later metaprogression when run economy is stable.
+- **World-State Consequence**: Visible hooks for how the world reacts to the player's philosophy of power.
+- **Kaiju Ascension Line**: Long-term flagship direction (Hollow Egg).
+
+---
+
+# 5. Core Genre Hierarchy
+1.  **RPG First**: Build identity and authorship.
+2.  **Roguelite Second**: Run adaptation and replayability.
+3.  **Creature-Driven Third**: Species meaning and Bond/Eat tension.
+4.  **Lane-Timing Combat Fourth**: The signature expression layer.
+
+---
+
+# 6. Current Base Discipline
+- **Evolve, do not discard**: The prototype is the foundation.
+- **Harden schemas**: Focus on loot, artifact, and collar separation.
+- **Black Signal**: A living style spine—mythic, sharp, and premium menace.
+
+---
+
+# 7. Progression Lane Contract (Live Canon)
+
+- **First Bond Unlock**: One-time species acquisition event. Permanent species unlock. Not Bond Rank.
+- **Bond Rank**: Rare post-unlock milestone lane. Owns meaningful evolution, major form shifts, identity breakthroughs, and signature expression.
+- **Creature Level**: Regular post-unlock practical lane. Owns performance growth, tuning, cooldown/stat/effect efficiency, and role specialization.
+
+Live guardrails:
+- Bond Rank must not degrade into frequent +stat drip.
+- Creature Level must not trigger major identity metamorphosis.
+- Bond and Level must not pay for the same reward class under different names.
+- UI/copy must keep lanes emotionally distinct: Bond is transformational, Level is operational.

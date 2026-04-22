@@ -4,13 +4,19 @@
     {
       "label": "Godot: Open Project",
       "type": "shell",
-      "command": "\"C:\\Program Files\\Godot\\Godot_v4.4-stable_win64.exe\" --path .",
+      "command": ".\\editor_project.bat",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
       "problemMatcher": []
     },
     {
       "label": "Game: Run Validation Script",
       "type": "shell",
       "command": ".\\run_project.bat",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
       "problemMatcher": []
     }
   ]

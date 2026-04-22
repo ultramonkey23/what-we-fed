@@ -33,11 +33,17 @@ The player is trying to:
 
 This is one of the defining structural rules of the game.
 
+### Combat-clean, management-rich clarification
+- **Active level combat** should be fast, readable, and minimally interrupted.
+- **Between levels** may include management-rich choices (loot/artifact/collar/inventory/salvage/route prep).
+- **Menu sludge** refers to interruption **during** active combat, not intentional between-level or pre-run comprehension beats.
+- **Display Law**: **Combat HUD = Urgency** (live action) | **Management Screens = Comprehension** (between-level strategy).
+
 ## 1b Run cadence (design target)
 - **One run** = **9 regular levels** + **1 boss level**.
 - **Regular levels**: use an **authored segment under ~2 minutes** of the track (a slice, not the full song). After each: **reward selection** → **inventory / resource management** → next level.
 - **Boss (10th encounter)**: plays to the **full song** for that fight (not the short slice), still lane-timing combat with the same truth locks.
-- **No-pause** applies **inside** the active combat window for that level, not during intentional **between-level** menus.
+- **No-pause** applies **inside the active in-level combat window** for that level. It does not apply to intentional **between-level** menus or **pre-run** strategy.
 
 ---
 
@@ -85,6 +91,10 @@ But short enough to remain:
 # 4. Song Phase Structure
 
 Each level should be structured like a track with recognizable sections.
+The phase model can also host predatory tempo punctuation:
+- **Puncture** (micro-time violence spikes)
+- **Suspension** (short slowed decision emphasis under pressure)
+- **Decree** (boss/world state shifts that alter battlefield law)
 
 ## Phase A — Opening Bars
 ### Duration
@@ -394,6 +404,12 @@ It should feel like:
 - the track’s last hostile statement
 - a demand that the player prove the build they created
 
+Bosses should also act as **battlefield law changes**:
+- shifting lane authority
+- mutating pressure grammar
+- changing timing assumptions phase-to-phase
+- enforcing readable decree states instead of unreadable chaos
+
 The current boss vertical slice can still fit this model by becoming:
 ### the final movement of the level
 
@@ -427,6 +443,9 @@ These are first serious target values, not final numbers.
 
 ## Song length
 - 4:00 total
+
+For current regular-level implementation, this section remains a full-track tuning reference.
+Design target for regular encounters remains authored sub-2-minute slices; boss encounters keep full-song authority.
 
 ## Spawn pacing targets
 - Opening: 1 enemy every 2.2–2.6 seconds

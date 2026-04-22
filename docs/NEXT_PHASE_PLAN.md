@@ -34,6 +34,19 @@ Focus on:
 - adding clearer comments around lane/timing rules
 - keeping the style direction aligned with dark-cool ascendant creature power fantasy
 
+## Canon-evolution implementation impact map
+When planning near-term work, keep these impact areas explicit:
+- reward flow orchestration (kill/performance/reward transitions)
+- UI/HUD assumption split (combat urgency vs management comprehension)
+- inventory/equipment and between-level state flow
+- loot/artifact/collar schemas and ownership boundaries
+- support equipment bindings (collars affect support behavior, not generic player stats)
+- tempo-state logic / time scaling hooks (puncture/suspension/decree)
+- creature-grade schema and reward weighting
+- region encounter identity logic and pressure ecosystems
+- boss threshold/state machines as battlefield law shifts
+- world-state consequence hooks and kaiju-line inputs (kept scoped as later/layered rollout)
+
 ## Not yet
 Do not do these yet unless explicitly requested:
 - rewrite architecture
@@ -42,6 +55,7 @@ Do not do these yet unless explicitly requested:
 - merge in every survivor-like idea immediately
 - rebuild the prototype from scratch
 - soften the game into harmless anime-clean gloss or generic superhero tone
+- pull ranch into near-term priority before reward ecology and support identity are ready
 
 ## Good next tasks
 - move creature and encounter data out of `CombatScene.gd`

@@ -25,6 +25,8 @@ const COMBAT_CONTENT = preload("res://data/CombatContent.gd")
 const COMBAT_FEEL_CONTENT = preload("res://data/CombatFeelContent.gd")
 const PRESENTATION_TEXT = preload("res://data/PresentationTextContent.gd")
 const AUDIO_CONTENT = preload("res://data/AudioContent.gd")
+const SONG_LIBRARY_CONTENT = preload("res://data/SongLibraryContent.gd")
+const SONG_COMBAT_PROFILE_CONTENT = preload("res://data/SongCombatProfileContent.gd")
 const GROWTH_CONTENT = preload("res://data/RunGrowthContent.gd")
 const ROUTE_CONTENT = preload("res://data/RouteContent.gd")
 const RUN_PACING_CONTENT = preload("res://data/RunPacingContent.gd")
@@ -36,6 +38,7 @@ const COMBAT_PRESENTATION_RUNTIME = preload("res://systems/CombatPresentationRun
 const COMBAT_PRESENTATION_CONTROLLER = preload("res://systems/CombatPresentationController.gd")
 const ENCOUNTER_IDENTITY_RUNTIME = preload("res://systems/EncounterIdentityRuntime.gd")
 const UI_STYLE = preload("res://systems/UIStyle.gd")
+const HUD_PANEL_ART = preload("res://systems/HUDPanelArt.gd")
 const COMBAT_AUDIO_PLAYER = preload("res://systems/CombatAudioPlayer.gd")
 const ENCOUNTER_ESCALATION_DIRECTOR = preload("res://systems/EncounterEscalationDirector.gd")
 const MUSIC_CONTROL_LAYER = preload("res://systems/MusicControlLayer.gd")
@@ -48,29 +51,47 @@ const POTENTIAL_GATE = preload("res://systems/PotentialGate.gd")
 const RUN_GROWTH_SCRIPT_PATH: String = "res://systems/RunGrowth.gd"
 const PERFORMANCE_REWARD_DIRECTOR_SCRIPT_PATH: String = "res://systems/PerformanceRewardDirector.gd"
 const RUN_STATS_SCRIPT_PATH: String = "res://systems/RunStats.gd"
-const COMBAT_PERFORMANCE_HUD_SCENE: PackedScene = preload("res://scenes/ui/CombatPerformanceHUD.tscn")
+const COMBAT_PERFORMANCE_HUD_SCENE: PackedScene = preload("res://scenes/ui/PowerFantasyCombatHUD.tscn")
+const COMBAT_HUD_ROOT_SCENE: PackedScene = preload("res://scenes/ui/CombatHudRoot.tscn")
 const RUN_SPINE_SCENE: PackedScene = preload("res://scenes/ui/RunSpineScene.tscn")
 const GROWTH_CHOICE_SCENE: PackedScene = preload("res://scenes/ui/GrowthChoiceIntersection.tscn")
 const PREDATION_POOL = preload("res://systems/PredationPool.gd")
 const ENEMY_LOW_HP_THRESHOLD: float = 0.25
 const SUPPORT_MASTERY_CONTEXT_TIMEOUT: float = 1.75
-const LIVE_REWARD_WINDOW: float = 10.0
+const LIVE_REWARD_WINDOW: float = 3.2
 const DNA_HUD_VISIBLE_SLOTS: int = 2
 const DNA_PER_KILL: float = 2.5
-const HUD_PANEL_VISIBLE_ALPHA_THRESHOLD: float = 0.08
 const BOND_REMNANT_IDLE_HFRAMES: int = 6
 const BOND_REMNANT_IDLE_VFRAMES: int = 4
 const BOND_REMNANT_IDLE_FRAME_DURATION: float = 0.10
+const SONG_REWARD_STALL_GUARD_SECONDS: float = 0.75
+const REWARD_RUNTIME_NONE: StringName = &"none"
+const REWARD_RUNTIME_SONG_LIVE: StringName = &"song_live"
 
+const COMBAT_RUN_DIRECTOR = preload("res://systems/CombatRunDirector.gd")
 const COMBAT_HUD_PRESENTER = preload("res://systems/CombatHUDPresenter.gd")
 const IMPACT_FX_RUNTIME_SCENE: PackedScene = preload("res://systems/presentation/ImpactFxRuntime.tscn")
 
 # ─── STATE VARIABLES ─────────────────────────────────────────────────────────
+var _run_director: Node = null
 var _base_time_scale: float = 1.0
-var _slow_motion_gen: int = 0
 var _ring_highlight_timers: Array[float] = [0.0, 0.0, 0.0]
 var _surge_window_tendency: String = ""
 var _surge_window_timer: float = 0.0
+var _tempo_state_family: StringName = COMBAT_FEEL_CONTENT.TEMPO_NONE
+var _tempo_state_id: StringName = &""
+var _tempo_state_until_ms: int = 0
+var _tempo_state_started_ms: int = 0
+var _tempo_puncture_cooldown_until_ms: int = 0
+var _tempo_stretch_cooldown_until_ms: int = 0
+var _tempo_distortion_window: Array[Dictionary] = []
+var _tempo_telemetry_counts: Dictionary = {
+	COMBAT_FEEL_CONTENT.TEMPO_PUNCTURE: 0,
+	COMBAT_FEEL_CONTENT.TEMPO_STRETCH: 0,
+	COMBAT_FEEL_CONTENT.TEMPO_VOID: 0,
+	COMBAT_FEEL_CONTENT.TEMPO_DECREE: 0
+}
+var _tempo_recovery_tween: Tween = null
 
 # ─── UI NODES (DYNAMICALLY CREATED) ──────────────────────────────────────────
 var _hud_top_left_container: VBoxContainer = null
@@ -80,6 +101,11 @@ var _hud_top_right_panel: PanelContainer = null
 var _hud_top_right_accent_host: Control = null
 var _hud_right_stack: VBoxContainer = null
 var _hud_bottom_container: HBoxContainer = null
+var _hud_root: Control = null
+var _hud_decor_layer: Control = null
+var _hud_primary_layer: Control = null
+var _hud_secondary_layer: Control = null
+var _hud_overlay_layer: Control = null
 var _feedback_label: Label = null
 var _feedback_backing: ColorRect = null
 var _title_card: Label = null
@@ -118,18 +144,19 @@ var _end_stats_label: Label = null
 var _dna_shell: ColorRect = null
 var _dna_emblem: TextureRect = null
 var _dna_slot_labels: Array[Label] = []
-var _battlefield_panel: ColorRect = null
-var _battlefield_inner_panel: ColorRect = null
-var _battlefield_left_shade: ColorRect = null
-var _battlefield_right_shade: ColorRect = null
-var _battlefield_top_trim: ColorRect = null
-var _battlefield_bottom_trim: ColorRect = null
+var _battlefield_panel: Control = null
+var _battlefield_left_shade: Control = null
+var _battlefield_right_shade: Control = null
+var _battlefield_top_trim: Control = null
+var _battlefield_bottom_trim: Control = null
 var _bg_sprite: Control = null
 var _bonded_creature_sprite: Sprite2D = null
 var _bonded_creature_species: String = ""
 var _presentation_runtime: RefCounted = null
 var _presentation_controller: Node = null
 var _hud_presenter: RefCounted = null
+var _scouter_shell: Panel = null
+var _power_scouter_label: Label = null
 var _combat_audio_player: Node = null
 var _timing_debug_label: Label = null
 
@@ -158,13 +185,11 @@ var _reward_eat_effect_scroll: ScrollContainer = null
 var _upgrade_overlay: ColorRect = null
 var _upgrade_panel: ColorRect = null
 var _upgrade_card_nodes: Array[ColorRect] = []
-var _upgrade_choice_labels: Array[Label] = []
 var _awaiting_upgrade_choice: bool = false
 var _pending_upgrades: Array[Dictionary] = []
 var _pending_predation: Array[Dictionary] = []
 var _pending_path_choice_nodes: Array[Dictionary] = []
 var _pending_path_choice_level_index: int = -1
-var _active_path_node: Dictionary = {}
 var _active_path_context: Dictionary = {}
 
 var _run_spine_surface: Node = null
@@ -186,6 +211,9 @@ var _live_reward_body_label: Label = null
 var _live_reward_hint_label: Label = null
 var _live_reward_queue: Array[Dictionary] = []
 var _live_reward_offer_timer: float = 0.0
+var _song_reward_stall_guard: float = 0.0
+var _between_level_growth_queue: Array[Dictionary] = []
+var _between_level_growth_stored_this_level: bool = false
 
 # ─── RUNTIME REQUISITES ──────────────────────────────────────────────────────
 var _combat_finished: bool = false
@@ -193,6 +221,7 @@ var _phase_transitioning: bool = false
 var _awaiting_reward_choice: bool = false
 var _reward_choice_made: bool = false
 var _run_finished: bool = false
+var _active_reward_runtime: StringName = REWARD_RUNTIME_NONE
 var _pending_reward_creature: Dictionary = {}
 var _pending_reward_dna_locked: bool = false
 var _performance_reward_director: Node = null
@@ -223,7 +252,6 @@ var _boss_state_label: Label = null
 # ─── LANE VISUALS ────────────────────────────────────────────────────────────
 var _lane_strips: Dictionary = {}
 var _lane_hit_focus: Dictionary = {}
-var _hud_visible_region_cache: Dictionary = {}
 
 # ─── SONG MODE STATE ─────────────────────────────────────────────────────────
 var _song_mode: bool = false
@@ -248,17 +276,19 @@ var _song_level_end_time: float = 0.0
 var _base_difficulty_modifiers: Dictionary = {}
 var _difficulty_modifiers: Dictionary = {}
 var _music_control_layer: RefCounted = null
+var _song_combat_state: Dictionary = {}
 var _difficulty_modifier_director: RefCounted = null
 var _last_beat_index: int = -1
 var _song_level_transitioning: bool = false
-var _regular_level_windows: Array = []
-var _regular_level_index: int = 0
 var _beat_feedback_label: Label = null
 var _last_mastery_context: Dictionary = {}
 var _quig_anim_accum: float = 0.0
 var _quig_anim_frame: int = 0
 var _dna_anim_accum: float = 0.0
 var _dna_anim_frame: int = 0
+var _dna_pickup_flavor_cooldown: float = 0.0
+var _dna_pickup_flavor_rotation: Dictionary = {}
+var _run_passed_rewards: int = 0
 var _bonded_creature_anim_accum: float = 0.0
 
 # ─── BOSS MUSIC & HUD ────────────────────────────────────────────────────────
@@ -266,11 +296,14 @@ var _boss_music_player: AudioStreamPlayer = null
 var _boss_race_active: bool = false
 var _boss_music_duration: float = 0.0
 var _boss_hp_threshold_fired: bool = false
+var _boss_decree_timeline_active: bool = false
 var _boss_presence_timer: float = 0.0
 var _region_id: String = ""
 var _dev_harness_request: Dictionary = {}
 var _active_song_map: Script = TRICKY_SONGMAP
 var _active_song_data: Dictionary = {}
+var _active_song_profile: Dictionary = SONG_COMBAT_PROFILE_CONTENT.get_profile("")
+var _boss_song_profile: Dictionary = SONG_COMBAT_PROFILE_CONTENT.get_profile("boss_1")
 
 
 # ─── LIFECYCLE ───────────────────────────────────────────────────────────────
@@ -291,6 +324,7 @@ func _ready() -> void:
 
 
 func _exit_tree() -> void:
+	_reset_tempo_state()
 	var vp: Viewport = get_viewport()
 	if vp.size_changed.is_connected(_sync_fullscreen_underlay_controls):
 		vp.size_changed.disconnect(_sync_fullscreen_underlay_controls)
@@ -381,7 +415,13 @@ func _initialize_systems() -> void:
 	_setup_performance_rewards()
 	_setup_escalation_director()
 	_setup_music_difficulty_layers()
+	_setup_run_director()
 	_setup_support_resolver()
+
+
+func _setup_run_director() -> void:
+	_run_director = COMBAT_RUN_DIRECTOR.new()
+	add_child(_run_director)
 
 
 func _setup_support_resolver() -> void:
@@ -424,6 +464,8 @@ func _setup_music_difficulty_layers() -> void:
 		_music_control_layer = MUSIC_CONTROL_LAYER.new()
 	if _difficulty_modifier_director == null:
 		_difficulty_modifier_director = DIFFICULTY_MODIFIER_DIRECTOR.new()
+	if _music_control_layer != null and _music_control_layer.has_method("configure"):
+		_music_control_layer.call("configure", _active_song_profile)
 
 
 func _on_escalation_phase_changed(index: int, _phase_data: Dictionary) -> void:
@@ -441,6 +483,7 @@ func _on_escalation_feedback_requested(text: String, color: Color, duration: flo
 func _initialize_ui() -> void:
 	_setup_presentation_controller()
 	_setup_visuals()
+	_ensure_hud_root()
 	if not get_viewport().size_changed.is_connected(_sync_fullscreen_underlay_controls):
 		get_viewport().size_changed.connect(_sync_fullscreen_underlay_controls)
 	_setup_ui()
@@ -476,6 +519,10 @@ func _initialize_run_state() -> void:
 	_combat_finished = false
 	_phase_transitioning = false
 	_run_finished = false
+	_run_passed_rewards = 0
+	_dna_pickup_flavor_cooldown = 0.0
+	_dna_pickup_flavor_rotation.clear()
+	_reset_tempo_state()
 
 
 func _connect_signals() -> void:
@@ -493,6 +540,8 @@ func _process(delta: float) -> void:
 
 
 func _update_timers(delta: float) -> void:
+	_update_tempo_state()
+
 	for i in range(3):
 		if _ring_highlight_timers[i] > 0.0:
 			_ring_highlight_timers[i] = max(_ring_highlight_timers[i] - delta, 0.0)
@@ -503,10 +552,360 @@ func _update_timers(delta: float) -> void:
 			_surge_window_tendency = ""
 	
 	if _song_mode and _song_reward_pending and _awaiting_reward_choice and _live_reward_offer_timer > 0.0:
-		_live_reward_offer_timer = max(_live_reward_offer_timer - delta, 0.0)
+		_live_reward_offer_timer = max(_live_reward_offer_timer - _resolve_void_timer_delta(delta), 0.0)
 		_refresh_live_reward_shell()
 		if _live_reward_offer_timer <= 0.0:
 			_expire_live_reward_offer()
+		if _pending_reward_creature.is_empty():
+			_song_reward_stall_guard = maxf(_song_reward_stall_guard - delta, 0.0)
+			if _song_reward_stall_guard <= 0.0:
+				_recover_song_reward_flow("empty_pending_creature")
+		else:
+			_song_reward_stall_guard = SONG_REWARD_STALL_GUARD_SECONDS
+	if _dna_pickup_flavor_cooldown > 0.0:
+		_dna_pickup_flavor_cooldown = max(_dna_pickup_flavor_cooldown - delta, 0.0)
+
+
+func _update_tempo_state() -> void:
+	if _tempo_state_family == COMBAT_FEEL_CONTENT.TEMPO_NONE:
+		return
+	if _tempo_state_family == COMBAT_FEEL_CONTENT.TEMPO_VOID:
+		# Void exits through reward resolution or expiry, not a fixed timer.
+		return
+	var now: int = Time.get_ticks_msec()
+	if _tempo_state_until_ms > 0 and now >= _tempo_state_until_ms:
+		_exit_tempo_state(_tempo_state_family, false)
+
+
+func _resolve_void_timer_delta(delta: float) -> float:
+	if _tempo_state_family != COMBAT_FEEL_CONTENT.TEMPO_VOID:
+		return delta
+	var current_time_scale: float = maxf(Engine.time_scale, 0.01)
+	# Keep Choice Void windows deterministic in wall-clock seconds.
+	return delta / current_time_scale
+
+
+func _reset_tempo_state() -> void:
+	_kill_tempo_recovery_tween()
+	_tempo_state_family = COMBAT_FEEL_CONTENT.TEMPO_NONE
+	_tempo_state_id = &""
+	_tempo_state_until_ms = 0
+	_tempo_state_started_ms = 0
+	_tempo_puncture_cooldown_until_ms = 0
+	_tempo_stretch_cooldown_until_ms = 0
+	_tempo_distortion_window.clear()
+	_tempo_telemetry_counts[COMBAT_FEEL_CONTENT.TEMPO_PUNCTURE] = 0
+	_tempo_telemetry_counts[COMBAT_FEEL_CONTENT.TEMPO_STRETCH] = 0
+	_tempo_telemetry_counts[COMBAT_FEEL_CONTENT.TEMPO_VOID] = 0
+	_tempo_telemetry_counts[COMBAT_FEEL_CONTENT.TEMPO_DECREE] = 0
+	_song_reward_stall_guard = 0.0
+	_apply_tempo_time_scale(_base_time_scale)
+
+
+func _tempo_priority(family: StringName) -> int:
+	return int(COMBAT_FEEL_CONTENT.TEMPO_PRIORITY.get(family, 0))
+
+
+func _tempo_state_active(family: StringName) -> bool:
+	return _tempo_state_family == family
+
+
+func _tempo_distortion_available(family: StringName, tempo_scale_value: float, duration: float) -> bool:
+	if family != COMBAT_FEEL_CONTENT.TEMPO_PUNCTURE:
+		# Anti-spam budget applies only to repeated micro-puncture effects.
+		return true
+	var now: int = Time.get_ticks_msec()
+	var window_ms: int = int(COMBAT_FEEL_CONTENT.TEMPO_DISTORTION_WINDOW_SECONDS * 1000.0)
+	var next_window: Array[Dictionary] = []
+	var used: float = 0.0
+	for row in _tempo_distortion_window:
+		var ts: int = int(row.get("t_ms", 0))
+		if now - ts <= window_ms:
+			next_window.append(row)
+			used += float(row.get("weight", 0.0))
+	_tempo_distortion_window = next_window
+	var proposed: float = maxf(1.0 - clampf(tempo_scale_value, 0.0, 1.0), 0.0) * maxf(duration, 0.0)
+	return used + proposed <= COMBAT_FEEL_CONTENT.PUNCTURE_MAX_DISTORTION_PER_WINDOW
+
+
+func _register_tempo_distortion(family: StringName, tempo_scale_value: float, duration: float) -> void:
+	if family != COMBAT_FEEL_CONTENT.TEMPO_PUNCTURE:
+		return
+	_tempo_distortion_window.append({
+		"t_ms": Time.get_ticks_msec(),
+		"weight": maxf(1.0 - clampf(tempo_scale_value, 0.0, 1.0), 0.0) * maxf(duration, 0.0)
+	})
+
+
+func _apply_tempo_time_scale(tempo_scale_value: float) -> void:
+	Engine.time_scale = clampf(tempo_scale_value, 0.01, 1.0)
+
+
+func _kill_tempo_recovery_tween() -> void:
+	if _tempo_recovery_tween != null:
+		_tempo_recovery_tween.kill()
+		_tempo_recovery_tween = null
+
+
+func _ramp_to_base_time_scale(duration: float = 0.12) -> void:
+	_kill_tempo_recovery_tween()
+	var from_scale: float = clampf(Engine.time_scale, 0.01, 1.0)
+	_tempo_recovery_tween = create_tween()
+	_tempo_recovery_tween.set_trans(Tween.TRANS_EXPO)
+	_tempo_recovery_tween.set_ease(Tween.EASE_IN)
+	_tempo_recovery_tween.tween_method(Callable(self, "_apply_tempo_time_scale"), from_scale, _base_time_scale, maxf(duration, 0.01))
+	_tempo_recovery_tween.finished.connect(func() -> void:
+		_tempo_recovery_tween = null
+	)
+
+
+func _track_tempo_event(family: StringName, event_id: StringName, payload: Dictionary = {}) -> void:
+	if family == COMBAT_FEEL_CONTENT.TEMPO_NONE:
+		return
+	_tempo_telemetry_counts[family] = int(_tempo_telemetry_counts.get(family, 0)) + 1
+	if GameState != null and GameState.has_method("register_tempo_event"):
+		GameState.call("register_tempo_event", String(family), String(event_id), payload)
+
+
+func _notify_tempo_mastery(family: StringName, event_id: StringName, payload: Dictionary = {}) -> void:
+	if _performance_reward_director == null or not is_instance_valid(_performance_reward_director):
+		return
+	if _performance_reward_director.has_method("notify_tempo_mastery"):
+		_performance_reward_director.call("notify_tempo_mastery", String(family), String(event_id), payload)
+
+
+func _enter_tempo_state(family: StringName, event_id: StringName, tempo_scale_value: float, duration: float = 0.0, payload: Dictionary = {}) -> bool:
+	if family == COMBAT_FEEL_CONTENT.TEMPO_NONE:
+		return false
+	var now: int = Time.get_ticks_msec()
+	var family_priority: int = _tempo_priority(family)
+	var current_priority: int = _tempo_priority(_tempo_state_family)
+	
+	if _tempo_state_family == COMBAT_FEEL_CONTENT.TEMPO_VOID and family != COMBAT_FEEL_CONTENT.TEMPO_VOID:
+		# Void (T3) is a complete tactical pause, nothing overrides it.
+		return false
+	if _tempo_state_family == COMBAT_FEEL_CONTENT.TEMPO_DECREE and family != COMBAT_FEEL_CONTENT.TEMPO_DECREE:
+		return false
+	
+	# IMPACT GATING: Make these moments feel rare and earned.
+	if family == COMBAT_FEEL_CONTENT.TEMPO_PUNCTURE:
+		if now < _tempo_puncture_cooldown_until_ms:
+			return false
+		if not bool(payload.get("impact_weight", false)):
+			# Only high-weight hits (kills, elite hits) trigger hitstop.
+			return false
+			
+	if family == COMBAT_FEEL_CONTENT.TEMPO_STRETCH:
+		if now < _tempo_stretch_cooldown_until_ms:
+			return false
+		# Requirement: You must be at least in 'Rampage' tier to bend time.
+		var current_tier: String = "stirring"
+		if combat_meter != null and combat_meter.has_method("get_current_tier"):
+			current_tier = String(combat_meter.call("get_current_tier"))
+		
+		if current_tier == "stirring" or current_tier == "hunting":
+			return false
+
+	if family_priority < current_priority:
+		return false
+	if not _tempo_distortion_available(family, tempo_scale_value, duration):
+		return false
+	if _tempo_state_family != COMBAT_FEEL_CONTENT.TEMPO_NONE and _tempo_state_family != family:
+		_exit_tempo_state(_tempo_state_family, true)
+	_kill_tempo_recovery_tween()
+	_tempo_state_family = family
+	_tempo_state_id = event_id
+	_tempo_state_started_ms = now
+	_tempo_state_until_ms = now + int(maxf(duration, 0.0) * 1000.0) if duration > 0.0 else 0
+	_apply_tempo_time_scale(tempo_scale_value)
+	_register_tempo_distortion(family, tempo_scale_value, duration)
+	_track_tempo_event(family, event_id, payload)
+	
+	match family:
+		COMBAT_FEEL_CONTENT.TEMPO_PUNCTURE:
+			_tempo_puncture_cooldown_until_ms = now + int(COMBAT_FEEL_CONTENT.PUNCTURE_COOLDOWN_SECONDS * 1000.0)
+		COMBAT_FEEL_CONTENT.TEMPO_STRETCH:
+			# Long cooldown for tactical slo-mo so it remains a "rush" moment.
+			_tempo_stretch_cooldown_until_ms = now + 6000 
+		COMBAT_FEEL_CONTENT.TEMPO_VOID:
+			if _song_conductor != null:
+				_song_conductor.set_void_filter(true)
+		COMBAT_FEEL_CONTENT.TEMPO_DECREE:
+			if _hud_presenter != null:
+				_hud_presenter.set_boss_state_text("BLACK SIGNAL DECREE")
+	return true
+
+
+func _exit_tempo_state(family: StringName, preempted: bool) -> void:
+	if _tempo_state_family != family:
+		return
+	var exited_family: StringName = _tempo_state_family
+	_tempo_state_family = COMBAT_FEEL_CONTENT.TEMPO_NONE
+	_tempo_state_id = &""
+	_tempo_state_until_ms = 0
+	_tempo_state_started_ms = 0
+	
+	if exited_family == COMBAT_FEEL_CONTENT.TEMPO_VOID:
+		if _song_conductor != null:
+			_song_conductor.set_void_filter(false)
+
+	if not preempted:
+		_track_tempo_event(family, &"resolved", {})
+	
+	if preempted or family == COMBAT_FEEL_CONTENT.TEMPO_PUNCTURE or exited_family == COMBAT_FEEL_CONTENT.TEMPO_VOID:
+		_apply_tempo_time_scale(_base_time_scale)
+	else:
+		_ramp_to_base_time_scale()
+	
+	if exited_family == COMBAT_FEEL_CONTENT.TEMPO_DECREE and _hud_presenter != null and _is_boss_encounter:
+		if _boss_hp_threshold_fired:
+			_hud_presenter.set_boss_state_text(PRESENTATION_TEXT.boss_state_final(_region_id))
+		else:
+			_hud_presenter.set_boss_state_text(PRESENTATION_TEXT.boss_state_opening(_region_id))
+	if exited_family == COMBAT_FEEL_CONTENT.TEMPO_DECREE and _song_reward_pending and not _awaiting_reward_choice and not _live_reward_queue.is_empty():
+		call_deferred("_show_next_live_reward_offer")
+
+
+func _recover_song_reward_flow(reason: String) -> void:
+	_track_tempo_event(COMBAT_FEEL_CONTENT.TEMPO_VOID, &"stall_recovered", {
+		"reason": reason
+	})
+	_resume_song_combat_runtime_from_reward()
+
+
+func _reset_pending_reward_state(clear_live_queue: bool = false) -> void:
+	_awaiting_reward_choice = false
+	_reward_choice_made = false
+	_active_reward_runtime = REWARD_RUNTIME_NONE
+	_pending_reward_creature = {}
+	_pending_reward_dna_locked = false
+	_live_reward_offer_timer = 0.0
+	_song_reward_stall_guard = 0.0
+	if clear_live_queue:
+		_live_reward_queue.clear()
+
+
+func _begin_song_live_reward_runtime() -> void:
+	_song_reward_pending = true
+	_active_reward_runtime = REWARD_RUNTIME_SONG_LIVE
+	# Keep escalation runtime alive during live reward interaction.
+	# Song-pressure suspension is owned by tempo/void + explicit resume handshake.
+
+
+func _is_song_live_reward_runtime_active() -> bool:
+	return _song_mode and _active_reward_runtime == REWARD_RUNTIME_SONG_LIVE
+
+
+func _resume_song_combat_runtime_from_reward(clear_live_queue: bool = false) -> void:
+	_song_reward_pending = false
+	_active_reward_runtime = REWARD_RUNTIME_NONE
+	_set_song_paused(false)
+	if _escalation_director != null:
+		_escalation_director.resume()
+	if lane_manager != null and is_instance_valid(lane_manager):
+		lane_manager.start_song_cycle()
+	_rehydrate_song_pressure_after_reward()
+	_hide_live_reward_shell()
+	_reset_pending_reward_state(clear_live_queue)
+	_refresh_song_controls_text()
+
+
+func _rehydrate_song_pressure_after_reward() -> void:
+	if not _song_mode or _run_finished:
+		return
+	if lane_manager == null or not is_instance_valid(lane_manager):
+		return
+	if lane_manager.alive_count() > 0:
+		return
+	if _song_phase_index < 0 or _song_phase_index >= _song_phases.size():
+		return
+	var phase: Dictionary = _song_phases[_song_phase_index]
+	var pool: Array = phase.get("enemy_pool", [])
+	if pool.is_empty():
+		return
+	var chosen: Dictionary = Dictionary(pool[_song_rng.randi_range(0, pool.size() - 1)]).duplicate(true)
+	var target_lane: int = int(player_combat.get("current_lane")) if player_combat != null else 1
+	target_lane = clampi(target_lane, 0, 2)
+	for lane in range(3):
+		var probe_lane: int = (target_lane + lane) % 3
+		var lane_enemy: Dictionary = lane_manager.get_enemy(probe_lane)
+		if lane_enemy.is_empty() or float(lane_enemy.get("hp", 0.0)) <= 0.0:
+			target_lane = probe_lane
+			break
+	_place_song_enemy_data(target_lane, chosen)
+
+
+func _continue_after_non_song_reward_resolution() -> void:
+	_reward_hint_label.text = PRESENTATION_TEXT.REWARD_HINT_WAIT
+	controls_label.text = ""
+	_check_for_upgrade_choices()
+
+
+func _finalize_resolved_reward_choice(
+	choice_id: String,
+	void_elapsed: float,
+	song_feedback_text: String = "",
+	song_feedback_color: Color = Color(1.0, 1.0, 1.0, 1.0),
+	song_feedback_lifetime: float = 0.24,
+	emit_mastery: bool = true
+) -> void:
+	if emit_mastery:
+		_notify_tempo_mastery(COMBAT_FEEL_CONTENT.TEMPO_VOID, "choice_commit", {
+			"choice": choice_id,
+			"elapsed_seconds": void_elapsed,
+			"window_seconds": LIVE_REWARD_WINDOW
+		})
+	if _is_song_live_reward_runtime_active() or _song_reward_pending:
+		if not song_feedback_text.is_empty():
+			_show_feedback(song_feedback_text, song_feedback_color, song_feedback_lifetime)
+		_resume_song_after_reward()
+		return
+	_continue_after_non_song_reward_resolution()
+
+
+func _trigger_puncture(event_id: StringName, tempo_scale_value: float, duration: float, payload: Dictionary = {}) -> bool:
+	if _tempo_state_family == COMBAT_FEEL_CONTENT.TEMPO_DECREE or _tempo_state_family == COMBAT_FEEL_CONTENT.TEMPO_VOID:
+		return false
+	var clamped_scale: float = clampf(tempo_scale_value, COMBAT_FEEL_CONTENT.PUNCTURE_MIN_SCALE, COMBAT_FEEL_CONTENT.PUNCTURE_MAX_SCALE)
+	var clamped_duration: float = clampf(duration, 0.04, COMBAT_FEEL_CONTENT.PUNCTURE_MAX_DURATION)
+	return _enter_tempo_state(COMBAT_FEEL_CONTENT.TEMPO_PUNCTURE, event_id, clamped_scale, clamped_duration, payload)
+
+
+func _begin_stretch(event_id: StringName, payload: Dictionary = {}) -> void:
+	_enter_tempo_state(COMBAT_FEEL_CONTENT.TEMPO_STRETCH, event_id, COMBAT_FEEL_CONTENT.STRETCH_SCALE, COMBAT_FEEL_CONTENT.STRETCH_MAX_DURATION, payload)
+
+
+func _end_stretch(event_id: StringName, payload: Dictionary = {}) -> void:
+	if _tempo_state_family != COMBAT_FEEL_CONTENT.TEMPO_STRETCH:
+		return
+	_track_tempo_event(COMBAT_FEEL_CONTENT.TEMPO_STRETCH, event_id, payload)
+	_exit_tempo_state(COMBAT_FEEL_CONTENT.TEMPO_STRETCH, false)
+
+
+func _begin_void(event_id: StringName, payload: Dictionary = {}) -> void:
+	# Void is a semi-pause for high-value decisions. 
+	# Duration 0 means it lasts until explicit _end_void.
+	_enter_tempo_state(COMBAT_FEEL_CONTENT.TEMPO_VOID, event_id, COMBAT_FEEL_CONTENT.VOID_SCALE, 0.0, payload)
+
+
+func _end_void(event_id: StringName, payload: Dictionary = {}) -> void:
+	if _tempo_state_family != COMBAT_FEEL_CONTENT.TEMPO_VOID:
+		return
+	_track_tempo_event(COMBAT_FEEL_CONTENT.TEMPO_VOID, event_id, payload)
+	_exit_tempo_state(COMBAT_FEEL_CONTENT.TEMPO_VOID, false)
+
+
+func _trigger_decree(event_id: StringName, duration: float, payload: Dictionary = {}) -> void:
+	var clamped_duration: float = clampf(duration, COMBAT_FEEL_CONTENT.DECREE_MIN_DURATION, COMBAT_FEEL_CONTENT.DECREE_MAX_DURATION)
+	_enter_tempo_state(COMBAT_FEEL_CONTENT.TEMPO_DECREE, event_id, COMBAT_FEEL_CONTENT.DECREE_SCALE, clamped_duration, payload)
+
+
+func _current_void_elapsed_seconds() -> float:
+	if _tempo_state_family != COMBAT_FEEL_CONTENT.TEMPO_VOID or _tempo_state_started_ms <= 0:
+		return 0.0
+	var now: int = Time.get_ticks_msec()
+	return float(now - _tempo_state_started_ms) / 1000.0
+
 
 
 func _update_presentation_layers() -> void:
@@ -553,25 +952,14 @@ func _update_song_logic(delta: float) -> void:
 		return
 	if _music_control_layer != null and _music_control_layer.has_method("process_tick"):
 		_music_control_layer.call("process_tick", delta)
+	_refresh_song_combat_state()
+	_ensure_song_runtime_active()
 		
 	if not _song_paused:
 		if _song_conductor != null:
 			_song_elapsed = _song_conductor.get_song_time()
 			if _escalation_director != null:
 				_escalation_director.update_song_time(_song_elapsed)
-
-			# Beat crossing detection
-
-			var current_beat: int = _song_conductor.get_beat_count()
-			if current_beat > _last_beat_index:
-				_last_beat_index = current_beat
-				var quality: String = _song_conductor.get_beat_quality()
-				if GameState.has_method("set_last_beat_quality"):
-					GameState.call("set_last_beat_quality", quality)
-				_presentation_runtime.on_beat_pulse(quality, 1.0)
-			elif current_beat < _last_beat_index:
-				# Handle song seeking backwards or restarts.
-				_last_beat_index = current_beat
 		else:
 			_song_elapsed += delta
 			if _escalation_director != null:
@@ -583,6 +971,49 @@ func _update_song_logic(delta: float) -> void:
 		_recover_stalled_cycles()
 		_update_timing_debug()
 		_rebuild_music_driven_difficulty()
+
+
+func _on_conductor_beat_pulse(beat_index: int, quality: String, intensity: float, _song_time: float) -> void:
+	_last_beat_index = beat_index
+	if GameState.has_method("set_last_beat_quality"):
+		GameState.call("set_last_beat_quality", quality)
+	EventBus.emit_signal("song_beat_pulse", beat_index, intensity)
+	if _presentation_runtime != null:
+		_presentation_runtime.on_beat_pulse(quality, 1.0)
+
+
+func _should_hold_song_runtime_paused() -> bool:
+	if _song_level_transitioning:
+		return true
+	if _is_growth_choice_active():
+		return true
+	if _is_run_spine_active():
+		return true
+	if _awaiting_upgrade_choice or _awaiting_run_prep:
+		return true
+	return false
+
+
+func _ensure_song_runtime_active() -> void:
+	if not _song_mode or _run_finished or _song_boss_triggered:
+		return
+	if _should_hold_song_runtime_paused():
+		return
+
+	if _song_paused:
+		_set_song_paused(false)
+	elif _song_conductor != null and is_instance_valid(_song_conductor) and _song_conductor.has_method("resume"):
+		# Defensive rehydration: if conductor internals desynced from _song_paused flag,
+		# force resume to prevent silent post-reward freeze.
+		_song_conductor.resume()
+
+	if _escalation_director != null:
+		_escalation_director.resume()
+	if lane_manager != null and is_instance_valid(lane_manager):
+		if not lane_manager.is_combat_running() or lane_manager.is_song_cycle_stalled():
+			lane_manager.start_song_cycle()
+		if lane_manager.alive_count() <= 0:
+			_rehydrate_song_pressure_after_reward()
 
 
 func _update_timing_debug() -> void:
@@ -597,7 +1028,10 @@ func _update_timing_debug() -> void:
 	var phase: float = _song_conductor.get_beat_phase()
 	var debug_text: String = "Beat: %s (%.2f)" % [quality.to_upper(), phase]
 	if _music_control_layer != null and _difficulty_modifier_director != null and not _base_difficulty_modifiers.is_empty():
-		var music_state: Dictionary = _music_control_layer.call("build_state")
+		var music_state: Dictionary = _song_combat_state
+		if music_state.is_empty():
+			_refresh_song_combat_state()
+			music_state = _song_combat_state
 		var progression_state: Dictionary = _build_music_progression_state()
 		var run_progress: float = float(progression_state.get("run_progress", 0.0))
 		var skill_expression: float = float(progression_state.get("skill_expression", 0.5))
@@ -720,6 +1154,9 @@ func _unhandled_input(event: InputEvent) -> void:
 
 	if _is_growth_choice_active():
 		return
+	if _tempo_state_family == COMBAT_FEEL_CONTENT.TEMPO_DECREE and not _run_finished:
+		# Decree moments are world-law assertions, not decision menus.
+		return
 
 	if _awaiting_reward_choice and not _reward_choice_made:
 		if key_event.keycode == KEY_B:
@@ -819,19 +1256,38 @@ func _setup_ui_pivots() -> void:
 		combo_label.pivot_offset = combo_label.size * 0.5
 
 
+func _ensure_hud_root() -> void:
+	if _hud_root != null and is_instance_valid(_hud_root):
+		return
+	if COMBAT_HUD_ROOT_SCENE == null:
+		return
+	var inst: Node = COMBAT_HUD_ROOT_SCENE.instantiate()
+	if inst == null or not (inst is Control):
+		if inst != null:
+			inst.queue_free()
+		return
+	_hud_root = inst as Control
+	_hud_root.name = "CombatHudRoot"
+	ui_layer.add_child(_hud_root)
+	_hud_decor_layer = _hud_root.get_node_or_null("DecorLayer") as Control
+	_hud_primary_layer = _hud_root.get_node_or_null("PrimaryLayer") as Control
+	_hud_secondary_layer = _hud_root.get_node_or_null("SecondaryLayer") as Control
+	_hud_overlay_layer = _hud_root.get_node_or_null("OverlayLayer") as Control
+
+
 func _setup_ui() -> void:
 	_build_hud_containers()
 	_build_meter_shell()
 	combo_label.reparent(_hud_top_right_container)
 	combo_label.text = "0"
 	combo_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_apply_text_role(combo_label, "primary_value", HORIZONTAL_ALIGNMENT_RIGHT)
+	_apply_text_role(combo_label, "hud_metric_value", HORIZONTAL_ALIGNMENT_RIGHT)
 	combo_label.add_theme_font_size_override("font_size", 26)
 
 	style_label.reparent(_hud_top_right_container)
 	style_label.text = "Stirring"
 	style_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_apply_text_role(style_label, "secondary_value", HORIZONTAL_ALIGNMENT_RIGHT)
+	_apply_text_role(style_label, "hud_meta", HORIZONTAL_ALIGNMENT_RIGHT)
 	style_label.add_theme_font_size_override("font_size", 15)
 
 	var hp_row := HBoxContainer.new()
@@ -843,13 +1299,13 @@ func _setup_ui() -> void:
 	var hp_caption := Label.new()
 	hp_caption.text = "Health"
 	hp_caption.custom_minimum_size = Vector2(64.0, 0.0)
-	_apply_text_role(hp_caption, "caption_strong")
+	_apply_text_role(hp_caption, "hud_metric_title")
 	hp_caption.add_theme_font_size_override("font_size", 14)
 	hp_row.add_child(hp_caption)
 
 	_hp_value_label = Label.new()
 	_hp_value_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_apply_text_role(_hp_value_label, "primary_value", HORIZONTAL_ALIGNMENT_RIGHT)
+	_apply_text_role(_hp_value_label, "hud_metric_value", HORIZONTAL_ALIGNMENT_RIGHT)
 	_hp_value_label.add_theme_font_size_override("font_size", 22)
 	hp_row.add_child(_hp_value_label)
 
@@ -875,7 +1331,7 @@ func _setup_ui() -> void:
 	var stamina_caption := Label.new()
 	stamina_caption.text = "Stamina"
 	stamina_caption.custom_minimum_size = Vector2(64.0, 0.0)
-	_apply_text_role(stamina_caption, "caption_strong")
+	_apply_text_role(stamina_caption, "hud_metric_title")
 	stamina_caption.add_theme_font_size_override("font_size", 14)
 	stamina_row.add_child(stamina_caption)
 
@@ -887,10 +1343,32 @@ func _setup_ui() -> void:
 	stamina_bar.custom_minimum_size = Vector2(0.0, 11.0)
 	stamina_bar.show_percentage = false
 
+	# Dedicated Biomass Power Scouter (Diegetic Element)
+	_scouter_shell = Panel.new() # Use Panel for better children containment
+	_scouter_shell.name = "ScouterShell"
+	_scouter_shell.z_index = 45 
+	_scouter_shell.position = Vector2(COMBAT_FEEL_CONTENT.HUD_OUTER_MARGIN, COMBAT_FEEL_CONTENT.HUD_TOP_BAND_Y + COMBAT_FEEL_CONTENT.HUD_TOP_BAND_HEIGHT + 6.0)
+	_scouter_shell.size = Vector2(210.0, 28.0) # Slightly wider for "POWER LEVEL" text
+	# Digital Lens style: Dark teal with glowing border
+	UI_STYLE.apply_shell_style(_scouter_shell, "hud_accent", "", Color(0.01, 0.08, 0.07, 0.65), Color(0.3, 0.9, 0.75, 0.9))
+	
+	if _hud_primary_layer != null:
+		_hud_primary_layer.add_child(_scouter_shell)
+	else:
+		ui_layer.add_child(_scouter_shell)
+
+	_power_scouter_label = Label.new()
+	_power_scouter_label.name = "PowerScouterLabel"
+	_power_scouter_label.custom_minimum_size = Vector2(194.0, 24.0)
+	_power_scouter_label.position = Vector2(8.0, 2.0)
+	_apply_text_role(_power_scouter_label, "scouter", HORIZONTAL_ALIGNMENT_LEFT)
+	_power_scouter_label.text = "POWER LEVEL: 0"
+	_scouter_shell.add_child(_power_scouter_label)
+
 	ultimate_label.reparent(_hud_top_right_container)
 	ultimate_label.text = "0%"
 	ultimate_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_apply_text_role(ultimate_label, "warm_value", HORIZONTAL_ALIGNMENT_RIGHT)
+	_apply_text_role(ultimate_label, "hud_meta", HORIZONTAL_ALIGNMENT_RIGHT)
 	ultimate_label.add_theme_font_size_override("font_size", 16)
 	
 	result_label.visible = false
@@ -917,7 +1395,7 @@ func _setup_ui() -> void:
 	controls_label.text = PRESENTATION_TEXT.COMBAT_CONTROLS
 	controls_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_apply_text_role(controls_label, "hint", HORIZONTAL_ALIGNMENT_CENTER)
-	controls_label.add_theme_font_size_override("font_size", 14)
+	controls_label.add_theme_font_size_override("font_size", 16)
 
 	_style_progress_bar(hp_bar, Color(0.18, 0.06, 0.08, 0.88), Color(0.73, 0.24, 0.26, 1.0), 6)
 	_style_progress_bar(stamina_bar, Color(0.08, 0.09, 0.10, 0.82), Color(0.44, 0.66, 0.58, 1.0), 5)
@@ -930,121 +1408,7 @@ func _setup_ui() -> void:
 
 
 func _hud_attach_combat_panel_art(panel: Control, texture_path: String, region: Rect2) -> void:
-	if texture_path.is_empty():
-		return
-	var existing_backing: Node = panel.get_node_or_null("HudPanelBacking")
-	if existing_backing != null:
-		existing_backing.queue_free()
-	var existing: Node = panel.get_node_or_null("HudPanelArt")
-	if existing != null:
-		existing.queue_free()
-	var src: Texture2D = load(texture_path) as Texture2D
-	if src == null:
-		src = ResourceLoader.load(texture_path, "", ResourceLoader.CACHE_MODE_REUSE) as Texture2D
-	if src == null:
-		push_warning("CombatScene: could not load HUD panel texture: " + texture_path)
-		return
-	var resolved_region: Rect2 = _resolve_visible_panel_region(src, region, texture_path)
-	var backing := ColorRect.new()
-	backing.name = "HudPanelBacking"
-	backing.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	backing.color = Color(0.03, 0.03, 0.04, 0.72)
-	backing.anchor_left = 0.0
-	backing.anchor_top = 0.0
-	backing.anchor_right = 1.0
-	backing.anchor_bottom = 1.0
-	backing.offset_left = 0.0
-	backing.offset_top = 0.0
-	backing.offset_right = 0.0
-	backing.offset_bottom = 0.0
-	panel.add_child(backing)
-	var art := TextureRect.new()
-	art.name = "HudPanelArt"
-	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	art.ignore_texture_size = true
-	art.stretch_mode = TextureRect.STRETCH_SCALE
-	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	art.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
-	art.anchor_left = 0.0
-	art.anchor_top = 0.0
-	art.anchor_right = 1.0
-	art.anchor_bottom = 1.0
-	art.offset_left = 0.0
-	art.offset_top = 0.0
-	art.offset_right = 0.0
-	art.offset_bottom = 0.0
-	if resolved_region.size.x > 0.0 and resolved_region.size.y > 0.0:
-		var atlas := AtlasTexture.new()
-		atlas.atlas = src
-		atlas.region = resolved_region
-		art.texture = atlas
-	else:
-		art.texture = src
-	panel.add_child(art)
-	panel.move_child(backing, 0)
-	panel.move_child(art, 1)
-
-
-func _resolve_visible_panel_region(texture: Texture2D, requested_region: Rect2, texture_path: String) -> Rect2:
-	if texture == null:
-		return Rect2()
-	var cache_key: String = "%s|%s|%s|%s|%s" % [
-		texture_path,
-		str(requested_region.position.x),
-		str(requested_region.position.y),
-		str(requested_region.size.x),
-		str(requested_region.size.y)
-	]
-	if _hud_visible_region_cache.has(cache_key):
-		return _hud_visible_region_cache[cache_key]
-
-	var tex_bounds := Rect2(Vector2.ZERO, texture.get_size())
-	var sample_region: Rect2 = requested_region
-	if sample_region.size.x <= 0.0 or sample_region.size.y <= 0.0:
-		sample_region = tex_bounds
-	else:
-		sample_region = sample_region.intersection(tex_bounds)
-		if sample_region.size.x <= 0.0 or sample_region.size.y <= 0.0:
-			sample_region = tex_bounds
-
-	var image: Image = texture.get_image()
-	if image == null or image.is_empty():
-		_hud_visible_region_cache[cache_key] = sample_region
-		return sample_region
-
-	var min_x: int = int(floor(sample_region.position.x))
-	var min_y: int = int(floor(sample_region.position.y))
-	var max_x: int = int(ceil(sample_region.end.x))
-	var max_y: int = int(ceil(sample_region.end.y))
-
-	var found: bool = false
-	var tight_min_x: int = max_x
-	var tight_min_y: int = max_y
-	var tight_max_x: int = min_x
-	var tight_max_y: int = min_y
-	for y in range(min_y, max_y):
-		for x in range(min_x, max_x):
-			var a: float = image.get_pixel(x, y).a
-			if a < HUD_PANEL_VISIBLE_ALPHA_THRESHOLD:
-				continue
-			found = true
-			if x < tight_min_x:
-				tight_min_x = x
-			if y < tight_min_y:
-				tight_min_y = y
-			if x > tight_max_x:
-				tight_max_x = x
-			if y > tight_max_y:
-				tight_max_y = y
-
-	var resolved: Rect2 = sample_region
-	if found:
-		resolved = Rect2(
-			Vector2(float(tight_min_x), float(tight_min_y)),
-			Vector2(float(tight_max_x - tight_min_x + 1), float(tight_max_y - tight_min_y + 1))
-		)
-	_hud_visible_region_cache[cache_key] = resolved
-	return resolved
+	HUD_PANEL_ART.apply_panel_art(panel, texture_path, region)
 
 
 func _apply_wrapper_safe_zone(body: MarginContainer, safe_margin: Vector4, fallback_margin: Vector4) -> void:
@@ -1100,7 +1464,10 @@ func _build_hud_containers() -> void:
 			true
 		)
 	_hud_attach_combat_panel_art(tl_panel, tl_tex, COMBAT_FEEL_CONTENT.hud_top_left_texture_region())
-	ui_layer.add_child(tl_panel)
+	if _hud_primary_layer != null:
+		_hud_primary_layer.add_child(tl_panel)
+	else:
+		ui_layer.add_child(tl_panel)
 	_enforce_top_left_panel_rect()
 
 	var tl_body := MarginContainer.new()
@@ -1121,6 +1488,7 @@ func _build_hud_containers() -> void:
 	_hud_top_right_panel = tr_panel
 	tr_panel.name = "TopRightPanel"
 	tr_panel.z_index = 40
+	tr_panel.clip_contents = true
 	tr_panel.position = Vector2(COMBAT_FEEL_CONTENT.HUD_VIEWPORT_WIDTH - hud_m - hud_tr_w, hud_ty)
 	tr_panel.size = Vector2(hud_tr_w, tr_height)
 	tr_panel.custom_minimum_size = Vector2(hud_tr_w, tr_height)
@@ -1141,7 +1509,10 @@ func _build_hud_containers() -> void:
 			true
 		)
 	_hud_attach_combat_panel_art(tr_panel, tr_tex, COMBAT_FEEL_CONTENT.hud_top_right_texture_region())
-	ui_layer.add_child(tr_panel)
+	if _hud_primary_layer != null:
+		_hud_primary_layer.add_child(tr_panel)
+	else:
+		ui_layer.add_child(tr_panel)
 
 	var tr_body := MarginContainer.new()
 	tr_body.name = "TopRightBody"
@@ -1165,7 +1536,7 @@ func _build_hud_containers() -> void:
 	tr_stack.name = "TopRightStack"
 	tr_stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	tr_stack.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	tr_stack.add_theme_constant_override("separation", COMBAT_FEEL_CONTENT.HUD_GAP_BELOW_TOP_BAND)
+	tr_stack.add_theme_constant_override("separation", int(COMBAT_FEEL_CONTENT.HUD_GAP_BELOW_TOP_BAND))
 	tr_body.add_child(tr_stack)
 
 	_hud_top_right_container = VBoxContainer.new()
@@ -1212,7 +1583,10 @@ func _build_hud_containers() -> void:
 			true
 		)
 	_hud_attach_combat_panel_art(bottom_panel, bottom_tex, COMBAT_FEEL_CONTENT.hud_bottom_texture_region())
-	ui_layer.add_child(bottom_panel)
+	if _hud_primary_layer != null:
+		_hud_primary_layer.add_child(bottom_panel)
+	else:
+		ui_layer.add_child(bottom_panel)
 
 	var bottom_body := MarginContainer.new()
 	bottom_body.name = "BottomBody"
@@ -1251,7 +1625,10 @@ func _build_meter_shell() -> void:
 	_meter_shell.position = Vector2.ZERO
 	_meter_shell.size = Vector2.ZERO
 	_meter_shell.color = Color(0.0, 0.0, 0.0, 0.0)
-	ui_layer.add_child(_meter_shell)
+	if _hud_secondary_layer != null:
+		_hud_secondary_layer.add_child(_meter_shell)
+	else:
+		ui_layer.add_child(_meter_shell)
 
 	_resource_shell = ColorRect.new()
 	_resource_shell.name = "RightHudAccent"
@@ -1278,7 +1655,10 @@ func _build_meter_shell() -> void:
 			COMBAT_FEEL_CONTENT.HUD_TOP_BAND_Y + 6.0
 		)
 		_resource_shell.size = Vector2(44.0, 14.0)
-		ui_layer.add_child(_resource_shell)
+		if _hud_secondary_layer != null:
+			_hud_secondary_layer.add_child(_resource_shell)
+		else:
+			ui_layer.add_child(_resource_shell)
 
 	_support_shell = ColorRect.new()
 	_support_shell.name = "SupportShell"
@@ -1312,6 +1692,8 @@ func _build_meter_shell() -> void:
 	_support_name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_support_name_label.custom_minimum_size = Vector2(0.0, 20.0)
 	_support_name_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_support_name_label.autowrap_mode = TextServer.AUTOWRAP_OFF
+	_support_name_label.clip_text = true
 	_support_name_label.text = PRESENTATION_TEXT.SUPPORT_EMPTY_NAME
 	_apply_text_role(_support_name_label, "secondary_value")
 	_support_name_label.add_theme_font_size_override("font_size", 15)
@@ -1339,6 +1721,8 @@ func _build_meter_shell() -> void:
 	_support_trigger_label.name = "SupportTriggerHint"
 	_support_trigger_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_support_trigger_label.custom_minimum_size = Vector2(COMBAT_FEEL_CONTENT.RIGHT_HUD_TEXT_WIDTH, 18.0)
+	_support_trigger_label.autowrap_mode = TextServer.AUTOWRAP_OFF
+	_support_trigger_label.clip_text = true
 	_support_trigger_label.text = ""
 	_apply_text_role(_support_trigger_label, "status_line")
 	_support_trigger_label.add_theme_font_size_override("font_size", 13)
@@ -1447,6 +1831,7 @@ func _build_meter_shell() -> void:
 		),
 		18.0
 	)
+	stats_row.visible = false
 	_hud_top_left_container.add_child(stats_row)
 
 	var exp_caption := Label.new()
@@ -1493,13 +1878,14 @@ func _build_meter_shell() -> void:
 	_hud_top_right_container.add_child(ult_row)
 	
 	var ultimate_caption := Label.new()
-	ultimate_caption.text = "Ult"
-	ultimate_caption.custom_minimum_size = Vector2(44.0, 0.0)
+	ultimate_caption.text = "ULT"
+	ultimate_caption.custom_minimum_size = Vector2(26.0, 0.0)
 	_apply_text_role(ultimate_caption, "caption_strong")
 	ultimate_caption.add_theme_font_size_override("font_size", 14)
 	ult_row.add_child(ultimate_caption)
 	ultimate_label.reparent(ult_row)
-	ultimate_label.custom_minimum_size = Vector2(40.0, 0.0)
+	ultimate_label.custom_minimum_size = Vector2(0.0, 0.0)
+	ultimate_label.clip_text = true
 
 	var score_row := HBoxContainer.new()
 	score_row.alignment = BoxContainer.ALIGNMENT_END
@@ -1508,13 +1894,14 @@ func _build_meter_shell() -> void:
 	_hud_top_right_container.add_child(score_row)
 
 	var score_caption := Label.new()
-	score_caption.text = "Combo"
-	score_caption.custom_minimum_size = Vector2(44.0, 0.0)
+	score_caption.text = "CMB"
+	score_caption.custom_minimum_size = Vector2(26.0, 0.0)
 	_apply_text_role(score_caption, "caption_strong")
 	score_caption.add_theme_font_size_override("font_size", 14)
 	score_row.add_child(score_caption)
 	combo_label.reparent(score_row)
-	combo_label.custom_minimum_size = Vector2(50.0, 0.0)
+	combo_label.custom_minimum_size = Vector2(0.0, 0.0)
+	combo_label.clip_text = true
 
 	var style_row := HBoxContainer.new()
 	style_row.alignment = BoxContainer.ALIGNMENT_END
@@ -1523,13 +1910,14 @@ func _build_meter_shell() -> void:
 	_hud_top_right_container.add_child(style_row)
 
 	var style_caption := Label.new()
-	style_caption.text = "Style"
-	style_caption.custom_minimum_size = Vector2(44.0, 0.0)
+	style_caption.text = "STY"
+	style_caption.custom_minimum_size = Vector2(24.0, 0.0)
 	_apply_text_role(style_caption, "caption_strong")
 	style_caption.add_theme_font_size_override("font_size", 14)
 	style_row.add_child(style_caption)
 	style_label.reparent(style_row)
-	style_label.custom_minimum_size = Vector2(100.0, 0.0)
+	style_label.custom_minimum_size = Vector2(0.0, 0.0)
+	style_label.clip_text = true
 
 	_dna_route_shell = ColorRect.new()
 	_dna_route_shell.name = "DnaRouteShell"
@@ -1560,7 +1948,7 @@ func _build_meter_shell() -> void:
 	_dna_route_label.text = PRESENTATION_TEXT.DNA_ROUTE_BOND_LABEL
 	_apply_text_role(_dna_route_label, "status_line", HORIZONTAL_ALIGNMENT_CENTER)
 	_dna_route_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_dna_route_label.add_theme_font_size_override("font_size", 14)
+	_dna_route_label.add_theme_font_size_override("font_size", 15)
 	dna_route_vbox.add_child(_dna_route_label)
 
 	# Initialize mutation value label (for enhanced mutation system)
@@ -1570,7 +1958,7 @@ func _build_meter_shell() -> void:
 	_mutation_value_label.text = ""
 	_apply_text_role(_mutation_value_label, "status_line", HORIZONTAL_ALIGNMENT_CENTER)
 	_mutation_value_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_mutation_value_label.add_theme_font_size_override("font_size", 14)
+	_mutation_value_label.add_theme_font_size_override("font_size", 15)
 	_mutation_value_label.visible = false
 	dna_route_vbox.add_child(_mutation_value_label)
 
@@ -1613,7 +2001,10 @@ func _build_meter_shell() -> void:
 	_boss_hp_shell.z_index = 38
 	UI_STYLE.apply_shell_style(_boss_hp_shell, "boss_shell")
 	_boss_hp_shell.visible = false
-	ui_layer.add_child(_boss_hp_shell)
+	if _hud_primary_layer != null:
+		_hud_primary_layer.add_child(_boss_hp_shell)
+	else:
+		ui_layer.add_child(_boss_hp_shell)
 
 	var boss_body := MarginContainer.new()
 	boss_body.name = "BossBody"
@@ -1722,12 +2113,12 @@ func _style_progress_bar_flat_under(under_color: Color, corner_radius: int) -> S
 
 
 func _create_panel_backing(
-	name: String,
+	node_name: String,
 	texture_path: String,
 	region: Rect2,
-	position: Vector2,
-	size: Vector2,
-	modulate: Color = Color(1.0, 1.0, 1.0, 1.0)
+	node_position: Vector2,
+	node_size: Vector2,
+	node_modulate: Color = Color(1.0, 1.0, 1.0, 1.0)
 ) -> TextureRect:
 	if not ResourceLoader.exists(texture_path):
 		return null
@@ -1741,26 +2132,26 @@ func _create_panel_backing(
 	atlas.region = region
 
 	var backing := TextureRect.new()
-	backing.name = name
+	backing.name = node_name
 	backing.texture = atlas
-	backing.position = position
-	backing.size = size
+	backing.position = node_position
+	backing.size = node_size
 	backing.stretch_mode = TextureRect.STRETCH_SCALE
 	backing.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	backing.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 	backing.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	backing.modulate = modulate
+	backing.modulate = node_modulate
 	ui_layer.add_child(backing)
 	return backing
 
 
 func _build_strip_sprite(
-	name: String,
+	node_name: String,
 	texture_path: String,
 	frame_size: Vector2i,
 	initial_frame: int,
-	position: Vector2,
-	size: Vector2
+	node_position: Vector2,
+	node_size: Vector2
 ) -> TextureRect:
 	if not ResourceLoader.exists(texture_path):
 		return null
@@ -1777,10 +2168,10 @@ func _build_strip_sprite(
 	)
 
 	var sprite := TextureRect.new()
-	sprite.name = name
+	sprite.name = node_name
 	sprite.texture = atlas
-	sprite.position = position
-	sprite.size = size
+	sprite.position = node_position
+	sprite.size = node_size
 	sprite.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	sprite.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
@@ -1800,7 +2191,10 @@ func _build_song_hud() -> void:
 	_song_phase_label.position = Vector2((COMBAT_FEEL_CONTENT.HUD_VIEWPORT_WIDTH - 300.0) * 0.5, hud_ty + 4.0)
 	_song_phase_label.z_index = 45
 	_song_phase_label.visible = false
-	ui_layer.add_child(_song_phase_label)
+	if _hud_secondary_layer != null:
+		_hud_secondary_layer.add_child(_song_phase_label)
+	else:
+		ui_layer.add_child(_song_phase_label)
 
 	# Song timer label — upper-right, aligned with top band (above corner panels).
 	_song_timer_label = Label.new()
@@ -1811,7 +2205,10 @@ func _build_song_hud() -> void:
 	_song_timer_label.position = Vector2(COMBAT_FEEL_CONTENT.HUD_VIEWPORT_WIDTH - hud_m - 56.0, hud_ty + 26.0)
 	_song_timer_label.z_index = 45
 	_song_timer_label.visible = false
-	ui_layer.add_child(_song_timer_label)
+	if _hud_secondary_layer != null:
+		_hud_secondary_layer.add_child(_song_timer_label)
+	else:
+		ui_layer.add_child(_song_timer_label)
 
 	# Beat feedback label — appears near the timing rings briefly when the player
 	# lands a combat action on-beat (IN SYNC / ON BEAT / LOCKED IN / SLIP).
@@ -1942,6 +2339,7 @@ func _refresh_hud_snapshot(score_value: int, exp_value: float, style_tier: Strin
 	_refresh_run_build_readout()
 	_hud_presenter.refresh_combo(score_value, style_tier)
 	_hud_presenter.refresh_style(style_tier)
+	_hud_presenter.refresh_power_level(GameState.get_power_level())
 
 
 func _create_feedback_label() -> void:
@@ -1963,7 +2361,10 @@ func _create_feedback_label() -> void:
 	_feedback_backing.offset_right = half_w
 	_feedback_backing.offset_bottom = fy + fh
 	UI_STYLE.apply_shell_style(_feedback_backing, "feedback_backing")
-	ui_layer.add_child(_feedback_backing)
+	if _hud_overlay_layer != null:
+		_hud_overlay_layer.add_child(_feedback_backing)
+	else:
+		ui_layer.add_child(_feedback_backing)
 
 	_feedback_label = Label.new()
 	_feedback_label.name = "FeedbackLabel"
@@ -1981,7 +2382,10 @@ func _create_feedback_label() -> void:
 	_feedback_label.pivot_offset = Vector2(half_w - 8.0, (fh - 4.0) * 0.5)
 	_apply_text_role(_feedback_label, "feedback", HORIZONTAL_ALIGNMENT_CENTER)
 	_feedback_label.add_theme_font_size_override("font_size", COMBAT_FEEL_CONTENT.HUD_COMBAT_FEEDBACK_FONT_SIZE)
-	ui_layer.add_child(_feedback_label)
+	if _hud_overlay_layer != null:
+		_hud_overlay_layer.add_child(_feedback_label)
+	else:
+		ui_layer.add_child(_feedback_label)
 
 
 func _create_title_cards() -> void:
@@ -2378,27 +2782,97 @@ func _create_live_reward_shell() -> void:
 	_live_reward_hint_label = nodes.get("live_reward_hint_label")
 
 
+#region agent log
+func _agent_debug_log(run_id: String, hypothesis_id: String, location: String, message: String, data: Dictionary) -> void:
+	var payload: Dictionary = {
+		"sessionId": "6fee2f",
+		"runId": run_id,
+		"hypothesisId": hypothesis_id,
+		"location": location,
+		"message": message,
+		"data": data,
+		"timestamp": Time.get_unix_time_from_system() * 1000.0
+	}
+	var file := FileAccess.open("C:/Users/harin/OneDrive/Desktop/gamesdevs/What We Fed/what-we-fed/debug-6fee2f.log", FileAccess.READ_WRITE)
+	if file == null:
+		file = FileAccess.open("C:/Users/harin/OneDrive/Desktop/gamesdevs/What We Fed/what-we-fed/debug-6fee2f.log", FileAccess.WRITE)
+		if file == null:
+			return
+	file.seek_end()
+	file.store_line(JSON.stringify(payload))
+	file.close()
+#endregion
+
+
 func _create_hud_presenter() -> void:
 	_hud_presenter = COMBAT_HUD_PRESENTER.new(COMBAT_CONTENT, PRESENTATION_TEXT, UI_STYLE)
-	_hud_presenter.bind_nodes({
-		# Static @onready nodes
+	var nodes: Dictionary = _build_hud_contract_nodes()
+	#region agent log
+	_agent_debug_log(
+		"pre-fix",
+		"H_CREATE_BIND",
+		"CombatScene.gd:_create_hud_presenter",
+		"Creating HUD presenter and binding nodes",
+		{
+			"nodes_size": nodes.size(),
+			"has_scouter_shell": nodes.has("scouter_shell"),
+			"scouter_type": (nodes.get("scouter_shell").get_class() if nodes.get("scouter_shell") is Object else "null_or_non_object")
+		}
+	)
+	#endregion
+	_hud_presenter.bind_nodes(nodes)
+
+
+func _build_hud_contract_nodes() -> Dictionary:
+	#region agent log
+	var scouter_shell_name: String = "null"
+	var scouter_shell_type: String = "null"
+	var support_shell_name: String = "null"
+	var support_shell_type: String = "null"
+	var dna_shell_name: String = "null"
+	var dna_shell_type: String = "null"
+	if _scouter_shell != null:
+		scouter_shell_name = str(_scouter_shell.name)
+		scouter_shell_type = _scouter_shell.get_class()
+	if _support_shell != null:
+		support_shell_name = str(_support_shell.name)
+		support_shell_type = _support_shell.get_class()
+	if _dna_shell != null:
+		dna_shell_name = str(_dna_shell.name)
+		dna_shell_type = _dna_shell.get_class()
+	_agent_debug_log(
+		"pre-fix",
+		"H_CONTRACT_TYPES",
+		"CombatScene.gd:_build_hud_contract_nodes",
+		"Building HUD contract nodes",
+		{
+			"scouter_shell_name": scouter_shell_name,
+			"scouter_shell_type": scouter_shell_type,
+			"support_shell_name": support_shell_name,
+			"support_shell_type": support_shell_type,
+			"dna_shell_name": dna_shell_name,
+			"dna_shell_type": dna_shell_type
+		}
+	)
+	#endregion
+	# Centralized node contract to keep CombatScene and CombatHUDPresenter synchronized.
+	return {
 		"combo_label": combo_label,
 		"style_label": style_label,
 		"stamina_bar": stamina_bar,
 		"hp_bar": hp_bar,
 		"ultimate_label": ultimate_label,
 		"controls_label": controls_label,
-		# Resource readout
 		"hp_value_label": _hp_value_label,
 		"exp_value_label": _exp_value_label,
-		# Support cluster
+		"power_scouter_label": _power_scouter_label,
+		"scouter_shell": _scouter_shell,
 		"support_shell": _support_shell,
 		"support_bar": _support_bar,
 		"support_value_label": _support_value_label,
 		"support_name_label": _support_name_label,
 		"support_trigger_label": _support_trigger_label,
 		"support_creature_portrait": null,
-		# Run build cluster
 		"run_build_shell": _run_build_shell,
 		"eaten_value_label": _eaten_value_label,
 		"upgrade_value_label": _upgrade_value_label,
@@ -2407,19 +2881,16 @@ func _create_hud_presenter() -> void:
 		"def_value_label": _def_value_label,
 		"dna_route_label": _dna_route_label,
 		"mutation_value_label": _mutation_value_label,
-		# DNA HUD cluster
 		"dna_shell": _dna_shell,
 		"dna_emblem": _dna_emblem,
 		"dna_slot_labels": _dna_slot_labels,
-		# Boss bar cluster
 		"boss_hp_shell": _boss_hp_shell,
 		"boss_hp_bar": _boss_hp_bar,
 		"boss_name_label": _boss_name_label,
 		"boss_state_label": _boss_state_label,
-		# Song HUD
 		"song_timer_label": _song_timer_label,
 		"song_phase_label": _song_phase_label,
-	})
+	}
 
 
 func _setup_run_growth() -> void:
@@ -2491,7 +2962,10 @@ func _setup_performance_hud() -> void:
 		_performance_hud.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		_performance_hud.position = Vector2.ZERO
 	else:
-		ui_layer.add_child(_performance_hud)
+		if _hud_secondary_layer != null:
+			_hud_secondary_layer.add_child(_performance_hud)
+		else:
+			ui_layer.add_child(_performance_hud)
 		_performance_hud.set_anchors_preset(Control.PRESET_TOP_LEFT)
 		_performance_hud.position = Vector2(COMBAT_FEEL_CONTENT.RIGHT_HUD_STACK_X - 14.0, 238.0)
 	if _performance_reward_director != null and _performance_hud.has_method("bind_runtime"):
@@ -2586,11 +3060,14 @@ func _start_song_run() -> void:
 	_song_mode = true
 	_song_elapsed = 0.0
 	_set_song_paused(false)
+	_reset_tempo_state()
 	_song_phase_index = -1
 	_song_boss_triggered = false
 	_song_level_transitioning = false
 	_next_song_enemy_id = 100
 	_song_reward_pending = false
+	_active_reward_runtime = REWARD_RUNTIME_NONE
+	_between_level_growth_stored_this_level = false
 	_song_enemy_lanes.clear()
 	_song_rng.randomize()
 	_song_section_spawn_mult = 1.0
@@ -2600,27 +3077,15 @@ func _start_song_run() -> void:
 	_difficulty_modifiers = {}
 	if _music_control_layer != null and _music_control_layer.has_method("reset"):
 		_music_control_layer.call("reset")
+	_song_combat_state.clear()
 	_clear_mastery_context_cache()
 
-	var region_id: String = String(GameState.active_region.get("id", "feeding_hollow"))
-	_region_id = region_id if not region_id.is_empty() else "feeding_hollow"
-	_active_song_data = AUDIO_CONTENT.get_region_main_run_song(_region_id)
-	_active_song_map = AUDIO_CONTENT.get_region_song_map(_region_id)
-	if OS.is_debug_build():
-		print("CombatScene: region song route -> %s / %s" % [
-			_region_id,
-			String(_active_song_data.get("display_name", "Unknown"))
-		])
+	_run_director.initialize_run(String(GameState.active_region.get("id", "feeding_hollow")), _dev_harness_request)
+	_active_song_data = _run_director.get_active_song_data()
+	_active_song_profile = _run_director.get_active_song_profile()
+	_active_song_map = _run_director.get_active_song_map()
 
-	var song_duration: float = _resolve_active_song_duration()
-	_regular_level_windows = RUN_PACING_CONTENT.build_regular_level_windows(_region_id, song_duration)
-	_regular_level_index = clampi(int(_dev_harness_request.get("regular_level_index", 0)), 0, max(_regular_level_windows.size() - 1, 0))
-	var regular_level_count: int = _regular_level_windows.size()
-	if GameState.run_path_plan.is_empty() or GameState.run_path_plan.size() != regular_level_count:
-		GameState.run_path_plan = PATH_RUN_PLAN.build_plan(_region_id, regular_level_count)
-	_prepare_path_context_for_level(_regular_level_index)
-
-	_start_regular_level(_regular_level_index, true)
+	_start_regular_level(_run_director.regular_level_index, true)
 
 
 func _resolve_active_song_duration() -> float:
@@ -2637,47 +3102,41 @@ func _resolve_active_song_duration() -> float:
 
 
 func _start_regular_level(level_index: int, reset_hp: bool) -> void:
-	if level_index < 0 or level_index >= _regular_level_windows.size():
+	var level_data: Dictionary = _run_director.start_level(level_index, reset_hp)
+	if level_data.get("is_boss_trigger", false):
 		_trigger_boss_final_movement()
 		return
 
+	_active_song_data = Dictionary(level_data.get("song_data", {}))
+	_active_song_profile = Dictionary(_run_director.get_active_song_profile())
+	_active_song_map = level_data.get("song_map", TRICKY_SONGMAP)
+	if _music_control_layer != null and _music_control_layer.has_method("configure"):
+		_music_control_layer.call("configure", _active_song_profile)
 	_set_song_paused(false)
+	_reset_tempo_state()
 	_song_level_transitioning = false
-	_regular_level_index = level_index
-	var level_window: Dictionary = _regular_level_windows[_regular_level_index]
-	var level_duration: float = float(level_window.get("duration", RUN_PACING_CONTENT.MAX_REGULAR_LEVEL_DURATION_SECONDS))
-	var level_start: float = float(level_window.get("start_time", 0.0))
-	var level_end: float = float(level_window.get("end_time", level_start + level_duration))
-	_song_level_start_time = level_start
-	_song_level_end_time = level_end
+	_song_level_start_time = float(level_data.get("start_time", 0.0))
+	_song_level_end_time = float(level_data.get("end_time", 0.0))
 	_song_section_spawn_mult = 1.0
 	_song_phase_index = -1
 	_last_beat_index = -1
-	_song_elapsed = level_start
+	_song_elapsed = _song_level_start_time
 	_song_reward_pending = false
+	_active_reward_runtime = REWARD_RUNTIME_NONE
+	_between_level_growth_stored_this_level = false
 	_song_enemy_lanes.clear()
 	_status_marker_overrides.clear()
 	if lane_manager != null and lane_manager.has_method("stop"):
 		lane_manager.stop()
 	lane_manager.set_song_mode_enabled(true)
 
-	var encounter_options: Dictionary = Dictionary(_active_path_context.get("encounter_options", {})).duplicate(true)
-	_base_difficulty_modifiers = _build_level_difficulty_modifiers(encounter_options)
-	encounter_options["difficulty_modifiers"] = _base_difficulty_modifiers.duplicate(true)
-	var active_creature: Dictionary = GameState.get_active_bonded_creature()
-	var grade_ceiling_id: String = POTENTIAL_GATE.resolve_grade_ceiling(
-		active_creature,
-		GameState.active_region,
-		int(GameState.run_number),
-		_regular_level_index,
-		bool(encounter_options.get("elite", false))
-	)
-	encounter_options["grade_ceiling_id"] = grade_ceiling_id
-	var song_run: Dictionary = ENCOUNTER_IDENTITY_RUNTIME.build_song_run(_region_id, _regular_level_index, level_duration, encounter_options)
-	_song_phases = song_run.get("phases", [])
+	_base_difficulty_modifiers = Dictionary(level_data.get("difficulty_modifiers", {}))
+	var song_run_data: Dictionary = Dictionary(level_data.get("song_run", {}))
+	_song_phases = song_run_data.get("phases", [])
+	
 	for i in range(_song_phases.size()):
 		var phase: Dictionary = _song_phases[i]
-		phase["start_time"] = float(phase.get("start_time", 0.0)) + level_start
+		phase["start_time"] = float(phase.get("start_time", 0.0)) + _song_level_start_time
 		_song_phases[i] = phase
 
 	if _performance_reward_director != null and is_instance_valid(_performance_reward_director):
@@ -2685,8 +3144,8 @@ func _start_regular_level(level_index: int, reset_hp: bool) -> void:
 			_performance_reward_director.call("start_song_run", _song_phases)
 
 	_active_encounter = {
-		"biome": song_run.get("biome", COMBAT_CONTENT.BIOME_FEEDING_HOLLOW),
-		"identity": song_run.get("identity", {}),
+		"biome": song_run_data.get("biome", COMBAT_CONTENT.BIOME_FEEDING_HOLLOW),
+		"identity": song_run_data.get("identity", {}),
 		"phases": [],
 		"phase_intro_texts": []
 	}
@@ -2703,7 +3162,7 @@ func _start_regular_level(level_index: int, reset_hp: bool) -> void:
 
 	if _escalation_director != null:
 		_escalation_director.setup(_region_id, _song_phases, _song_rng)
-		_escalation_director.start(level_start)
+		_escalation_director.start(_song_level_start_time)
 	_rebuild_music_driven_difficulty()
 
 	lane_manager.set_song_mode_enabled(true)
@@ -2712,7 +3171,7 @@ func _start_regular_level(level_index: int, reset_hp: bool) -> void:
 		_song_timer_label.visible = true
 	if _song_phase_label != null:
 		_song_phase_label.visible = true
-	_hud_presenter.update_song_timer(max(level_end - level_start, 0.0))
+	_hud_presenter.update_song_timer(max(_song_level_end_time - _song_level_start_time, 0.0))
 
 	_set_song_controls_text()
 
@@ -2721,21 +3180,20 @@ func _start_regular_level(level_index: int, reset_hp: bool) -> void:
 	_enter_song_phase(start_phase_index)
 
 	# Start the conductor inside this authored level window.
-	_start_song_conductor(level_start, level_end)
-	var level_label: String = String(level_window.get("label", "LEVEL %d" % (_regular_level_index + 1)))
-	var node_name: String = String(_active_path_node.get("display_name", "Prey"))
-	_show_feedback("%s  [%d/%d]  •  %s" % [level_label, _regular_level_index + 1, _regular_level_windows.size(), node_name], Color(0.90, 0.84, 0.66, 1.0), 0.48)
+	_start_song_conductor(_song_level_start_time, _song_level_end_time)
+	var level_label: String = String(level_data.get("label", "LEVEL %d" % (_run_director.regular_level_index + 1)))
+	var song_name: String = String(level_data.get("song_display_name", ""))
+	var node_name: String = String(_run_director.active_path_context.get("display_name", "Prey"))
+	var run_track_text: String = song_name if not song_name.is_empty() else "Unknown Track"
+	_show_feedback("%s  [%d/%d]  •  %s  •  %s" % [level_label, _run_director.regular_level_index + 1, _run_director.regular_level_windows.size(), node_name, run_track_text], Color(0.90, 0.84, 0.66, 1.0), 0.48)
 
 
 func _advance_to_next_regular_level() -> void:
 	if _song_level_transitioning:
 		return
 	_song_level_transitioning = true
-	var next_level_index: int = _regular_level_index + 1
-	if next_level_index >= _regular_level_windows.size():
-		_trigger_boss_final_movement()
-		return
-	_start_regular_level(next_level_index, false)
+	_run_director.complete_level()
+	_start_regular_level(_run_director.regular_level_index, false)
 
 
 func _on_regular_level_complete() -> void:
@@ -2748,13 +3206,32 @@ func _on_regular_level_complete() -> void:
 	if _escalation_director != null:
 		_escalation_director.pause()
 	_set_song_paused(true)
+	_song_reward_pending = false
+	_reset_pending_reward_state(true)
+	_hide_live_reward_shell()
+
+	# Add any creatures that met the DNA threshold during the song to the growth queue.
+	if _run_growth != null and is_instance_valid(_run_growth) and _run_growth.get("pending_bonds") is Array:
+		var pending: Array = _run_growth.get("pending_bonds")
+		for species_id in pending:
+			var creature: Dictionary = COMBAT_CONTENT.get_creature(species_id)
+			if not creature.is_empty():
+				_between_level_growth_queue.append(creature.duplicate(true))
+		_run_growth.get("pending_bonds").clear()
 
 	var reward_creature: Dictionary = _get_level_completion_reward_creature()
 	if not reward_creature.is_empty():
-		_show_growth_choice_intersection(reward_creature, "song", "run_spine", false)
-		return
+		var already_present: bool = false
+		for existing in _between_level_growth_queue:
+			if String(existing.get("species_id", "")) == String(reward_creature.get("species_id", "")):
+				already_present = true
+				break
+		if not already_present:
+			_between_level_growth_queue.append(reward_creature.duplicate(true))
 
-	# Fallback: if no authored creature is available, keep existing flow.
+	if not _between_level_growth_queue.is_empty():
+		_show_next_between_level_growth_choice()
+		return
 	_show_level_completion_rewards()
 
 
@@ -2767,7 +3244,7 @@ func _show_level_completion_rewards() -> void:
 	if _performance_reward_director != null and is_instance_valid(_performance_reward_director):
 		_pending_upgrades = _performance_reward_director.call("get_level_completion_choices", 3)
 
-	var advancing_to_boss: bool = _regular_level_index + 1 >= _regular_level_windows.size()
+	var advancing_to_boss: bool = _run_director.regular_level_index + 1 >= _run_director.regular_level_windows.size()
 	if _run_spine_surface != null and _run_spine_surface.has_method("present_level_completion"):
 		_run_spine_surface.call("present_level_completion", _pending_upgrades, _run_growth, advancing_to_boss)
 	if _pending_upgrades.is_empty():
@@ -2775,6 +3252,17 @@ func _show_level_completion_rewards() -> void:
 			_try_present_path_choice_after_run_spine()
 	_show_feedback("LEVEL COMPLETE", Color(0.85, 0.95, 0.75, 1.0), 0.60)
 	controls_label.text = ""
+
+
+func _show_next_between_level_growth_choice() -> void:
+	if _between_level_growth_queue.is_empty():
+		_show_level_completion_rewards()
+		return
+	var creature_data: Dictionary = _between_level_growth_queue.pop_front()
+	if creature_data.is_empty():
+		_show_next_between_level_growth_choice()
+		return
+	_show_growth_choice_intersection(creature_data, "song_between_level", "run_spine", false)
 
 
 func _get_level_completion_reward_creature() -> Dictionary:
@@ -2799,10 +3287,9 @@ func _show_growth_choice_intersection(
 		return
 
 	_pending_reward_creature = creature_data.duplicate(true)
-	_pending_reward_dna_locked = not GameState.has_dna_for(
-		String(_pending_reward_creature.get("species_id", "")),
-		float(_pending_reward_creature.get("dna_threshold", 0.0))
-	)
+	var species_id: String = String(_pending_reward_creature.get("species_id", ""))
+	var effective_threshold: float = GameState.get_effective_dna_threshold(species_id)
+	_pending_reward_dna_locked = not GameState.has_dna_for(species_id, effective_threshold)
 	_awaiting_reward_choice = true
 	_reward_choice_made = false
 
@@ -2824,13 +3311,18 @@ func _show_growth_choice_intersection(
 		"performance": perf_summary.duplicate(true),
 		"bond_available": not _pending_reward_dna_locked,
 		"eat_available": not _pending_reward_dna_locked,
-		"fail_safe_pass_allowed": _pending_reward_dna_locked
+		"fail_safe_pass_allowed": _pending_reward_dna_locked or source_flow == "song_between_level"
 	}
 	GameState.set_growth_choice_intersection_payload(payload)
 	EventBus.emit_signal("capture_offered", _pending_reward_creature)
 
 	_hide_reward_overlay()
 	_hide_run_spine_surface()
+	
+	_begin_void(&"growth_choice_intersection", {
+		"species_id": String(_pending_reward_creature.get("species_id", ""))
+	})
+	
 	if _growth_choice_surface != null and is_instance_valid(_growth_choice_surface) and _growth_choice_surface.has_method("present"):
 		_growth_choice_surface.call("present")
 	controls_label.text = ""
@@ -2852,6 +3344,8 @@ func _create_run_spine_surface() -> void:
 		_run_spine_surface.connect("predation_selected", Callable(self, "_on_run_spine_predation_selected"))
 	if _run_spine_surface.has_signal("path_node_selected"):
 		_run_spine_surface.connect("path_node_selected", Callable(self, "_on_run_spine_path_node_selected"))
+	if _run_spine_surface.has_signal("management_action_requested"):
+		_run_spine_surface.connect("management_action_requested", Callable(self, "_on_run_spine_management_action_requested"))
 
 
 func _create_growth_choice_surface() -> void:
@@ -2872,6 +3366,9 @@ func _is_growth_choice_active() -> bool:
 func _hide_growth_choice_surface() -> void:
 	if _growth_choice_surface != null and is_instance_valid(_growth_choice_surface) and _growth_choice_surface.has_method("hide_surface"):
 		_growth_choice_surface.call("hide_surface")
+	
+	if _tempo_state_family == COMBAT_FEEL_CONTENT.TEMPO_VOID:
+		_end_void(&"growth_choice_hidden")
 
 
 func _on_growth_choice_selected(choice_id: String) -> void:
@@ -2907,6 +3404,11 @@ func _on_growth_choice_selected(choice_id: String) -> void:
 	_growth_choice_context.clear()
 
 	if source_flow == "song":
+		_show_level_completion_rewards()
+	elif source_flow == "song_between_level":
+		# Between-level growth must always collapse back to the management shell
+		# after one decision, regardless of B/E/N choice.
+		_between_level_growth_queue.clear()
 		_show_level_completion_rewards()
 	else:
 		_check_for_upgrade_choices()
@@ -2968,8 +3470,8 @@ func _on_run_spine_predation_selected(index: int) -> void:
 
 
 func _try_present_path_choice_after_run_spine() -> bool:
-	var next_level_index: int = _regular_level_index + 1
-	if next_level_index >= _regular_level_windows.size():
+	var next_level_index: int = _run_director.regular_level_index + 1
+	if next_level_index >= _run_director.regular_level_windows.size():
 		return false
 	if not PATH_RUN_PLAN.is_branch_slot(GameState.run_path_plan, next_level_index):
 		return false
@@ -3019,26 +3521,41 @@ func _on_run_spine_path_node_selected(node_id: String) -> void:
 		_run_spine_surface.call("notify_path_committed", node_id)
 
 
+func _on_run_spine_management_action_requested(action_id: String, payload: Dictionary) -> void:
+	var status: String = String(payload.get("status", ""))
+	match action_id:
+		"equip":
+			if status == "ok":
+				_show_feedback("EQUIPPED  •  BUILD LOCKED", Color(0.68, 0.90, 0.74, 1.0), 0.30)
+			else:
+				_show_feedback("EQUIP FAILED", Color(0.90, 0.52, 0.44, 1.0), 0.30)
+		"salvage":
+			if status == "ok":
+				_show_feedback("SALVAGED  •  SLOT OPENED", Color(0.84, 0.72, 0.48, 1.0), 0.30)
+			else:
+				_show_feedback("SALVAGE FAILED", Color(0.90, 0.52, 0.44, 1.0), 0.30)
+		"collar":
+			_show_feedback("COLLAR HOOK READY  •  SYSTEM PENDING", Color(0.72, 0.84, 0.96, 1.0), 0.34)
+	_refresh_run_build_readout()
+
+
 func _on_run_spine_continue_requested(advance_to_boss: bool) -> void:
 	_hide_run_spine_surface()
 	if advance_to_boss:
 		_trigger_boss_final_movement()
 	else:
-		var next_level_index: int = _regular_level_index + 1
-		if next_level_index < _regular_level_windows.size():
+		# Defensive unlock: ensure stale transition gates never block restart.
+		_song_level_transitioning = false
+		var next_level_index: int = _run_director.regular_level_index + 1
+		if next_level_index < _run_director.regular_level_windows.size():
 			_show_feedback("PATH ADVANCE  ->  L%d" % (next_level_index + 1), Color(0.70, 0.88, 0.98, 1.0), 0.45)
-		_prepare_path_context_for_level(_regular_level_index + 1)
+		_prepare_path_context_for_level(_run_director.regular_level_index + 1)
 		_advance_to_next_regular_level()
 
 
 func _prepare_path_context_for_level(level_index: int) -> void:
-	_active_path_node = PATH_RUN_PLAN.get_level_node(GameState.run_path_plan, level_index)
-	_active_path_context = PATH_RUN_PLAN.apply_node_effects(_active_path_node, GameState, _run_growth, _performance_reward_director)
-	if OS.is_debug_build():
-		print(
-			"PathMap: preparing L%d with node=%s"
-			% [level_index + 1, String(_active_path_node.get("id", "prey"))]
-		)
+	_run_director.prepare_path_context_for_level(level_index)
+	_active_path_context = _run_director.active_path_context
 
 
 func _path_branch_label_for_level(level_index: int) -> String:
@@ -3121,35 +3638,31 @@ func _place_song_enemy_data(lane: int, enemy_data: Dictionary) -> void:
 		lane_manager.start_song_cycle()
 
 func _offer_song_phase_reward(reward_pool: Array) -> void:
-	if _escalation_director != null:
-		_escalation_director.pause()
-	
+	if reward_pool.is_empty():
+		return
+	if _between_level_growth_stored_this_level:
+		return
 	var creature_id: String = reward_pool[_song_rng.randi_range(0, reward_pool.size() - 1)]
 	var creature: Dictionary = COMBAT_CONTENT.get_creature(creature_id)
 	if creature.is_empty():
 		return
-
-	_song_reward_pending = true
-	_live_reward_queue.append(creature)
-	if not _awaiting_reward_choice:
-		_show_next_live_reward_offer()
+	_between_level_growth_queue.append(creature.duplicate(true))
+	_between_level_growth_stored_this_level = true
+	_show_feedback("HUNT STORED  •  %s" % String(creature.get("display_name", "CREATURE")).to_upper(), Color(0.80, 0.88, 0.72, 1.0), 0.24)
 
 
 func _resume_song_after_reward() -> void:
-	if _escalation_director != null:
-		_escalation_director.resume()
-	if lane_manager != null and is_instance_valid(lane_manager):
-		lane_manager.start_song_cycle()
-	_hide_live_reward_shell()
-	_pending_reward_creature = {}
-	_pending_reward_dna_locked = false
+	_end_void(&"reward_resolved", {
+		"pending_queue": _live_reward_queue.size()
+	})
+	_resume_song_combat_runtime_from_reward()
 	_show_next_live_reward_offer()
 
 
 func _trigger_boss_final_movement() -> void:
-	_live_reward_queue.clear()
 	_song_reward_pending = false
-	_awaiting_reward_choice = false
+	_reset_pending_reward_state(true)
+	_exit_tempo_state(_tempo_state_family, true)
 	_hide_live_reward_shell()
 	_song_boss_triggered = true
 	_set_song_paused(true)
@@ -3157,6 +3670,7 @@ func _trigger_boss_final_movement() -> void:
 	if _escalation_director != null:
 		_escalation_director.stop()
 	_boss_hp_threshold_fired = false
+	_boss_decree_timeline_active = false
 	_boss_presence_timer = 0.0
 	COMBAT_TRANSITION_STATE.prepare_boss_handoff(
 		lane_manager,
@@ -3173,6 +3687,7 @@ func _trigger_boss_final_movement() -> void:
 	# Start the boss climax track. This stops the region run song and becomes the
 	# damage-race timer — kill the boss before the boss track ends or lose.
 	_start_boss_music()
+	_start_boss_decree_timeline()
 
 	# The live boss handoff is a direct encounter payload, not a queued run step.
 	var boss_encounter: Dictionary = ENCOUNTER_IDENTITY_RUNTIME.build_live_boss_encounter()
@@ -3214,9 +3729,10 @@ func _start_song_conductor(start_time: float = 0.0, end_time: float = -1.0) -> v
 	_song_conductor.name = "SongConductor"
 	add_child(_song_conductor)
 	_song_conductor.section_changed.connect(_on_conductor_section_changed)
+	_song_conductor.beat_pulse.connect(_on_conductor_beat_pulse)
 	_song_conductor.final_movement_reached.connect(_on_conductor_final_movement)
 	_song_conductor.accent_fired.connect(_on_conductor_accent_fired)
-	_song_conductor.start(_active_song_map, start_time, end_time)
+	_song_conductor.start(_active_song_map, start_time, end_time, false, _build_conductor_options(_active_song_profile))
 	if _music_control_layer != null:
 		if "BPM" in _active_song_map and _music_control_layer.has_method("set_bpm"):
 			_music_control_layer.call("set_bpm", float(_active_song_map.BPM))
@@ -3224,9 +3740,19 @@ func _start_song_conductor(start_time: float = 0.0, end_time: float = -1.0) -> v
 			_music_control_layer.call("notify_section", String(_song_conductor.current_section_id), {
 				"intensity": float(_song_conductor.current_intensity)
 			})
+	_refresh_song_combat_state()
 	player_combat.call("set_song_conductor", _song_conductor)
 	if _song_conductor != null:
 		_hud_presenter.update_song_timer(max(_song_conductor.get_final_movement_time() - start_time, 0.0))
+
+
+func _build_conductor_options(song_profile: Dictionary) -> Dictionary:
+	var contract: Dictionary = Dictionary(song_profile.get("conductor_contract", {}))
+	return {
+		"song_id": String(_active_song_data.get("id", "")),
+		"cadence_window_rules": Array(contract.get("cadence_window_rules", [])),
+		"accent_threshold": SONG_COMBAT_PROFILE_CONTENT.resolve_accent_threshold(song_profile, _active_song_map)
+	}
 
 
 func is_song_paused() -> bool:
@@ -3234,8 +3760,6 @@ func is_song_paused() -> bool:
 
 
 func _set_song_paused(paused: bool) -> void:
-	if _song_paused == paused:
-		return
 	_song_paused = paused
 	if _song_conductor != null and is_instance_valid(_song_conductor):
 		if paused:
@@ -3248,10 +3772,17 @@ func _on_conductor_section_changed(section_id: String, data: Dictionary) -> void
 	# Section changes are used as cadence modulation only.
 	# Regular-level phase transitions are time-authored per level window.
 	_song_section_spawn_mult = float(data.get("spawn_interval_mult", 1.0))
-	if section_id == "final":
-		_song_section_spawn_mult = min(_song_section_spawn_mult, 0.86)
+	var cadence_law: Dictionary = SONG_COMBAT_PROFILE_CONTENT.apply_cadence_law_to_values(
+		_active_song_profile,
+		section_id,
+		_song_section_spawn_mult,
+		1.0,
+		1.0
+	)
+	_song_section_spawn_mult = float(cadence_law.get("spawn_mult", _song_section_spawn_mult))
 	if _music_control_layer != null and _music_control_layer.has_method("notify_section"):
 		_music_control_layer.call("notify_section", section_id, data)
+	_refresh_song_combat_state()
 	_rebuild_music_driven_difficulty()
 	if _song_phase_index >= 0 and _song_phase_index < _song_phases.size():
 		_apply_song_phase_cadence(_song_phases[_song_phase_index], _song_section_spawn_mult)
@@ -3270,14 +3801,21 @@ func _on_conductor_accent_fired() -> void:
 		return
 	if _music_control_layer != null and _music_control_layer.has_method("notify_accent"):
 		_music_control_layer.call("notify_accent")
+	_refresh_song_combat_state()
 	_rebuild_music_driven_difficulty()
 		
+	var lane_law: Dictionary = Dictionary(_active_song_profile.get("lane_law", {}))
+	var pressure_law: Dictionary = Dictionary(_active_song_profile.get("pressure_law", {}))
+	var accent_burst_strength: float = float(lane_law.get("accent_burst_strength", 1.0))
+	var accent_feedback_scale: float = float(pressure_law.get("accent_feedback_scale", 1.2))
+
 	if lane_manager != null and is_instance_valid(lane_manager):
-		lane_manager.trigger_accent_burst()
+		for _i in range(maxi(int(round(accent_burst_strength)), 1)):
+			lane_manager.trigger_accent_burst()
 	
 	# Small HUD pulse feedback for the accent
 	if _presentation_runtime != null:
-		_presentation_runtime.on_beat_pulse("accent", 1.2)
+		_presentation_runtime.on_beat_pulse("accent", accent_feedback_scale)
 
 
 func _hide_song_hud() -> void:
@@ -3291,9 +3829,12 @@ func _start_boss_music() -> void:
 	# defeat if the boss is still alive. Sets _boss_race_active immediately so
 	# the countdown is visible through the boss intro animation.
 	_stop_boss_music()
-	var stream: AudioStream = load(AUDIO_CONTENT.BOSS_TRACK_PATH)
+	var boss_song_id: String = SONG_COMBAT_PROFILE_CONTENT.get_boss_song_id_for_region(_region_id)
+	var boss_song: Dictionary = SONG_LIBRARY_CONTENT.get_song(boss_song_id)
+	var boss_track_path: String = String(boss_song.get("file_path", AUDIO_CONTENT.BOSS_TRACK_PATH))
+	var stream: AudioStream = load(boss_track_path)
 	if stream == null:
-		push_error("CombatScene: failed to load boss music " + AUDIO_CONTENT.BOSS_TRACK_PATH)
+		push_error("CombatScene: failed to load boss music " + boss_track_path)
 		return
 	_boss_music_player = AudioStreamPlayer.new()
 	_boss_music_player.name = "BossMusicPlayer"
@@ -3309,8 +3850,37 @@ func _start_boss_music() -> void:
 	_boss_music_player.play()
 
 
+func _start_boss_decree_timeline() -> void:
+	_boss_decree_timeline_active = false
+	var boss_song_id: String = SONG_COMBAT_PROFILE_CONTENT.get_boss_song_id_for_region(_region_id)
+	var boss_song: Dictionary = SONG_LIBRARY_CONTENT.get_song(boss_song_id)
+	if boss_song.is_empty():
+		boss_song = SONG_LIBRARY_CONTENT.get_live_boss_song()
+	_boss_song_profile = SONG_COMBAT_PROFILE_CONTENT.get_profile(String(boss_song.get("id", "boss_1")))
+	var timing_map_path: String = String(boss_song.get("timing_map_path", ""))
+	if timing_map_path.is_empty() or not ResourceLoader.exists(timing_map_path):
+		return
+	var boss_song_map: Script = load(timing_map_path)
+	if boss_song_map == null:
+		return
+	_stop_song_conductor()
+	_song_conductor = SONG_CONDUCTOR_SCRIPT.new()
+	_song_conductor.name = "BossSongConductor"
+	add_child(_song_conductor)
+	_song_conductor.section_changed.connect(_on_boss_conductor_section_changed)
+	# Timeline-only mode keeps decree timing authored by song sections without
+	# layering duplicate audible tracks over the boss race music.
+	_song_conductor.start(boss_song_map, 0.0, -1.0, true, {
+		"song_id": String(boss_song.get("id", "boss_1")),
+		"cadence_window_rules": Array(Dictionary(_boss_song_profile.get("conductor_contract", {})).get("cadence_window_rules", [])),
+		"accent_threshold": SONG_COMBAT_PROFILE_CONTENT.resolve_accent_threshold(_boss_song_profile, boss_song_map)
+	})
+	_boss_decree_timeline_active = true
+
+
 func _stop_boss_music() -> void:
 	_boss_race_active = false
+	_boss_decree_timeline_active = false
 	if _boss_music_player != null and is_instance_valid(_boss_music_player):
 		_boss_music_player.stop()
 		_boss_music_player.queue_free()
@@ -3383,11 +3953,48 @@ func _on_boss_music_finished() -> void:
 		_finish_run(false)
 
 
+func _on_boss_conductor_section_changed(section_id: String, _data: Dictionary) -> void:
+	if not _is_boss_encounter:
+		return
+	var rule: Dictionary = SONG_COMBAT_PROFILE_CONTENT.get_boss_section_rule(_boss_song_profile, section_id)
+	if rule.is_empty():
+		return
+	var decree_id: StringName = StringName(String(rule.get("decree_id", "")))
+	var duration: float = float(rule.get("duration", 0.0))
+	var meta: Dictionary = Dictionary(rule.get("meta", {}))
+	if decree_id != StringName("") and duration > 0.0:
+		_trigger_decree(decree_id, duration, meta)
+	if section_id == "chorus":
+		_show_feedback(PRESENTATION_TEXT.boss_threshold_break_line(_region_id), Color(0.96, 0.46, 0.14, 1.0), 0.42)
+	if bool(rule.get("set_boss_threshold_fired", false)):
+		if _boss_hp_threshold_fired:
+			return
+		_boss_hp_threshold_fired = true
+		if _hud_presenter != null:
+			_hud_presenter.set_boss_state_text(PRESENTATION_TEXT.boss_state_final(_region_id))
+		var threshold_notice: Dictionary = Dictionary(rule.get("notify_threshold", {}))
+		if _performance_reward_director != null and is_instance_valid(_performance_reward_director) and _performance_reward_director.has_method("notify_boss_threshold"):
+			_performance_reward_director.call(
+				"notify_boss_threshold",
+				String(threshold_notice.get("id", "sovereign_unleash")),
+				float(threshold_notice.get("value", 8.0)),
+				String(threshold_notice.get("label", "BOSS BREAK"))
+			)
+		if _presentation_runtime != null:
+			_presentation_runtime.apply_impact_profile(COMBAT_IMPACT_FEEDBACK.build_boss_threshold_profile())
+		if bool(rule.get("trigger_threshold_spectacle", false)):
+			_trigger_boss_threshold_spectacle()
+
+
 func get_current_song_section_id() -> String:
 	# Used by LaneManager to stamp shot_modifier onto each fired projectile.
 	if _song_conductor == null or not is_instance_valid(_song_conductor):
 		return ""
 	return String(_song_conductor.current_section_id)
+
+
+func get_song_conductor() -> Node:
+	return _song_conductor
 
 
 func _stop_song_conductor() -> void:
@@ -3405,17 +4012,8 @@ func _start_mini_run() -> void:
 		Callable(self, "_clear_mastery_context_cache")
 	)
 
-	# Resets shared run state then launches in song mode.
-	if not GameState.run_in_progress:
-		GameState.run_number += 1
-		_texture_cache.clear()
-		_apply_dev_harness_region_override()
-		if GameState.has_method("reset_run_state"):
-			GameState.reset_run_state()
-		if _performance_reward_director != null and _performance_reward_director.has_method("reset_full_run_data"):
-			_performance_reward_director.call("reset_full_run_data")
-		GameState.run_in_progress = true
-		
+	_run_director.initialize_run(String(GameState.active_region.get("id", "feeding_hollow")), _dev_harness_request)
+
 	_run_finished = false
 	_is_boss_encounter = false
 	_boss_total_hp = 0.0
@@ -3424,15 +4022,13 @@ func _start_mini_run() -> void:
 	_hide_reward_overlay()
 	_apply_dev_harness_pre_run_state()
 
-	EventBus.emit_signal("run_started", int(GameState.run_number))
 	_last_beat_index = -1
-	_live_reward_queue.clear()
+	_between_level_growth_queue.clear()
+	_between_level_growth_stored_this_level = false
 	_song_reward_pending = false
-	_regular_level_windows.clear()
-	_regular_level_index = 0
+	_reset_pending_reward_state(true)
 	_pending_path_choice_nodes.clear()
 	_pending_path_choice_level_index = -1
-	_active_path_node.clear()
 	_active_path_context.clear()
 	_song_level_end_time = 0.0
 	_song_level_transitioning = false
@@ -3443,7 +4039,6 @@ func _start_mini_run() -> void:
 	GameState.clear_growth_choice_intersection_payload()
 	_refresh_run_build_readout()
 	_start_song_run()
-
 
 func _apply_dev_harness_region_override() -> void:
 	if _dev_harness_request.is_empty():
@@ -3524,7 +4119,8 @@ func _debug_apply_boss_threshold_preview() -> void:
 	_hud_presenter.update_boss_hp(_boss_current_hp)
 	if not _boss_hp_threshold_fired:
 		_boss_hp_threshold_fired = true
-		_show_feedback("SOVEREIGN UNLEASH", Color(0.92, 0.42, 0.12, 1.0), 0.70)
+		_hud_presenter.set_boss_state_text(PRESENTATION_TEXT.boss_state_final(_region_id))
+		_show_feedback(PRESENTATION_TEXT.boss_threshold_final_line(_region_id), Color(0.92, 0.42, 0.12, 1.0), 0.70)
 		if _performance_reward_director != null and is_instance_valid(_performance_reward_director) and _performance_reward_director.has_method("notify_boss_threshold"):
 			_performance_reward_director.call("notify_boss_threshold", "sovereign_unleash", 8.0, "BOSS BREAK")
 		_presentation_runtime.apply_impact_profile(COMBAT_IMPACT_FEEDBACK.build_boss_threshold_profile())
@@ -3751,7 +4347,7 @@ func _advance_phase() -> void:
 	var pause_duration: float = 0.45
 	if _is_boss_encounter:
 		pause_duration = 1.0
-		_show_feedback("THE HOLLOW OPENS ITS FULL MOUTH.", Color(0.86, 0.58, 0.14, 1.0), 0.70)
+		_show_feedback(PRESENTATION_TEXT.boss_threshold_final_line(_region_id), Color(0.86, 0.58, 0.14, 1.0), 0.70)
 		EventBus.emit_signal("screen_flash", Color(0.60, 0.36, 0.06, 0.20), 0.30)
 		EventBus.emit_signal("screen_shake", 5.0, 0.30)
 		# Three-lane phase — tighten the fire cadence to 0.78 s.
@@ -3845,28 +4441,54 @@ func _show_upgrade_choices() -> void:
 func _choose_upgrade(index: int) -> void:
 	if index < 0 or index >= _pending_upgrades.size():
 		return
-	
+
 	var up: Dictionary = _pending_upgrades[index]
-	_performance_reward_director.set("_active_offer", up)
-	_performance_reward_director.call("claim_active_offer", "manual")
-	_performance_reward_director.call("consume_banked_reward")
-	
+	if _performance_reward_director != null and is_instance_valid(_performance_reward_director):
+		_performance_reward_director.set("_active_offer", up)
+		_performance_reward_director.call("claim_active_offer", "manual")
+		_performance_reward_director.call("consume_banked_reward")
+
 	_awaiting_upgrade_choice = false
 	_upgrade_overlay.visible = false
-	
-	# After choosing, determine if we continue the song run or finish/boss.
+
+	# After choosing, check if there are MORE banked rewards before advancing.
+	var banked: int = 0
+	if _performance_reward_director != null and is_instance_valid(_performance_reward_director):
+		banked = int(_performance_reward_director.get("banked_reward_count"))
+
+	if banked > 0:
+		_show_upgrade_choices()
+		return
+
+	# If no more banked rewards, determine if we continue the song run or finish/boss.
 	if _song_mode:
-		_run_prep_dest_is_boss = _regular_level_index + 1 >= _regular_level_windows.size()
+		_run_prep_dest_is_boss = _run_director.regular_level_index + 1 >= _run_director.regular_level_windows.size()
 		_show_run_prep_between_song_levels()
 	else:
 		_advance_to_next_stage()
-
 
 func _advance_to_next_stage() -> void:
 	if _is_boss_encounter:
 		_finish_run(true)
 	else:
-		# Transition back to RouteScene to choose next level
+		# Keep between-level routing inside the run spine surface when available.
+		# RouteScene remains a pre-run screen; mid-run path choice stays in-combat.
+		var can_present_run_spine: bool = (
+			_song_mode
+			and not _run_finished
+			and _run_spine_surface != null
+			and is_instance_valid(_run_spine_surface)
+			and _run_spine_surface.has_method("present_level_completion")
+		)
+		if can_present_run_spine:
+			_pending_upgrades.clear()
+			_run_spine_surface.call("present_level_completion", _pending_upgrades, _run_growth, false)
+			if not _try_present_predation_after_run_spine():
+				_try_present_path_choice_after_run_spine()
+			_show_feedback("STAGE COMPLETE", Color(0.85, 0.95, 0.75, 1.0), 0.52)
+			controls_label.text = ""
+			return
+		# Fallback guard: if the spine surface is unavailable, preserve legacy routing.
 		get_tree().change_scene_to_file("res://scenes/ui/RouteScene.tscn")
 
 
@@ -3880,6 +4502,23 @@ func _finish_run(victory: bool) -> void:
 	_growth_choice_context.clear()
 	GameState.clear_growth_choice_intersection_payload()
 	GameState.run_in_progress = false
+	var tendency_snapshot: Dictionary = {}
+	if _run_growth != null and is_instance_valid(_run_growth) and _run_growth.has_method("get_tendency_snapshot"):
+		tendency_snapshot = Dictionary(_run_growth.call("get_tendency_snapshot"))
+	if _is_boss_encounter:
+		GameState.register_world_boss_outcome(_resolve_world_boss_outcome_id(victory), {
+			"region_id": _region_id,
+			"boss_name": String(_active_encounter.get("boss_name", "")),
+			"run_number": int(GameState.run_number)
+		})
+	GameState.resolve_world_fate_for_run({
+		"run_number": int(GameState.run_number),
+		"victory": victory,
+		"is_boss_encounter": _is_boss_encounter,
+		"tendency_snapshot": tendency_snapshot,
+		"tempo_snapshot": GameState.get_run_tempo_snapshot() if GameState.has_method("get_run_tempo_snapshot") else {}
+	})
+	EventBus.emit_signal("run_completed", victory)
 
 	_stop_boss_music()
 	_stop_song_conductor()
@@ -3895,12 +4534,12 @@ func _finish_run(victory: bool) -> void:
 	if victory:
 		result_label.text = "RUN COMPLETE"
 		result_label.visible = true
-		_show_feedback("THE HOLLOW REMEMBERS YOU", Color(0.85, 1.0, 0.75, 1.0), 0.70)
+		_show_feedback(PRESENTATION_TEXT.post_run_summary(_build_post_run_summary_payload(), _region_id, true), Color(0.85, 1.0, 0.75, 1.0), 0.70)
 		controls_label.text = PRESENTATION_TEXT.RUN_END_CONTROLS_VICTORY
 	else:
 		result_label.text = "RUN FAILED"
 		result_label.visible = true
-		_show_feedback("RUN FAILED", Color(1.0, 0.45, 0.45, 1.0), 0.65)
+		_show_feedback(PRESENTATION_TEXT.post_run_summary(_build_post_run_summary_payload(), _region_id, false), Color(1.0, 0.45, 0.45, 1.0), 0.65)
 		controls_label.text = PRESENTATION_TEXT.RUN_END_CONTROLS_FAILURE
 
 	_show_end_stats()
@@ -3910,6 +4549,14 @@ func _finish_run(victory: bool) -> void:
 
 func _show_boss_bar() -> void:
 	_hud_presenter.show_boss_bar()
+
+
+func _resolve_world_boss_outcome_id(victory: bool) -> String:
+	if victory:
+		return "boss_defeated"
+	if _is_boss_encounter and _boss_music_player != null and is_instance_valid(_boss_music_player):
+		return "boss_survived_song"
+	return "boss_survived_song"
 
 
 func _hide_boss_bar() -> void:
@@ -3926,7 +4573,7 @@ func _setup_boss_hp_bar() -> void:
 	_hud_presenter.setup_boss_bar(
 		_boss_total_hp,
 		String(_active_encounter.get("boss_name", "")),
-		PRESENTATION_TEXT.BOSS_STATE_OPENING
+		PRESENTATION_TEXT.boss_state_opening(_region_id)
 	)
 
 
@@ -3941,7 +4588,10 @@ func _show_boss_intro(boss_name: String) -> void:
 	_title_card.modulate = Color(0.88, 0.52, 0.10, 0.0)
 	_title_card.visible = true
 
-	_subtitle_card.text = String(_active_encounter.get("boss_subtitle", "APEX OF THE HOLLOW"))
+	_subtitle_card.text = PRESENTATION_TEXT.boss_intro_line(
+		_region_id,
+		String(_active_encounter.get("boss_subtitle", "APEX VERDICT"))
+	)
 	_subtitle_card.modulate = Color(0.72, 0.52, 0.28, 0.0)
 	_subtitle_card.visible = true
 
@@ -3970,6 +4620,10 @@ func _show_boss_intro(boss_name: String) -> void:
 func _trigger_boss_threshold_spectacle() -> void:
 	# Fires once when boss HP crosses 50% — a second-act arrival moment.
 	# All rings flare to threat color, two pulse-flashes, and a strong shake.
+	_trigger_decree(&"boss_threshold", 1.22, {
+		"boss_phase": "threshold_50"
+	})
+	_show_feedback(PRESENTATION_TEXT.boss_threshold_break_line(_region_id), Color(0.96, 0.46, 0.14, 1.0), 0.52)
 	for _thresh_lane in range(3):
 		_presentation_runtime.highlight_timing_ring(_thresh_lane, Color(0.94, 0.38, 0.08, 1.0), 7.2)
 
@@ -4203,7 +4857,20 @@ func _refresh_dna_hud() -> void:
 
 func _show_live_reward_offer(creature_data: Dictionary) -> void:
 	if _live_reward_shell == null:
+		# Fail-safe: never let a missing shell stall live song flow.
+		if _song_mode:
+			_resume_song_combat_runtime_from_reward()
+		else:
+			_song_reward_pending = false
+			_reset_pending_reward_state()
+			_refresh_song_controls_text()
 		return
+	if _tempo_state_family == COMBAT_FEEL_CONTENT.TEMPO_DECREE:
+		# Decree blocks optional choice UI; defer this offer until decree resolves.
+		_live_reward_queue.push_front(creature_data.duplicate(true))
+		return
+	if _song_mode and not _run_finished:
+		_begin_song_live_reward_runtime()
 
 	_pending_reward_creature = creature_data.duplicate(true)
 	_pending_reward_dna_locked = not GameState.has_dna_for(
@@ -4213,6 +4880,19 @@ func _show_live_reward_offer(creature_data: Dictionary) -> void:
 	_reward_choice_made = false
 	_awaiting_reward_choice = true
 	_live_reward_offer_timer = LIVE_REWARD_WINDOW
+	_song_reward_stall_guard = SONG_REWARD_STALL_GUARD_SECONDS
+	# IMPACT SCARCITY: Only trigger 'The Void' for breakthrough moments.
+	var is_breakthrough: bool = not _pending_reward_dna_locked or String(_pending_reward_creature.get("type", "")) == "performance"
+	
+	if is_breakthrough:
+		_begin_void(&"live_reward_offer", {
+			"species_id": String(_pending_reward_creature.get("species_id", "")),
+			"dna_locked": _pending_reward_dna_locked
+		})
+	else:
+		# Standard DNA bank: No pause, just the live shell.
+		_track_tempo_event(COMBAT_FEEL_CONTENT.TEMPO_NONE, &"live_reward_minimal")
+	
 	_live_reward_shell.visible = true
 	EventBus.emit_signal("capture_offered", _pending_reward_creature)
 	_refresh_live_reward_shell()
@@ -4253,6 +4933,8 @@ func _hide_live_reward_shell() -> void:
 	if _live_reward_shell != null:
 		_live_reward_shell.visible = false
 	_live_reward_offer_timer = 0.0
+	if _tempo_state_family == COMBAT_FEEL_CONTENT.TEMPO_VOID:
+		_end_void(&"shell_hidden")
 	_refresh_quig_ui_state()
 	_sync_message_lane_ownership()
 
@@ -4273,6 +4955,8 @@ func _show_next_live_reward_offer() -> void:
 		_hide_live_reward_shell()
 		_refresh_song_controls_text()
 		return
+	if _tempo_state_family == COMBAT_FEEL_CONTENT.TEMPO_DECREE:
+		return
 
 	var next_creature: Dictionary = _live_reward_queue.pop_front()
 	_show_live_reward_offer(next_creature)
@@ -4281,6 +4965,9 @@ func _show_next_live_reward_offer() -> void:
 func _expire_live_reward_offer() -> void:
 	if not _song_reward_pending or not _awaiting_reward_choice:
 		return
+	_notify_tempo_mastery(COMBAT_FEEL_CONTENT.TEMPO_VOID, "choice_timeout", {
+		"window_seconds": LIVE_REWARD_WINDOW
+	})
 	_pass_reward()
 
 
@@ -4298,16 +4985,18 @@ func _apply_pending_reward_choice(choice_id: String) -> bool:
 		return false
 
 	var species_id: String = String(_pending_reward_creature.get("species_id", ""))
-	var threshold: float = float(_pending_reward_creature.get("dna_threshold", 0.0))
-	if not GameState.has_dna_for(species_id, threshold):
+	var effective_threshold: float = GameState.get_effective_dna_threshold(species_id)
+	if not GameState.has_dna_for(species_id, effective_threshold):
 		_pending_reward_dna_locked = true
 		return false
 
-	GameState.spend_dna(species_id, threshold)
+	GameState.spend_dna(species_id, effective_threshold)
 	_pending_reward_dna_locked = false
 
 	if choice_id == "bond":
 		var updated_creature: Dictionary = GameState.add_bonded_creature(_pending_reward_creature)
+		if GameState.has_method("register_growth_choice"):
+			GameState.register_growth_choice("bond")
 		EventBus.emit_signal("creature_bonded", updated_creature)
 		_reward_choice_made = true
 		_awaiting_reward_choice = false
@@ -4333,6 +5022,8 @@ func _apply_pending_reward_choice(choice_id: String) -> bool:
 			EventBus.emit_signal("player_healed", feed_healed)
 
 	EventBus.emit_signal("creature_eaten", _pending_reward_creature)
+	if GameState.has_method("register_growth_choice"):
+		GameState.register_growth_choice("eat")
 	_reward_choice_made = true
 	_awaiting_reward_choice = false
 	_refresh_run_build_readout()
@@ -4344,6 +5035,7 @@ func _choose_bond() -> void:
 		return
 
 	var _bond_species: String = String(_pending_reward_creature.get("species_id", ""))
+	var void_elapsed: float = _current_void_elapsed_seconds()
 	if not _apply_pending_reward_choice("bond"):
 		_show_feedback("NOT ENOUGH DNA", Color(0.92, 0.46, 0.28, 1.0), 0.42)
 		return
@@ -4375,19 +5067,14 @@ func _choose_bond() -> void:
 
 	_refresh_quig_ui_state()
 	_schedule_reward_scroll_reflow()
-
-	if _song_reward_pending:
-		_resume_song_after_reward()
-	else:
-		_reward_hint_label.text = PRESENTATION_TEXT.REWARD_HINT_WAIT
-		controls_label.text = ""
-		_check_for_upgrade_choices()
+	_finalize_resolved_reward_choice("bond", void_elapsed)
 
 
 func _choose_eat() -> void:
 	if not _awaiting_reward_choice or _reward_choice_made:
 		return
 
+	var void_elapsed: float = _current_void_elapsed_seconds()
 	if not _apply_pending_reward_choice("eat"):
 		_show_feedback("NOT ENOUGH DNA", Color(0.92, 0.46, 0.28, 1.0), 0.42)
 		return
@@ -4435,10 +5122,21 @@ func _choose_eat() -> void:
 	_reward_hint_label.text = PRESENTATION_TEXT.REWARD_HINT_WAIT
 	_refresh_quig_ui_state()
 	_schedule_reward_scroll_reflow()
+	_notify_tempo_mastery(COMBAT_FEEL_CONTENT.TEMPO_VOID, "choice_commit", {
+		"choice": "eat",
+		"elapsed_seconds": void_elapsed,
+		"window_seconds": LIVE_REWARD_WINDOW
+	})
 
 	if _song_reward_pending:
-		_show_feedback("%s CONSUMED" % _eat_creature_name.to_upper(), Color(0.94, 0.62, 0.30, 1.0), 0.34)
-		_resume_song_after_reward()
+		_finalize_resolved_reward_choice(
+			"eat",
+			void_elapsed,
+			"%s CONSUMED" % _eat_creature_name.to_upper(),
+			Color(0.94, 0.62, 0.30, 1.0),
+			0.34,
+			false
+		)
 		return
 
 	var timer: SceneTreeTimer = get_tree().create_timer(3.0)
@@ -4450,13 +5148,7 @@ func _choose_eat() -> void:
 	_reward_quig_label.text = "Quig: \"There will be others. They may remember this.\""
 	_refresh_quig_ui_state()
 
-	if _song_reward_pending:
-		_show_feedback("REWARD PASSED", Color(0.76, 0.60, 0.42, 1.0), 0.24)
-		_resume_song_after_reward()
-	else:
-		_reward_hint_label.text = PRESENTATION_TEXT.REWARD_HINT_WAIT
-		controls_label.text = ""
-		_check_for_upgrade_choices()
+	_continue_after_non_song_reward_resolution()
 
 
 func _pass_reward() -> void:
@@ -4467,6 +5159,8 @@ func _pass_reward() -> void:
 
 	_reward_choice_made = true
 	_awaiting_reward_choice = false
+	_run_passed_rewards += 1
+	var void_elapsed: float = _current_void_elapsed_seconds()
 	_pending_reward_dna_locked = false
 	_pending_reward_creature = {}
 
@@ -4482,14 +5176,13 @@ func _pass_reward() -> void:
 	controls_label.text = ""
 	_refresh_quig_ui_state()
 	_schedule_reward_scroll_reflow()
-
-	if _song_reward_pending:
-		_show_feedback("REWARD PASSED", Color(0.76, 0.60, 0.42, 1.0), 0.24)
-		_resume_song_after_reward()
-	else:
-		_reward_hint_label.text = PRESENTATION_TEXT.REWARD_HINT_WAIT
-		controls_label.text = ""
-		_check_for_upgrade_choices()
+	_finalize_resolved_reward_choice(
+		"pass",
+		void_elapsed,
+		"REWARD PASSED",
+		Color(0.76, 0.60, 0.42, 1.0),
+		0.24
+	)
 
 
 func _on_combo_changed(count: int, tier: String) -> void:
@@ -4523,13 +5216,19 @@ func _show_end_stats() -> void:
 	var growth_level: int = 1
 	if _run_growth != null and is_instance_valid(_run_growth):
 		growth_level = int(_run_growth.level)
+	var post_run_summary: String = PRESENTATION_TEXT.post_run_summary(
+		_build_post_run_summary_payload(),
+		_region_id,
+		result_label.text == "RUN COMPLETE"
+	)
 
 	_end_stats_label.text = (
 		"[ %s ]  %d pts\n\n" % [grade, score]
 		+ "Kills %d    Damage %d    Hits taken %d\n" % [kills, dmg, hit]
 		+ "Perfect %d  Good %d    Parries %d+%d\n" % [p_att, g_att, p_par, g_par]
 		+ "Ultimates %d    Support %d    Surges %d\n" % [ult, sup, surges]
-		+ "Bonded %d    Eaten %d    Level %d" % [bonds, eats, growth_level]
+		+ "Bonded %d    Eaten %d    Passed %d    Level %d\n\n" % [bonds, eats, _run_passed_rewards, growth_level]
+		+ post_run_summary
 	)
 	_end_stats_label.visible = true
 
@@ -4547,6 +5246,17 @@ func _on_dna_gained(_species_id: String, _amount: float, _total: float) -> void:
 		)
 		_refresh_live_reward_shell()
 		_refresh_song_controls_text()
+
+
+func _build_post_run_summary_payload() -> Dictionary:
+	if _run_stats == null or not is_instance_valid(_run_stats):
+		return {"passes": _run_passed_rewards}
+	return {
+		"kills": int(_run_stats.get("kills")),
+		"bonds": int(_run_stats.get("bonds")),
+		"eats": int(_run_stats.get("eats")),
+		"passes": _run_passed_rewards
+	}
 
 
 func _on_dna_routing_changed(route_id: String, label: String) -> void:
@@ -4657,9 +5367,9 @@ func _on_enemy_damaged(enemy_id: int, damage: float) -> void:
 			_escalation_director.notify_boss_hp_changed(_boss_current_hp / _boss_total_hp)
 		
 		# Feedback and effects only (director handles timing shift)
-		if not _boss_hp_threshold_fired and _boss_total_hp > 0.0 and (_boss_current_hp / _boss_total_hp) <= 0.5:
+		if not _boss_decree_timeline_active and not _boss_hp_threshold_fired and _boss_total_hp > 0.0 and (_boss_current_hp / _boss_total_hp) <= 0.5:
 			_boss_hp_threshold_fired = true
-			_hud_presenter.set_boss_state_text(PRESENTATION_TEXT.BOSS_STATE_FINAL)
+			_hud_presenter.set_boss_state_text(PRESENTATION_TEXT.boss_state_final(_region_id))
 			if _performance_reward_director != null and is_instance_valid(_performance_reward_director) and _performance_reward_director.has_method("notify_boss_threshold"):
 				_performance_reward_director.call("notify_boss_threshold", "sovereign_unleash", 8.0, "BOSS BREAK")
 			_presentation_runtime.apply_impact_profile(COMBAT_IMPACT_FEEDBACK.build_boss_threshold_profile())
@@ -4772,8 +5482,10 @@ func _on_enemy_defeated(enemy_id: int) -> void:
 				pass
 			elif bool(dna_result.get("banked", false)):
 				_show_feedback("+%s DNA" % dna_name, Color(0.62, 0.96, 0.78, 1.0), 0.22)
+				_maybe_show_dna_pickup_flavor(dna_species, dna_result)
 			else:
 				_show_feedback("+%s DNA -> EXP" % dna_name, Color(0.96, 0.84, 0.62, 1.0), 0.22)
+				_maybe_show_dna_pickup_flavor(dna_species, dna_result)
 
 	if _song_mode and not _song_paused and not _song_boss_triggered:
 		var dead_lane: int = _song_enemy_lanes.get(enemy_id, -1)
@@ -4783,15 +5495,55 @@ func _on_enemy_defeated(enemy_id: int) -> void:
 				_escalation_director.notify_enemy_defeated(enemy_id, dead_lane)
 
 
-func _on_slow_motion(scale: float, duration: float) -> void:
-	_slow_motion_gen += 1
-	var gen: int = _slow_motion_gen
-	Engine.time_scale = scale
-	var timer := get_tree().create_timer(duration, true, false, true)
-	timer.timeout.connect(func() -> void:
-		if _slow_motion_gen == gen:
-			Engine.time_scale = _base_time_scale
-	)
+func _resolve_dna_pickup_state(species_id: String, dna_result: Dictionary) -> String:
+	if GameState.player_max_hp > 0.0 and (GameState.player_hp / GameState.player_max_hp) <= 0.35:
+		return "low_hp"
+	var support_charge: float = 0.0
+	if _run_growth != null and is_instance_valid(_run_growth):
+		support_charge = float(_run_growth.get("support_charge"))
+	if support_charge >= 80.0:
+		return "high_support"
+	var species_total: float = float(dna_result.get("total", GameState.get_dna(species_id)))
+	if species_total >= 20.0:
+		return "high_dna"
+	return "default"
+
+
+func _maybe_show_dna_pickup_flavor(species_id: String, dna_result: Dictionary) -> void:
+	if _dna_pickup_flavor_cooldown > 0.0:
+		return
+	var state_id: String = _resolve_dna_pickup_state(species_id, dna_result)
+	var rotation_key: String = "%s:%s" % [_region_id, state_id]
+	var flavor_rotation: int = int(_dna_pickup_flavor_rotation.get(rotation_key, 0))
+	var flavor_line: String = PRESENTATION_TEXT.dna_pickup_flavor(_region_id, state_id, flavor_rotation)
+	if flavor_line.is_empty():
+		return
+	_dna_pickup_flavor_rotation[rotation_key] = flavor_rotation + 1
+	_dna_pickup_flavor_cooldown = PRESENTATION_TEXT.DNA_PICKUP_FLAVOR_COOLDOWN_SECONDS
+	_show_feedback(flavor_line, Color(0.88, 0.92, 0.98, 1.0), 0.20)
+
+
+func _on_slow_motion(requested_scale: float, duration: float) -> void:
+	if _tempo_state_family == COMBAT_FEEL_CONTENT.TEMPO_VOID:
+		_track_tempo_event(COMBAT_FEEL_CONTENT.TEMPO_PUNCTURE, &"suppressed_by_void")
+		return
+	
+	# Mapping incoming requests to high-impact tiers v1.
+	var puncture_max_scale: float = float(COMBAT_FEEL_CONTENT.SLOWMO_TIER_THRESHOLDS.get("puncture_max_scale", 0.1))
+	var stretch_max_scale: float = float(COMBAT_FEEL_CONTENT.SLOWMO_TIER_THRESHOLDS.get("stretch_max_scale", 0.7))
+	if requested_scale < puncture_max_scale:
+		# Very heavy slowdown (e.g. killing blow freeze)
+		_trigger_puncture(&"combat_puncture", requested_scale, duration, {
+			"impact_weight": true 
+		})
+	elif requested_scale <= stretch_max_scale:
+		# Medium-heavy slowdown (e.g. perfect parry/dodge)
+		# _enter_tempo_state handles the 'Rampage' tier check and 6s cooldown for STRETCH.
+		_enter_tempo_state(COMBAT_FEEL_CONTENT.TEMPO_STRETCH, &"combat_stretch", COMBAT_FEEL_CONTENT.STRETCH_SCALE, duration, {})
+	else:
+		# Standard execution feedback (0.7+ scale) is now suppressed to keep
+		# the game feeling high-pressure and fast. Only rare distortion allowed.
+		_track_tempo_event(COMBAT_FEEL_CONTENT.TEMPO_NONE, &"suppressed_low_weight")
 
 
 func _impact_lane_forward(lane: int) -> Vector2:
@@ -4821,10 +5573,16 @@ func _impact_world_pos_for_enemy(enemy_id: int) -> Vector2:
 	var marker_data: Variant = _enemy_markers_by_id.get(enemy_id, null)
 	if marker_data == null or not marker_data is Dictionary:
 		return Vector2.ZERO
-	var root: Node2D = marker_data.get("root")
-	if not is_instance_valid(root):
+	var root_node: Variant = marker_data.get("root")
+	var body_node: Variant = marker_data.get("body")
+	if not is_instance_valid(root_node):
+		_enemy_markers_by_id.erase(enemy_id)
+		_status_marker_overrides.erase(enemy_id)
 		return Vector2.ZERO
-	var body: ColorRect = marker_data.get("body")
+	var root: Node2D = root_node as Node2D
+	if root == null:
+		return Vector2.ZERO
+	var body: ColorRect = body_node as ColorRect
 	if is_instance_valid(body):
 		return root.position + body.position + body.size * 0.5
 	return root.position
@@ -4866,26 +5624,18 @@ func _on_player_attacked(lane: int, _damage: float, was_timed: bool) -> void:
 
 
 func _on_timed_attack_resolved(lane: int, quality: String, damage: float) -> void:
-	var ravage_effect: Dictionary = _get_growth_effect("timed_attack_bonus_damage")
 	var flat_bonus_effect: Dictionary = _get_growth_effect("timed_attack_bonus_flat")
 	var beat_quality: String = _get_beat_quality_for_action()
 	var enemy_id: int = _get_enemy_id_for_lane(lane)
-	if not ravage_effect.is_empty():
-		var rip_damage: float = damage * float(ravage_effect.get("value", 0.0))
-		lane_manager.damage_enemy(lane, rip_damage)
-		_presentation_runtime.spawn_attack_silhouette_to_lane(lane, Color(0.95, 0.48, 0.36, 0.34), 8.0, 0.08, 0.92)
 	if not flat_bonus_effect.is_empty():
 		lane_manager.damage_enemy(lane, float(flat_bonus_effect.get("value", 0.0)))
 		_presentation_runtime.spawn_attack_silhouette_to_lane(lane, Color(0.98, 0.70, 0.34, 0.30), 8.0, 0.08, 0.94)
 
-	if quality == "good":
-		var flow_effect: Dictionary = _get_growth_effect("good_timed_bonus_damage")
-		if not flow_effect.is_empty():
-			var flow_damage: float = damage * float(flow_effect.get("value", 0.0))
-			lane_manager.damage_enemy(lane, flow_damage)
-
 	if quality == "perfect":
 		impact_fx_requested.emit(&"perfect", _impact_pos_lane(lane, 0.58), _impact_lane_forward(lane), 1.0)
+		_notify_tempo_mastery(COMBAT_FEEL_CONTENT.TEMPO_PUNCTURE, "perfect_hit", {
+			"beat_quality": beat_quality
+		})
 	elif quality == "good":
 		impact_fx_requested.emit(&"perfect", _impact_pos_lane(lane, 0.52), _impact_lane_forward(lane), 0.78)
 
@@ -4893,6 +5643,11 @@ func _on_timed_attack_resolved(lane: int, quality: String, damage: float) -> voi
 	
 	if quality == "perfect":
 		_presentation_controller.on_combat_event(_bg_sprite, "perfect")
+	if _tempo_state_family == COMBAT_FEEL_CONTENT.TEMPO_DECREE and (quality == "perfect" or quality == "good"):
+		_notify_tempo_mastery(COMBAT_FEEL_CONTENT.TEMPO_DECREE, "law_response", {
+			"response": "timed_attack",
+			"quality": quality
+		})
 
 
 func _on_player_parried(lane: int, quality: String, _reflect_damage: float) -> void:
@@ -4924,22 +5679,37 @@ func _on_player_parried(lane: int, quality: String, _reflect_damage: float) -> v
 	
 	if quality == "perfect":
 		_presentation_controller.on_combat_event(_bg_sprite, "perfect")
+		_notify_tempo_mastery(COMBAT_FEEL_CONTENT.TEMPO_PUNCTURE, "perfect_parry", {
+			"beat_quality": bq
+		})
+	if _tempo_state_family == COMBAT_FEEL_CONTENT.TEMPO_DECREE and (quality == "perfect" or quality == "good"):
+		_notify_tempo_mastery(COMBAT_FEEL_CONTENT.TEMPO_DECREE, "law_response", {
+			"response": "parry",
+			"quality": quality
+		})
 
 
 func _on_player_dodged(from_lane: int, to_lane: int) -> void:
 	_show_feedback("DODGE", Color(0.65, 0.85, 1.0, 1.0), 0.28)
 	_presentation_runtime.highlight_timing_ring(to_lane, Color(0.65, 0.85, 1.0, 1.0), 4.0)
+	_presentation_runtime.spawn_attack_silhouette_to_lane(to_lane, Color(0.62, 0.86, 1.0, 0.46), 8.0, 0.10, 0.92)
 	var slip: Vector2 = Vector2(0.26, float(to_lane - from_lane))
 	if slip.y == 0.0:
 		slip.y = 1.0
 	var dodge_dir: Vector2 = slip.normalized()
-	impact_fx_requested.emit(&"dodge", _impact_pos_lane(to_lane, 0.40), dodge_dir, 0.90)
+	impact_fx_requested.emit(&"dodge", _impact_pos_lane(to_lane, 0.40), dodge_dir, 1.04)
 	var bq: String = _get_beat_quality_for_action()
+	_presentation_runtime.apply_impact_profile(COMBAT_IMPACT_FEEDBACK.build_dodge_profile(bq), to_lane, _get_enemy_id_for_lane(to_lane))
 	if bq == "perfect":
 		_show_beat_feedback("SLIP", Color(0.65, 0.85, 1.0, 1.0))
 		EventBus.emit_signal("screen_flash", Color(0.50, 0.70, 1.0, 0.05), 0.04)
 	elif bq == "good":
 		_show_beat_feedback("SLIP", Color(0.55, 0.75, 0.92, 1.0))
+	if _tempo_state_family == COMBAT_FEEL_CONTENT.TEMPO_DECREE:
+		_notify_tempo_mastery(COMBAT_FEEL_CONTENT.TEMPO_DECREE, "law_response", {
+			"response": "dodge",
+			"quality": bq
+		})
 
 
 func _on_player_no_stamina() -> void:
@@ -5154,6 +5924,7 @@ func _refresh_bonded_creature_render(active_species_id: String = "") -> void:
 		return
 
 	if portrait_key != _bonded_creature_species:
+		var old_stage: String = _bonded_creature_species.split("_")[-1] if not _bonded_creature_species.is_empty() else ""
 		var render_tex: Texture2D = load(sprite_path) as Texture2D
 		if render_tex == null:
 			_bonded_creature_sprite.visible = false
@@ -5163,6 +5934,12 @@ func _refresh_bonded_creature_render(active_species_id: String = "") -> void:
 			_bonded_creature_sprite.frame = 0
 			_bonded_creature_anim_accum = 0.0
 			return
+		
+		# Detect evolution for spectacular feedback
+		var is_evolution: bool = not old_stage.is_empty() and old_stage != growth_stage
+		if is_evolution:
+			_trigger_creature_evolution_fx(species_id, growth_stage)
+
 		_bonded_creature_species = portrait_key
 		_bonded_creature_sprite.texture = render_tex
 		if species_id == "bond_remnant" and growth_stage == "baby" and sprite_path.ends_with("bond_remnant_idle.png"):
@@ -5195,16 +5972,29 @@ func _apply_song_phase_cadence(phase: Dictionary, spawn_mult: float = 1.0) -> vo
 	var cadence_band: Dictionary = Dictionary(_difficulty_modifiers.get("threat_cadence", {}))
 	var cadence_mult: float = clampf(float(cadence_band.get("cycle_interval_mult", 1.0)), 0.75, 1.35)
 	var stagger_mult: float = clampf(float(cadence_band.get("fire_stagger_mult", 1.0)), 0.85, 1.15)
-	lane_manager.set_cycle_interval(base_interval * spawn_mult * cadence_mult)
-	lane_manager.set_fire_stagger(base_stagger * stagger_mult)
+	var section_id: String = ""
+	if _song_conductor != null and is_instance_valid(_song_conductor):
+		section_id = String(_song_conductor.get("current_section_id"))
+	var resolved: Dictionary = SONG_COMBAT_PROFILE_CONTENT.apply_cadence_law_to_values(
+		_active_song_profile,
+		section_id,
+		spawn_mult,
+		base_interval,
+		base_stagger
+	)
+	var resolved_spawn_mult: float = float(resolved.get("spawn_mult", spawn_mult))
+	var resolved_interval: float = float(resolved.get("cycle_interval", base_interval))
+	var resolved_stagger: float = float(resolved.get("fire_stagger", base_stagger))
+	lane_manager.set_cycle_interval(resolved_interval * resolved_spawn_mult * cadence_mult)
+	lane_manager.set_fire_stagger(resolved_stagger * stagger_mult)
 
 
 func _build_music_progression_state() -> Dictionary:
-	var total_levels: int = max(_regular_level_windows.size(), 1)
-	var level_ratio: float = clampf(float(_regular_level_index) / float(max(total_levels - 1, 1)), 0.0, 1.0)
+	var total_levels: int = max(_run_director.regular_level_windows.size(), 1)
+	var level_ratio: float = clampf(float(_run_director.regular_level_index) / float(max(total_levels - 1, 1)), 0.0, 1.0)
 	var level_duration: float = max(_song_level_end_time - _song_level_start_time, 0.001)
 	var level_progress: float = clampf((_song_elapsed - _song_level_start_time) / level_duration, 0.0, 1.0)
-	var run_progress: float = clampf((float(_regular_level_index) + level_progress) / float(total_levels), 0.0, 1.0)
+	var run_progress: float = clampf((float(_run_director.regular_level_index) + level_progress) / float(total_levels), 0.0, 1.0)
 	return {
 		"run_progress": run_progress,
 		"level_progress": level_progress,
@@ -5238,8 +6028,59 @@ func _estimate_player_skill_expression() -> float:
 				beat_value = 0.74
 			_:
 				beat_value = 0.38
-	var skill: float = combo_norm * 0.38 + phrase_norm * 0.30 + tier_value * 0.22 + beat_value * 0.10
+	var progression_law: Dictionary = Dictionary(_active_song_profile.get("progression_law", {}))
+	var beat_values: Dictionary = Dictionary(progression_law.get("beat_quality_values", {}))
+	var weight_map: Dictionary = Dictionary(progression_law.get("skill_weights", {}))
+	if not beat_values.is_empty():
+		var beat_key: String = "off"
+		if beat_value >= 0.99:
+			beat_key = "perfect"
+		elif beat_value >= 0.70:
+			beat_key = "good"
+		beat_value = float(beat_values.get(beat_key, beat_value))
+	var combo_w: float = float(weight_map.get("combo", 0.38))
+	var phrase_w: float = float(weight_map.get("phrase", 0.30))
+	var tier_w: float = float(weight_map.get("tier", 0.22))
+	var beat_w: float = float(weight_map.get("beat", 0.10))
+	var skill: float = combo_norm * combo_w + phrase_norm * phrase_w + tier_value * tier_w + beat_value * beat_w
 	return clampf(skill, 0.0, 1.0)
+
+
+func _trigger_creature_evolution_fx(species_id: String, stage: String) -> void:
+	# Spectacular evolution feedback
+	var flash_color := Color.WHITE
+	var shake_power := 4.0
+	
+	match stage:
+		"teen":
+			flash_color = Color(0.82, 0.16, 0.74, 0.3) # Purple/Mutation
+			shake_power = 6.0
+		"adult":
+			flash_color = Color(0.90, 0.32, 0.15, 0.4) # Red/Apex
+			shake_power = 10.0
+	
+	EventBus.emit_signal("screen_flash", flash_color, 0.25)
+	EventBus.emit_signal("screen_shake", shake_power, 0.4)
+	
+	if _bonded_creature_sprite:
+		var base_scale: float = _bonded_creature_sprite.scale.x
+		var tween = create_tween().set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_ELASTIC)
+		_bonded_creature_sprite.scale = Vector2.ZERO
+		tween.tween_property(_bonded_creature_sprite, "scale", Vector2(base_scale, base_scale), 0.8)
+		
+		# Energy pulse from creature
+		var pulse := Sprite2D.new()
+		pulse.texture = _bonded_creature_sprite.texture
+		pulse.position = _bonded_creature_sprite.position
+		pulse.scale = _bonded_creature_sprite.scale
+		pulse.modulate = flash_color
+		pulse.modulate.a = 0.6
+		add_child(pulse)
+		
+		var p_tween = create_tween()
+		p_tween.tween_property(pulse, "scale", pulse.scale * 3.0, 0.6)
+		p_tween.parallel().tween_property(pulse, "modulate:a", 0.0, 0.6)
+		p_tween.tween_callback(pulse.queue_free)
 
 
 func _rebuild_music_driven_difficulty() -> void:
@@ -5247,7 +6088,9 @@ func _rebuild_music_driven_difficulty() -> void:
 		return
 	if _base_difficulty_modifiers.is_empty():
 		return
-	var music_state: Dictionary = _music_control_layer.call("build_state")
+	if _song_combat_state.is_empty():
+		_refresh_song_combat_state()
+	var music_state: Dictionary = _song_combat_state
 	var progression_state: Dictionary = _build_music_progression_state()
 	var new_modifiers: Dictionary = _difficulty_modifier_director.call(
 		"compute_active_modifiers",
@@ -5263,49 +6106,21 @@ func _rebuild_music_driven_difficulty() -> void:
 		_apply_song_phase_cadence(_song_phases[_song_phase_index], _song_section_spawn_mult)
 
 
+func _refresh_song_combat_state() -> void:
+	if _music_control_layer == null or not _music_control_layer.has_method("build_state"):
+		_song_combat_state = {}
+		return
+	var built_state: Dictionary = _music_control_layer.call("build_state")
+	_song_combat_state = built_state.duplicate(true)
+
+
 func _build_level_difficulty_modifiers(encounter_options: Dictionary) -> Dictionary:
-	var scaling: Dictionary = RUN_PACING_CONTENT.get_level_scaling(_region_id, _regular_level_index)
-	var quality_mult_by_level: Array[float] = [1.0, 1.10, 1.20]
-	var clutch_mult_by_level: Array[float] = [1.0, 1.08, 1.15]
-	var respawn_mult_by_level: Array[float] = [1.0, 0.92, 0.82]
-	var reward_decay_by_level: Array[float] = [1.0, 1.08, 1.16]
-	var reward_choice_delta_by_level: Array[int] = [0, 0, -1]
-	var idx: int = clampi(_regular_level_index, 0, quality_mult_by_level.size() - 1)
-	var mods: Dictionary = {
-		"threat_cadence": {
-			"cycle_interval_mult": float(scaling.get("cycle_interval_mult", 1.0)),
-			"fire_stagger_mult": float(scaling.get("fire_stagger_mult", 1.0))
-		},
-		"threat_quality": {
-			"high_grade_weight_mult": quality_mult_by_level[idx],
-			"clutch_species_weight_mult": clutch_mult_by_level[idx]
-		},
-		"lane_pressure": {
-			"respawn_delay_mult": respawn_mult_by_level[idx],
-			"max_active_threats_bonus": int(scaling.get("max_active_threats_bonus", 0))
-		},
-		"punish_severity": {
-			"projectile_damage_mult": float(scaling.get("enemy_damage_mult", 1.0))
-		},
-		"reward_pressure": {
-			"offer_decay_mult": reward_decay_by_level[idx],
-			"level_choice_delta": reward_choice_delta_by_level[idx]
-		}
-	}
-	if bool(encounter_options.get("elite", false)):
-		var quality_band: Dictionary = Dictionary(mods.get("threat_quality", {}))
-		quality_band["high_grade_weight_mult"] = float(quality_band.get("high_grade_weight_mult", 1.0)) * 1.12
-		mods["threat_quality"] = quality_band
-
-		var lane_band: Dictionary = Dictionary(mods.get("lane_pressure", {}))
-		lane_band["respawn_delay_mult"] = float(lane_band.get("respawn_delay_mult", 1.0)) * 0.90
-		lane_band["max_active_threats_bonus"] = int(lane_band.get("max_active_threats_bonus", 0)) + 1
-		mods["lane_pressure"] = lane_band
-
-		var reward_band: Dictionary = Dictionary(mods.get("reward_pressure", {}))
-		reward_band["level_choice_delta"] = int(reward_band.get("level_choice_delta", 0)) - 1
-		mods["reward_pressure"] = reward_band
-	return mods
+	return SONG_COMBAT_PROFILE_CONTENT.build_level_difficulty_modifiers(
+		_region_id,
+		_run_director.regular_level_index,
+		encounter_options,
+		_active_song_profile
+	)
 
 
 func _apply_difficulty_modifiers_to_runtime() -> void:
@@ -5339,14 +6154,13 @@ func _get_mastery_window() -> String:
 
 
 func _get_current_cadence_window() -> String:
-	if _song_conductor == null or not is_instance_valid(_song_conductor):
-		return ""
-	var section_id: String = String(_song_conductor.get("current_section_id"))
-	var intensity: float = float(_song_conductor.get("current_intensity"))
-	if section_id == "final" or intensity >= 0.85:
-		return "surge"
-	if section_id == "chorus" or intensity >= 0.62:
-		return "drive"
+	if _song_combat_state.is_empty():
+		_refresh_song_combat_state()
+	var from_state: String = String(_song_combat_state.get("cadence_window", ""))
+	if not from_state.is_empty():
+		return from_state
+	if _song_conductor != null and is_instance_valid(_song_conductor):
+		return String(_song_conductor.get("current_cadence_window"))
 	return ""
 
 

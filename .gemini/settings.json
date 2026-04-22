@@ -1,0 +1,8 @@
+{
+  "tools": {
+    "sandbox": "docker"
+  },
+  "experimental": {
+    "worktrees": true
+  }
+}

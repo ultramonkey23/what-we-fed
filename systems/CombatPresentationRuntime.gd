@@ -10,6 +10,7 @@ var _ui_layer: CanvasLayer # New field
 var _enemy_markers_by_id: Dictionary
 var _ring_highlight_timers: Array[float]
 var _bg_sprite: Control = null
+var _bg_pulse_targets: Array[CanvasItem] = []
 var _flash_tween: Tween = null
 
 
@@ -35,6 +36,22 @@ func _init(
 	_enemy_markers_by_id = enemy_markers_by_id
 	_ring_highlight_timers = ring_highlight_timers
 	_bg_sprite = bg_sprite
+	
+	_cache_bg_pulse_targets()
+
+
+func _cache_bg_pulse_targets() -> void:
+	_bg_pulse_targets.clear()
+	if _bg_sprite == null or not is_instance_valid(_bg_sprite):
+		return
+		
+	for child in _bg_sprite.get_children():
+		if not child is CanvasItem:
+			continue
+			
+		var layer_name: String = child.name.to_lower()
+		if layer_name.contains("sky") or layer_name.contains("midground") or layer_name.contains("haze"):
+			_bg_pulse_targets.append(child as CanvasItem)
 
 
 func _get_enemy_marker_root(enemy_id: int) -> Node2D:
@@ -166,23 +183,30 @@ func on_timing_ring_pressed(lane: int) -> void:
 
 
 func on_beat_pulse(quality: String, strength: float) -> void:
-	if _bg_sprite == null or not is_instance_valid(_bg_sprite):
-		return
+	if _bg_pulse_targets.is_empty():
+		# If the background was swapped/late-loaded, try one re-cache.
+		_cache_bg_pulse_targets()
+		if _bg_pulse_targets.is_empty():
+			return
 
-	var original_modulate: Color = _bg_sprite.modulate
-	var pulse_color: Color = original_modulate
-	
-	match quality:
-		"accent":
-			pulse_color = original_modulate.lightened(0.18 * strength)
-		"perfect":
-			pulse_color = original_modulate.lightened(0.12 * strength)
-		"good":
-			pulse_color = original_modulate.lightened(0.06 * strength)
-	
-	var tween := _bg_sprite.create_tween()
-	tween.tween_property(_bg_sprite, "modulate", pulse_color, 0.05)
-	tween.tween_property(_bg_sprite, "modulate", original_modulate, 0.15)
+	for child in _bg_pulse_targets:
+		if not is_instance_valid(child):
+			continue
+			
+		var original_modulate: Color = child.modulate
+		var pulse_color: Color = original_modulate
+		
+		match quality:
+			"accent":
+				pulse_color = original_modulate.lightened(0.18 * strength)
+			"perfect":
+				pulse_color = original_modulate.lightened(0.12 * strength)
+			"good":
+				pulse_color = original_modulate.lightened(0.06 * strength)
+		
+		var tween := child.create_tween()
+		tween.tween_property(child, "modulate", pulse_color, 0.05)
+		tween.tween_property(child, "modulate", original_modulate, 0.15)
 
 
 func highlight_timing_ring(lane: int, color: Color, width: float = 4.0) -> void:

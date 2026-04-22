@@ -18,3 +18,6 @@ Convert broad requests into a practical, ordered execution path with clear bound
 - Define in-scope and out-of-scope items.
 - Sequence work for safe, practical delivery.
 - Hand off with explicit validation requirements.
+- Assign mutation budget (low/medium/high) before route design.
+- For medium/high mutation tasks, provide safe path, mutation path, and recommended path.
+- Use feral sandbox freedom for strategy proposals in naming, route structure, ecosystem logic, and reward logic.

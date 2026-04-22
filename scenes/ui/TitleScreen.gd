@@ -3,6 +3,7 @@ extends Node2D
 const LAIR_SCENE_PATH: String = "res://scenes/ui/LairScene.tscn"
 const UI_STYLE = preload("res://systems/UIStyle.gd")
 const PRESENTATION_TEXT = preload("res://data/PresentationTextContent.gd")
+const TITLE_SIGIL_PATH: String = "res://assets/ui/shell/title_sigil.png"
 
 var _controls_panel: ColorRect = null
 var _controls_visible: bool = false
@@ -75,6 +76,20 @@ func _build_ui() -> void:
 	UI_STYLE.apply_label(title_label, "mm_title")
 	canvas.add_child(title_label)
 
+	var sigil_tex: Texture2D = null
+	if ResourceLoader.exists(TITLE_SIGIL_PATH):
+		sigil_tex = load(TITLE_SIGIL_PATH) as Texture2D
+	if sigil_tex != null:
+		var sigil := TextureRect.new()
+		sigil.texture = sigil_tex
+		sigil.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		sigil.position = Vector2(486.0, 78.0)
+		sigil.size = Vector2(308.0, 308.0)
+		sigil.modulate = Color(1.0, 0.95, 0.92, 0.34)
+		sigil.stretch_mode = TextureRect.STRETCH_SCALE
+		canvas.add_child(sigil)
+		canvas.move_child(sigil, 0)
+
 	var sub_label: Label = Label.new()
 	sub_label.text = PRESENTATION_TEXT.TITLE_SUBTITLE
 	sub_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -129,8 +144,8 @@ func _build_ui() -> void:
 		+ "- During live offers -\n"
 		+ "B / E                   Bond or Eat live claim\n"
 		+ "N                       Pass live claim\n"
-		+ "R                       Restart run\n"
-		+ "T                       Return to lair"
+		+ "R                       Re-instantiate pattern\n"
+		+ "T                       Recall to Lair"
 	)
 
 	var controls_label: Label = Label.new()

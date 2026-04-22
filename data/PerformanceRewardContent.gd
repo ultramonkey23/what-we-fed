@@ -90,11 +90,17 @@ const REWARDS := {
 	"razor_wiring": {
 		"id": "razor_wiring",
 		"category": "weapon",
+		"lane": "loot",
+		"lane_slot": "offense",
 		"title": "Razor Wiring",
-		"tag": "WEAPON",
+		"tag": "LOOT • OFFENSE",
 		"summary": "Timed hit +6",
 		"readout": "Timed +6",
 		"claim_text": "RAZOR WIRING",
+		"power_tier": 2,
+		"family_bias": ["flesh", "reflex", "cadence"],
+		"path_bias": "eat",
+		"tendency_bias": ["aggression", "cadence"],
 		"feedback_color": Color(0.98, 0.70, 0.34, 1.0),
 		"effect": {
 			"type": "timed_attack_bonus_flat",
@@ -104,11 +110,17 @@ const REWARDS := {
 	"carrion_brand": {
 		"id": "carrion_brand",
 		"category": "artifact",
+		"lane": "artifact",
+		"lane_slot": "major",
 		"title": "Carrion Brand",
-		"tag": "ARTIFACT",
+		"tag": "ARTIFACT • MAJOR",
 		"summary": "3 kills: mend + charge",
 		"readout": "3 kills mend",
 		"claim_text": "CARRION BRAND",
+		"power_tier": 4,
+		"family_bias": ["flesh", "gorge"],
+		"path_bias": "eat",
+		"tendency_bias": ["aggression"],
 		"feedback_color": Color(0.90, 0.58, 0.30, 1.0),
 		"effect": {
 			"type": "kill_chain_pulse",
@@ -120,11 +132,17 @@ const REWARDS := {
 	"graveslip_tendons": {
 		"id": "graveslip_tendons",
 		"category": "utility",
+		"lane": "loot",
+		"lane_slot": "defense",
 		"title": "Graveslip Tendons",
-		"tag": "UTILITY",
+		"tag": "LOOT • DEFENSE",
 		"summary": "Low HP hit: mend +18 stamina",
 		"readout": "Clutch mend",
 		"claim_text": "GRAVESLIP",
+		"power_tier": 2,
+		"family_bias": ["guard", "hollow", "hush"],
+		"path_bias": "bond",
+		"tendency_bias": ["guard", "bond"],
 		"feedback_color": Color(0.60, 0.84, 1.0, 1.0),
 		"effect": {
 			"type": "low_hp_clutch",
@@ -136,11 +154,17 @@ const REWARDS := {
 	"choir_hook": {
 		"id": "choir_hook",
 		"category": "artifact",
+		"lane": "artifact",
+		"lane_slot": "minor",
 		"title": "Choir Hook",
-		"tag": "ARTIFACT",
+		"tag": "ARTIFACT • MINOR",
 		"summary": "Perfect parry +16 support",
 		"readout": "Parry +16 sup",
 		"claim_text": "CHOIR HOOK",
+		"power_tier": 3,
+		"family_bias": ["reflex", "guard", "hollow"],
+		"path_bias": "bond",
+		"tendency_bias": ["guard", "cadence", "bond"],
 		"feedback_color": Color(0.86, 0.88, 0.40, 1.0),
 		"effect": {
 			"type": "perfect_parry_support_charge",
@@ -152,11 +176,17 @@ const REWARDS := {
 	"flayed_vessel": {
 		"id": "flayed_vessel",
 		"category": "weapon",
+		"lane": "loot",
+		"lane_slot": "offense",
 		"title": "Flayed Vessel",
-		"tag": "FLESH",
+		"tag": "LOOT • OFFENSE",
 		"summary": "5 kills: mend 8 + charge 25",
 		"readout": "5 kills surge",
 		"claim_text": "VESSEL FEEDS",
+		"power_tier": 3,
+		"family_bias": ["flesh", "gorge"],
+		"path_bias": "eat",
+		"tendency_bias": ["aggression"],
 		"feedback_color": Color(0.96, 0.48, 0.28, 1.0),
 		"effect": {
 			"type": "kill_chain_heavy",
@@ -169,11 +199,17 @@ const REWARDS := {
 	"wound_hunger": {
 		"id": "wound_hunger",
 		"category": "weapon",
+		"lane": "loot",
+		"lane_slot": "offense",
 		"title": "Wound Hunger",
-		"tag": "FLESH",
+		"tag": "LOOT • OFFENSE",
 		"summary": "Hit taken: +8 support charge",
 		"readout": "Wound feeds",
 		"claim_text": "HUNGER RISES",
+		"power_tier": 2,
+		"family_bias": ["flesh", "gorge", "hush"],
+		"path_bias": "eat",
+		"tendency_bias": ["aggression", "guard"],
 		"feedback_color": Color(0.92, 0.40, 0.36, 1.0),
 		"effect": {
 			"type": "damage_to_charge",
@@ -184,11 +220,17 @@ const REWARDS := {
 	"bond_echo": {
 		"id": "bond_echo",
 		"category": "artifact",
+		"lane": "artifact",
+		"lane_slot": "minor",
 		"title": "Bond Echo",
-		"tag": "BOND",
+		"tag": "ARTIFACT • MINOR",
 		"summary": "Support trigger: mend 5",
 		"readout": "Support mend 5",
 		"claim_text": "BOND ANSWERS",
+		"power_tier": 3,
+		"family_bias": ["hollow", "guard", "cadence"],
+		"path_bias": "bond",
+		"tendency_bias": ["bond"],
 		"feedback_color": Color(0.58, 0.82, 0.92, 1.0),
 		"effect": {
 			"type": "support_trigger_heal",
@@ -199,11 +241,17 @@ const REWARDS := {
 	"hollow_pact": {
 		"id": "hollow_pact",
 		"category": "artifact",
+		"lane": "artifact",
+		"lane_slot": "major",
 		"title": "Hollow Pact",
-		"tag": "BOND",
+		"tag": "ARTIFACT • MAJOR",
 		"summary": "Bond kept: encounter start mend 8 + charge 15",
 		"readout": "Bond entry pulse",
 		"claim_text": "PACT HOLDS",
+		"power_tier": 4,
+		"family_bias": ["hollow", "guard", "hush"],
+		"path_bias": "bond",
+		"tendency_bias": ["bond", "guard"],
 		"feedback_color": Color(0.62, 0.78, 0.98, 1.0),
 		"effect": {
 			"type": "bond_entry_pulse",
@@ -215,11 +263,17 @@ const REWARDS := {
 	"veilstrike_chain": {
 		"id": "veilstrike_chain",
 		"category": "artifact",
+		"lane": "artifact",
+		"lane_slot": "minor",
 		"title": "Veilstrike Chain",
-		"tag": "CADENCE",
+		"tag": "ARTIFACT • MINOR",
 		"summary": "3 perfect attacks in sequence: charge 20",
 		"readout": "3 perfect chain",
 		"claim_text": "CHAIN FIRES",
+		"power_tier": 3,
+		"family_bias": ["cadence", "reflex"],
+		"path_bias": "neutral",
+		"tendency_bias": ["cadence"],
 		"feedback_color": Color(0.78, 0.94, 0.62, 1.0),
 		"effect": {
 			"type": "perfect_strike_chain",
@@ -231,11 +285,17 @@ const REWARDS := {
 	"predators_debt": {
 		"id": "predators_debt",
 		"category": "weapon",
+		"lane": "loot",
+		"lane_slot": "offense",
 		"title": "Predator's Debt",
-		"tag": "FLESH",
+		"tag": "LOOT • OFFENSE",
 		"summary": "Eat this run: damage +2 (max 3 stacks)",
 		"readout": "Eat +dmg ratchet",
 		"claim_text": "DEBT CLAIMED",
+		"power_tier": 3,
+		"family_bias": ["flesh", "gorge", "reflex"],
+		"path_bias": "eat",
+		"tendency_bias": ["aggression"],
 		"feedback_color": Color(0.88, 0.56, 0.72, 1.0),
 		"effect": {
 			"type": "eat_damage_ratchet",
@@ -250,6 +310,13 @@ static func get_reward(reward_id: String) -> Dictionary:
 	if not REWARDS.has(reward_id):
 		return {}
 	return REWARDS[reward_id].duplicate(true)
+
+
+static func get_all_rewards() -> Array[Dictionary]:
+	var rows: Array[Dictionary] = []
+	for reward_id in REWARD_ORDER:
+		rows.append(get_reward(reward_id))
+	return rows
 
 
 static func get_phase_mix(phase_index: int) -> Array[String]:

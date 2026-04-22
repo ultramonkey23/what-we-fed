@@ -12,6 +12,8 @@ const PRESENTATION_TEXT = preload("res://data/PresentationTextContent.gd")
 const COMBAT_CONTENT = preload("res://data/CombatContent.gd")
 const POTENTIAL_GATE = preload("res://systems/PotentialGate.gd")
 
+const HOLD_RELEASE_TIME: float = 1.2
+
 var _creature_cards: Array[ColorRect] = []
 var _card_accents: Array[ColorRect] = []
 var _card_index_labels: Array[Label] = []
@@ -19,11 +21,22 @@ var _active_pills: Array[Label] = []
 var _selected_index: int = -1
 var _can_input: bool = false
 
+var _ui_layer: CanvasLayer
 var _hub_solo_label: Label
 var _hub_name: Label
 var _hub_identity: Label
 var _hub_support: Label
 var _hub_bond_pot: Label
+var _hub_dna_stat: Label
+
+var _ranch_action_train: Label
+var _ranch_action_release: Label
+var _ranch_action_hint: Label
+var _bottom_hint: Label
+var _feedback_label: Label
+
+var _release_hold_current: float = 0.0
+var _is_releasing: bool = false
 
 
 func _ready() -> void:
@@ -31,6 +44,25 @@ func _ready() -> void:
 	_build_ui()
 	await get_tree().create_timer(0.12).timeout
 	_can_input = true
+
+
+func _process(delta: float) -> void:
+	if not _can_input:
+		return
+		
+	if _is_releasing:
+		if Input.is_key_pressed(KEY_X):
+			_release_hold_current += delta
+			var progress: float = clampf(_release_hold_current / HOLD_RELEASE_TIME, 0.0, 1.0)
+			_update_release_feedback(progress)
+			if _release_hold_current >= HOLD_RELEASE_TIME:
+				_execute_release()
+				_is_releasing = false
+				_release_hold_current = 0.0
+		else:
+			_is_releasing = false
+			_release_hold_current = 0.0
+			_update_release_feedback(0.0)
 
 
 func _sync_selection_index() -> void:
@@ -52,6 +84,10 @@ func _unhandled_input(event: InputEvent) -> void:
 
 	var key_event: InputEventKey = event as InputEventKey
 	if not key_event.pressed or key_event.echo:
+		if key_event.keycode == KEY_X and not key_event.pressed:
+			_is_releasing = false
+			_release_hold_current = 0.0
+			_update_release_feedback(0.0)
 		return
 
 	var lair: Array = GameState.lair_roster
@@ -74,8 +110,26 @@ func _unhandled_input(event: InputEvent) -> void:
 			GameState.set_active_lair_creature(String(lair[index].get("species_id", "")))
 		_refresh_card_highlights()
 		_refresh_active_support_panel()
+		_refresh_bottom_bar()
 		get_viewport().set_input_as_handled()
 		return
+
+	if key_event.keycode == KEY_T:
+		if _selected_index >= 0 and _selected_index < lair.size():
+			var sid: String = String(lair[_selected_index].get("species_id", ""))
+			if GameState.train_lair_creature(sid):
+				_play_train_feedback()
+				_refresh_active_support_panel()
+				_build_creature_list(_ui_layer, GameState.lair_roster)
+			get_viewport().set_input_as_handled()
+			return
+
+	if key_event.keycode == KEY_X:
+		if _selected_index >= 0 and _selected_index < lair.size():
+			_is_releasing = true
+			_release_hold_current = 0.0
+			get_viewport().set_input_as_handled()
+			return
 
 	if key_event.keycode == KEY_SPACE or key_event.keycode == KEY_ENTER:
 		GameState.run_in_progress = false
@@ -87,11 +141,49 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 
 
+func _execute_release() -> void:
+	var lair: Array = GameState.lair_roster
+	if _selected_index >= 0 and _selected_index < lair.size():
+		var sid: String = String(lair[_selected_index].get("species_id", ""))
+		GameState.release_lair_creature(sid)
+		_selected_index = -1
+		_build_ui() # Full rebuild since roster count changed
+
+
+func _update_release_feedback(progress: float) -> void:
+	if not is_instance_valid(_ranch_action_release):
+		return
+	if progress <= 0.0:
+		_refresh_active_support_panel() # Reset to normal
+		return
+	
+	var pct: int = int(progress * 100.0)
+	_ranch_action_release.text = "HOLD X TO RELEASE... %d%%" % pct
+	_ranch_action_release.add_theme_color_override("font_color", UI_STYLE.get_manga_color("blood_ember").lerp(Color.WHITE, progress))
+
+
+func _play_train_feedback() -> void:
+	if not is_instance_valid(_feedback_label):
+		return
+	
+	_feedback_label.text = "BOND DEEPENED"
+	_feedback_label.modulate.a = 1.0
+	_feedback_label.scale = Vector2.ONE * 1.2
+	
+	var tween := create_tween()
+	tween.tween_property(_feedback_label, "scale", Vector2.ONE, 0.12).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
+	tween.tween_interval(0.8)
+	tween.tween_property(_feedback_label, "modulate:a", 0.0, 0.24)
+
+
 func _build_ui() -> void:
+	if is_instance_valid(_ui_layer):
+		_ui_layer.queue_free()
+	
 	UI_STYLE.attach_shell_backdrop(self)
 
-	var canvas: CanvasLayer = CanvasLayer.new()
-	add_child(canvas)
+	_ui_layer = CanvasLayer.new()
+	add_child(_ui_layer)
 
 	var header: Label = Label.new()
 	header.text = "THE LAIR"
@@ -100,7 +192,7 @@ func _build_ui() -> void:
 	header.position = Vector2(0.0, 36.0)
 	UI_STYLE.apply_label(header, "mm_title")
 	header.add_theme_font_size_override("font_size", 42)
-	canvas.add_child(header)
+	_ui_layer.add_child(header)
 
 	var sub: Label = Label.new()
 	sub.text = PRESENTATION_TEXT.LAIR_SUBTITLE
@@ -109,17 +201,26 @@ func _build_ui() -> void:
 	sub.position = Vector2(180.0, 92.0)
 	sub.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	UI_STYLE.apply_label(sub, "mm_subtitle")
-	canvas.add_child(sub)
+	_ui_layer.add_child(sub)
 
 	var lair: Array = GameState.lair_roster
 	if lair.is_empty():
-		_build_empty_state(canvas)
+		_build_empty_state(_ui_layer)
 		_clear_hub_refs()
 	else:
-		_build_den_sidebar(canvas, lair)
-		_build_creature_list(canvas, lair)
+		_build_den_sidebar(_ui_layer, lair)
+		_build_creature_list(_ui_layer, lair)
 
-	_build_bottom_bar(canvas, lair)
+	_build_bottom_bar(_ui_layer, lair)
+	
+	_feedback_label = Label.new()
+	_feedback_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_feedback_label.size = Vector2(SIDEBAR_W, 40.0)
+	_feedback_label.position = Vector2(SIDEBAR_X, 430.0)
+	_feedback_label.modulate.a = 0.0
+	_feedback_label.pivot_offset = Vector2(SIDEBAR_W * 0.5, 20.0)
+	UI_STYLE.apply_label(_feedback_label, "mm_choice_bond")
+	_ui_layer.add_child(_feedback_label)
 
 
 func _clear_hub_refs() -> void:
@@ -128,6 +229,12 @@ func _clear_hub_refs() -> void:
 	_hub_identity = null
 	_hub_support = null
 	_hub_bond_pot = null
+	_hub_dna_stat = null
+	_ranch_action_train = null
+	_ranch_action_release = null
+	_ranch_action_hint = null
+	_bottom_hint = null
+	_feedback_label = null
 
 
 func _build_empty_state(canvas: CanvasLayer) -> void:
@@ -222,40 +329,56 @@ func _build_den_sidebar(canvas: CanvasLayer, lair: Array) -> void:
 	_hub_identity.size = Vector2(SIDEBAR_W - 36.0, 22.0)
 	UI_STYLE.apply_label(_hub_identity, "mm_dim")
 	canvas.add_child(_hub_identity)
+	
+	_hub_dna_stat = Label.new()
+	_hub_dna_stat.position = Vector2(SIDEBAR_X + 20.0, 316.0)
+	_hub_dna_stat.size = Vector2(SIDEBAR_W - 36.0, 22.0)
+	UI_STYLE.apply_label(_hub_dna_stat, "mm_choice_bond")
+	_hub_dna_stat.add_theme_font_size_override("font_size", 14)
+	canvas.add_child(_hub_dna_stat)
 
 	_hub_support = Label.new()
-	_hub_support.position = Vector2(SIDEBAR_X + 20.0, 322.0)
+	_hub_support.position = Vector2(SIDEBAR_X + 20.0, 342.0)
 	_hub_support.size = Vector2(SIDEBAR_W - 36.0, 44.0)
 	_hub_support.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	UI_STYLE.apply_label(_hub_support, "mm_caption")
 	canvas.add_child(_hub_support)
 
 	_hub_bond_pot = Label.new()
-	_hub_bond_pot.position = Vector2(SIDEBAR_X + 20.0, 376.0)
+	_hub_bond_pot.position = Vector2(SIDEBAR_X + 20.0, 386.0)
 	_hub_bond_pot.size = Vector2(SIDEBAR_W - 36.0, 56.0)
 	_hub_bond_pot.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	UI_STYLE.apply_label(_hub_bond_pot, "mm_stat_secondary")
 	canvas.add_child(_hub_bond_pot)
 
-	var ranch_t: Label = Label.new()
-	ranch_t.text = PRESENTATION_TEXT.LAIR_RANCH_STUB_TITLE
-	ranch_t.position = Vector2(SIDEBAR_X + 10.0, 458.0)
-	ranch_t.size = Vector2(SIDEBAR_W - 20.0, 24.0)
-	UI_STYLE.apply_label(ranch_t, "mm_caption")
-	canvas.add_child(ranch_t)
+	_ranch_action_train = Label.new()
+	_ranch_action_train.position = Vector2(SIDEBAR_X + 10.0, 458.0)
+	_ranch_action_train.size = Vector2(SIDEBAR_W - 20.0, 24.0)
+	UI_STYLE.apply_label(_ranch_action_train, "mm_caption")
+	canvas.add_child(_ranch_action_train)
 
-	var ranch_b: Label = Label.new()
-	ranch_b.text = PRESENTATION_TEXT.LAIR_RANCH_STUB_BODY
-	ranch_b.position = Vector2(SIDEBAR_X + 10.0, 484.0)
-	ranch_b.size = Vector2(SIDEBAR_W - 20.0, 110.0)
-	ranch_b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	UI_STYLE.apply_label(ranch_b, "mm_dim")
-	canvas.add_child(ranch_b)
+	_ranch_action_release = Label.new()
+	_ranch_action_release.position = Vector2(SIDEBAR_X + 10.0, 484.0)
+	_ranch_action_release.size = Vector2(SIDEBAR_W - 20.0, 24.0)
+	UI_STYLE.apply_label(_ranch_action_release, "mm_caption")
+	canvas.add_child(_ranch_action_release)
+
+	_ranch_action_hint = Label.new()
+	_ranch_action_hint.position = Vector2(SIDEBAR_X + 10.0, 514.0)
+	_ranch_action_hint.size = Vector2(SIDEBAR_W - 20.0, 80.0)
+	_ranch_action_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	UI_STYLE.apply_label(_ranch_action_hint, "mm_dim")
+	canvas.add_child(_ranch_action_hint)
 
 	_refresh_active_support_panel()
 
 
 func _build_creature_list(canvas: CanvasLayer, lair: Array) -> void:
+	# Clear existing cards if we're doing a partial update
+	for card in _creature_cards:
+		if is_instance_valid(card):
+			card.queue_free()
+	
 	_creature_cards.clear()
 	_card_accents.clear()
 	_card_index_labels.clear()
@@ -415,20 +538,31 @@ func _build_bottom_bar(canvas: CanvasLayer, lair: Array) -> void:
 	UI_STYLE.apply_label(note, "mm_dim")
 	canvas.add_child(note)
 
+	_bottom_hint = Label.new()
+	_bottom_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_bottom_hint.size = Vector2(1280.0, 28.0)
+	_bottom_hint.position = Vector2(0.0, 652.0)
+	UI_STYLE.apply_label(_bottom_hint, "mm_hint")
+	canvas.add_child(_bottom_hint)
+	
+	_refresh_bottom_bar()
+
+
+func _refresh_bottom_bar() -> void:
+	if not is_instance_valid(_bottom_hint):
+		return
+	
+	var lair: Array = GameState.lair_roster
 	var count: int = min(lair.size(), MAX_LAIR_DISPLAY)
 	var hint_text: String
 	if count == 0:
-		hint_text = "SPACE / ENTER — enter run  |  ESC — title"
+		hint_text = "SPACE / ENTER — begin entry  |  ESC — title"
 	else:
-		hint_text = "1–%d — assign / clear active support  |  SPACE / ENTER — continue  |  ESC — title" % count
+		hint_text = "1–%d — assign active support  |  SPACE / ENTER — continue  |  ESC — title" % count
+		if _selected_index != -1:
+			hint_text = "T — train bond  |  X (HOLD) — release  |  " + hint_text
 
-	var hint: Label = Label.new()
-	hint.text = hint_text
-	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	hint.size = Vector2(1280.0, 28.0)
-	hint.position = Vector2(0.0, 652.0)
-	UI_STYLE.apply_label(hint, "mm_hint")
-	canvas.add_child(hint)
+	_bottom_hint.text = hint_text
 
 
 func _refresh_card_highlights() -> void:
@@ -457,24 +591,65 @@ func _refresh_active_support_panel() -> void:
 	_hub_solo_label.visible = not has
 	_hub_name.visible = has
 	_hub_identity.visible = has
+	_hub_dna_stat.visible = has
 	_hub_support.visible = has
 	_hub_bond_pot.visible = has
+	
+	_ranch_action_train.visible = has
+	_ranch_action_release.visible = has
+	_ranch_action_hint.visible = has
+	
 	if not has:
 		return
 	var c: Dictionary = lair[_selected_index]
 	var species_id: String = String(c.get("species_id", ""))
 	_hub_name.text = String(c.get("display_name", "Unknown"))
 	_hub_identity.text = _identity_line(c, species_id)
-	var trig_hint: String = ""
+	
+	var player_dna: float = GameState.get_dna(species_id)
+	_hub_dna_stat.text = "DNA Catalog: %.0f" % player_dna
+	
 	var role: Dictionary = COMBAT_CONTENT.get_support_role(species_id)
 	if role.is_empty():
 		role = c.get("support_role", {})
-	trig_hint = String(role.get("hud_trigger_hint", "")).strip_edges()
+	var trig_hint: String = String(role.get("hud_trigger_hint", "")).strip_edges()
 	var readout: String = String(role.get("readout_name", c.get("display_name", ""))).strip_edges()
 	if trig_hint.is_empty():
 		_hub_support.text = readout
 	else:
 		_hub_support.text = "%s\n%s" % [readout, PRESENTATION_TEXT.support_trigger_line(trig_hint)]
+	
 	var bond_level: int = int(c.get("bond_level", 1))
+	var stats: Dictionary = GameState.get_bond_level_stats_readout(bond_level)
 	var pot: String = _get_potential_label_for_species(species_id)
-	_hub_bond_pot.text = "Bond depth %d  ·  Species potential %s\nSame bond carries into the next descent unless you clear it." % [bond_level, pot]
+	
+	var cur_pct: int = int((stats.current_mult - 1.0) * 100.0)
+	var next_pct: int = int((stats.next_mult - 1.0) * 100.0)
+	
+	var bond_text: String = "Bond depth %d  ·  Potential %s\n" % [bond_level, pot]
+	bond_text += "Current Effect: +%d%%\n" % cur_pct
+	if not stats.is_max:
+		bond_text += "Next Level: +%d%%" % next_pct
+	else:
+		bond_text += "MAX LEVEL REACHED"
+	
+	_hub_bond_pot.text = bond_text
+	
+	var cost: int = GameState.get_lair_training_cost(species_id)
+	var refund: int = GameState.get_lair_release_refund(species_id)
+	
+	_ranch_action_train.text = PRESENTATION_TEXT.LAIR_ACTION_TRAIN_LABEL
+	if bond_level >= 5:
+		_ranch_action_train.text += " (MAX)"
+		UI_STYLE.apply_label(_ranch_action_train, "mm_dim")
+	else:
+		var can_afford: bool = player_dna >= cost
+		_ranch_action_train.text += " - %d DNA" % cost
+		UI_STYLE.apply_label(_ranch_action_train, "mm_choice_bond" if can_afford else "mm_choice_consume")
+		if not can_afford:
+			_ranch_action_train.add_theme_color_override("font_color", UI_STYLE.get_manga_color("blood_ember").lerp(Color.BLACK, 0.4))
+		
+	_ranch_action_release.text = PRESENTATION_TEXT.LAIR_ACTION_RELEASE_LABEL + " (+%d DNA)" % refund
+	UI_STYLE.apply_label(_ranch_action_release, "mm_choice_consume")
+	
+	_ranch_action_hint.text = "Training deepens the bond without needing to find them in the hollow. Releasing folds their pattern back into the DNA Archive."

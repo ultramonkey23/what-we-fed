@@ -29,27 +29,72 @@ const PERFORMANCE_PROC_CHIP_FADE_TIME: float = 1.2
 const TENDENCY_ANCHOR_HOLD_TIME: float = 2.3
 const TENDENCY_ANCHOR_FADE_TIME: float = 0.26
 const DAMAGE_NUMBER_FLOAT_TIME: float = 0.85
+const PARRY_FOLLOWUP_WINDOW_BASE: float = 0.55
+const PARRY_FOLLOWUP_WINDOW_ON_BEAT: float = 0.85
+
+const SLOWMO_PRESETS_BY_CONTEXT: Dictionary = {
+	"parry_perfect_beat_perfect": {"scale": 0.52, "duration": 0.10},
+	"parry_perfect_beat_good": {"scale": 0.64, "duration": 0.08},
+	"parry_perfect_offbeat": {"scale": 0.76, "duration": 0.08},
+	"timed_attack_perfect_beat_perfect": {"scale": 0.68, "duration": 0.08},
+	"timed_attack_perfect_other": {"scale": 0.80, "duration": 0.06},
+	"timed_attack_good": {"scale": 0.88, "duration": 0.04},
+	"parry_followup": {"scale": 0.86, "duration": 0.04},
+	"counter_warp_perfect": {"scale": 0.05, "duration": 0.12},
+	"counter_warp_good": {"scale": 0.12, "duration": 0.08}
+}
+
+const SLOWMO_TIER_THRESHOLDS: Dictionary = {
+	"puncture_max_scale": 0.10,
+	"stretch_max_scale": 0.70
+}
+
+## TEMPO & TIME DISTORTION
+const TEMPO_NONE: StringName = &"none"
+const TEMPO_PUNCTURE: StringName = &"puncture" # Micro-time combat violence
+const TEMPO_STRETCH: StringName = &"stretch"   # Relative time dilation (part of Suspension)
+const TEMPO_VOID: StringName = &"void"         # Complete tactical pause (Suspension: slowed choice/reward)
+const TEMPO_DECREE: StringName = &"decree"     # Boss/world law shift
+const TEMPO_PRIORITY: Dictionary = {
+	TEMPO_NONE: 0,
+	TEMPO_PUNCTURE: 1,
+	TEMPO_STRETCH: 2,
+	TEMPO_DECREE: 3,
+	TEMPO_VOID: 4
+}
+const PUNCTURE_MIN_SCALE: float = 0.01
+const PUNCTURE_MAX_SCALE: float = 0.05
+const PUNCTURE_MAX_DURATION: float = 0.06
+const PUNCTURE_COOLDOWN_SECONDS: float = 0.20
+const STRETCH_SCALE: float = 0.40
+const STRETCH_MAX_DURATION: float = 0.40
+const VOID_SCALE: float = 0.12
+const DECREE_SCALE: float = 0.40
+const DECREE_MIN_DURATION: float = 0.40
+const DECREE_MAX_DURATION: float = 1.20
+const TEMPO_DISTORTION_WINDOW_SECONDS: float = 10.0
+const PUNCTURE_MAX_DISTORTION_PER_WINDOW: float = 1.40
 
 # ─── HUD LAYOUT & ASSETS ─────────────────────────────────────────────────────
 # Shipped combat panels live under res://assets/ui/combat/panels/ (names match *.import source_file).
 const _HUD_TOP_LEFT_PANEL_PATHS: Array[String] = [
-	"res://assets/ui/combat/panels/combat_panel_top_left.png.png",
 	"res://assets/ui/combat/panels/combat_panel_top_left.png",
 	"res://assets/ui/combat/panels/combat_panel_premium_top_left.png",
+	"res://assets/ui/combat/panels/combat_panel_top_left.png.png",
 ]
 const _HUD_TOP_RIGHT_PANEL_PATHS: Array[String] = [
-	"res://assets/ui/combat/panels/combat_panel_top_right.png.png",
 	"res://assets/ui/combat/panels/combat_panel_top_right.png",
 	"res://assets/ui/combat/panels/combat_panel_premium_top_right.png",
+	"res://assets/ui/combat/panels/combat_panel_top_right.png.png",
 ]
 const _HUD_REWARD_PANEL_PATHS: Array[String] = [
-	"res://assets/ui/combat/panels/combat_panel_reward_claim.png.png",
 	"res://assets/ui/combat/panels/combat_panel_reward_claim.png",
 	"res://assets/ui/combat/panels/combat_panel_premium_reward.png",
+	"res://assets/ui/combat/panels/combat_panel_reward_claim.png.png",
 ]
 const _HUD_BOTTOM_PANEL_PATHS: Array[String] = [
-	"res://assets/ui/combat/panels/combat_panel_bottom.png.png",
 	"res://assets/ui/combat/panels/combat_panel_bottom.png",
+	"res://assets/ui/combat/panels/combat_panel_bottom.png.png",
 ]
 ## Atlas slice in texture pixel space.
 ## Use tight visible-shell bounds so transparent sheet padding is not treated as wrapper area.
@@ -73,9 +118,9 @@ const HUD_BOTTOM_CONTENT_MARGIN: Vector4 = Vector4(10.0, 3.0, 10.0, 3.0)
 ## Progress bar track (shared underlay for HP / stamina when present).
 const _HUD_BAR_TRACK_PATHS: Array[String] = [
 	"res://assets/ui/combat/bars/combat_bar_track.png",
-	"res://assets/ui/combat/bars/combat_bar_track.png.png",
 	"res://assets/ui/combat/bars/combat_bar_hp_track.png",
 	"res://assets/ui/combat/panels/combat_bar_track.png",
+	"res://assets/ui/combat/bars/combat_bar_track.png.png",
 ]
 const HUD_BAR_TRACK_ATLAS_REGION: Rect2 = Rect2()
 const HUD_BAR_TRACK_NINE_SLICE: Vector4 = Vector4(6.0, 4.0, 6.0, 4.0)
@@ -150,42 +195,42 @@ static func _texture_region_or_full(texture_path: String, atlas_region: Rect2) -
 const HUD_VIEWPORT_WIDTH: float = 1280.0
 const HUD_VIEWPORT_HEIGHT: float = 720.0
 const HUD_OUTER_MARGIN: float = 12.0
-const HUD_TOP_BAND_Y: float = 6.0
-const HUD_TOP_BAND_HEIGHT: float = 120.0
-const HUD_TOP_PANEL_WIDTH: float = 364.0
-## Narrower than before so opaque shell intrudes less on the playfield.
-const HUD_TOP_RIGHT_PANEL_WIDTH: float = 224.0
+const HUD_TOP_BAND_Y: float = 4.0
+const HUD_TOP_BAND_HEIGHT: float = 92.0
+const HUD_TOP_PANEL_WIDTH: float = 320.0
+## Keep the right rail in the margin so it does not cover combat lanes.
+const HUD_TOP_RIGHT_PANEL_WIDTH: float = 132.0
 const HUD_GAP_BELOW_TOP_BAND: float = 10.0
-const HUD_RIGHT_RAIL_WIDTH: float = 96.0
+const HUD_RIGHT_RAIL_WIDTH: float = 132.0
 ## Minimum height for the persistent right-column stack inside the top-right wrapper.
-const HUD_RIGHT_STACK_MIN_HEIGHT: float = 224.0
+const HUD_RIGHT_STACK_MIN_HEIGHT: float = 218.0
 const HUD_BOTTOM_STRIP_HEIGHT: float = 34.0
 const HUD_BOTTOM_OUTER_MARGIN: float = 10.0
 ## Boss readout sits in the lane between top corner panels (not under them).
 const HUD_BOSS_BLOCK_WIDTH: float = 488.0
 const HUD_BOSS_BLOCK_X: float = (HUD_VIEWPORT_WIDTH - HUD_BOSS_BLOCK_WIDTH) * 0.5
-const HUD_BOSS_BLOCK_Y: float = HUD_TOP_BAND_Y + HUD_TOP_BAND_HEIGHT + 4.0
+const HUD_BOSS_BLOCK_Y: float = HUD_TOP_BAND_Y + 26.0
 
 const RIGHT_HUD_STACK_X: float = HUD_VIEWPORT_WIDTH - HUD_OUTER_MARGIN - HUD_RIGHT_RAIL_WIDTH
 const RIGHT_HUD_STACK_WIDTH: float = HUD_RIGHT_RAIL_WIDTH
 const RIGHT_HUD_LABEL_X: float = RIGHT_HUD_STACK_X + 8.0
-const RIGHT_HUD_VALUE_X: float = RIGHT_HUD_STACK_X + 54.0
+const RIGHT_HUD_VALUE_X: float = RIGHT_HUD_STACK_X + 74.0
 const RIGHT_HUD_ROW_WIDTH: float = 22.0
-const RIGHT_HUD_TEXT_WIDTH: float = 78.0
+const RIGHT_HUD_TEXT_WIDTH: float = 108.0
 
 ## Temporary live-reward card: right-aligned, above footer (not over lane center).
-const COMPACT_LIVE_REWARD_WIDTH: float = 220.0
-const COMPACT_LIVE_REWARD_HEIGHT: float = 56.0
+const COMPACT_LIVE_REWARD_WIDTH: float = 132.0
+const COMPACT_LIVE_REWARD_HEIGHT: float = 64.0
 const COMPACT_LIVE_REWARD_ABOVE_FOOTER_GAP: float = 8.0
 ## Transient combat feedback (e.g. STRUCK): thin strip under top HUD, not mid-screen.
 const HUD_COMBAT_FEEDBACK_Y: float = 108.0
-const HUD_COMBAT_FEEDBACK_HALF_WIDTH: float = 148.0
-const HUD_COMBAT_FEEDBACK_HEIGHT: float = 28.0
+const HUD_COMBAT_FEEDBACK_HALF_WIDTH: float = 220.0
+const HUD_COMBAT_FEEDBACK_HEIGHT: float = 34.0
 const HUD_COMBAT_FEEDBACK_FONT_SIZE: int = 20
 const HUD_COMBAT_FEEDBACK_PUNCH_SCALE: float = 1.06
 ## Performance offer toast: width capped to sit above footer, flush right with HUD margin.
-const COMPACT_PERFORMANCE_OFFER_WIDTH: float = 220.0
-const COMPACT_PERFORMANCE_OFFER_HEIGHT: float = 56.0
+const COMPACT_PERFORMANCE_OFFER_WIDTH: float = 132.0
+const COMPACT_PERFORMANCE_OFFER_HEIGHT: float = 64.0
 const COMPACT_PERFORMANCE_OFFER_ABOVE_FOOTER_GAP: float = 8.0
 
 
@@ -234,3 +279,9 @@ const COMBAT_BG_PATHS: Array[String] = [
 	"res://assets/backgrounds/combat/cbg3.png",
 ]
 const COMBAT_BG_MODULATE: Color = Color(0.78, 0.78, 0.78, 1.0)
+
+
+static func get_slowmo_preset(context_id: String, fallback: Dictionary = {}) -> Dictionary:
+	if SLOWMO_PRESETS_BY_CONTEXT.has(context_id):
+		return Dictionary(SLOWMO_PRESETS_BY_CONTEXT[context_id]).duplicate(true)
+	return fallback.duplicate(true)

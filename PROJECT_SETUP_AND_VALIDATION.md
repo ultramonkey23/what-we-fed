@@ -1,25 +1,17 @@
 # What We Fed Repo Workflow
 
-This is the practical repo entrypoint for Codex, Claude Code, and human terminal work.
+Practical setup and validation commands for this repo.
 
-## Use This First
+For startup context, read first:
+- `docs/ai/PROJECT_KERNEL.md`
+- `docs/ai/CONTEXT_EXPANSION_MAP.md`
+- `docs/ai/VIBE_CODING_QUICKSTART.md`
 
-Project truth split:
-- Live build truth: [docs/GAME_SPINE.md](docs/GAME_SPINE.md), [docs/DEMO_MILESTONE_LADDER.md](docs/DEMO_MILESTONE_LADDER.md), [docs/NEXT_PHASE_PLAN.md](docs/NEXT_PHASE_PLAN.md)
-- Final scope canon: [docs/WHAT_WE_FED_FINAL_GAME_SCOPE_CANON_FLAGSHIP.md](docs/WHAT_WE_FED_FINAL_GAME_SCOPE_CANON_FLAGSHIP.md)
-- Deferred later-scope canon: [docs/THE_HOLLOW_EGG_KAIJU_ASCENSION_CANON.md](docs/THE_HOLLOW_EGG_KAIJU_ASCENSION_CANON.md), [docs/FUTURE_RANCH_PLAN.md](docs/FUTURE_RANCH_PLAN.md)
-- Core fantasy guardrail: [docs/GAME_SOUL_AND_CORE_FANTASY.md](docs/GAME_SOUL_AND_CORE_FANTASY.md)
-- Song/runtime structure: [docs/SONG_LEVEL_STRUCTURE.md](docs/SONG_LEVEL_STRUCTURE.md)
-
-Current live-build assumptions:
-- Playable pre-alpha vertical-slice foundation
-- Realtime lane combat, timing truth, live DNA economy, live reward shell, live tendency growth, creature ecosystem logic
-- RPG roguelite first, with lane-timing combat as the signature expression layer
-- **Design target run cadence** (see [docs/GAME_SPINE.md](docs/GAME_SPINE.md), [docs/SONG_LEVEL_STRUCTURE.md](docs/SONG_LEVEL_STRUCTURE.md)): **9 regular levels** (each under ~2 min of authored song slice) + **1 boss** (full song); **menus between** regular levels for rewards and inventory/resources
-- Ranch is deferred
-- Visual direction is Black Signal Combat Pass v1, evolving toward dark-cool ascendant creature power fantasy (not bright-clean anime or generic superhero gloss)
-
-Do not treat final-scope canon as permission to rewrite the live build.
+Truth layering reminder:
+- Live build docs (`docs/GAME_SPINE.md`, `docs/NEXT_PHASE_PLAN.md`) outrank stale speculative wording.
+- Final scope and deferred docs are deep reference, not default implementation orders.
+- **Combat-clean, management-rich**: No menu sludge (repeated interruption) during active in-level combat; rich management is encouraged between levels and before runs.
+- **Display Law**: **Combat HUD = Urgency** (live action) | **Management Screens = Comprehension** (between-level strategy).
 
 ## Repo-Local Godot Commands
 

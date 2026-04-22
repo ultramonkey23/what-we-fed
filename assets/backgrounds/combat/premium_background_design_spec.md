@@ -1,5 +1,7 @@
 # Premium Combat Background Design Specifications
 
+**Production rule:** Every biome **triplet** (Base / Pressure / Apex) must satisfy the [Battlefield Alignment Addendum](#battlefield-alignment-addendum-required-for-all-biome-triplets). Where this document’s mood or layering language conflicts with that addendum, the addendum wins for **combat readability** and **lane shell** layout.
+
 ## Current State Analysis
 Existing combat backgrounds (cbg1-3) are functional but lack:
 - Atmospheric depth and oppression
@@ -10,16 +12,73 @@ Existing combat backgrounds (cbg1-3) are functional but lack:
 ## Design Philosophy
 
 ### Core Atmospheric Goals
-- **Oppressive Claustrophobia**: Spaces feel confining and dangerous
+- **Oppressive Claustrophobia**: Spaces feel confining and dangerous — achieved through **perimeter pressure**, **sky/atmosphere**, and **distant scale**, not by packing the **central combat corridor** (see [addendum](#battlefield-alignment-addendum-required-for-all-biome-triplets)).
 - **Biological Horror**: Environment shows creature influence
 - **World Consequence**: Backgrounds reflect player actions
-- **Premium Depth**: Multiple layers create visual richness
+- **Premium Depth**: Multiple layers create visual richness — **edge and depth** carry density; the **lane shell** stays readable
 
 ### Visual Hierarchy
-1. **Foreground**: Combat area, clear visibility
-2. **Midground**: Environmental storytelling elements
-3. **Background**: Atmospheric depth, world context
-4. **Sky/Atmosphere**: Mood lighting, particle effects
+1. **Foreground**: Combat substrate and near-edge framing; must stay **legible** as a three-lane battlefield plane ([addendum](#battlefield-alignment-addendum-required-for-all-biome-triplets): not a busy illustrative foreground in the central corridor).
+2. **Midground**: Environmental storytelling, **edge-weighted** structures and activation
+3. **Background**: Atmospheric depth, world context; stable horizon anchors
+4. **Sky/Atmosphere**: Mood lighting, particle effects; escalation-friendly pressure
+
+## Battlefield Alignment Addendum (Required for All Biome Triplets)
+
+**Each** biome triplet must be painted to a **locked combat substrate**.
+
+_Note:_ Elsewhere in this spec, **Early / Mid / Late** game describes **narrative world-state** drift. **Base / Pressure / Apex** are the **three locked plates** for one biome’s combat triplet; horizon, floor angle, and landmark anchors stay fixed while intensity follows the addendum below.
+
+- Do **not** treat the background as a free scenic illustration.
+- Treat it as a **gameplay-aligned battlefield plate**.
+
+### Core combat-space rules
+- The **center combat corridor** must remain the **quietest and most readable** region.
+- The **floor/substrate** must visibly support a **three-lane combat shell**.
+- **Tall silhouettes**, **hard vertical props**, or **contrast spikes** must stay **out of the main combat read band**.
+- The **same horizon line**, **floor angle**, and **landmark anchors** must remain **consistent** across Base / Pressure / Apex states.
+- The scene should feel like **one place escalating**, not three different places.
+
+### Composition constraints
+- **Horizon** should stay **stable** across all three states.
+- **Major landmark silhouettes** should stay **anchored in the same positions** across all three states.
+- The **floor** must read as a **playable battlefield plane**, not an illustration foreground.
+- **Strongest detail density** belongs at:
+  - side framing
+  - far distance
+  - edge-weighted midground structures
+- **Lowest detail density** belongs in the **central combat corridor**.
+
+### Lane-read constraints
+- The **gameplay center** must remain **low-clutter** and **mid-value stable**.
+- Avoid **tall props**, **strong foreground silhouettes**, or **bright accent breaks** in the **central lane-read** region.
+- Keep the **visual center supportive**, not dominant.
+- Any escalation should intensify mostly through:
+  - perimeter activity
+  - edge-weighted accents
+  - atmospheric pressure
+  - landmark activation
+- Escalation must **not** primarily come from **central clutter**.
+
+### Floor/substrate rules
+- The **base substrate** must feel like a **real battlefield surface**.
+- It should visually support **three lane bands / rails** through shallow perspective, markings, seams, cracks, channel lines, or material rhythm.
+- The floor should **help explain where combat belongs**.
+- Avoid **noisy ground detail** directly behind the **core target/shot zones**.
+
+### State escalation rules
+- **Base:** calmest, clearest, most breathable
+- **Pressure:** stronger edge activity, stronger structural activation, slightly tighter tension
+- **Apex:** strongest perimeter intensity and landmark activation, while **central combat readability remains protected**
+
+<a id="triplet-approval-rule"></a>
+
+### Approval rule (reject any version that)
+
+- Feels like a **different location** per state
+- Gets “cooler” by making the **center busier**
+- Introduces **tall vertical clutter** into combat space
+- Weakens readability of the **implied lane/read corridor**
 
 ## Enhanced Combat Environments
 
@@ -92,7 +151,7 @@ Existing combat backgrounds (cbg1-3) are functional but lack:
 - **Base Resolution**: 1920x1080 for source assets
 - **Game Scaling**: 70% for 1280x720 target
 - **Layer Separation**: Foreground/Midground/Background
-- **Parallax**: Subtle movement for depth
+- **Parallax**: Subtle movement for depth — keep **horizon** and **floor vanishing** behavior **consistent** across Base / Pressure / Apex so escalation does not read as a camera or set swap ([addendum](#battlefield-alignment-addendum-required-for-all-biome-triplets))
 
 ### Layer Structure
 ```
@@ -112,9 +171,9 @@ Layer 3: Midground Details
 - Particle sources
 
 Layer 4: Foreground (closest)
-- Combat area boundaries
-- Immediate obstacles
-- Ground plane
+- Battlefield **substrate** / ground plane (lane bands, seams, material rhythm)
+- **Side** framing and near-edge reads only — avoid tall verticals or high-contrast breaks in the **central lane-read band** ([addendum](#battlefield-alignment-addendum-required-for-all-biome-triplets))
+- Combat bounds implied by floor and edge composition, not busy center props
 ```
 
 ### Animation Elements
@@ -151,7 +210,7 @@ Layer 4: Foreground (closest)
 **Dynamic Lighting**:
 - Combat impacts create temporary light
 - Energy abilities affect ambient lighting
-- Boss encounters change lighting dramatically
+- Boss or high-intensity moments may push lighting hard — bias dramatic shifts toward **perimeter**, **sky**, and **landmarks** so the **central corridor** keeps **mid-value stability** ([addendum](#battlefield-alignment-addendum-required-for-all-biome-triplets))
 
 **Static Lighting**:
 - Base ambient lighting sets mood
@@ -173,6 +232,9 @@ Layer 4: Foreground (closest)
 
 ### Visual Standards
 - [ ] Combat area remains clearly visible
+- [ ] **Triplet:** one locked substrate — stable horizon, floor angle, and landmark anchors across Base / Pressure / Apex
+- [ ] **Triplet:** center combat corridor stays lowest detail / lowest vertical noise; escalation reads on **perimeter** and **landmarks**, not central clutter
+- [ ] **Triplet:** floor reads as a **three-lane** playable plane (markings/seams/rhythm); no noisy ground in core target/shot bands
 - [ ] Atmospheric effects enhance, don't distract
 - [ ] Color palettes support readability
 - [ ] Performance remains optimal
@@ -188,6 +250,7 @@ Layer 4: Foreground (closest)
 - [ ] Environmental storytelling clear
 - [ ] World-state reflection meaningful
 - [ ] Premium quality maintained
+- [ ] **Triplet:** passes [approval / reject gate](#triplet-approval-rule) (one place escalating; center not the “cool” layer; no tall vertical clutter in combat read; lane corridor intact)
 
 ## Implementation Priority
 

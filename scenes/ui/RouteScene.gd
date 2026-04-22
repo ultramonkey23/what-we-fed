@@ -1,10 +1,12 @@
 extends Node2D
 
 const ROUTE_CONTENT = preload("res://data/RouteContent.gd")
+const SONG_LIBRARY = preload("res://data/SongLibraryContent.gd")
 const COMBAT_SCENE_PATH: String = "res://scenes/combat/CombatScene.tscn"
 const LAIR_SCENE_PATH: String = "res://scenes/ui/LairScene.tscn"
 const UI_STYLE = preload("res://systems/UIStyle.gd")
 const PRESENTATION_TEXT = preload("res://data/PresentationTextContent.gd")
+const ROUTE_SIGIL_PATH: String = "res://assets/ui/shell/route_sigil.png"
 
 const CARDS_PER_PAGE: int = 3
 const VIEWPORT_W: float = 1280.0
@@ -12,6 +14,11 @@ const CARD_WIDTH: float = 348.0
 const CARD_HEIGHT: float = 336.0
 const CARD_GAP: float = 24.0
 const CARD_ROW_Y: float = 128.0
+const REGION_PRESSURE_PREVIEW: Dictionary = {
+	"feeding_hollow": "Predatory baseline",
+	"pale_shelf": "Attritional exposure",
+	"drowned_cut": "Resonant volume"
+}
 
 var _slot_cards: Array[ColorRect] = []
 var _slot_accents: Array[ColorRect] = []
@@ -67,6 +74,11 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not key_event.pressed or key_event.echo:
 		return
 
+	if key_event.keycode == KEY_ESCAPE:
+		GameState.run_in_progress = false
+		get_tree().change_scene_to_file(LAIR_SCENE_PATH)
+		return
+
 	var regions: Array = ROUTE_CONTENT.REGIONS
 	var region_count: int = regions.size()
 	if region_count <= 0:
@@ -114,11 +126,6 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_tree().change_scene_to_file(COMBAT_SCENE_PATH)
 		return
 
-	if key_event.keycode == KEY_ESCAPE:
-		GameState.run_in_progress = false
-		get_tree().change_scene_to_file(LAIR_SCENE_PATH)
-		return
-
 
 func _clamp_selection_to_visible_page(region_count: int) -> void:
 	var last_on_page: int = mini(_page_start + CARDS_PER_PAGE - 1, region_count - 1)
@@ -133,6 +140,19 @@ func _build_ui() -> void:
 
 	var canvas: CanvasLayer = CanvasLayer.new()
 	add_child(canvas)
+
+	var sigil_tex: Texture2D = null
+	if ResourceLoader.exists(ROUTE_SIGIL_PATH):
+		sigil_tex = load(ROUTE_SIGIL_PATH) as Texture2D
+	if sigil_tex != null:
+		var sigil := TextureRect.new()
+		sigil.texture = sigil_tex
+		sigil.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		sigil.position = Vector2(964.0, 16.0)
+		sigil.size = Vector2(280.0, 280.0)
+		sigil.modulate = Color(0.82, 0.92, 1.0, 0.24)
+		sigil.stretch_mode = TextureRect.STRETCH_SCALE
+		canvas.add_child(sigil)
 
 	var header: Label = Label.new()
 	header.text = PRESENTATION_TEXT.ROUTE_HEADER
@@ -287,7 +307,7 @@ func _apply_route_page() -> void:
 		controls["tag_label"].text = String(region.get("tag", ""))
 		controls["name_label"].text = String(region.get("name", ""))
 		controls["flavor_label"].text = String(region.get("flavor", ""))
-		controls["mod_label"].text = String(region.get("modifier_label", ""))
+		controls["mod_label"].text = _build_region_song_preview(region)
 
 		_reflow_route_scroll(controls["flavor_scroll"], controls["flavor_label"])
 		_reflow_route_scroll(controls["mod_scroll"], controls["mod_label"])
@@ -308,8 +328,8 @@ func _update_footer_hint() -> void:
 	var n: int = ROUTE_CONTENT.REGIONS.size()
 	var parts: PackedStringArray = PackedStringArray(["1 / 2 / 3 - select"])
 	if n > CARDS_PER_PAGE:
-		var page_count: int = (n + CARDS_PER_PAGE - 1) / CARDS_PER_PAGE
-		var cur_page: int = _page_start / CARDS_PER_PAGE + 1
+		var page_count: int = int(ceil(float(n) / float(CARDS_PER_PAGE)))
+		var cur_page: int = int(floor(float(_page_start) / float(CARDS_PER_PAGE))) + 1
 		parts.append("[ / ] - more regions (%d / %d)" % [cur_page, page_count])
 	parts.append("SPACE / ENTER - enter run")
 	parts.append("ESC - lair")
@@ -343,3 +363,12 @@ func _refresh_card_highlights() -> void:
 			_slot_cards[slot].color.a = 1.0
 		if slot < _slot_accents.size() and is_instance_valid(_slot_accents[slot]):
 			_slot_accents[slot].color = UI_STYLE.get_manga_color("alert_gold") if is_selected else Color(0.0, 0.0, 0.0, 0.0)
+
+
+func _build_region_song_preview(region: Dictionary) -> String:
+	var region_id: String = String(region.get("id", ""))
+	var modifier_text: String = String(region.get("modifier_label", ""))
+	var song: Dictionary = SONG_LIBRARY.get_region_main_run_song(region_id)
+	var song_name: String = String(song.get("display_name", "Unknown track"))
+	var pressure_preview: String = String(REGION_PRESSURE_PREVIEW.get(region_id, "Region-authored pressure"))
+	return "%s\n\nSong: %s\nPressure: %s" % [modifier_text, song_name, pressure_preview]

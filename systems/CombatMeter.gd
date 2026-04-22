@@ -2,7 +2,7 @@ extends Node
 
 const PASSIVE_REGEN_PER_SEC: float = 4.0
 const STAMINA_ATTACK_GAIN: float = 8.0
-const STAMINA_DODGE_GAIN: float = 35.0
+const STAMINA_DODGE_COST: float = 16.0
 const STAMINA_PARRY_COST: float = 40.0
 const STAMINA_DAMAGE_TAKEN_LOSS: float = 5.0
 
@@ -23,7 +23,10 @@ const MULT_SOVEREIGN: float = 1.85
 var combo_count: int = 0
 var style_score: float = 0.0
 var stamina: float = 100.0
-var stamina_max: float = 100.0
+var stamina_max: float = 100.0:
+	get:
+		# Always fetch from GameState to ensure real-time scaling
+		return GameState.stat_endurance
 var phrase_count: int = 0  # consecutive quality actions without a break
 
 var _ultimate_announced: bool = false
@@ -48,12 +51,26 @@ func can_parry() -> bool:
 	return stamina >= STAMINA_PARRY_COST
 
 
+func can_dodge() -> bool:
+	return stamina >= STAMINA_DODGE_COST
+
+
 func spend_stamina_for_parry() -> bool:
 	if not can_parry():
 		EventBus.emit_signal("player_no_stamina")
 		return false
 
 	stamina = max(stamina - STAMINA_PARRY_COST, 0.0)
+	EventBus.emit_signal("stamina_changed", stamina, stamina_max)
+	return true
+
+
+func spend_stamina_for_dodge() -> bool:
+	if not can_dodge():
+		EventBus.emit_signal("player_no_stamina")
+		return false
+
+	stamina = max(stamina - STAMINA_DODGE_COST, 0.0)
 	EventBus.emit_signal("stamina_changed", stamina, stamina_max)
 	return true
 
@@ -102,7 +119,6 @@ func record_parry(quality: String) -> void:
 func record_dodge() -> void:
 	combo_count += 1
 	style_score += 6.0
-	_gain_stamina(STAMINA_DODGE_GAIN)
 	_emit_meter_state()
 
 

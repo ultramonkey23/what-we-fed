@@ -5,6 +5,10 @@ extends RefCounted
 
 const ACCENT_WINDOW_SECONDS: float = 0.95
 const ESCALATION_WINDOW_SECONDS: float = 5.0
+const DEFAULT_CADENCE_WINDOW_RULES: Array = [
+	{"window": "surge", "section_ids": ["final"], "intensity_gte": 0.85},
+	{"window": "drive", "section_ids": ["chorus"], "intensity_gte": 0.62}
+]
 
 var _bpm: float = 120.0
 var _section_id: String = "opening"
@@ -12,6 +16,7 @@ var _section_intensity: float = 0.0
 var _phrase_count: int = 0
 var _accent_window: float = 0.0
 var _escalation_window: float = 0.0
+var _cadence_window_rules: Array = DEFAULT_CADENCE_WINDOW_RULES.duplicate(true)
 
 
 func reset() -> void:
@@ -21,6 +26,16 @@ func reset() -> void:
 	_phrase_count = 0
 	_accent_window = 0.0
 	_escalation_window = 0.0
+	_cadence_window_rules = DEFAULT_CADENCE_WINDOW_RULES.duplicate(true)
+
+
+func configure(song_profile: Dictionary) -> void:
+	var contract: Dictionary = Dictionary(song_profile.get("conductor_contract", {}))
+	var rules: Array = Array(contract.get("cadence_window_rules", []))
+	if rules.is_empty():
+		_cadence_window_rules = DEFAULT_CADENCE_WINDOW_RULES.duplicate(true)
+	else:
+		_cadence_window_rules = rules.duplicate(true)
 
 
 func set_bpm(bpm: float) -> void:
@@ -57,6 +72,7 @@ func build_state() -> Dictionary:
 		"bpm": _bpm,
 		"phrase_intensity": clampf(float(_phrase_count) / 8.0, 0.0, 1.0),
 		"section_mood": _resolve_section_mood(_section_id, _section_intensity),
+		"cadence_window": resolve_cadence_window(),
 		"section_id": _section_id,
 		"section_intensity": _section_intensity,
 		"accent_window": clampf(_accent_window / ACCENT_WINDOW_SECONDS, 0.0, 1.0),
@@ -84,3 +100,17 @@ func _resolve_section_mood(section_id: String, intensity: float) -> String:
 	if intensity >= 0.45:
 		return "build"
 	return "steady"
+
+
+func resolve_cadence_window() -> String:
+	for rule in _cadence_window_rules:
+		var entry: Dictionary = Dictionary(rule)
+		var required_sections: Array = Array(entry.get("section_ids", []))
+		if not required_sections.is_empty() and not required_sections.has(_section_id):
+			continue
+		if _section_intensity < float(entry.get("intensity_gte", 0.0)):
+			continue
+		var window_id: String = String(entry.get("window", ""))
+		if not window_id.is_empty():
+			return window_id
+	return ""

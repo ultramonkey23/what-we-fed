@@ -142,19 +142,27 @@ static func get_adaptive_reward_choices(
 		adapted_rewards.append(bonus_reward)
 	
 	# Improve reward quality for consistent good performance
-	if performance_rating in ["excellent", "good"] and consistency_bonus > 0.5:
+	# Omen (Luck) multiplies the consistency bonus.
+	var omen_mult: float = 1.0
+	# Since DynamicDifficulty is a static RefCounted, we must assume GameState is an autoload or passed in.
+	# Standard practice in this repo seems to be using GameState directly if it's an autoload.
+	if Engine.has_singleton("GameState") or true: # Fallback to global if needed
+		omen_mult = GameState.get("stat_luck") if "stat_luck" in GameState else 1.0
+
+	if performance_rating in ["excellent", "good"] and consistency_bonus * omen_mult > 0.5:
+		var effective_bonus: float = consistency_bonus * omen_mult
 		for reward in adapted_rewards:
 			if reward.has("rarity"):
 				# Upgrade rarity if possible
 				match reward["rarity"]:
 					"common":
-						if randf() < consistency_bonus:
+						if randf() < effective_bonus:
 							reward["rarity"] = "uncommon"
 					"uncommon":
-						if randf() < consistency_bonus * 0.7:
+						if randf() < effective_bonus * 0.7:
 							reward["rarity"] = "rare"
 					"rare":
-						if randf() < consistency_bonus * 0.4:
+						if randf() < effective_bonus * 0.4:
 							reward["rarity"] = "epic"
 	
 	return adapted_rewards

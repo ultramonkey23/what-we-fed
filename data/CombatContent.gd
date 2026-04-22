@@ -97,7 +97,7 @@ const CREATURES := {
 		   "feedback_text": "ASHCLAW",
 		   "hud_trigger_hint": "Parry/timed hit"
 	   },
-	   "quig_offer_text": "Quig: \"Mind the claws. It only knows the part after fear.\"",
+	   "quig_offer_text": "Quig: \"Mind the claws. It reads fear as a cue.\"",
 	   "wrong_detail": "claws worn completely flat but still cutting"
    },
 	   "bond_remnant": {
@@ -142,7 +142,7 @@ const CREATURES := {
 			   "feedback_text": "REMNANT",
 			   "hud_trigger_hint": "Hit when charged"
 		   },
-		   "quig_offer_text": "Quig: \"Do not stare. It notices being remembered.\"",
+		   "quig_offer_text": "Quig: \"Do not stare. It notices memory pressure.\"",
 		   "wrong_detail": "teeth set in a jaw that never learned to close"
 	   },
 	"gruvek": {
@@ -172,7 +172,7 @@ const CREATURES := {
 			"feedback_text": "GORGE",
 			"hud_trigger_hint": "Kill: gorge all"
 		},
-		"quig_offer_text": "Quig: \"You smell that first. Better than feeling it first.\"",
+		"quig_offer_text": "Quig: \"You smell that first. Keep your lane clean.\"",
 		"wrong_detail": "jaw unhinged past any angle that should work"
 	},
 	"veilskin": {
@@ -202,7 +202,7 @@ const CREATURES := {
 			"feedback_text": "PHASE",
 			"hud_trigger_hint": "Perf.parry: phase"
 		},
-		"quig_offer_text": "Quig: \"If it blinks, we both missed it.\"",
+		"quig_offer_text": "Quig: \"If it blinks, your read was late.\"",
 		"wrong_detail": "no visible eyes but something tracks every movement"
 	},
 	"thornback": {
@@ -232,7 +232,7 @@ const CREATURES := {
 			"feedback_text": "REND",
 			"hud_trigger_hint": "Perf.timed: rend"
 		},
-		"quig_offer_text": "Quig: \"Keep your hands where it can count them.\"",
+		"quig_offer_text": "Quig: \"Keep your hands visible. It counts movement.\"",
 		"wrong_detail": "spines still growing — some through the wrong layers"
 	},
 	"knellspine": {
@@ -262,7 +262,7 @@ const CREATURES := {
 			"feedback_text": "PEAL",
 			"hud_trigger_hint": "Good+perf.timed"
 		},
-		"quig_offer_text": "Quig: \"When it starts singing, strike first.\"",
+		"quig_offer_text": "Quig: \"When it starts singing, cut the rhythm first.\"",
 		"wrong_detail": "vertebrae tuned like bells and filed to a point"
 	},
 	"marrowward": {
@@ -292,7 +292,7 @@ const CREATURES := {
 			"feedback_text": "WARD",
 			"hud_trigger_hint": "Dodge: bone ward"
 		},
-		"quig_offer_text": "Quig: \"Even its shelter looks hungry.\"",
+		"quig_offer_text": "Quig: \"Its shelter is a mouth. Move early.\"",
 		"wrong_detail": "bone plates growing inward as if trying to cage the heart"
 	},
 	"gorefane": {
@@ -322,7 +322,7 @@ const CREATURES := {
 			"feedback_text": "MAUL",
 			"hud_trigger_hint": "Ultimate: maul"
 		},
-		"quig_offer_text": "Quig: \"It smiles before the wound learns its name.\"",
+		"quig_offer_text": "Quig: \"It commits before the wound speaks. Respect that.\"",
 		"wrong_detail": "second jaw folding out from under the first"
 	},
 	"hushcoil": {
@@ -352,7 +352,7 @@ const CREATURES := {
 			"feedback_text": "LULL",
 			"hud_trigger_hint": "Perf.parry: hush"
 		},
-		"quig_offer_text": "Quig: \"Keep your voice down. It likes the part before panic.\"",
+		"quig_offer_text": "Quig: \"Keep your voice down. It hunts the first panic.\"",
 		"wrong_detail": "throat lined with soft tissue that dampens every sound except yours"
 	},
 	"coldvein": {
@@ -382,7 +382,7 @@ const CREATURES := {
 			"feedback_text": "EXPOSE",
 			"hud_trigger_hint": "Perf.parry: seam"
 		},
-		"quig_offer_text": "Quig: \"Still enough you'll think it isn't watching. It is. You can't fix that now.\"",
+		"quig_offer_text": "Quig: \"Still enough to fool you. It is watching.\"",
 		"wrong_detail": "pupils gone but something colder left behind in their place"
 	},
 	"pale_shelf_precision_stalker": {
@@ -449,7 +449,7 @@ const CREATURES := {
 			"feedback_text": "DRAG",
 			"hud_trigger_hint": "Kill: heal+rend"
 		},
-		"quig_offer_text": "Quig: \"If you stop killing, it notices the rhythm change. Don't stop.\"",
+		"quig_offer_text": "Quig: \"If your kill rhythm drops, it notices. Keep pressure.\"",
 		"wrong_detail": "claws shaped for closing and not opening again"
 	}
 }
@@ -887,11 +887,11 @@ const ENCOUNTERS := {
 		"title": "THE HOLLOW SOVEREIGN",
 		"is_boss": true,
 		"boss_name": "THE HOLLOW SOVEREIGN",
-		"boss_subtitle": "APEX OF THE HOLLOW",
+		"boss_subtitle": "THIS GROUND DOES NOT SHARE APEX",
 		"biome": BIOME_FEEDING_HOLLOW_BOSS,
 		"phase_intro_texts": [
 			"It was always here.",
-			"THE HOLLOW OPENS ITS FULL MOUTH."
+			"The hollow does not share apex."
 		],
 		"phases": [
 			[
@@ -1007,13 +1007,25 @@ static func get_creature_art_path(species_id: String, context: String = "default
 	if creature.is_empty():
 		return ""
 
+	var fallback_portrait: String = "res://assets/creatures/portraits/%s_portrait.png" % species_id
+	var has_fallback_portrait: bool = ResourceLoader.exists(fallback_portrait)
+
 	match context:
 		"reward":
-			return String(creature.get("reward_portrait_path", creature.get("sprite_path", "")))
+			var reward_path: String = String(creature.get("reward_portrait_path", creature.get("sprite_path", "")))
+			if reward_path.is_empty() and has_fallback_portrait:
+				return fallback_portrait
+			return reward_path
 		"support":
 			if stage == "teen" or stage == "adult":
-				return String(creature.get("support_portrait_path", creature.get("sprite_path", "")))
-			return String(creature.get("sprite_path", ""))
+				var support_path: String = String(creature.get("support_portrait_path", creature.get("sprite_path", "")))
+				if support_path.is_empty() and has_fallback_portrait:
+					return fallback_portrait
+				return support_path
+			var sprite_path: String = String(creature.get("sprite_path", ""))
+			if sprite_path.is_empty() and has_fallback_portrait:
+				return fallback_portrait
+			return sprite_path
 		"battlefield":
 			if stage == "adult":
 				return String(creature.get("battlefield_sprite_path", creature.get("sprite_path", "")))
@@ -1021,7 +1033,10 @@ static func get_creature_art_path(species_id: String, context: String = "default
 				return String(creature.get("support_portrait_path", creature.get("sprite_path", "")))
 			return String(creature.get("sprite_path", ""))
 		_:
-			return String(creature.get("sprite_path", ""))
+			var default_path: String = String(creature.get("sprite_path", ""))
+			if default_path.is_empty() and has_fallback_portrait:
+				return fallback_portrait
+			return default_path
 
 
 static func get_creature_combat_render(species_id: String) -> Dictionary:

@@ -8,7 +8,7 @@ In v1 it is used to cap encounter grade expression while preserving:
 - RPG-first progression identity
 - tendency as the live combat-growth layer
 - species-specific DNA economy
-- no-pause lane readability and timing truth
+- combat-clean lane readability and timing truth
 
 ## v1 scope
 

@@ -55,11 +55,12 @@ It ties together:
 Without it, the game is a strong creature-action roguelite.
 With it, the game becomes a world-scale consequence machine.
 
-## Core truth
-The player is not only surviving the world.
-They are, knowingly or not:
-
-**raising something.**
+## Core truth (Patch V1)
+The player is not only surviving the world; they are intruding upon a living reality.
+The **Kaiju** is not your literal evil side or a simple boss.
+- **Immune Response**: The Kaiju is the world's reaction to you as an outsider (the Codex).
+- **Intrusion at Scale**: Every run increases the world's awareness of you.
+- **The World is Alive**: The planet responds to your "Entry" with corrective pressure.
 
 ---
 

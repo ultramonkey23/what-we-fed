@@ -8,6 +8,8 @@ const SFX_MAP: Dictionary = {
 	"perfect_timed_hit": "res://assets/audio/sfx/combat/hit_perfect.wav",
 	"parry": "res://assets/audio/sfx/combat/parry_good.wav",
 	"perfect_parry": "res://assets/audio/sfx/combat/parry_perfect.wav",
+	"dodge_roll": "res://assets/audio/sfx/combat/parry_good.wav",
+	"dodge_roll_perfect": "res://assets/audio/sfx/combat/parry_perfect.wav",
 	"enemy_hit": "res://assets/audio/sfx/combat/enemy_hit.wav",
 	"heavy_enemy_hit": "res://assets/audio/sfx/combat/enemy_hit_heavy.wav",
 	"boss_hit": "res://assets/audio/sfx/combat/boss_hit.wav"

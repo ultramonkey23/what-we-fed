@@ -5,18 +5,22 @@ alwaysApply: true
 
 # Routing and Handoffs
 
-- Route work to one best next move before broad implementation.
-- Keep plans bounded, practical, and sequence-aware.
-- Prefer decomposition that reduces risk and preserves momentum.
-- Handoffs must include:
-  - goal and scope
-  - files touched
-  - validation status (verified/unverified)
-  - risks
-  - one next bounded follow-up
+- Pick one bounded next move before implementation.
+- Classify mutation budget: low / medium / high.
+- Low mutation: single practical path.
+- Medium/high mutation: safe path + mutation path + recommended path.
+- Keep output sequence-aware and anti-drift.
 
-# Canonical References
+# Handoff Minimum
+
+- goal and scope
+- mutation budget
+- files touched
+- validation status
+- risks
+- one next bounded follow-up
+
+# Deep References
 
 - `docs/ai/HANDOFF_TEMPLATES.md`
 - `docs/ai/NEXT_MOVE_ROUTER.md`
-- `docs/ai/AGENT_OPERATING_SYSTEM.md`

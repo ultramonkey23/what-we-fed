@@ -4,37 +4,40 @@ applyTo: "**"
 
 # WHAT WE FED — Copilot Instructions
 
-Preserve at all times:
-- timing truth
-- lane readability
-- player-side response clarity
-- readable support
-- combat honesty
-- feedback matching mechanics
-- DNA as species-specific predation economy
-- bond vs eat as a meaningful split
-- realtime no-pause combat during each active level; intentional menus between levels (rewards, inventory/resources) before the next song
-- behavior-shaped growth
-- creatures as meaningful ecosystem units
-- start weak, become feared
+Default read order:
+1. `docs/ai/PROJECT_KERNEL.md`
+2. `docs/ai/CONTEXT_EXPANSION_MAP.md`
+3. `AGENTS.md` (Contains global workflow laws)
 
-Do not drift into:
-- generic survivor clone
-- generic creature collector
-- generic roguelite sludge
-- generic rhythm gimmick framing
-- mid-fight pause-the-song or sterile menu sludge inside active combat
-- stat spreadsheet sludge
-- filler content with no role/ecosystem logic
-- visual clutter masquerading as quality
+Default-load budget:
+- Kernel + one route file by task lane + `AGENTS.md`.
+- Expand only when unresolved conflict remains.
 
-Project rules:
-- WHAT WE FED is RPG-first, roguelite-second
-- creature-driven progression is a major identity layer
-- song-driven three-lane timing combat is the signature battle language (not the whole identity); target **9 regular levels** (each under ~2 min of track) + **1 boss** (full song)
-- the prototype is foundation, not disposable junk
-- ranch is deferred unless explicitly requested
-- prefer current live build truth over dream-scope ideas
-- choose one best bounded move
-- do not redesign the whole game unless explicitly asked
-- attach validation whenever runtime behavior changes
+## Guardrails (Preserve Always)
+- **Timing truth, lane readability, support readability, combat honesty.**
+- **DNA as species-specific predation economy.**
+- **Bond vs Eat as meaningful identity split.**
+- **Behavior-shaped growth and meaningful creature ecosystem roles.**
+- **No-pause active combat; intentional between-level management.** (Combat-clean, management-rich).
+- **Fantasy spine**: Start weak, become feared.
+
+## Hard Anti-Drift
+- No generic survivor/collector/roguelite/rhythm/stat-soup flattening.
+- No mid-combat menu sludge (repeated interruption).
+- No visual clutter that harms telegraph readability.
+
+## Workflow & Authority Order
+- **Authority Order**: Live build truth and locked core outrank stale speculative wording. (See `AGENTS.md`).
+- Prefer one bounded move over broad rewrites.
+- Prototype is foundation; evolve in place.
+- Ranch remains deferred unless explicitly requested.
+
+## Validation & Reporting Contract
+You MUST follow the Task Taxonomy and Reporting Law defined in `AGENTS.md`. 
+At the end of your work, output the full Validation Reporting Block:
+- Read / Confirmed / Strong inference / Unknown
+- Task type / Working layer(s)
+- Changes made / What was not changed
+- Risks / Validation run
+- Validation checklist (Timing truth, Anti-sludge, Anti-drift, etc.)
+- Next best move

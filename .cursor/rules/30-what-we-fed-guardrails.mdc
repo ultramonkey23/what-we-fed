@@ -5,9 +5,8 @@ alwaysApply: true
 
 # WHAT WE FED Guardrails
 
-- This is a repo workflow / agent capability pass unless user explicitly expands scope.
-- Do not modify gameplay systems, scene flow, or balance during agent-layer tasks.
-- Do not widen into ranch, world-state, kaiju, or unrelated gameplay expansion.
+- Preserve project identity from `docs/ai/PROJECT_KERNEL.md`.
+- Do not widen into ranch, world-state, kaiju, or unrelated gameplay scope unless explicitly requested.
 - Do not reintroduce stale pause-era assumptions.
 
 # Preserve Locked Core
@@ -19,5 +18,7 @@ alwaysApply: true
 
 # Working Style
 
-- Prefer explicit anti-drift decisions over generic optimization.
-- Keep changes surgical and explain non-goals.
+- Keep changes surgical and explicit about non-goals.
+- Prefer anti-drift decisions over generic optimization.
+- Drift harvesting is allowed only in medium/high strategy lanes if guardrails pass.
+- Keep implementation/verification lanes bounded by default.

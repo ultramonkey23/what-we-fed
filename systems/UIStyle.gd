@@ -2,6 +2,22 @@ extends RefCounted
 
 const DISPLAY_FONT = preload("res://assets/fonts/display/This Night.ttf")
 const UI_FONT = preload("res://assets/fonts/ui/WereWolf.ttf")
+
+static var _cached_scouter_font: Font = null
+
+static func _get_scouter_font() -> Font:
+	if _cached_scouter_font != null:
+		return _cached_scouter_font
+		
+	var path: String = "res://assets/fonts/ui/Orbitron-VariableFont_wght.ttf"
+	if FileAccess.file_exists(path + ".import") and ResourceLoader.exists(path):
+		var f = load(path)
+		if f is Font:
+			_cached_scouter_font = f
+			return f
+	
+	return UI_FONT
+
 const MM_INK_BLACK = Color(0.03, 0.02, 0.04, 1.0)
 const MM_DEEP_VIOLET = Color(0.14, 0.08, 0.20, 1.0)
 const MM_BLOOD_EMBER = Color(0.90, 0.32, 0.15, 1.0)
@@ -23,9 +39,9 @@ static func attach_shell_backdrop(root: Node2D, size: Vector2 = Vector2(1280.0, 
 
 	var gradient := Gradient.new()
 	gradient.colors = PackedColorArray([
-		Color(0.038, 0.018, 0.026, 1.0),
-		Color(0.052, 0.026, 0.034, 1.0),
-		Color(0.078, 0.034, 0.048, 1.0)
+		Color(0.030, 0.020, 0.040, 1.0),
+		Color(0.050, 0.030, 0.055, 1.0),
+		Color(0.090, 0.050, 0.060, 1.0)
 	])
 	gradient.offsets = PackedFloat32Array([0.0, 0.52, 1.0])
 
@@ -285,7 +301,8 @@ static func get_manga_color(role: String) -> Color:
 static func get_quality_feedback_color(quality: String) -> Color:
 	match quality:
 		"perfect":
-			return Color(0.40, 1.0, 0.72, 0.86)
+			# Brief hopeful surge on mastery moments without washing lane telegraphs.
+			return Color(0.52, 1.0, 0.82, 0.90)
 		"good":
 			return Color(1.0, 0.90, 0.44, 0.78)
 		"slip":
@@ -320,63 +337,63 @@ static func _shell_palette_for_role(role: String) -> Dictionary:
 	match role:
 		"mm_command":
 			return {
-				"bg_color": Color(0.08, 0.05, 0.08, 0.96),
-				"border_color": Color(0.64, 0.30, 0.20, 0.96),
-				"corner_radius": 8,
+				"bg_color": Color(0.04, 0.02, 0.05, 0.98),
+				"border_color": MM_BOND_TEAL,
+				"corner_radius": 2,
 				"border_width": 2,
-				"shadow_color": Color(0.06, 0.02, 0.03, 0.34),
-				"shadow_size": 2
+				"shadow_color": Color(0.0, 0.0, 0.0, 0.5),
+				"shadow_size": 4
 			}
 		"mm_alert":
 			return {
-				"bg_color": Color(0.10, 0.06, 0.04, 0.96),
+				"bg_color": Color(0.08, 0.04, 0.02, 0.98),
 				"border_color": MM_ALERT_GOLD,
-				"corner_radius": 8,
+				"corner_radius": 2,
 				"border_width": 2,
 				"shadow_color": Color(0.18, 0.10, 0.02, 0.30),
-				"shadow_size": 2
+				"shadow_size": 3
 			}
 		"mm_mutation":
 			return {
-				"bg_color": Color(0.10, 0.04, 0.10, 0.96),
+				"bg_color": Color(0.06, 0.02, 0.07, 0.98),
 				"border_color": MM_MUTATION_MAGENTA,
-				"corner_radius": 8,
+				"corner_radius": 2,
 				"border_width": 2,
-				"shadow_color": Color(0.12, 0.02, 0.14, 0.34),
-				"shadow_size": 2
+				"shadow_color": Color(0.0, 0.0, 0.0, 0.5),
+				"shadow_size": 4
 			}
 		"mm_apex":
 			return {
-				"bg_color": Color(0.12, 0.05, 0.03, 0.98),
+				"bg_color": Color(0.10, 0.02, 0.02, 0.98),
 				"border_color": MM_BLOOD_EMBER,
-				"corner_radius": 8,
-				"border_width": 2,
+				"corner_radius": 0,
+				"border_width": 3,
 				"shadow_color": Color(0.20, 0.05, 0.02, 0.36),
-				"shadow_size": 2
+				"shadow_size": 5
 			}
 		"hud_left":
 			return {
-				"bg_color": Color(0.06, 0.06, 0.07, 0.92),
-				"border_color": Color(0.34, 0.26, 0.20, 0.96),
-				"corner_radius": 7,
-				"border_width": 2,
-				"shadow_color": Color(0.0, 0.0, 0.0, 0.22),
-				"shadow_size": 1
+				"bg_color": Color(0.04, 0.03, 0.06, 0.88),
+				"border_color": Color(0.60, 0.30, 0.22, 0.86),
+				"corner_radius": 9,
+				"border_width": 1,
+				"shadow_color": Color(0.04, 0.02, 0.03, 0.34),
+				"shadow_size": 2
 			}
 		"hud_right":
 			return {
-				"bg_color": Color(0.05, 0.05, 0.06, 0.94),
-				"border_color": Color(0.38, 0.29, 0.20, 0.98),
-				"corner_radius": 7,
-				"border_width": 2,
-				"shadow_color": Color(0.0, 0.0, 0.0, 0.24),
-				"shadow_size": 1
+				"bg_color": Color(0.04, 0.03, 0.07, 0.88),
+				"border_color": Color(0.60, 0.30, 0.24, 0.86),
+				"corner_radius": 9,
+				"border_width": 1,
+				"shadow_color": Color(0.05, 0.02, 0.05, 0.34),
+				"shadow_size": 2
 			}
 		"hud_accent":
 			return {
-				"bg_color": Color(0.14, 0.10, 0.08, 0.42),
-				"border_color": Color(0.44, 0.30, 0.18, 0.66),
-				"corner_radius": 5,
+				"bg_color": Color(0.15, 0.05, 0.06, 0.48),
+				"border_color": Color(0.78, 0.40, 0.20, 0.72),
+				"corner_radius": 6,
 				"border_width": 1
 			}
 		"support_idle":
@@ -397,15 +414,15 @@ static func _shell_palette_for_role(role: String) -> Dictionary:
 			}
 		"run_build":
 			return {
-				"bg_color": Color(0.05, 0.06, 0.07, 0.88),
-				"border_color": Color(0.28, 0.28, 0.24, 0.88),
+				"bg_color": Color(0.06, 0.03, 0.07, 0.90),
+				"border_color": Color(0.40, 0.24, 0.26, 0.92),
 				"corner_radius": 7,
 				"border_width": 1
 			}
 		"dna":
 			return {
-				"bg_color": Color(0.05, 0.06, 0.07, 0.90),
-				"border_color": Color(0.26, 0.34, 0.28, 0.88),
+				"bg_color": Color(0.04, 0.04, 0.07, 0.92),
+				"border_color": Color(0.26, 0.44, 0.34, 0.94),
 				"corner_radius": 7,
 				"border_width": 1
 			}
@@ -420,10 +437,21 @@ static func _shell_palette_for_role(role: String) -> Dictionary:
 			}
 		"live_reward":
 			return {
-				"bg_color": Color(0.09, 0.06, 0.05, 0.94),
-				"border_color": Color(0.66, 0.44, 0.18, 0.98),
-				"corner_radius": 8,
-				"border_width": 2
+				"bg_color": Color(0.08, 0.04, 0.05, 0.95),
+				"border_color": Color(0.74, 0.42, 0.22, 1.0),
+				"corner_radius": 9,
+				"border_width": 2,
+				"shadow_color": Color(0.16, 0.04, 0.03, 0.30),
+				"shadow_size": 2
+			}
+		"run_overlay":
+			return {
+				"bg_color": Color(0.04, 0.02, 0.05, 0.97),
+				"border_color": Color(0.72, 0.34, 0.24, 0.98),
+				"corner_radius": 10,
+				"border_width": 2,
+				"shadow_color": Color(0.10, 0.02, 0.03, 0.30),
+				"shadow_size": 2
 			}
 		"feedback_backing":
 			return {
@@ -443,6 +471,22 @@ static func _shell_palette_for_role(role: String) -> Dictionary:
 
 static func _bar_palette_for_role(role: String) -> Dictionary:
 	match role:
+		"mm_mutation":
+			return {
+				"under_color": Color(0.05, 0.02, 0.06, 0.90),
+				"fill_color": MM_BOND_TEAL, # XP starts Teal
+				"border_color": Color(0.12, 0.43, 0.37, 0.8),
+				"corner_radius": 0,
+				"border_width": 1
+			}
+		"mm_apex":
+			return {
+				"under_color": Color(0.06, 0.02, 0.02, 0.95),
+				"fill_color": MM_BLOOD_EMBER,
+				"border_color": Color(0.45, 0.16, 0.07, 0.9),
+				"corner_radius": 0,
+				"border_width": 1
+			}
 		"mm_offer":
 			return {
 				"under_color": Color(0.10, 0.05, 0.11, 0.96),
@@ -601,6 +645,52 @@ static func _style_for_role(role: String) -> Dictionary:
 				"outline_size": 2,
 				"outline_color": MM_INK_BLACK
 			}
+		"hud_metric_title":
+			return {
+				"font": UI_FONT,
+				"size": 13,
+				"color": Color(0.88, 0.78, 0.74, 0.96),
+				"outline_size": 2,
+				"outline_color": MM_INK_BLACK,
+				"shadow_color": Color(0.0, 0.0, 0.0, 0.28),
+				"shadow_x": 1,
+				"shadow_y": 1
+			}
+		"hud_metric_value":
+			return {
+				"font": DISPLAY_FONT,
+				"size": 20,
+				"color": Color(0.98, 0.93, 0.86, 1.0),
+				"outline_size": 2,
+				"outline_color": MM_INK_BLACK,
+				"shadow_color": Color(0.0, 0.0, 0.0, 0.32),
+				"shadow_x": 1,
+				"shadow_y": 1
+			}
+		"hud_meta":
+			return {
+				"font": UI_FONT,
+				"size": 14,
+				"color": Color(0.92, 0.88, 0.82, 0.98),
+				"outline_size": 2,
+				"outline_color": MM_INK_BLACK
+			}
+		"overlay_title":
+			return {
+				"font": DISPLAY_FONT,
+				"size": 40,
+				"color": Color(0.95, 0.88, 0.80, 1.0),
+				"outline_size": 2,
+				"outline_color": MM_INK_BLACK
+			}
+		"overlay_body":
+			return {
+				"font": UI_FONT,
+				"size": 16,
+				"color": Color(0.90, 0.84, 0.80, 0.98),
+				"outline_size": 1,
+				"outline_color": MM_INK_BLACK
+			}
 		"mm_dim":
 			return {
 				"font": UI_FONT,
@@ -752,6 +842,14 @@ static func _style_for_role(role: String) -> Dictionary:
 				"outline_size": 2,
 				"outline_color": Color(0.02, 0.02, 0.03, 0.92)
 			}
+		"scouter":
+			return {
+				"font": _get_scouter_font(),
+				"size": 18,
+				"color": Color(1.0, 0.85, 0.20, 1.0),
+				"outline_size": 2,
+				"outline_color": Color(0.0, 0.0, 0.0, 1.0)
+			}
 		"front_title":
 			return {
 				"font": DISPLAY_FONT,
@@ -848,11 +946,11 @@ static func _style_for_role(role: String) -> Dictionary:
 
 static func get_tier_color(tier_id: String) -> Color:
 	match tier_id:
-		"stirring": return Color(0.82, 0.82, 0.84, 0.90)
-		"hunting": return Color(0.56, 0.78, 0.66, 0.95)
-		"rampage": return Color(0.86, 0.76, 0.32, 1.0)
-		"apex": return Color(0.92, 0.42, 0.12, 1.0)
-		"sovereign": return Color(0.84, 0.18, 0.14, 1.0)
+		"stirring": return Color(0.24, 0.86, 0.74, 1.0) # MM_BOND_TEAL / Cyan
+		"hunting": return Color(0.24, 0.86, 1.0, 1.0)    # Brighter Cyan
+		"rampage": return Color(0.82, 0.16, 0.74, 1.0) # MM_MUTATION_MAGENTA / Purple
+		"apex": return Color(0.90, 0.32, 0.15, 1.0)    # MM_BLOOD_EMBER / Red
+		"sovereign": return Color(0.03, 0.02, 0.04, 1.0) # MM_INK_BLACK / Black
 		_: return Color.WHITE
 
 

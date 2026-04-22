@@ -4,11 +4,28 @@ const COMBAT_CONTENT = preload("res://data/CombatContent.gd")
 const COMBAT_FEEL_CONTENT = preload("res://data/CombatFeelContent.gd")
 const COMBAT_BG_CONTENT = preload("res://data/CombatBackgroundContent.gd")
 const UI_STYLE = preload("res://systems/UIStyle.gd")
+const HUD_PANEL_ART = preload("res://systems/HUDPanelArt.gd")
 
-const HUD_PANEL_VISIBLE_ALPHA_THRESHOLD: float = 0.08
-
-var _hud_visible_region_cache: Dictionary = {}
 var _active_bg_env: Dictionary = {}
+var _shared_noise_tex: NoiseTexture2D = null
+
+
+func _get_shared_noise_tex() -> NoiseTexture2D:
+	if _shared_noise_tex != null:
+		return _shared_noise_tex
+		
+	var noise := FastNoiseLite.new()
+	noise.noise_type = FastNoiseLite.TYPE_CELLULAR
+	noise.frequency = 0.08
+	noise.cellular_distance_function = FastNoiseLite.DISTANCE_EUCLIDEAN
+	
+	_shared_noise_tex = NoiseTexture2D.new()
+	# PREMIUM: Increased resolution to stop "blocky" shimmer distortion
+	_shared_noise_tex.width = 1024
+	_shared_noise_tex.height = 256
+	_shared_noise_tex.seamless = true
+	_shared_noise_tex.noise = noise
+	return _shared_noise_tex
 
 
 func _set_shell_treatment(shell: ColorRect, color: Color, border_color: Color) -> void:
@@ -44,19 +61,20 @@ func setup_visuals(
 	host: Node2D,
 	background: ColorRect,
 	flash_overlay: ColorRect,
-	bg_sprite: Control, # Changed from TextureRect to Control
-	battlefield_panel: ColorRect,
-	battlefield_left_shade: ColorRect,
-	battlefield_right_shade: ColorRect,
-	battlefield_top_trim: ColorRect,
-	battlefield_bottom_trim: ColorRect
+	bg_sprite: Control,
+	battlefield_panel: Control,
+	battlefield_left_shade: Control,
+	battlefield_right_shade: Control,
+	battlefield_top_trim: Control,
+	battlefield_bottom_trim: Control
 ) -> Dictionary:
 	background.z_index = -10
 	background.color = UI_STYLE.get_manga_color("ink_black")
 
 	bg_sprite = apply_combat_background(host, background, flash_overlay, bg_sprite)
 
-	var field_rect := Rect2(104.0, 112.0, 1060.0, 464.0)
+	# Keep combat lanes clear from HUD intrusions by shrinking the visual battlefield band.
+	var field_rect := Rect2(104.0, 112.0, 1024.0, 464.0)
 
 	battlefield_panel = ColorRect.new()
 	battlefield_panel.name = "BattlefieldPanel"
@@ -66,37 +84,80 @@ func setup_visuals(
 	battlefield_panel.z_index = -7
 	host.add_child(battlefield_panel)
 
-	battlefield_left_shade = ColorRect.new()
+	# PREMIUM: Replacing flat shades with ink-bleed gradients for high-contrast framing
+	var ink_color := Color(0.02, 0.02, 0.03, 0.45)
+	
+	battlefield_left_shade = TextureRect.new()
 	battlefield_left_shade.name = "BattlefieldLeftShade"
 	battlefield_left_shade.position = Vector2(field_rect.position.x + 6.0, field_rect.position.y + 20.0)
-	battlefield_left_shade.size = Vector2(86.0, field_rect.size.y - 40.0)
-	battlefield_left_shade.color = Color(0.02, 0.02, 0.03, 0.16)
+	battlefield_left_shade.size = Vector2(120.0, field_rect.size.y - 40.0)
+	battlefield_left_shade.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	battlefield_left_shade.stretch_mode = TextureRect.STRETCH_SCALE
 	battlefield_left_shade.z_index = -5
+	
+	var left_grad := Gradient.new()
+	left_grad.colors = [ink_color, Color(ink_color.r, ink_color.g, ink_color.b, 0.0)]
+	left_grad.offsets = [0.0, 1.0]
+	var left_tex := GradientTexture2D.new()
+	left_tex.gradient = left_grad
+	left_tex.fill_from = Vector2(0.0, 0.5)
+	left_tex.fill_to = Vector2(1.0, 0.5)
+	battlefield_left_shade.texture = left_tex
 	host.add_child(battlefield_left_shade)
 
-	battlefield_right_shade = ColorRect.new()
+	battlefield_right_shade = TextureRect.new()
 	battlefield_right_shade.name = "BattlefieldRightShade"
-	battlefield_right_shade.position = Vector2(field_rect.end.x - 92.0, field_rect.position.y + 20.0)
-	battlefield_right_shade.size = Vector2(86.0, field_rect.size.y - 40.0)
-	battlefield_right_shade.color = Color(0.08, 0.04, 0.10, 0.12)
+	battlefield_right_shade.position = Vector2(field_rect.end.x - 126.0, field_rect.position.y + 20.0)
+	battlefield_right_shade.size = Vector2(120.0, field_rect.size.y - 40.0)
+	battlefield_right_shade.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	battlefield_right_shade.stretch_mode = TextureRect.STRETCH_SCALE
 	battlefield_right_shade.z_index = -5
+	
+	var right_grad := Gradient.new()
+	right_grad.colors = [Color(ink_color.r, ink_color.g, ink_color.b, 0.0), ink_color]
+	right_grad.offsets = [0.0, 1.0]
+	var right_tex := GradientTexture2D.new()
+	right_tex.gradient = right_grad
+	right_tex.fill_from = Vector2(0.0, 0.5)
+	right_tex.fill_to = Vector2(1.0, 0.5)
+	battlefield_right_shade.texture = right_tex
 	host.add_child(battlefield_right_shade)
 
-	battlefield_top_trim = ColorRect.new()
+	battlefield_top_trim = TextureRect.new()
 	battlefield_top_trim.name = "BattlefieldTopTrim"
 	battlefield_top_trim.position = field_rect.position + Vector2(76.0, 8.0)
-	battlefield_top_trim.size = Vector2(field_rect.size.x - 152.0, 2.0)
+	battlefield_top_trim.size = Vector2(field_rect.size.x - 152.0, 4.0)
+	battlefield_top_trim.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	battlefield_top_trim.stretch_mode = TextureRect.STRETCH_SCALE
 	var top_trim_color: Color = UI_STYLE.get_manga_color("alert_gold")
-	battlefield_top_trim.color = Color(top_trim_color.r, top_trim_color.g, top_trim_color.b, 0.24)
+	
+	var top_grad := Gradient.new()
+	top_grad.colors = [Color(top_trim_color.r, top_trim_color.g, top_trim_color.b, 0.0), Color(top_trim_color.r, top_trim_color.g, top_trim_color.b, 0.28), Color(top_trim_color.r, top_trim_color.g, top_trim_color.b, 0.0)]
+	top_grad.offsets = [0.0, 0.5, 1.0]
+	var top_tex := GradientTexture2D.new()
+	top_tex.gradient = top_grad
+	top_tex.fill_from = Vector2(0.0, 0.5)
+	top_tex.fill_to = Vector2(1.0, 0.5)
+	battlefield_top_trim.texture = top_tex
 	battlefield_top_trim.z_index = -5
 	host.add_child(battlefield_top_trim)
 
-	battlefield_bottom_trim = ColorRect.new()
+	battlefield_bottom_trim = TextureRect.new()
 	battlefield_bottom_trim.name = "BattlefieldBottomTrim"
 	battlefield_bottom_trim.position = Vector2(field_rect.position.x + 96.0, field_rect.end.y - 10.0)
-	battlefield_bottom_trim.size = Vector2(field_rect.size.x - 192.0, 1.0)
+	battlefield_bottom_trim.size = Vector2(field_rect.size.x - 192.0, 3.0)
+	battlefield_bottom_trim.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	battlefield_bottom_trim.stretch_mode = TextureRect.STRETCH_SCALE
 	var bottom_trim_color: Color = UI_STYLE.get_manga_color("blood_ember")
-	battlefield_bottom_trim.color = Color(bottom_trim_color.r, bottom_trim_color.g, bottom_trim_color.b, 0.18)
+	
+	var bot_grad := Gradient.new()
+	bot_grad.colors = [Color(bottom_trim_color.r, bottom_trim_color.g, bottom_trim_color.b, 0.0), Color(bottom_trim_color.r, bottom_trim_color.g, bottom_trim_color.b, 0.22), Color(bottom_trim_color.r, bottom_trim_color.g, bottom_trim_color.b, 0.0)]
+	bot_grad.offsets = [0.0, 0.5, 1.0]
+	var bot_tex := GradientTexture2D.new()
+	bot_tex.gradient = bot_grad
+	bot_tex.fill_from = Vector2(0.0, 0.5)
+	bot_tex.fill_to = Vector2(1.0, 0.5)
+	battlefield_bottom_trim.texture = bot_tex
 	battlefield_bottom_trim.z_index = -5
 	host.add_child(battlefield_bottom_trim)
 
@@ -165,7 +226,10 @@ func apply_combat_background(
 	bg_sprite: Control,
 	override_env_id: String = ""
 ) -> Control:
+	# PREMIUM: Manga-style transition for background swaps
 	if bg_sprite != null and is_instance_valid(bg_sprite):
+		# If we're swapping, trigger a high-contrast transition
+		EventBus.emit_signal("screen_flash", Color(1.0, 1.0, 1.0, 0.99), 0.15)
 		bg_sprite.queue_free()
 		bg_sprite = null
 
@@ -212,12 +276,35 @@ func apply_combat_background(
 		
 		# Premium: Inject atmospheric haze after the sky layer
 		if layer_data.id == "sky":
-			var haze := ColorRect.new()
-			haze.name = "AtmosphericHaze"
-			haze.set_anchors_preset(Control.PRESET_FULL_RECT)
-			haze.color = env.get("haze_color", Color(0.0, 0.0, 0.0, 0.3))
-			haze.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			bg_sprite.add_child(haze)
+			var haze_container := Control.new()
+			haze_container.name = "AtmosphericHaze"
+			haze_container.set_anchors_preset(Control.PRESET_FULL_RECT)
+			haze_container.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			bg_sprite.add_child(haze_container)
+			
+			var haze_base := ColorRect.new()
+			haze_base.name = "HazeBase"
+			haze_base.set_anchors_preset(Control.PRESET_FULL_RECT)
+			haze_base.color = env.get("haze_color", Color(0.0, 0.0, 0.0, 0.3))
+			haze_base.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			haze_container.add_child(haze_base)
+			
+			# PREMIUM: Kinetic haze drift using a shader for silky smoothness
+			var haze_drift := TextureRect.new()
+			haze_drift.name = "HazeDrift"
+			haze_drift.set_anchors_preset(Control.PRESET_FULL_RECT)
+			haze_drift.texture = _get_shared_noise_tex()
+			haze_drift.stretch_mode = TextureRect.STRETCH_TILE
+			haze_drift.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			
+			# Applying the drift shader
+			var haze_mat := ShaderMaterial.new()
+			haze_mat.shader = load("res://assets/ui/shaders/haze_drift.gdshader")
+			haze_mat.set_shader_parameter("scroll_speed", Vector2(0.05, 0.03))
+			haze_mat.set_shader_parameter("noise_intensity", 0.08)
+			haze_drift.material = haze_mat
+			
+			haze_container.add_child(haze_drift)
 
 	# Create particles
 	for part_data in env.get("particles", []):
@@ -291,7 +378,15 @@ func update_background_parallax(bg_sprite: Control, focus_pos: Vector2) -> void:
 		# We'll use a simple sine wave pulse based on time if we don't have a direct phase
 		beat_pulse = abs(sin(Time.get_ticks_msec() * 0.008)) * 0.04
 	
+	# PREMIUM: Kinetic Haze Drift Reaction
 	for child in bg_sprite.get_children():
+		if child.name == "AtmosphericHaze":
+			var drift: TextureRect = child.get_node_or_null("HazeDrift")
+			if drift != null and drift.material is ShaderMaterial:
+				# React to beat by intensifying the noise via shader
+				var mat: ShaderMaterial = drift.material as ShaderMaterial
+				mat.set_shader_parameter("noise_intensity", 0.08 + (beat_pulse * 0.5))
+		
 		if child is TextureRect:
 			var layer_id = child.name
 			var layer_data = {}
@@ -351,6 +446,17 @@ func on_combat_event(bg_sprite: Control, event_type: String) -> void:
 		return
 	
 	if event_type == "perfect":
+		# PREMIUM: Reactive Vignette Punch-in
+		var host: Node2D = bg_sprite.get_parent()
+		if is_instance_valid(host):
+			var vignette: TextureRect = host.get_node_or_null("CombatVignette")
+			if vignette != null:
+				var v_tween = vignette.create_tween()
+				vignette.scale = Vector2(1.15, 1.15) # Punch in
+				vignette.pivot_offset = vignette.size * 0.5
+				v_tween.tween_property(vignette, "scale", Vector2.ONE, 0.4).set_trans(Tween.TRANS_SINE)
+		
+		# Kinetic particles reaction
 		for child in bg_sprite.get_children():
 			if child is CPUParticles2D:
 				var original_speed = child.speed_scale
@@ -702,13 +808,26 @@ func build_arena_visuals(
 		var ribbon_grad := Gradient.new()
 		ribbon_grad.colors = [Color(1.0, 1.0, 1.0, 0.42), Color(1.0, 1.0, 1.0, 1.0), Color(1.0, 1.0, 1.0, 0.42)]
 		ribbon_grad.offsets = [0.0, 0.5, 1.0]
+		
 		var ribbon_tex := GradientTexture2D.new()
 		ribbon_tex.gradient = ribbon_grad
 		ribbon_tex.fill_from = Vector2(0.5, 0.0)
 		ribbon_tex.fill_to = Vector2(0.5, 1.0)
 		ribbon_tex.width = 16
 		ribbon_tex.height = 32
+		
+		# Combine gradient with noise for "material seams"
 		lane_strip.texture = ribbon_tex
+		
+		# PREMIUM: Procedural material rhythm to ground the lane substrate
+		# Using shared noise texture to prevent redundant allocations
+		var substrate_rhythm := TextureRect.new()
+		substrate_rhythm.name = "SubstrateRhythm"
+		substrate_rhythm.set_anchors_preset(Control.PRESET_FULL_RECT)
+		substrate_rhythm.texture = _get_shared_noise_tex()
+		substrate_rhythm.modulate = Color(1.0, 1.0, 1.0, 0.12)
+		substrate_rhythm.stretch_mode = TextureRect.STRETCH_TILE
+		lane_strip.add_child(substrate_rhythm)
 
 		lane_strip.modulate = Color(lane_color.r, lane_color.g, lane_color.b, COMBAT_FEEL_CONTENT.LANE_IDLE_ALPHA)
 		lane_group.add_child(lane_strip)
@@ -1384,27 +1503,8 @@ func enforce_top_left_panel_rect(hud_top_left_panel: Control) -> void:
 	hud_top_left_panel.size = Vector2(hud_tl_w, hud_th)
 
 
-func _create_panel_backing(panel: Control, panel_name: String = "Backing") -> ColorRect:
-	var backing := panel.get_node_or_null(panel_name) as ColorRect
-	if backing == null:
-		backing = ColorRect.new()
-		backing.name = panel_name
-		backing.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		backing.color = Color(0.0, 0.0, 0.0, 0.0)
-		backing.anchor_left = 0.0
-		backing.anchor_top = 0.0
-		backing.anchor_right = 1.0
-		backing.anchor_bottom = 1.0
-		backing.offset_left = 0.0
-		backing.offset_top = 0.0
-		backing.offset_right = 0.0
-		backing.offset_bottom = 0.0
-		panel.add_child(backing)
-	return backing
-
-
 func _build_strip_sprite(
-	name: String,
+	sprite_name: String,
 	texture_path: String,
 	frame_size: Vector2i,
 	frame_index: int,
@@ -1422,15 +1522,15 @@ func _build_strip_sprite(
 	if frame_size.x > 0 and frame_size.y > 0:
 		var atlas := AtlasTexture.new()
 		atlas.atlas = src
-		var cols: int = maxi(1, src.get_width() / frame_size.x)
+		var cols: int = maxi(1, int(floor(float(src.get_width()) / float(frame_size.x))))
 		var idx: int = maxi(0, frame_index)
 		var x: int = (idx % cols) * frame_size.x
-		var y: int = (idx / cols) * frame_size.y
+		var y: int = int(floor(float(idx) / float(cols))) * frame_size.y
 		atlas.region = Rect2(Vector2(float(x), float(y)), Vector2(float(frame_size.x), float(frame_size.y)))
 		tex = atlas
 
 	var r := TextureRect.new()
-	r.name = name
+	r.name = sprite_name
 	r.texture = tex
 	r.position = position
 	r.size = size
@@ -1441,103 +1541,4 @@ func _build_strip_sprite(
 
 
 func _hud_attach_combat_panel_art(panel: Control, texture_path: String, region: Rect2) -> void:
-	if panel == null or texture_path.is_empty() or not ResourceLoader.exists(texture_path):
-		return
-
-	var src: Texture2D = load(texture_path) as Texture2D
-	if src == null:
-		return
-
-	var backing: ColorRect = _create_panel_backing(panel, "Backing")
-	var old_art: TextureRect = panel.get_node_or_null("Art") as TextureRect
-	if old_art != null:
-		old_art.queue_free()
-
-	var art := TextureRect.new()
-	art.name = "Art"
-	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var resolved_region: Rect2 = _resolve_visible_panel_region(src, region, texture_path)
-	art.ignore_texture_size = true
-	art.stretch_mode = TextureRect.STRETCH_SCALE
-	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	art.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
-	art.anchor_left = 0.0
-	art.anchor_top = 0.0
-	art.anchor_right = 1.0
-	art.anchor_bottom = 1.0
-	art.offset_left = 0.0
-	art.offset_top = 0.0
-	art.offset_right = 0.0
-	art.offset_bottom = 0.0
-	if resolved_region.size.x > 0.0 and resolved_region.size.y > 0.0:
-		var atlas := AtlasTexture.new()
-		atlas.atlas = src
-		atlas.region = resolved_region
-		art.texture = atlas
-	else:
-		art.texture = src
-	panel.add_child(art)
-	panel.move_child(backing, 0)
-	panel.move_child(art, 1)
-
-
-func _resolve_visible_panel_region(texture: Texture2D, requested_region: Rect2, texture_path: String) -> Rect2:
-	if texture == null:
-		return Rect2()
-	var cache_key: String = "%s|%s|%s|%s|%s" % [
-		texture_path,
-		str(requested_region.position.x),
-		str(requested_region.position.y),
-		str(requested_region.size.x),
-		str(requested_region.size.y)
-	]
-	if _hud_visible_region_cache.has(cache_key):
-		return _hud_visible_region_cache[cache_key]
-
-	var tex_bounds := Rect2(Vector2.ZERO, texture.get_size())
-	var sample_region: Rect2 = requested_region
-	if sample_region.size.x <= 0.0 or sample_region.size.y <= 0.0:
-		sample_region = tex_bounds
-	else:
-		sample_region = sample_region.intersection(tex_bounds)
-		if sample_region.size.x <= 0.0 or sample_region.size.y <= 0.0:
-			sample_region = tex_bounds
-
-	var image: Image = texture.get_image()
-	if image == null or image.is_empty():
-		_hud_visible_region_cache[cache_key] = sample_region
-		return sample_region
-
-	var min_x: int = int(floor(sample_region.position.x))
-	var min_y: int = int(floor(sample_region.position.y))
-	var max_x: int = int(ceil(sample_region.end.x))
-	var max_y: int = int(ceil(sample_region.end.y))
-
-	var found: bool = false
-	var tight_min_x: int = max_x
-	var tight_min_y: int = max_y
-	var tight_max_x: int = min_x
-	var tight_max_y: int = min_y
-	for y in range(min_y, max_y):
-		for x in range(min_x, max_x):
-			var a: float = image.get_pixel(x, y).a
-			if a < HUD_PANEL_VISIBLE_ALPHA_THRESHOLD:
-				continue
-			found = true
-			if x < tight_min_x:
-				tight_min_x = x
-			if y < tight_min_y:
-				tight_min_y = y
-			if x > tight_max_x:
-				tight_max_x = x
-			if y > tight_max_y:
-				tight_max_y = y
-
-	var resolved: Rect2 = sample_region
-	if found:
-		resolved = Rect2(
-			Vector2(float(tight_min_x), float(tight_min_y)),
-			Vector2(float(tight_max_x - tight_min_x + 1), float(tight_max_y - tight_min_y + 1))
-		)
-	_hud_visible_region_cache[cache_key] = resolved
-	return resolved
+	HUD_PANEL_ART.apply_panel_art(panel, texture_path, region, "Art", "Backing", Color(0.0, 0.0, 0.0, 0.0))

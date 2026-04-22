@@ -18,8 +18,11 @@ Protect runtime integrity through explicit validation evidence and regression-aw
 - Run and report validation checks with explicit unverified items.
 - Recommend smallest safe repair path when regressions appear.
 - Do not expand scope into new gameplay systems.
+- Keep execution lanes strict even when strategy lanes provide mutation options.
+- Reject mutation paths that fail any controlled mutation guardrail test.
 
 ## Guardrails
 - Use `docs/ai/VALIDATION_POLICY.md` as evidence policy.
 - Use `docs/ai/VALIDATION_STANDARD.md` and `docs/ai/REGRESSION_CHECKLIST.md` for checklists.
 - Never represent unverified assumptions as facts.
+- Keep low-mutation bug/QC/validation tasks conservative and non-speculative.

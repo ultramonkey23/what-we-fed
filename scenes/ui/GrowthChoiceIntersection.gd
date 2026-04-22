@@ -94,7 +94,7 @@ func _build_ui() -> void:
 	add_child(_canvas)
 
 	var backdrop: ColorRect = ColorRect.new()
-	backdrop.color = Color(0.01, 0.01, 0.02, 0.93)
+	backdrop.color = Color(0.01, 0.01, 0.02, 0.86)
 	backdrop.anchor_right = 1.0
 	backdrop.anchor_bottom = 1.0
 	backdrop.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -103,13 +103,13 @@ func _build_ui() -> void:
 	_panel = ColorRect.new()
 	_panel.position = Vector2(128.0, 86.0)
 	_panel.size = Vector2(1024.0, 548.0)
-	UI_STYLE.apply_shell_style(_panel, "mm_command")
+	UI_STYLE.apply_shell_style(_panel, "run_overlay")
 	_canvas.add_child(_panel)
 
 	_header_label = Label.new()
 	_header_label.position = Vector2(0.0, 18.0)
 	_header_label.size = Vector2(1024.0, 42.0)
-	UI_STYLE.apply_label(_header_label, "mm_title", HORIZONTAL_ALIGNMENT_CENTER)
+	UI_STYLE.apply_label(_header_label, "overlay_title", HORIZONTAL_ALIGNMENT_CENTER)
 	_header_label.add_theme_font_size_override("font_size", 40)
 	_panel.add_child(_header_label)
 
@@ -123,28 +123,30 @@ func _build_ui() -> void:
 	_summary_label.position = Vector2(42.0, 104.0)
 	_summary_label.size = Vector2(940.0, 96.0)
 	_summary_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	UI_STYLE.apply_label(_summary_label, "mm_body", HORIZONTAL_ALIGNMENT_CENTER)
+	UI_STYLE.apply_label(_summary_label, "overlay_body", HORIZONTAL_ALIGNMENT_CENTER)
 	_panel.add_child(_summary_label)
 
 	_creature_label = Label.new()
 	_creature_label.position = Vector2(42.0, 206.0)
 	_creature_label.size = Vector2(940.0, 64.0)
 	_creature_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	UI_STYLE.apply_label(_creature_label, "mm_stat_primary", HORIZONTAL_ALIGNMENT_CENTER)
+	UI_STYLE.apply_label(_creature_label, "hud_metric_value", HORIZONTAL_ALIGNMENT_CENTER)
 	_panel.add_child(_creature_label)
 
 	_bond_label = Label.new()
 	_bond_label.position = Vector2(64.0, 286.0)
 	_bond_label.size = Vector2(420.0, 178.0)
 	_bond_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	UI_STYLE.apply_label(_bond_label, "mm_choice_bond")
+	UI_STYLE.apply_label(_bond_label, "overlay_body")
+	_bond_label.add_theme_color_override("font_color", UI_STYLE.get_manga_color("bond_teal"))
 	_panel.add_child(_bond_label)
 
 	_eat_label = Label.new()
 	_eat_label.position = Vector2(540.0, 286.0)
 	_eat_label.size = Vector2(420.0, 178.0)
 	_eat_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	UI_STYLE.apply_label(_eat_label, "mm_choice_consume")
+	UI_STYLE.apply_label(_eat_label, "overlay_body")
+	_eat_label.add_theme_color_override("font_color", UI_STYLE.get_manga_color("blood_ember"))
 	_panel.add_child(_eat_label)
 
 	_hint_label = Label.new()

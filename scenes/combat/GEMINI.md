@@ -1,7 +1,18 @@
 # COMBAT & TIMING — LOCAL INSTRUCTIONS
 
-## Combat Soul
+## 5-Layer Canon Compliance
+All combat logic must adhere to the **5-Layer Canon Model** defined in the Project Kernel:
+1. **Layer 1 (Locked Core)**: Timing honesty, lane integrity, and 1:1 input response.
+2. **Layer 2 (Live Build Truth)**: Active `SongConductor` signals override stale documentation.
+3. **Layer 3 (Evolving Spine)**: Combat feel constants and VFX intensity.
+
+## Combat Soul: Combat-Clean
 Combat in WHAT WE FED is about **timing honesty** and **lane integrity**. Every player action must feel responsive and every enemy presence must be readable.
+
+- **Combat HUD = Urgency**: The live HUD must be stripped to the absolute essentials. If it doesn't help the player survive the next 200ms, it doesn't belong on screen during combat.
+- **No Menu Sludge**: Never interrupt the active song flow with management popups or pause-heavy choice menus **during active in-level combat**.
+- **Management Screens = Comprehension**: Push loot review, artifact choice, and detailed build decisions to the between-level or pre-run state where high-information density is encouraged.
+- **Combat-Clean, Management-Rich**: The game is fast and pressure-first during levels, but thoughtful and strategic between them.
 
 ## Lane Rules
 - **Lane Locking**: Enemies and projectiles must strictly occupy lanes 0, 1, or 2.
@@ -24,9 +35,10 @@ Combat in WHAT WE FED is about **timing honesty** and **lane integrity**. Every 
 - [ ] Are lanes 0, 1, and 2 still clearly distinguishable?
 - [ ] Does the `SongConductor` beat signal remain accurate?
 - [ ] Did you test with `debug_harness.bat`?
-- [ ] Is **no-pause during this level’s active song combat** preserved (no mid-fight menu/song freeze)?
+- [ ] Is **combat-clean active song combat** preserved (no menu sludge/repeated interruption)?
 
 ## Anti-Drift: Combat
 - **NO** auto-aim or auto-lane snapping that removes player agency.
 - **NO** screen-filling particle explosions that hide the lanes.
-- **NO** mid-level stop-start that breaks realtime lane combat; **between-level** reward/inventory flow is separate and intentional at run scope.
+- **NO** mid-song stop-start that breaks realtime lane combat.
+- **Combat HUD = urgency** (minimalist). **Management screens = comprehension** (deferred to between-level state).

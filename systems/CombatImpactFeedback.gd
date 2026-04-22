@@ -77,6 +77,45 @@ static func build_parry_profile(quality: String, _beat_quality: String) -> Dicti
 	return profile
 
 
+static func build_dodge_profile(beat_quality: String) -> Dictionary:
+	var profile: Dictionary = {
+		"flash_color": Color(0.48, 0.72, 1.0, 0.07),
+		"flash_duration": 0.05,
+		"shake_intensity": 0.45,
+		"shake_duration": 0.05,
+		"hitstop_scale": 0.94,
+		"hitstop_duration": 0.03,
+		"ring_width": 4.8,
+		"burst_color": Color(0.62, 0.84, 1.0, 0.54),
+		"burst_scale": 1.04,
+		"sfx_cue": "dodge_roll"
+	}
+
+	if beat_quality == "perfect":
+		profile["flash_color"] = Color(0.56, 0.82, 1.0, 0.10)
+		profile["flash_duration"] = 0.06
+		profile["shake_intensity"] = 0.72
+		profile["shake_duration"] = 0.06
+		profile["hitstop_scale"] = 0.88
+		profile["hitstop_duration"] = 0.04
+		profile["ring_width"] = 5.6
+		profile["burst_color"] = Color(0.70, 0.92, 1.0, 0.68)
+		profile["burst_scale"] = 1.14
+		profile["sfx_cue"] = "dodge_roll_perfect"
+	elif beat_quality == "good":
+		profile["flash_color"] = Color(0.52, 0.76, 1.0, 0.09)
+		profile["flash_duration"] = 0.055
+		profile["shake_intensity"] = 0.58
+		profile["shake_duration"] = 0.055
+		profile["hitstop_scale"] = 0.91
+		profile["hitstop_duration"] = 0.035
+		profile["ring_width"] = 5.2
+		profile["burst_color"] = Color(0.66, 0.88, 1.0, 0.60)
+		profile["burst_scale"] = 1.10
+
+	return profile
+
+
 static func build_enemy_hit_profile(damage: float, is_boss_target: bool) -> Dictionary:
 	var heavy: bool = damage >= 18.0
 	var profile: Dictionary = {

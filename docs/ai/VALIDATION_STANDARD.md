@@ -22,7 +22,9 @@ Every code change MUST be validated. A task is incomplete until this report is g
 ## Identity-Lock Check
 - **Lane Truth**: Are lanes 0, 1, 2 still the primary focus?
 - **Timing Truth**: Does the change respect `SongConductor`?
-- **No-Pause In Active Combat**: Is the level’s realtime lane combat uninterrupted (no pausing the song mid-fight)? Between-level menus are excluded from this check.
+- **Combat-Clean, Management-Rich**: Is the level’s active in-level combat loop uninterrupted? 
+  - **Display Law**: **Combat HUD = Urgency** (live action) | **Management Screens = Comprehension** (between-level strategy).
+  - Between-level and pre-run management are **excluded** from the anti-sludge check and are encouraged to be rich, information-dense, and strategic.
 
 ## Post-Edit Summary
 - **Fix/Goal**: [The core problem solved].

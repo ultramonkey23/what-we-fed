@@ -156,7 +156,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		_:
 			return
 
-	get_viewport().set_input_as_handled()
+	var viewport := get_viewport()
+	if viewport != null:
+		viewport.set_input_as_handled()
 
 
 func _set_preset_index(index: int) -> void:

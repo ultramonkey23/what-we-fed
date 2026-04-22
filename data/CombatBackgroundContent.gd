@@ -2,6 +2,7 @@ extends RefCounted
 
 # PREMIUM BACKGROUND CONTENT DEFINITIONS
 # Defines environments, their layers, atmospheric effects, and world-state reactions.
+# Biome triplet / locked combat substrate art rules: res://assets/backgrounds/combat/premium_background_design_spec.md
 
 const ENVIRONMENTS = {
 	"predation_ground": {

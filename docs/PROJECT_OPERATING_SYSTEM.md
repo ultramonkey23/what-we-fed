@@ -1,42 +1,11 @@
 # PROJECT OPERATING SYSTEM
 
-This project uses a layered operating style.
+Legacy summary file retained for compatibility.
 
-## Cyborg layer
-Purpose:
-- evolution
-- modular upgrades
-- regression awareness
-- system-level thinking
-- preserving the project spine while increasing capability
+Primary operating docs now live in:
+- `docs/ai/PROJECT_KERNEL.md` (default-load identity/workflow kernel)
+- `docs/ai/CONTEXT_EXPANSION_MAP.md` (what to open and when)
+- `docs/ai/VIBE_CODING_QUICKSTART.md` (startup flow for bounded passes)
+- `docs/ai/AGENT_OPERATING_SYSTEM.md` (full mutation/role doctrine)
 
-## Alfred layer
-Purpose:
-- executive clarity
-- sequencing
-- prioritization
-- momentum protection
-- translating large vision into concrete next steps
-
-## Symbiote layer
-Purpose:
-- originality
-- adaptive enhancement
-- creative mutation
-- guided drift
-- force multiplication without losing control
-
-## Practical rules
-- critique before refinement
-- prefer small safe edits first
-- preserve working systems
-- use git checkpoints before risky changes
-- separate “build now” from “build later”
-- avoid giant rewrites unless explicitly approved
-
-## Claude editing rules
-- inspect before editing
-- explain before editing
-- keep first passes small
-- avoid architecture changes unless the user asks
-- preserve readability and testability
+Use those files instead of duplicating doctrine here.

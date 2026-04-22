@@ -4,14 +4,29 @@
 
 [node name="PowerFantasyCombatHUD" type="Control"]
 layout_mode = 3
-anchors_preset = 0
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 script = ExtResource("1_script")
+
+[node name="ExperienceBar" type="ProgressBar" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 6.0
+grow_horizontal = 2
+value = 0.0
+show_percentage = false
 
 [node name="PerformancePanel" type="Panel" parent="."]
 unique_name_in_owner = true
 layout_mode = 0
+offset_top = 8.0
 offset_right = 200.0
-offset_bottom = 80.0
+offset_bottom = 88.0
 
 [node name="PerformanceContainer" type="VBoxContainer" parent="PerformancePanel"]
 layout_mode = 1
@@ -22,10 +37,12 @@ offset_left = 12.0
 offset_top = 10.0
 offset_right = -12.0
 offset_bottom = -10.0
+grow_horizontal = 2
+grow_vertical = 2
 
 [node name="Caption" type="Label" parent="PerformancePanel/PerformanceContainer"]
 layout_mode = 2
-text = "POWER METER"
+text = "DOMINION"
 
 [node name="PowerLevel" type="Label" parent="PerformancePanel/PerformanceContainer"]
 layout_mode = 2
@@ -33,18 +50,29 @@ text = "AWAKENING"
 
 [node name="ComboDisplay" type="Label" parent="PerformancePanel/PerformanceContainer"]
 layout_mode = 2
-text = "0x DOMINANCE"
+text = "0 DOMINANCE"
 
 [node name="StatusLabel" type="Label" parent="PerformancePanel/PerformanceContainer"]
 layout_mode = 2
 text = "PREDATOR'S RISE"
 
+[node name="ProcChipLabel" type="Label" parent="PerformancePanel/PerformanceContainer"]
+layout_mode = 2
+visible = false
+text = "SURGE"
+
 [node name="OfferPanel" type="Panel" parent="."]
 unique_name_in_owner = true
-layout_mode = 0
-offset_left = 220.0
-offset_right = 620.0
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -200.0
+offset_top = 20.0
+offset_right = 200.0
 offset_bottom = 120.0
+grow_horizontal = 2
+visible = false
 
 [node name="OfferContainer" type="VBoxContainer" parent="OfferPanel"]
 layout_mode = 1
@@ -55,17 +83,21 @@ offset_left = 16.0
 offset_top = 12.0
 offset_right = -16.0
 offset_bottom = -12.0
+grow_horizontal = 2
+grow_vertical = 2
 
 [node name="CreatureSilhouette" type="ColorRect" parent="OfferPanel/OfferContainer"]
 layout_mode = 2
-custom_minimum_size = Vector2(384, 60)
-color = Color(0.2, 0.1, 0.2, 0.8)
+custom_minimum_size = Vector2(0, 36)
+color = Color(0.2, 0.1, 0.2, 0.55)
 
 [node name="OfferTitleLabel" type="Label" parent="OfferPanel/OfferContainer"]
+unique_name_in_owner = true
 layout_mode = 2
-text = "ASHCLAW DEMANDS CHOICE"
+text = "ASHCLAW DEMANDS A PRICE"
 
 [node name="OfferBodyLabel" type="Label" parent="OfferPanel/OfferContainer"]
+unique_name_in_owner = true
 layout_mode = 2
 text = "BOND FOR SHARED POWER  OR  CONSUME FOR SOLO DOMINANCE"
 autowrap_mode = 3
@@ -83,32 +115,39 @@ text = "[E] CONSUME"
 
 [node name="UltimateGauge" type="Panel" parent="."]
 unique_name_in_owner = true
-layout_mode = 0
+layout_mode = 1
 anchors_preset = 12
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
 offset_top = -60.0
-offset_bottom = 0.0
+grow_horizontal = 2
+grow_vertical = 0
 
 [node name="UltimateContainer" type="HBoxContainer" parent="UltimateGauge"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 12.0
-offset_top = 8.0
-offset_right = -12.0
-offset_bottom = -8.0
+offset_left = 20.0
+offset_top = 10.0
+offset_right = -20.0
+offset_bottom = -10.0
+grow_horizontal = 2
+grow_vertical = 2
 
 [node name="UltimateLabel" type="Label" parent="UltimateGauge/UltimateContainer"]
+unique_name_in_owner = true
 layout_mode = 2
+size_flags_vertical = 4
 text = "APEX POWER"
 
 [node name="UltimateProgressBar" type="ProgressBar" parent="UltimateGauge/UltimateContainer"]
+unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
-custom_minimum_size = Vector2(400, 0)
+size_flags_vertical = 4
+custom_minimum_size = Vector2(0, 24)
 max_value = 100.0
 value = 0.0
 show_percentage = false

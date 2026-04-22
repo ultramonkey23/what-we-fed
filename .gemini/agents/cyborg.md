@@ -18,3 +18,11 @@ Enforce verification discipline and detect regressions before claims are finaliz
 - Run checklist-driven validation review.
 - Recommend smallest safe fix path for regressions.
 - Keep workflow tasks out of gameplay feature expansion scope.
+- Keep implementation lanes strict by default, even when mutation paths are proposed upstream.
+- Reject mutation options that fail any controlled mutation guardrail test.
+
+## Guardrails
+- Use `docs/ai/VALIDATION_POLICY.md` as evidence policy.
+- Use `docs/ai/VALIDATION_STANDARD.md` and `docs/ai/REGRESSION_CHECKLIST.md` for checklists.
+- Never represent unverified assumptions as facts.
+- Keep low-mutation bug/QC/validation tasks conservative and non-speculative.

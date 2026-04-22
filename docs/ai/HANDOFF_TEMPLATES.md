@@ -1,136 +1,79 @@
-# HANDOFF TEMPLATES (v1)
+# HANDOFF TEMPLATES (v1.2 Universal Workflow)
 
 Use these templates to keep cross-tool handoffs consistent and bounded.
-Each template must preserve repo truth and explicitly separate verified vs unverified claims.
+Every agent (Claude, Gemini, Cursor, Copilot, Codex) MUST use the same Universal Reporting Block at the end of their task.
 
-## Claude Handoff Template
+## 1. Task Initialization & Mutation Budget
+
+When starting a task, state your budget and guardrails:
 
 ```md
-# Claude Handoff
+## Mutation budget
+- Level: <low|medium|high>
+- Why this level: <brief rationale>
 
-## Goal
-<one bounded objective>
+## Controlled mutation guardrails
+- Timing truth test: <pass/fail/pending>
+- Lane readability test: <pass/fail/pending>
+- Support readability test: <pass/fail/pending>
+- DNA / Bond-Eat meaning test: <pass/fail/pending>
+- Combat-clean, management-rich test: <pass/fail/pending>
+```
 
-## Scope
-- In scope: <files/systems>
-- Out of scope: <explicit non-goals>
+*Rule: Low mutation tasks stay single-path. Medium/high mutation tasks must include dual-track output (Safe path vs Mutation path) before proceeding.*
 
-## Repo Truth Anchors
-- `AGENTS.md`
-- `docs/ai/AGENT_OPERATING_SYSTEM.md`
-- `docs/ai/VALIDATION_POLICY.md`
+## 2. The Universal Reporting Block (The Reporting Law)
 
-## Plan
-1. <step>
-2. <step>
+At the completion of any task (Inspect, Spec, Patch, Validate, or Evolve), you MUST provide this exact block. This unifies reporting across all AI tools in the repo.
 
-## Validation
-- Required checks: <runtime/static checks>
-- Verified: <facts>
-- Unverified: <gaps>
+```md
+## Read
+- <files or systems investigated>
+
+## Confirmed
+- <verified facts from current live build or code>
+
+## Strong inference
+- <educated assumptions, explicitly marked as unverified>
+
+## Unknown
+- <blind spots or risks not investigated>
+
+## Task type
+- <Inspect | Spec | Patch | Validate | Evolve>
+
+## Working layer(s)
+- <1-5 from Canon Model>
+
+## Changes made
+- <Brief list of targeted modifications>
+
+## What was not changed
+- <Explicitly state what was intentionally left alone to prevent drift>
 
 ## Risks
-- <risk and containment>
+- <Potential breakage or side effects>
 
-## One next bounded follow-up
-- <single next move>
-```
+## Validation run
+- Scope type: <runtime-verified | static-only | speculative>
+- Commands: <commands run, if any>
+- Result: <pass/fail and key observations>
+- What was actually verified: <proven facts>
+- What remains unverified: <explicit gaps>
 
-## Codex Handoff Template
+## Validation checklist
+- [ ] Locked core preserved & live build truth respected
+- [ ] Timing truth / combat honesty preserved
+- [ ] Lane readability / support readability protected
+- [ ] Anti-sludge (no active-combat menu interruption)
+- [ ] Anti-drift (no generic roguelite/survivor flattening)
+- [ ] Outdated canon not allowed to block better workflow
 
-```md
-# Codex Handoff
-
-## Mission
-<one bounded move aligned to current repo truth>
-
-## Constraints
-- Preserve timing truth, lane readability, support readability.
-- Preserve DNA meaning and Bond vs Eat tension.
-- Preserve no-pause active-combat identity.
-
-## File Targets
-- <path 1>
-- <path 2>
-
-## Deliverable Format
-- Files changed
-- Key decision points
-- Validation run
-- Validation checklist
-- Risks
-- One next bounded follow-up
-
-## Validation status
-- Runtime-verified: <yes/no + evidence>
-- Static-only: <yes/no + evidence>
-- Speculative: <yes/no + reason>
-```
-
-## Cursor Handoff Template
-
-```md
-# Cursor Handoff
-
-## Task
-<bounded objective>
-
-## Read first
-- `AGENTS.md`
-- `docs/ai/AGENT_OPERATING_SYSTEM.md`
-- `docs/ai/VALIDATION_POLICY.md`
-
-## Execution boundaries
-- Do not widen into unrelated gameplay scope.
-- Do not refactor broadly unless required by a proven blocker.
-
-## Validation requirements
-- Run or clearly defer required checks.
-- Report verified vs unverified explicitly.
-
-## Output contract
-- What changed
-- Why it changed
-- What was validated
-- What remains unverified
-- One next bounded follow-up
-```
-
-## Gemini Research / Rescan Template
-
-```md
-# Gemini Research Rescan
-
-## Research target
-<question/problem to resolve>
-
-## Authority order
-1. Live build source truth
-2. Runtime evidence
-3. Task constraints
-4. Operating docs
-
-## Scan scope
-- Paths: <target paths>
-- Exclusions: <out-of-scope areas>
-
-## Findings
-- Confirmed facts:
-  - <fact>
-- Conflicts or stale guidance:
-  - <conflict>
-
-## Recommendation
-- One best next move: <bounded move>
-- Why now: <reason>
-- What waits: <deferred items>
-
-## Validation status
-- Runtime-verified:
-- Static-only:
-- Speculative:
+## Next best move
+- <One bounded action or recommendation>
 ```
 
 ## Shared Handoff Rule
 - Keep handoffs short, executable, and evidence-based.
-- Prefer one bounded next move over broad multi-track plans.
+- Do not fragment reporting formats based on the AI tool used. The Universal Reporting Block is the single standard.
+- Always end with one recommended bounded next move.

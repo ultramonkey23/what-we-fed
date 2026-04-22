@@ -1,361 +1,57 @@
-# WHAT WE FED — GAME SOUL AND CORE FANTASY
+# WHAT WE FED — THE SOUL & THE LAW
 
-## Purpose
+## The Core Soul: A Predatory Ascent
+**WHAT WE FED is a dark creature-driven RPG roguelite where you endure the hostile song of the world by shaping a faster, stranger predator. Through timing mastery, feeding, bonding, and the weight of your own choice, you turn the level's pressure into your own personalized domination.**
 
-This file defines the **inner law** of the game.
-
-It exists to prevent drift by clearly stating:
-- what the game is emotionally and mechanically about
-- what the player is actually becoming
-- what creatures are supposed to mean
-- what combat is supposed to do
-- what kinds of additions strengthen or weaken the soul of the game
-
-This is not a feature list.
-This is the project’s **core fantasy and design truth**.
+## Tone: The Black Signal
+The tone is **Dark Cool Creature Power-Fantasy**. This does not mean "heroic." It means **Ascendant.** You are not a savior; you are a becoming. 
 
 ---
 
-# 1. The Soul of the Game
+# 1. The Real Player Fantasy: The Personalized Predator
+You do not grow through story labels or morality points. You grow through **The Harvest.**
+By the end of a run, you should feel you have become an iconic, recognizable horror.
 
-## Core soul statement
-**What We Fed is a dark creature-driven RPG roguelite where the player endures the hostile song of each level by shaping a faster, stranger predator through timing mastery, feeding, bonding, and escalating run mutation until survival turns into tempo control, creature identity, and personalized domination.**
-
-## Current soul emphasis
-The tone has shifted from a more brutal horror-first emphasis toward a dark cool ascendant creature power-fantasy emphasis.
-This does not remove danger, predation, or consequence.
-It clarifies the fantasy of transformation and becoming.
-
-## Shorter internal version
-**Build the kind of monster that can survive the song — then make the song feel like yours.**
-
-## Genre hierarchy
-- RPG first
-- Roguelite second
-- Creature-driven progression game third
-- Lane-timing action combat as the signature expression layer
+**The Identity (Patch V1):**
+You are the literal real-world person who chose "Entry" as your final act before death.
+- **Translation**: Death completes your transition into the **Living Codex**.
+- **The Archive**: You inhabit a biomechanical DNA archive that re-instantiates you from the Lair (the Interface Wound) after each death in the world.
+- **The Body Dies, the Archive Remembers**: This is why you run.
+- **The Split (Bond vs Eat)**: The core tension: "Do I keep you beside me, or make you part of me?" This must stay sacred.
 
 ---
 
-# 2. The Real Player Fantasy
-
-The player is not mainly:
-- a hero
-- a savior
-- a collector
-- a rhythm-game score chaser
-- a defensive survivor scraping by forever
-
-The player is becoming:
-
-## **a personalized predator**
-
-Not through story labels.
-Not through morality choices.
-Through mechanics.
-
-By the end of a strong run, the player should feel like they became a specific kind of monster, such as:
-- a relentless apex hunter
-- a precision predator
-- a kill-fed predation engine
-- a parry-made horror
-- a bonded war-machine
-- a glutton built from what it consumed
-- an ascendant apex form with clear creature identity
-
-The game is at its best when the player can describe the run as:
-### “This is what I became.”
+# 2. The Sacred Spine: Start Weak, Become Feared
+You begin exposed and reactive. You end as a specialized machine of efficiency. The song should not just be survived—it should be **mastered and claimed.**
 
 ---
 
-# 3. Start Weak. Become Fast. Become Feared.
-
-## Core progression fantasy
-The player begins:
-- weak
-- exposed
-- reactive
-- unstable
-- hungry
-
-A good run should then transform them into something:
-- faster
-- sharper
-- more specialized
-- more oppressive
-- more efficient
-- more feared
-- more iconic
-- more ascendant
-
-The goal is not only survival.
-The goal is to become so effective that the level’s pressure starts bending around the build you created.
+# 3. The Harvest (Reward Ecology)
+Progression is biological, not abstract. Keep the spoils distinct:
+- **Grafts / Gear**: Predator trophies (organs, carapace, teeth).
+- **Relics**: Transformative, mythic artifacts that shape the run's soul.
+- **DNA**: The species relationship economy. Predation is the price of power.
+- **The Doctrine (Collars)**: Ritual restraint tech that shapes your support.
+- **The Split**: Every meal or bond changes the weight of your shadow.
 
 ---
 
-# 4. What Combat Is For
-
-Combat is not the entire soul of the game.
-
-Combat is the **delivery system** for:
-- creature identity
-- RPG build expression
-- run pressure
-- tempo domination
-- predator fantasy
-
-Combat exists to answer:
-- what kind of monster did you build?
-- does that monster hold up under pressure?
-- can that monster impose its own logic on the battlefield?
-
-If combat is good but the build identity is weak, the soul is incomplete.
-
-## What the RPG layer is for
-
-The RPG layer decides what the creature is becoming.
-
-It owns:
-- species-specific growth identity
-- bond vs eat authorship
-- tendency direction
-- role-defining run choices
-- transformation without generic stat sludge
-
-If the player cannot say what kind of creature they are becoming, the RPG layer is failing.
-
-## What the roguelite layer is for
-
-The roguelite layer gives the creature build repeatable pressure.
-
-It owns:
-- run structure
-- escalation
-- adaptation under uncertainty
-- failure-driven learning
-- replayable variation without kitchen-sink sprawl
-
-### Run cadence (design target)
-- **9 regular levels + 1 boss** per run.
-- **Regular levels**: hostile song performance capped around **under two minutes** of authored track; **no pause** inside that active combat slice.
-- **Between regular levels**: **menus on purpose**—reward picks, then **inventory / resource management**, then the next song.
-- **Boss**: **full-length song** for that encounter (not the short regular-level slice); still the same lane-timing battle language, at flagship pressure.
-
-## What the creature layer is for
-
-The creature layer gives progression a body, appetite, and consequence.
-
-It owns:
-- species meaning
-- DNA relevance
-- support identity
-- bondable life versus consumable life
-- the feeling that growth is biological and authored, not abstract
+# 4. The World: Sacred Origin, Divergent Fate
+The world does not start in ruin. It begins **Wondrous, Strange, and Sacred.**
+Its darkness is not an accident—it is a destination. Through your predation, bonding, and boss outcomes, the world bends into one of four fates:
+- **Predatory**: Hunger made law. Carcass landmarks.
+- **Mythic**: Costly endurance. Sacred relic geometry.
+- **Sterile**: Cold, audited authority. Invasive grids.
+- **Haunted**: Debt and memory. Ritual residue.
 
 ---
 
-# 5. What Creatures Must Mean
-
-Creatures are not:
-- decorative rewards
-- passive stat cards
-- collectible filler
-- background math
-
-Creatures must become:
-- run-defining choices
-- active combat support entities
-- sources of identity
-- reasons to bond
-- reasons to eat
-- reasons different runs feel different
-
-Each good creature should answer:
-## **What kind of violence does this creature reward?**
-
-Examples:
-- a creature that rewards kills
-- a creature that rewards perfect parries
-- a creature that rewards precise timed attacks
-- a creature that rewards aggression under pressure
-- a creature that rewards sustain through feeding
-
-Creatures should shape the run’s personality.
+# 5. Combat-Clean, Management-Rich: The Honed Edge
+- **Active Combat**: Minimal interruption. Honest timing. Lethal clarity. No menu sludge.
+- **Between Levels**: The "Grafted Growth." Deep, management-rich build-shaping and high-information review.
+- **Display Law**: **Combat HUD = Urgency** (live action) | **Management Screens = Comprehension** (between-level strategy).
 
 ---
 
-# 6. Bond vs Eat Must Stay Sacred
-
-This is one of the core laws of the game.
-
-If **Bond** is always better:
-- the game collapses into preservation optimization
-
-If **Eat** is always better:
-- the game collapses into obvious greed math
-
-Neither is acceptable.
-
-## Bond should mean
-- delayed value
-- relationship
-- support identity
-- future-facing power
-- living danger preserved beside you
-
-## Eat should mean
-- immediate leverage
-- mutation
-- self-prioritization
-- domination
-- hunger made practical
-
-A creature should always raise the question:
-### **Do I become part of you, or do I remain beside you?**
-
-That tension is part of the game’s soul and must be protected.
-
----
-
-# 7. Power Creep Philosophy
-
-Power creep is not a flaw in this game.
-It is one of the pleasures.
-
-But it should not feel like:
-- generic number inflation
-- passive stat sludge
-- abstract rarity creep
-
-It should feel like:
-- mutation
-- acceleration
-- increasing efficiency
-- more oppressive tempo
-- more visible predator identity
-- the run becoming unnatural
-- more transformation-driven authority
-
-The ideal arc is:
-- early run = weak scavenger
-- mid run = shaped predator
-- late run = customized apex monster
-
-## Influence vectors (not copy targets)
-The soul direction should borrow vector energy from:
-- Solo Leveling for cool authority and shadowy ascendance
-- Digimon for iconic creature growth and evolution identity
-- My Hero Academia for readable power expression and silhouette clarity
-- Ben 10 for distinct form fantasy and transformation coolness
-
-These are reference vectors for tone and clarity, not templates to imitate.
-
----
-
-# 8. Tempo Control Is The Prize
-
-Survival is important, but survival alone is not the final reward.
-
-## Survival is the floor.
-## Tempo control is the prize.
-
-The player should eventually feel:
-- they are killing fast enough to create breathing room
-- their creature support is helping them keep control
-- their build is not just surviving pressure, but shaping it
-- the song is no longer fully hostile — they are taking it over
-
-This is where the game becomes unique:
-not just “I lived,” but:
-### **I took control.**
-
----
-
-# 9. The Run Should Feel Like It Is Becoming Something
-
-Runs should not just get stronger.
-They should get more distinct.
-
-A good run should feel like it is:
-- developing a shape
-- choosing a philosophy of power
-- revealing a creature-build identity
-- mutating toward a recognizable kind of monster
-
-By the end of the run, the build should feel like:
-- a living weapon
-- an authored predator
-- a machine made of choices
-
----
-
-# 10. What the World Should Feel Like
-
-Even before full world-state systems are implemented, the world should feel:
-- hungry
-- reactive
-- oppressive
-- ecological
-- aware of power
-- like it notices what the player is becoming
-
-The world should never feel like:
-- a neutral theme park
-- a flat combat stage
-- disconnected enemy rooms
-
-Bosses, creatures, biomes, and later world-state systems should all support the feeling that the world is not passive.
-
----
-
-# 11. What the Game Must Never Become
-
-The soul dies if the game becomes:
-- a generic roguelite
-- a generic creature collector
-- a pet battler
-- a pure rhythm game with monster paint
-- a stat spreadsheet
-- a support-proc game where creatures are background math
-- a survival game where careful stalling is better than strong predation
-
-The soul weakens whenever:
-- creatures stop shaping run personality
-- combat stops revealing the build
-- bond vs eat loses tension
-- power creep stops feeling monstrous
-- the player stops feeling like they are becoming something feared
-
----
-
-# 12. The Most Important Question For Future Additions
-
-For every major new system, mechanic, creature, upgrade, or UI element, ask:
-
-## **Does this help the player become a faster, more distinct kind of monster?**
-
-If yes, it probably belongs.
-If no, it may still be useful, but it is not part of the game’s soul.
-
----
-
-# 13. Internal Slogans
-
-## Primary line
-**Start weak. Become feared.**
-
-## Secondary line
-**Build the thing that kills for you, with you, or as you.**
-
-These lines should guide:
-- design decisions
-- feature triage
-- creature design
-- run-growth philosophy
-- presentation tone
-
----
-
-# 14. Final Truth
-
-**What We Fed is at its best when combat stops feeling like mere survival and starts feeling like the expression of a living monster the player built.**
+# 6. Final Truth
+**WHAT WE FED is at its best when combat stops feeling like survival and starts feeling like the expression of a living monster you built from the spoils of a sacred world.**

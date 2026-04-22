@@ -4,10 +4,13 @@ signal upgrade_selected(index: int)
 signal predation_selected(index: int)
 signal continue_requested(advance_to_boss: bool)
 signal path_node_selected(node_id: String)
+signal management_action_requested(action_id: String, payload: Dictionary)
 
 const UI_STYLE = preload("res://systems/UIStyle.gd")
 const PRESENTATION_TEXT = preload("res://data/PresentationTextContent.gd")
 const COMBAT_CONTENT = preload("res://data/CombatContent.gd")
+const PERFORMANCE_REWARD_CONTENT = preload("res://data/PerformanceRewardContent.gd")
+const RITUAL_CONTENT = preload("res://data/RitualConsumableContent.gd")
 
 var _choices: Array[Dictionary] = []
 var _run_growth: Node = null
@@ -27,6 +30,10 @@ var _state_hint_label: Label = null
 var _header_label: Label = null
 var _subtitle_label: Label = null
 var _choice_cards: Array[ColorRect] = []
+var _management_sections: Array[Dictionary] = []
+var _management_section_index: int = 0
+var _management_item_index_by_section: Dictionary = {}
+var _management_status_line: String = ""
 
 
 func _ready() -> void:
@@ -48,6 +55,7 @@ func present_level_completion(choices: Array[Dictionary], run_growth_ref: Node, 
 	_awaiting_path_choice = false
 	_apply_shell_titles()
 	_refresh_cards()
+	_rebuild_management_sections()
 	_refresh_prep_body()
 	_refresh_hint()
 	if _canvas != null:
@@ -68,6 +76,7 @@ func present_predation_pool(offers: Array[Dictionary]) -> void:
 	_apply_shell_titles()
 	_refresh_cards()
 	_refresh_card_layout()
+	_rebuild_management_sections()
 	_refresh_prep_body()
 	_refresh_hint()
 
@@ -86,6 +95,7 @@ func present_path_choice(nodes: Array[Dictionary], advance_to_boss: bool) -> voi
 	_apply_shell_titles()
 	_refresh_cards()
 	_refresh_card_layout()
+	_rebuild_management_sections()
 	_refresh_prep_body()
 	_refresh_hint()
 
@@ -99,6 +109,7 @@ func notify_predation_committed(_selected_index: int) -> void:
 	_apply_shell_titles()
 	_refresh_cards()
 	_refresh_card_layout()
+	_rebuild_management_sections()
 	_refresh_prep_body()
 	_refresh_hint()
 
@@ -109,6 +120,8 @@ func notify_path_committed(_node_id: String) -> void:
 	_awaiting_path_choice = false
 	_awaiting_continue = true
 	_apply_shell_titles()
+	_rebuild_management_sections()
+	_refresh_prep_body()
 	_refresh_hint()
 
 
@@ -116,6 +129,7 @@ func notify_upgrade_committed(_selected_index: int) -> void:
 	_awaiting_upgrade_choice = false
 	_awaiting_continue = true
 	_awaiting_path_choice = false
+	_rebuild_management_sections()
 	_refresh_prep_body()
 	_refresh_hint()
 
@@ -131,11 +145,16 @@ func hide_surface() -> void:
 	_choices.clear()
 	_refresh_cards()
 	_refresh_card_layout()
+	_management_sections.clear()
+	_management_item_index_by_section.clear()
+	_management_section_index = 0
+	_management_status_line = ""
 
 
 func refresh_prep_summary() -> void:
 	if not visible:
 		return
+	_rebuild_management_sections()
 	_refresh_prep_body()
 
 
@@ -153,6 +172,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		if _run_growth != null and is_instance_valid(_run_growth) and _run_growth.has_method("toggle_dna_routing_preference"):
 			_run_growth.call("toggle_dna_routing_preference")
 		_refresh_prep_body()
+		get_viewport().set_input_as_handled()
+		return
+
+	if _handle_management_input(key_event):
 		get_viewport().set_input_as_handled()
 		return
 
@@ -202,7 +225,7 @@ func _build_ui() -> void:
 	add_child(_canvas)
 
 	var backdrop: ColorRect = ColorRect.new()
-	backdrop.color = Color(0.01, 0.01, 0.02, 0.92)
+	backdrop.color = Color(0.01, 0.01, 0.02, 0.84)
 	backdrop.anchor_right = 1.0
 	backdrop.anchor_bottom = 1.0
 	backdrop.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -211,14 +234,14 @@ func _build_ui() -> void:
 	_panel = ColorRect.new()
 	_panel.position = Vector2(84.0, 56.0)
 	_panel.size = Vector2(1112.0, 608.0)
-	UI_STYLE.apply_shell_style(_panel, "mm_command")
+	UI_STYLE.apply_shell_style(_panel, "run_overlay")
 	_canvas.add_child(_panel)
 
 	_header_label = Label.new()
 	_header_label.text = PRESENTATION_TEXT.RUN_SPINE_LEVEL_HEADER
 	_header_label.position = Vector2(0.0, 14.0)
 	_header_label.size = Vector2(1112.0, 36.0)
-	UI_STYLE.apply_label(_header_label, "mm_title", HORIZONTAL_ALIGNMENT_CENTER)
+	UI_STYLE.apply_label(_header_label, "overlay_title", HORIZONTAL_ALIGNMENT_CENTER)
 	_header_label.add_theme_font_size_override("font_size", 38)
 	_panel.add_child(_header_label)
 
@@ -226,7 +249,7 @@ func _build_ui() -> void:
 	_subtitle_label.text = PRESENTATION_TEXT.RUN_SPINE_LEVEL_SUBTITLE
 	_subtitle_label.position = Vector2(0.0, 48.0)
 	_subtitle_label.size = Vector2(1112.0, 22.0)
-	UI_STYLE.apply_label(_subtitle_label, "mm_subtitle", HORIZONTAL_ALIGNMENT_CENTER)
+	UI_STYLE.apply_label(_subtitle_label, "mm_hint", HORIZONTAL_ALIGNMENT_CENTER)
 	_panel.add_child(_subtitle_label)
 
 	_next_label = Label.new()
@@ -247,7 +270,7 @@ func _build_ui() -> void:
 
 	_prep_body_label = Label.new()
 	_prep_body_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	UI_STYLE.apply_label(_prep_body_label, "mm_body")
+	UI_STYLE.apply_label(_prep_body_label, "overlay_body")
 	_prep_scroll.add_child(_prep_body_label)
 
 	_state_hint_label = Label.new()
@@ -270,7 +293,7 @@ func _build_choice_cards() -> void:
 		card.name = "RunSpineUpgradeCard_%d" % i
 		card.position = Vector2(start_x + i * (card_w + gap), 104.0)
 		card.size = Vector2(card_w, card_h)
-		UI_STYLE.apply_shell_style(card, "mm_mutation")
+		UI_STYLE.apply_shell_style(card, "hud_right")
 		_panel.add_child(card)
 		_choice_cards.append(card)
 
@@ -294,7 +317,7 @@ func _build_choice_cards() -> void:
 		title_label.position = Vector2(14.0, 64.0)
 		title_label.size = Vector2(card_w - 28.0, 54.0)
 		title_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		UI_STYLE.apply_label(title_label, "mm_stat_primary")
+		UI_STYLE.apply_label(title_label, "hud_metric_value")
 		card.add_child(title_label)
 
 		var separator: ColorRect = ColorRect.new()
@@ -309,7 +332,7 @@ func _build_choice_cards() -> void:
 		body_label.position = Vector2(14.0, 136.0)
 		body_label.size = Vector2(card_w - 28.0, 70.0)
 		body_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		UI_STYLE.apply_label(body_label, "mm_body")
+		UI_STYLE.apply_label(body_label, "overlay_body")
 		card.add_child(body_label)
 
 
@@ -421,6 +444,16 @@ func _compose_run_prep_body() -> String:
 	if _run_growth != null and is_instance_valid(_run_growth) and _run_growth.has_method("get_dna_routing_label"):
 		route_line = "DNA harvest  |  %s" % String(_run_growth.call("get_dna_routing_label"))
 	blocks.append(route_line)
+	blocks.append(_compose_management_digest_block())
+
+	if GameState.has_method("get_reward_ecology_summary_lines"):
+		var ecology_lines: Array = GameState.get_reward_ecology_summary_lines()
+		for ecology_line in ecology_lines:
+			blocks.append(String(ecology_line))
+	if GameState.has_method("get_reward_ecology_slot_alerts"):
+		var ecology_alerts: Array = GameState.get_reward_ecology_slot_alerts()
+		if not ecology_alerts.is_empty():
+			blocks.append("Ecology alerts  |  " + "\n  ".join(PackedStringArray(ecology_alerts)))
 
 	if GameState.roster.is_empty():
 		blocks.append("Bonds  |  none yet")
@@ -483,6 +516,165 @@ func _compose_run_prep_body() -> String:
 		blocks.append("Digestions  |  " + "\n  ".join(PackedStringArray(digest)))
 
 	return "\n\n".join(PackedStringArray(blocks))
+
+
+func _handle_management_input(key_event: InputEventKey) -> bool:
+	match key_event.keycode:
+		KEY_TAB:
+			_cycle_management_section(1)
+			return true
+		KEY_A:
+			_cycle_management_item(-1)
+			return true
+		KEY_D:
+			_cycle_management_item(1)
+			return true
+		KEY_E:
+			_commit_management_action("equip")
+			return true
+		KEY_X:
+			_commit_management_action("salvage")
+			return true
+		KEY_C:
+			_commit_management_action("collar")
+			return true
+	return false
+
+
+func _compose_management_digest_block() -> String:
+	if _management_sections.is_empty():
+		return "Management  |  no slotted loot/artifacts/rituals yet\n  Collar slot  |  hook ready (system pending)"
+	var lines: Array[String] = []
+	lines.append("Management  |  TAB slot  A/D item  E equip  X salvage  C collar hook")
+	for i in range(_management_sections.size()):
+		var section: Dictionary = _management_sections[i]
+		var items: Array = section.get("items", [])
+		var marker: String = ">" if i == _management_section_index else " "
+		if items.is_empty():
+			lines.append("%s %s  |  empty" % [marker, String(section.get("label", "Slot"))])
+			continue
+		var item_idx: int = int(_management_item_index_by_section.get(i, 0))
+		item_idx = clampi(item_idx, 0, items.size() - 1)
+		var item_id: String = String(items[item_idx])
+		var item_name: String = _reward_title_from_id(item_id)
+		lines.append("%s %s  |  %s  (%d/%d)" % [
+			marker,
+			String(section.get("label", "Slot")),
+			item_name,
+			item_idx + 1,
+			items.size()
+		])
+	lines.append("  Collar slot  |  placeholder-ready (equip/swap hook only)")
+	if not _management_status_line.is_empty():
+		lines.append("  Last action  |  " + _management_status_line)
+	return "\n".join(PackedStringArray(lines))
+
+
+func _reward_title_from_id(reward_id: String) -> String:
+	var reward_data: Dictionary = PERFORMANCE_REWARD_CONTENT.get_reward(reward_id)
+	if not reward_data.is_empty():
+		return String(reward_data.get("title", reward_id))
+	var ritual_data: Dictionary = RITUAL_CONTENT.get_ritual(reward_id)
+	if not ritual_data.is_empty():
+		return String(ritual_data.get("title", reward_id))
+	return reward_id
+
+
+func _rebuild_management_sections() -> void:
+	var sections: Array[Dictionary] = []
+	var loot: Dictionary = GameState.reward_loot_slots
+	var artifacts: Dictionary = GameState.reward_artifact_slots
+	var consumables: Dictionary = GameState.reward_consumable_slots
+	sections.append(_build_management_section("Loot offense", "loot", "offense", Array(loot.get("offense", []))))
+	sections.append(_build_management_section("Loot defense", "loot", "defense", Array(loot.get("defense", []))))
+	sections.append(_build_management_section("Loot utility", "loot", "utility", Array(loot.get("utility", []))))
+	sections.append(_build_management_section("Artifact major", "artifact", "major", Array(artifacts.get("major", []))))
+	sections.append(_build_management_section("Artifact minor", "artifact", "minor", Array(artifacts.get("minor", []))))
+	sections.append(_build_management_section("Ritual prepared", "consumable", "prepared", Array(consumables.get("prepared", []))))
+	sections.append(_build_management_section("Ritual carry", "consumable", "carry", Array(consumables.get("carry", []))))
+	_management_sections = sections
+	_management_section_index = clampi(_management_section_index, 0, max(_management_sections.size() - 1, 0))
+	for i in range(_management_sections.size()):
+		var section_items: Array = _management_sections[i].get("items", [])
+		var idx: int = int(_management_item_index_by_section.get(i, 0))
+		if section_items.is_empty():
+			_management_item_index_by_section[i] = 0
+		else:
+			_management_item_index_by_section[i] = clampi(idx, 0, section_items.size() - 1)
+
+
+func _build_management_section(label: String, lane: String, slot: String, items: Array) -> Dictionary:
+	return {
+		"label": label,
+		"lane": lane,
+		"slot": slot,
+		"items": items.duplicate(true)
+	}
+
+
+func _cycle_management_section(step: int) -> void:
+	if _management_sections.is_empty():
+		return
+	_management_section_index = posmod(_management_section_index + step, _management_sections.size())
+	_refresh_prep_body()
+
+
+func _cycle_management_item(step: int) -> void:
+	if _management_sections.is_empty():
+		return
+	var section: Dictionary = _management_sections[_management_section_index]
+	var items: Array = section.get("items", [])
+	if items.size() <= 1:
+		return
+	var idx: int = int(_management_item_index_by_section.get(_management_section_index, 0))
+	idx = posmod(idx + step, items.size())
+	_management_item_index_by_section[_management_section_index] = idx
+	_refresh_prep_body()
+
+
+func _commit_management_action(action_id: String) -> void:
+	_rebuild_management_sections()
+	if action_id == "collar":
+		_management_status_line = "Collar slot hook pinged (no collar runtime wired yet)"
+		emit_signal("management_action_requested", action_id, {"status": "hook_ready"})
+		_refresh_prep_body()
+		return
+	if _management_sections.is_empty():
+		return
+	var section: Dictionary = _management_sections[_management_section_index]
+	var items: Array = section.get("items", [])
+	if items.is_empty():
+		_management_status_line = "%s: empty slot" % String(section.get("label", "Slot"))
+		_refresh_prep_body()
+		return
+	var lane: String = String(section.get("lane", ""))
+	var slot: String = String(section.get("slot", ""))
+	var idx: int = int(_management_item_index_by_section.get(_management_section_index, 0))
+	idx = clampi(idx, 0, items.size() - 1)
+	var reward_id: String = String(items[idx])
+	var ok: bool = false
+	if action_id == "equip" and GameState.has_method("set_reward_slot_primary"):
+		ok = bool(GameState.call("set_reward_slot_primary", lane, slot, reward_id))
+	elif action_id == "salvage" and GameState.has_method("salvage_reward_from_slot"):
+		ok = bool(GameState.call("salvage_reward_from_slot", lane, slot, reward_id))
+	if ok:
+		_management_status_line = "%s %s -> %s" % [action_id.capitalize(), String(section.get("label", "slot")), _reward_title_from_id(reward_id)]
+		emit_signal("management_action_requested", action_id, {
+			"status": "ok",
+			"lane": lane,
+			"slot": slot,
+			"reward_id": reward_id
+		})
+	else:
+		_management_status_line = "%s failed on %s" % [action_id.capitalize(), String(section.get("label", "slot"))]
+		emit_signal("management_action_requested", action_id, {
+			"status": "failed",
+			"lane": lane,
+			"slot": slot,
+			"reward_id": reward_id
+		})
+	_rebuild_management_sections()
+	_refresh_prep_body()
 
 
 func _reflow_scroll_label_pair(scroll: ScrollContainer, label: Label) -> void:

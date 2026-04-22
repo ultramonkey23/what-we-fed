@@ -1,4 +1,4 @@
-extends VBoxContainer
+extends Control
 
 const PERFORMANCE_REWARD_CONTENT = preload("res://data/PerformanceRewardContent.gd")
 const UI_STYLE = preload("res://systems/UIStyle.gd")
@@ -6,163 +6,97 @@ const UI_STYLE = preload("res://systems/UIStyle.gd")
 var _director: Node = null
 var _proc_chip_timer: float = 0.0
 var _proc_tween: Tween = null
+var _pulse_tween: Tween = null
 var _message_lane_blocked: bool = false
+var _lean_mode: bool = false
 
-var _shell: Control = null
-var _caption: Label = null
-var _progress_label: Label = null
-var _status_label: Label = null
-var _claims_label: Label = null
-var _proc_chip_label: Label = null
+# Core Panels
+var _panel: Panel
+var _offer_shell: Panel
+var _ultimate_shell: Panel
+var _exp_bar: ProgressBar
 
-var _offer_shell: Control = null
-var _offer_title_label: Label = null
-var _offer_body_label: Label = null
-var _offer_hint_label: Label = null
-var _offer_progress_bar: ProgressBar = null
-var _offer_creature_silhouette: ColorRect = null
-var _bond_choice_label: Label = null
-var _eat_choice_label: Label = null
-var _ultimate_shell: Control = null
-var _ultimate_label: Label = null
-var _ultimate_progress_bar: ProgressBar = null
+# Readout Labels
+var _caption: Label
+var _power_level: Label
+var _combo_display: Label
+var _status_label: Label
+var _offer_title: Label
+var _offer_body: Label
+var _ultimate_bar: ProgressBar
+var _ultimate_label: Label
+var _proc_chip_label: Label
+
+var _current_combo: int = 0
+var _current_tier: String = "stirring"
+var _ultimate_ready: bool = false
 
 
 func _ready() -> void:
 	_cache_nodes()
-	if _shell == null:
-		return
-	_shell.visible = false
-	if _offer_shell != null:
-		_offer_shell.visible = false
-	if _proc_chip_label != null:
-		_proc_chip_label.visible = false
+	
+	if _panel: _panel.visible = false
+	if _offer_shell: _offer_shell.visible = false
+	if _ultimate_shell: _ultimate_shell.visible = true
+	
+	_connect_signals()
 	_apply_styles()
 
 
 func _cache_nodes() -> void:
-	_shell = get_node_or_null("%PerformanceShell")
-	if _shell == null:
-		_shell = get_node_or_null("PerformancePanel")
-	if _shell == null:
-		_shell = get_node_or_null("PerformanceShell")
-
-	_caption = _resolve_label(["%Caption", "PerformancePanel/PerformanceContainer/Caption"])
-	_progress_label = _resolve_label(["%ProgressLabel", "%PowerLevel", "PerformancePanel/PerformanceContainer/ProgressLabel", "PerformancePanel/PerformanceContainer/PowerLevel"])
-	_status_label = _resolve_label(["%StatusLabel", "PerformancePanel/PerformanceContainer/StatusLabel"])
-	_claims_label = _resolve_label(["%ClaimsLabel", "%ComboDisplay", "PerformancePanel/PerformanceContainer/ClaimsLabel", "PerformancePanel/PerformanceContainer/ComboDisplay"])
-	_proc_chip_label = _resolve_label(["%ProcChipLabel"])
-
-	_offer_shell = get_node_or_null("%OfferShell")
-	if _offer_shell == null:
-		_offer_shell = get_node_or_null("OfferPanel")
-	if _offer_shell == null:
-		_offer_shell = get_node_or_null("OfferShell")
-
-	_offer_title_label = _resolve_label(["%OfferTitleLabel", "OfferPanel/OfferContainer/OfferTitleLabel", "OfferShell/OfferContainer/OfferTitleLabel"])
-	_offer_body_label = _resolve_label(["%OfferBodyLabel", "OfferPanel/OfferContainer/OfferBodyLabel", "OfferShell/OfferContainer/OfferBodyLabel"])
-	_offer_hint_label = _resolve_label(["%OfferHintLabel", "OfferPanel/OfferContainer/OfferHintLabel", "OfferShell/OfferContainer/OfferHintLabel"])
-	_offer_progress_bar = _resolve_progress_bar(["%OfferProgressBar", "OfferPanel/OfferProgressBar", "OfferShell/OfferProgressBar"])
-	_offer_creature_silhouette = _resolve_color_rect(["OfferPanel/OfferContainer/CreatureSilhouette"])
-	_bond_choice_label = _resolve_label(["OfferPanel/OfferContainer/ChoiceContainer/BondChoice"])
-	_eat_choice_label = _resolve_label(["OfferPanel/OfferContainer/ChoiceContainer/EatChoice"])
-	_ultimate_shell = _resolve_control(["UltimateGauge"])
-	_ultimate_label = _resolve_label(["UltimateGauge/UltimateContainer/UltimateLabel"])
-	_ultimate_progress_bar = _resolve_progress_bar(["UltimateGauge/UltimateContainer/UltimateProgressBar"])
+	_panel = get_node_or_null("PerformancePanel")
+	_offer_shell = get_node_or_null("OfferPanel")
+	_ultimate_shell = get_node_or_null("UltimateGauge")
+	_exp_bar = get_node_or_null("ExperienceBar")
+	
+	if _panel:
+		_caption = _panel.get_node_or_null("PerformanceContainer/Caption")
+		_power_level = _panel.get_node_or_null("PerformanceContainer/PowerLevel")
+		_combo_display = _panel.get_node_or_null("PerformanceContainer/ComboDisplay")
+		_status_label = _panel.get_node_or_null("PerformanceContainer/StatusLabel")
+		_proc_chip_label = _panel.get_node_or_null("PerformanceContainer/ProcChipLabel")
+		
+	if _offer_shell:
+		_offer_title = _offer_shell.get_node_or_null("OfferContainer/OfferTitleLabel")
+		_offer_body = _offer_shell.get_node_or_null("OfferContainer/OfferBodyLabel")
+		
+	if _ultimate_shell:
+		_ultimate_label = _ultimate_shell.get_node_or_null("UltimateContainer/UltimateLabel")
+		_ultimate_bar = _ultimate_shell.get_node_or_null("UltimateContainer/UltimateProgressBar")
 
 
-func _resolve_label(paths: Array[String]) -> Label:
-	for p in paths:
-		var node: Node = get_node_or_null(p)
-		if node is Label:
-			return node as Label
-	return null
-
-
-func _resolve_progress_bar(paths: Array[String]) -> ProgressBar:
-	for p in paths:
-		var node: Node = get_node_or_null(p)
-		if node is ProgressBar:
-			return node as ProgressBar
-	return null
-
-
-func _resolve_color_rect(paths: Array[String]) -> ColorRect:
-	for p in paths:
-		var node: Node = get_node_or_null(p)
-		if node is ColorRect:
-			return node as ColorRect
-	return null
-
-
-func _resolve_control(paths: Array[String]) -> Control:
-	for p in paths:
-		var node: Node = get_node_or_null(p)
-		if node is Control:
-			return node as Control
-	return null
+func _connect_signals() -> void:
+	EventBus.combo_changed.connect(_on_combo_changed)
+	EventBus.ultimate_available.connect(_on_ultimate_ready)
+	EventBus.ultimate_fired.connect(_on_ultimate_fired)
+	EventBus.combo_broken.connect(_on_combo_broken)
+	EventBus.run_growth_changed.connect(_on_run_growth_changed)
+	EventBus.song_beat_pulse.connect(_on_song_beat_pulse)
 
 
 func _apply_styles() -> void:
-	if _shell != null:
-		UI_STYLE.apply_shell_style(_shell, "mm_command")
-	if _caption != null:
-		UI_STYLE.apply_label(_caption, "mm_caption")
-	if _progress_label != null:
-		UI_STYLE.apply_label(_progress_label, "mm_monster_alert")
-	if _status_label != null:
-		UI_STYLE.apply_label(_status_label, "mm_body")
-	if _claims_label != null:
-		UI_STYLE.apply_label(_claims_label, "mm_stat_secondary")
-	if _proc_chip_label != null:
-		UI_STYLE.apply_label(_proc_chip_label, "mm_caption", HORIZONTAL_ALIGNMENT_RIGHT)
+	if _panel: UI_STYLE.apply_shell_style(_panel, "mm_command")
+	if _exp_bar: UI_STYLE.apply_bar_style(_exp_bar, "mm_mutation")
+	if _caption: 
+		UI_STYLE.apply_label(_caption, "hud_metric_title")
+		_caption.text = "POWER"
+	if _power_level: UI_STYLE.apply_label(_power_level, "hud_metric_value")
+	if _status_label: UI_STYLE.apply_label(_status_label, "hud_meta")
+	if _combo_display: UI_STYLE.apply_label(_combo_display, "hud_meta")
+	if _proc_chip_label: UI_STYLE.apply_label(_proc_chip_label, "mm_hint")
+	if _power_level: _power_level.add_theme_font_size_override("font_size", 18)
+	if _status_label: _status_label.add_theme_font_size_override("font_size", 13)
+	if _combo_display: _combo_display.add_theme_font_size_override("font_size", 13)
 
-	if _offer_shell != null:
-		UI_STYLE.apply_shell_style(_offer_shell, "mm_mutation")
-	if _offer_title_label != null:
-		UI_STYLE.apply_label(_offer_title_label, "mm_choice_consume")
-	if _offer_body_label != null:
-		UI_STYLE.apply_label(_offer_body_label, "mm_body")
-	if _offer_hint_label != null:
-		UI_STYLE.apply_label(_offer_hint_label, "mm_hint")
+	if _offer_shell: UI_STYLE.apply_shell_style(_offer_shell, "live_reward")
+	if _offer_title: UI_STYLE.apply_label(_offer_title, "mm_choice_consume")
+	if _offer_body: UI_STYLE.apply_label(_offer_body, "overlay_body")
 	
-	if _offer_progress_bar != null:
-		UI_STYLE.apply_bar_style(_offer_progress_bar, "mm_offer")
-	if _offer_creature_silhouette != null:
-		var silhouette_color: Color = UI_STYLE.get_manga_color("deep_violet")
-		_offer_creature_silhouette.color = Color(silhouette_color.r, silhouette_color.g, silhouette_color.b, 0.78)
-	if _bond_choice_label != null:
-		UI_STYLE.apply_label(_bond_choice_label, "mm_choice_bond")
-		_bond_choice_label.add_theme_font_size_override("font_size", 13)
-	if _eat_choice_label != null:
-		UI_STYLE.apply_label(_eat_choice_label, "mm_choice_consume")
-		_eat_choice_label.add_theme_font_size_override("font_size", 13)
-	if _ultimate_shell != null:
-		UI_STYLE.apply_shell_style(_ultimate_shell, "mm_apex")
-	if _ultimate_label != null:
+	if _ultimate_shell: UI_STYLE.apply_shell_style(_ultimate_shell, "mm_apex")
+	if _ultimate_label: 
 		UI_STYLE.apply_label(_ultimate_label, "mm_monster_alert")
-		_ultimate_label.add_theme_font_size_override("font_size", 12)
-	if _ultimate_progress_bar != null:
-		UI_STYLE.apply_bar_style(_ultimate_progress_bar, "mm_ultimate")
-
-	if _caption != null:
-		_caption.text = "PREDATION METER"
-		_caption.add_theme_font_size_override("font_size", 12)
-	if _progress_label != null:
-		_progress_label.add_theme_font_size_override("font_size", 16)
-	if _status_label != null:
-		_status_label.add_theme_font_size_override("font_size", 13)
-	if _claims_label != null:
-		_claims_label.add_theme_font_size_override("font_size", 12)
-	if _proc_chip_label != null:
-		_proc_chip_label.add_theme_font_size_override("font_size", 12)
-
-	if _offer_title_label != null:
-		_offer_title_label.add_theme_font_size_override("font_size", 14)
-	if _offer_body_label != null:
-		_offer_body_label.add_theme_font_size_override("font_size", 12)
-	if _offer_hint_label != null:
-		_offer_hint_label.add_theme_font_size_override("font_size", 11)
+		_ultimate_label.text = "APEX"
+	if _ultimate_bar: UI_STYLE.apply_bar_style(_ultimate_bar, "mm_ultimate")
 
 
 func bind_runtime(director: Node) -> void:
@@ -183,29 +117,112 @@ func bind_runtime(director: Node) -> void:
 
 
 func process_tick(delta: float, song_mode: bool, run_finished: bool, awaiting_choice: bool) -> void:
-	if _director == null or not is_instance_valid(_director):
+	if _lean_mode:
+		if _offer_shell:
+			_offer_shell.visible = false
 		return
-
 	if _message_lane_blocked:
 		_hide_offer()
 	elif song_mode and not run_finished:
-		if _director.has_method("has_active_offer") and _director.call("has_active_offer"):
+		if _director != null and _director.has_method("has_active_offer") and _director.call("has_active_offer"):
 			_refresh_offer(awaiting_choice)
-		else:
-			if _offer_shell != null:
-				_offer_shell.visible = false
-	else:
-		if _offer_shell != null:
+		elif _offer_shell:
 			_offer_shell.visible = false
+	elif _offer_shell:
+		_offer_shell.visible = false
 
 	if _proc_chip_timer > 0.0:
 		_proc_chip_timer = max(_proc_chip_timer - delta, 0.0)
-		if _proc_chip_label != null:
-			_proc_chip_label.visible = _proc_chip_timer > 0.0
-		# Alpha is handled by tween; don't reset it here while timer is active.
+
+
+func _on_combo_changed(count: int, tier: String) -> void:
+	_current_combo = count
+	_current_tier = tier
+	
+	if _ultimate_bar:
+		var progress: float = clamp(float(count) / 20.0, 0.0, 1.0)
+		var tween = create_tween().set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUART)
+		tween.tween_property(_ultimate_bar, "value", progress * 100.0, 0.25)
+		tween.parallel().tween_property(_ultimate_bar, "modulate", UI_STYLE.get_tier_color(tier), 0.2)
+	
+	if count > 0:
+		if _combo_display: _combo_display.text = "%dx" % count
+		if _power_level:
+			_power_level.text = tier.to_upper()
+			_power_level.modulate = UI_STYLE.get_tier_color(tier)
+	
+	if count % 5 == 0 and count > 0:
+		if _panel: _pulse_hud_element(_panel)
+
+
+func _on_ultimate_ready() -> void:
+	_ultimate_ready = true
+	if _ultimate_label:
+		_ultimate_label.text = "READY"
+		_ultimate_label.modulate = Color(1.0, 0.8, 0.2, 1.0)
+	_start_ultimate_pulse()
+
+
+func _on_ultimate_fired(_power: float) -> void:
+	_ultimate_ready = false
+	if _ultimate_label:
+		_ultimate_label.text = "APEX"
+		_ultimate_label.modulate = Color(1.0, 1.0, 1.0, 1.0)
+	_stop_ultimate_pulse()
+	if _ultimate_bar: _ultimate_bar.value = 0.0
+
+
+func _on_combo_broken(_lost: int) -> void:
+	_ultimate_ready = false
+	if _ultimate_label: _ultimate_label.text = "APEX"
+	if _ultimate_bar: _ultimate_bar.value = 0.0
+	_stop_ultimate_pulse()
+
+
+func _start_ultimate_pulse() -> void:
+	if not _ultimate_shell: return
+	if _pulse_tween != null:
+		_pulse_tween.kill()
+	_pulse_tween = create_tween().set_loops()
+	_pulse_tween.tween_property(_ultimate_shell, "scale", Vector2(1.02, 1.05), 0.4).set_ease(Tween.EASE_IN_OUT)
+	_pulse_tween.tween_property(_ultimate_shell, "scale", Vector2(1.0, 1.0), 0.4).set_ease(Tween.EASE_IN_OUT)
+
+
+func _stop_ultimate_pulse() -> void:
+	if _pulse_tween != null:
+		_pulse_tween.kill()
+	if _ultimate_shell: _ultimate_shell.scale = Vector2.ONE
+
+
+func _on_song_beat_pulse(_beat_index: int, intensity: float) -> void:
+	# Dramatic HUD pulse on beat, scaled by song intensity
+	if _panel and _panel.visible:
+		var pulse_scale: float = 1.0 + (intensity * 0.04)
+		var t = create_tween().set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_EXPO)
+		t.tween_property(_panel, "scale", Vector2(pulse_scale, pulse_scale), 0.05)
+		t.tween_property(_panel, "scale", Vector2.ONE, 0.15)
+	
+	if _ultimate_shell and _ultimate_shell.visible:
+		# Ultimate bar pulses more aggressively
+		var pulse_h: float = 1.0 + (intensity * 0.08)
+		var t = create_tween().set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_EXPO)
+		t.tween_property(_ultimate_shell, "scale:y", pulse_h, 0.05)
+		t.tween_property(_ultimate_shell, "scale:y", 1.0, 0.15)
+
+
+func _pulse_hud_element(element: Control) -> void:
+	var t = create_tween().set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+	t.tween_property(element, "scale", Vector2(1.05, 1.1), 0.1)
+	t.tween_property(element, "scale", Vector2.ONE, 0.2)
 
 
 func _refresh_hud() -> void:
+	if _lean_mode:
+		if _panel:
+			_panel.visible = false
+		if _offer_shell:
+			_offer_shell.visible = false
+		return
 	if _director == null or not is_instance_valid(_director):
 		return
 
@@ -213,67 +230,34 @@ func _refresh_hud() -> void:
 	var phase_index: int = int(snapshot.get("phase_index", -1))
 	
 	var active: bool = phase_index >= 0
-	_shell.visible = active
+	if _panel: _panel.visible = active
 	if not active:
 		return
 
-	var run_progress: float = float(snapshot.get("run_progress", 0.0))
-	var run_score: int = int(snapshot.get("run_score", 0))
-	var bonus_progress: float = float(snapshot.get("bonus_progress", 0.0))
-	var next_threshold: float = float(snapshot.get("next_threshold", 0.0))
-	var rewards_remaining: int = int(snapshot.get("rewards_remaining", 0))
-	var claimed_tags: Array = snapshot.get("claimed_tags", [])
 	var exhausted: bool = bool(snapshot.get("exhausted", false))
-	var offer_active: bool = bool(snapshot.get("offer_active", false))
+	var rewards_remaining: int = int(snapshot.get("rewards_remaining", 0))
 	var score_grade: String = String(snapshot.get("score_grade", "--"))
 
-	if _progress_label != null:
+	if _status_label:
 		if exhausted:
-			_progress_label.text = "SEALED"
-			_progress_label.modulate = Color(0.7, 0.7, 0.7, 1.0)
+			_status_label.text = "FED"
 		else:
-			_progress_label.text = "%.0f / %.0f" % [run_progress, next_threshold]
-			_progress_label.modulate = Color(1.0, 1.0, 1.0, 1.0)
-	
-	if _status_label != null:
-		if exhausted:
-			_status_label.text = "Pack fed"
-		else:
-			_status_label.text = "%s  |  %d left%s" % [
-				score_grade,
-				rewards_remaining,
-				" (live)" if offer_active else ""
-			]
-
-	if _claims_label != null:
-		var claim_text: String = "--"
-		if exhausted and rewards_remaining <= 0 and claimed_tags.is_empty():
-			claim_text = "pack fed"
-		elif not claimed_tags.is_empty():
-			var latest_claim: String = String(claimed_tags[claimed_tags.size() - 1])
-			if claimed_tags.size() > 1:
-				claim_text = "%s +%d" % [latest_claim, claimed_tags.size() - 1]
-			else:
-				claim_text = latest_claim
-		elif bonus_progress > 0.0:
-			claim_text = "score %d  bonus +%.0f" % [run_score, bonus_progress]
-		elif next_threshold > 0.0:
-			claim_text = "score %d" % run_score
-		_claims_label.text = _compact_hud_copy(claim_text, 22)
+			_status_label.text = "%s %d" % [score_grade.left(3), rewards_remaining]
 
 
 func _on_offer_started(_reward_data: Dictionary) -> void:
+	if _lean_mode:
+		_hide_offer()
+		return
 	_refresh_offer(false)
 	_refresh_hud()
 
 
 func _refresh_offer(awaiting_choice: bool) -> void:
-	if _director == null or not is_instance_valid(_director):
-		return
-	if _message_lane_blocked:
+	if _lean_mode:
 		_hide_offer()
 		return
-	if awaiting_choice:
+	if _director == null or not is_instance_valid(_director) or awaiting_choice:
 		_hide_offer()
 		return
 
@@ -282,30 +266,13 @@ func _refresh_offer(awaiting_choice: bool) -> void:
 		_hide_offer()
 		return
 
-	var time_left: float = float(_director.call("get_active_offer_time_left"))
-	var total_time: float = PERFORMANCE_REWARD_CONTENT.OFFER_DURATION
-	
-	if _offer_shell != null:
-		_offer_shell.visible = true
-	
-	if _offer_title_label != null:
-		var offer_title: String = _compact_hud_copy(String(reward_data.get("title", "Reward")), 12).to_upper()
-		var offer_tag: String = _compact_hud_copy(String(reward_data.get("tag", "MARK")), 6)
-		_offer_title_label.text = "%s %s" % [offer_title, offer_tag]
-	
-	if _offer_body_label != null:
-		_offer_body_label.text = _compact_hud_copy(String(reward_data.get("summary", "")), 40)
-	
-	if _offer_hint_label != null:
-		_offer_hint_label.text = "AUTO %.1fs" % time_left
-		
-	if _offer_progress_bar != null:
-		_offer_progress_bar.value = clamp(time_left / total_time, 0.0, 1.0)
+	if _offer_shell: _offer_shell.visible = true
+	if _offer_title: _offer_title.text = String(reward_data.get("title", "REWARD")).to_upper()
+	if _offer_body: _offer_body.text = String(reward_data.get("summary", ""))
 
 
 func _hide_offer() -> void:
-	if _offer_shell != null:
-		_offer_shell.visible = false
+	if _offer_shell: _offer_shell.visible = false
 
 
 func set_message_lane_blocked(blocked: bool) -> void:
@@ -315,8 +282,7 @@ func set_message_lane_blocked(blocked: bool) -> void:
 
 
 func _on_proc_feedback(text: String, color: Color) -> void:
-	if _proc_chip_label == null:
-		return
+	if _proc_chip_label == null: return
 	
 	if _proc_tween != null:
 		_proc_tween.kill()
@@ -331,11 +297,11 @@ func _on_proc_feedback(text: String, color: Color) -> void:
 	_proc_tween.tween_property(_proc_chip_label, "modulate:a", 0.0, 1.2).set_delay(0.6)
 	_proc_tween.tween_callback(func() -> void:
 		_proc_chip_label.visible = false
-		_proc_chip_label.modulate.a = 1.0
 	)
 
 
-func _compact_hud_copy(text: String, max_len: int) -> String:
-	if text.length() <= max_len:
-		return text
-	return text.left(max_len - 2) + ".."
+func _on_run_growth_changed(_level: int, exp: float, exp_to_next: float) -> void:
+	if _exp_bar:
+		var progress: float = clamp(exp / exp_to_next, 0.0, 1.0)
+		var tween = create_tween().set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUART)
+		tween.tween_property(_exp_bar, "value", progress * 100.0, 0.4)

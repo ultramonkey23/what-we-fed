@@ -42,7 +42,8 @@ Every final output MUST include the Auditor's Report:
 - **Blast Radius**: Tier 0 | 1 | 2 | 3
 - **Self-Critique Results**:
   - [ ] Layer 1 Integrity (Timing/Lanes)
-  - [ ] Anti-Sludge (HUD/Combat-Clean)
+  - [ ] Anti-Sludge (No active-combat menu-sludge/clutter)
+  - [ ] Display Law (Combat HUD=Urgency | Management=Comprehension)
   - [ ] GDScript 2.0 Compliance (Typing/Signals)
 - **Evidence Type**: Runtime-Verified | Static-Only | Speculative
 - **Verified Facts**: ...

@@ -12,9 +12,12 @@ const BOSS_TRACK_PATH: String = SONG_LIBRARY.SONGS_BY_ID[SONG_LIBRARY.LIVE_BOSS_
 static func get_region_main_run_song(region_id: String) -> Dictionary:
 	return SONG_LIBRARY.get_region_main_run_song(region_id)
 
-static func get_region_song_map(region_id: String):
-	var song: Dictionary = get_region_main_run_song(region_id)
-	var timing_map_path: String = String(song.get("timing_map_path", ""))
+static func get_song_map(song_data: Dictionary):
+	var timing_map_path: String = String(song_data.get("timing_map_path", ""))
 	if timing_map_path.is_empty() or not ResourceLoader.exists(timing_map_path):
 		return preload("res://data/song_maps/tricky_songmap.gd")
 	return load(timing_map_path)
+
+static func get_region_song_map(region_id: String):
+	var song: Dictionary = get_region_main_run_song(region_id)
+	return get_song_map(song)

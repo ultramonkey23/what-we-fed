@@ -1,38 +1,29 @@
 extends Node
 
-# SongConductor v1 — music-driven combat pressure layer.
-#
-# Usage:
-#   var conductor = SongConductorScript.new()
-#   add_child(conductor)
-#   conductor.section_changed.connect(_on_section_changed)
-#   conductor.final_movement_reached.connect(_on_final_movement)
-#   conductor.start(TrickySongMap)
-#
-# The conductor plays the song asset, tracks its position, and emits
-# section_changed as authored section boundaries are crossed.
-# CombatScene uses section_changed to drive _enter_song_phase() and to
-# apply the section's spawn_interval_mult on top of the region phase baseline.
-# final_movement_reached replaces the old SONG_CONTENT.SONG_DURATION clock check
-# so the boss always triggers at the musically authored climax point.
-#
-# V1 limits (known, acceptable):
-# - No waveform beat detection — sections are authored by fraction; beat quality uses authored BPM.
-# - CombatScene owns higher-level handoff and restart state.
-#   Routine reward and growth flow should stay live and not pause the conductor.
-# - One song map active at a time — no crossfade or layering.
-
+signal song_started(song_state: Dictionary)
+signal transport_state_changed(is_running: bool, song_time: float)
 signal section_changed(section_id: String, data: Dictionary)
+signal beat_pulse(beat_index: int, quality: String, intensity: float, song_time: float)
 signal final_movement_reached()
 signal accent_fired()
 
-# Public readable state — safe to poll from CombatScene each frame.
+# Public readable state — safe for polling.
+var current_song_id: String = ""
+var current_bpm: float = 0.0
 var current_intensity: float = 0.0
 var current_spawn_mult: float = 1.0
 var current_section_id: String = ""
+var current_cadence_window: String = ""
+
+const BEAT_PERFECT_WINDOW: float = 0.065
+const BEAT_GOOD_WINDOW: float = 0.130
+const DEFAULT_CADENCE_WINDOW_RULES: Array = [
+	{"window": "surge", "section_ids": ["final"], "intensity_gte": 0.85},
+	{"window": "drive", "section_ids": ["chorus"], "intensity_gte": 0.62}
+]
 
 var _stream_player: AudioStreamPlayer = null
-var _sections: Array = []          # sections with computed absolute start_time
+var _sections: Array = []
 var _current_section_idx: int = -1
 var _final_movement_time: float = 9999.0
 var _window_start_time: float = 0.0
@@ -40,91 +31,58 @@ var _window_end_time: float = 9999.0
 var _final_triggered: bool = false
 var _song_duration: float = 0.0
 var _running: bool = false
+var _song_path: String = ""
 
-# Beat tracking — populated from the song map's BPM constant if present.
-# Used by CombatScene to evaluate whether a player action landed on-beat.
-# BEAT_PERFECT_WINDOW: within ±65 ms of a beat = "perfect"
-# BEAT_GOOD_WINDOW:    within ±130 ms of a beat = "good"
-const BEAT_PERFECT_WINDOW: float = 0.065
-const BEAT_GOOD_WINDOW: float    = 0.130
-var _beat_interval: float = 0.0  # seconds per beat; 0 = no BPM defined for this map
+var _beat_interval: float = 0.0
+var _last_emitted_beat: int = -1
+var _cadence_window_rules: Array = DEFAULT_CADENCE_WINDOW_RULES.duplicate(true)
 
-# Analysis layer
 var _analyzer: AudioEffectSpectrumAnalyzerInstance = null
 var _bus_index: int = -1
+var _low_pass_idx: int = -1
 var _accent_threshold: float = 0.5
 var _accent_cooldown: float = 0.0
-var _last_beat_count: int = -1
 
 
-func start(song_map_script, start_time: float = 0.0, window_end_time: float = -1.0) -> void:
-	# song_map_script — a preloaded RefCounted script with SONG_PATH, SECTIONS,
-	# and FINAL_MOVEMENT_FRACTION constants (see data/song_maps/tricky_songmap.gd).
-
-	# Clean up any previous player.
-	if _stream_player != null and is_instance_valid(_stream_player):
-		_stream_player.queue_free()
-		_stream_player = null
-	
-	# Reset analysis state
+func start(song_map_script, start_time: float = 0.0, window_end_time: float = -1.0, silent: bool = false, options: Dictionary = {}) -> void:
+	_stop_and_release_player()
 	_analyzer = null
 
-	var song_path: String = String(song_map_script.SONG_PATH)
-	var stream: AudioStream = load(song_path)
+	current_song_id = String(options.get("song_id", ""))
+	_song_path = String(song_map_script.SONG_PATH)
+	var stream: AudioStream = load(_song_path)
 	if stream == null:
-		push_error("SongConductor: failed to load audio stream: " + song_path)
+		push_error("SongConductor: failed to load audio stream: " + _song_path)
 		return
 
-	# Setup persistent MusicAnalysis bus (shared across conductor instances for safety)
-	var bus_name = "MusicAnalysis"
-	_bus_index = AudioServer.get_bus_index(bus_name)
-	if _bus_index == -1:
-		_bus_index = AudioServer.bus_count
-		AudioServer.add_bus(_bus_index)
-		AudioServer.set_bus_name(_bus_index, bus_name)
-		AudioServer.set_bus_send(_bus_index, "Master")
-	
-	# Ensure SpectrumAnalyzer effect exists on the bus
-	var effect_idx = -1
-	for i in range(AudioServer.get_bus_effect_count(_bus_index)):
-		if AudioServer.get_bus_effect(_bus_index, i) is AudioEffectSpectrumAnalyzer:
-			effect_idx = i
-			break
-	
-	if effect_idx == -1:
-		var spectrum_effect = AudioEffectSpectrumAnalyzer.new()
-		AudioServer.add_bus_effect(_bus_index, spectrum_effect)
-		effect_idx = AudioServer.get_bus_effect_count(_bus_index) - 1
-	
-	_analyzer = AudioServer.get_bus_effect_instance(_bus_index, effect_idx)
-
-	_stream_player = AudioStreamPlayer.new()
-	_stream_player.name = "MusicPlayer"
-	_stream_player.stream = stream
-	_stream_player.bus = bus_name
-	_stream_player.volume_db = 0.0
-	add_child(_stream_player)
+	_ensure_analysis_bus()
+	_attach_player(stream, silent)
 
 	_song_duration = stream.get_length()
 	if _song_duration <= 0.0:
-		push_error("SongConductor: stream reports zero length for " + song_path)
-		_song_duration = 240.0  # fallback so fractions still produce usable times
+		push_error("SongConductor: stream reports zero length for " + _song_path)
+		_song_duration = 240.0
 
 	var final_fraction: float = float(song_map_script.FINAL_MOVEMENT_FRACTION)
 	_final_movement_time = final_fraction * _song_duration
 
-	# Accent threshold from song map if present
-	if "BASS_ACCENT_THRESHOLD" in song_map_script:
+	var profile_accent_threshold: float = float(options.get("accent_threshold", -1.0))
+	if profile_accent_threshold >= 0.0:
+		_accent_threshold = profile_accent_threshold
+	elif "BASS_ACCENT_THRESHOLD" in song_map_script:
 		_accent_threshold = float(song_map_script.BASS_ACCENT_THRESHOLD)
 	else:
 		_accent_threshold = 0.5
 
-	# Build sections with absolute start_time computed from fractions.
 	_sections = []
 	for raw in song_map_script.SECTIONS:
-		var s: Dictionary = raw.duplicate(true)
-		s["start_time"] = float(s.get("start_fraction", 0.0)) * _song_duration
-		_sections.append(s)
+		var section_data: Dictionary = Dictionary(raw).duplicate(true)
+		section_data["start_time"] = float(section_data.get("start_fraction", 0.0)) * _song_duration
+		_sections.append(section_data)
+
+	_cadence_window_rules = Array(options.get("cadence_window_rules", DEFAULT_CADENCE_WINDOW_RULES)).duplicate(true)
+	if _cadence_window_rules.is_empty():
+		_cadence_window_rules = DEFAULT_CADENCE_WINDOW_RULES.duplicate(true)
 
 	var clamped_start_time: float = clampf(start_time, 0.0, max(_song_duration - 0.05, 0.0))
 	_window_start_time = clamped_start_time
@@ -133,6 +91,7 @@ func start(song_map_script, start_time: float = 0.0, window_end_time: float = -1
 		_window_end_time = clampf(window_end_time, _window_start_time + 0.05, _song_duration)
 	_current_section_idx = -1
 	_final_triggered = false
+	_last_emitted_beat = -1
 	current_intensity = 0.0
 	current_spawn_mult = 1.0
 	current_section_id = ""
@@ -144,28 +103,44 @@ func start(song_map_script, start_time: float = 0.0, window_end_time: float = -1
 			current_section_id = String(_sections[i].get("id", ""))
 		else:
 			break
+	current_cadence_window = resolve_cadence_window(current_section_id, current_intensity)
 
-	# Beat interval from the song map's BPM constant, if defined.
 	_beat_interval = 0.0
+	current_bpm = 0.0
 	if "BPM" in song_map_script:
-		var bpm: float = float(song_map_script.BPM)
-		if bpm > 0.0:
-			_beat_interval = 60.0 / bpm
+		current_bpm = float(song_map_script.BPM)
+		if current_bpm > 0.0:
+			_beat_interval = 60.0 / current_bpm
 
 	_running = true
 	_stream_player.play(clamped_start_time)
+
+	var initial_beat: int = get_beat_count()
+	_last_emitted_beat = initial_beat - 1
+	song_started.emit(build_song_state())
+	transport_state_changed.emit(true, clamped_start_time)
+
+
+func set_void_filter(active: bool) -> void:
+	if _bus_index == -1 or _low_pass_idx == -1:
+		return
+	var lp: AudioEffectLowPassFilter = AudioServer.get_bus_effect(_bus_index, _low_pass_idx) as AudioEffectLowPassFilter
+	if lp != null:
+		lp.cutoff_hz = 1200.0 if active else 20000.0
 
 
 func pause() -> void:
 	if _stream_player != null and is_instance_valid(_stream_player):
 		_stream_player.stream_paused = true
 	_running = false
+	transport_state_changed.emit(false, get_song_time())
 
 
 func resume() -> void:
 	if _stream_player != null and is_instance_valid(_stream_player):
 		_stream_player.stream_paused = false
 	_running = true
+	transport_state_changed.emit(true, get_song_time())
 
 
 func stop() -> void:
@@ -173,16 +148,15 @@ func stop() -> void:
 	if _stream_player != null and is_instance_valid(_stream_player):
 		_stream_player.stop()
 	_analyzer = null
+	transport_state_changed.emit(false, get_song_time())
 
 
 func get_song_time() -> float:
 	if _stream_player == null or not is_instance_valid(_stream_player):
 		return 0.0
-
 	var playback_position: float = _stream_player.get_playback_position()
 	if not _running or not _stream_player.playing:
 		return playback_position
-
 	return playback_position + AudioServer.get_time_since_last_mix()
 
 
@@ -195,34 +169,25 @@ func get_final_movement_time() -> float:
 
 
 func is_beat_active() -> bool:
-	# True when beat tracking is available and the conductor is playing.
 	return _running and _beat_interval > 0.0
 
 
 func get_beat_count() -> int:
-	# Returns total beats elapsed since song start.
 	if not is_beat_active():
 		return 0
 	return int(floor(get_song_time() / _beat_interval))
 
 
 func get_beat_phase() -> float:
-	# Returns 0.0-1.0 through the current beat period.
-	# 0.0 = a beat just fired; approaches 1.0 at the next beat.
-	# Returns 0.0 when beat tracking is inactive.
 	if not is_beat_active():
 		return 0.0
 	return fmod(get_song_time(), _beat_interval) / _beat_interval
 
 
 func get_beat_quality() -> String:
-	# Evaluates how close the current moment is to a beat.
-	# Returns "perfect", "good", or "off".
-	# "perfect" = within ±65 ms, "good" = within ±130 ms.
 	if not is_beat_active():
 		return "off"
 	var phase: float = get_beat_phase()
-	# Phase > 0.5 means we are closer to the NEXT beat than the last.
 	var dist_phase: float = phase if phase <= 0.5 else 1.0 - phase
 	var dist_seconds: float = dist_phase * _beat_interval
 	if dist_seconds <= BEAT_PERFECT_WINDOW:
@@ -235,49 +200,147 @@ func get_beat_quality() -> String:
 func get_bass_magnitude() -> float:
 	if _analyzer == null:
 		return 0.0
-	var mag = _analyzer.get_magnitude_for_frequency_range(20, 200).length()
+	var mag: float = _analyzer.get_magnitude_for_frequency_range(20, 200).length()
 	return clampf(mag * 2.0, 0.0, 1.0)
 
 
 func get_mid_magnitude() -> float:
 	if _analyzer == null:
 		return 0.0
-	var mag = _analyzer.get_magnitude_for_frequency_range(200, 2000).length()
+	var mag: float = _analyzer.get_magnitude_for_frequency_range(200, 2000).length()
 	return clampf(mag * 2.0, 0.0, 1.0)
+
+
+func resolve_cadence_window(section_id: String, intensity: float) -> String:
+	for raw_rule in _cadence_window_rules:
+		var rule: Dictionary = Dictionary(raw_rule)
+		var required_sections: Array = Array(rule.get("section_ids", []))
+		if not required_sections.is_empty() and not required_sections.has(section_id):
+			continue
+		if intensity < float(rule.get("intensity_gte", 0.0)):
+			continue
+		var window_id: String = String(rule.get("window", ""))
+		if not window_id.is_empty():
+			return window_id
+	return ""
+
+
+func build_song_state() -> Dictionary:
+	return {
+		"song_id": current_song_id,
+		"song_path": _song_path,
+		"bpm": current_bpm,
+		"song_time": get_song_time(),
+		"song_duration": _song_duration,
+		"window_start_time": _window_start_time,
+		"window_end_time": _window_end_time,
+		"section_id": current_section_id,
+		"section_intensity": current_intensity,
+		"spawn_interval_mult": current_spawn_mult,
+		"cadence_window": current_cadence_window
+	}
 
 
 func _process(delta: float) -> void:
 	if not _running or _stream_player == null:
 		return
 
-	var t: float = get_song_time()
+	var song_time: float = get_song_time()
+	_update_section_state(song_time)
+	_emit_beat_events(song_time)
+	_handle_final_movement(song_time)
+	_update_accent_state(delta)
 
-	# Section transition check — advance one at a time so no section is skipped.
+
+func _update_section_state(song_time: float) -> void:
 	var next_idx: int = _current_section_idx + 1
 	while next_idx < _sections.size():
-		var next_section: Dictionary = _sections[next_idx]
-		if t >= float(next_section.get("start_time", 9999.0)):
+		var next_section: Dictionary = Dictionary(_sections[next_idx])
+		if song_time >= float(next_section.get("start_time", 9999.0)):
 			_current_section_idx = next_idx
 			current_intensity = float(next_section.get("intensity", 0.0))
 			current_spawn_mult = float(next_section.get("spawn_interval_mult", 1.0))
 			current_section_id = String(next_section.get("id", ""))
+			current_cadence_window = resolve_cadence_window(current_section_id, current_intensity)
 			section_changed.emit(current_section_id, next_section)
 			next_idx += 1
 		else:
 			break
 
-	# Final movement trigger — fires once.
-	if not _final_triggered and t >= _window_end_time:
+
+func _emit_beat_events(song_time: float) -> void:
+	if not is_beat_active():
+		return
+	var current_beat: int = get_beat_count()
+	if current_beat < _last_emitted_beat:
+		_last_emitted_beat = current_beat
+		return
+	while _last_emitted_beat < current_beat:
+		_last_emitted_beat += 1
+		var quality: String = get_beat_quality()
+		beat_pulse.emit(_last_emitted_beat, quality, clampf(current_intensity, 0.0, 1.0), song_time)
+
+
+func _handle_final_movement(song_time: float) -> void:
+	if not _final_triggered and song_time >= _window_end_time:
 		_final_triggered = true
 		final_movement_reached.emit()
-	
-	# Accent detection
+
+
+func _update_accent_state(delta: float) -> void:
 	if _accent_cooldown > 0.0:
 		_accent_cooldown -= delta
-	
+
 	if is_beat_active() and _accent_cooldown <= 0.0:
-		var bass = get_bass_magnitude()
+		var bass: float = get_bass_magnitude()
 		if bass >= _accent_threshold:
 			accent_fired.emit()
-			# Cooldown: at least 1/2 beat to prevent jitter-firing on the same kick
 			_accent_cooldown = _beat_interval * 0.5
+
+
+func _ensure_analysis_bus() -> void:
+	var bus_name: String = "MusicAnalysis"
+	_bus_index = AudioServer.get_bus_index(bus_name)
+	if _bus_index == -1:
+		_bus_index = AudioServer.bus_count
+		AudioServer.add_bus(_bus_index)
+		AudioServer.set_bus_name(_bus_index, bus_name)
+		AudioServer.set_bus_send(_bus_index, "Master")
+
+	var spectrum_idx: int = -1
+	_low_pass_idx = -1
+	for i in range(AudioServer.get_bus_effect_count(_bus_index)):
+		var effect: AudioEffect = AudioServer.get_bus_effect(_bus_index, i)
+		if effect is AudioEffectSpectrumAnalyzer:
+			spectrum_idx = i
+		elif effect is AudioEffectLowPassFilter:
+			_low_pass_idx = i
+
+	if spectrum_idx == -1:
+		AudioServer.add_bus_effect(_bus_index, AudioEffectSpectrumAnalyzer.new())
+		spectrum_idx = AudioServer.get_bus_effect_count(_bus_index) - 1
+
+	if _low_pass_idx == -1:
+		var low_pass: AudioEffectLowPassFilter = AudioEffectLowPassFilter.new()
+		low_pass.cutoff_hz = 20000.0
+		AudioServer.add_bus_effect(_bus_index, low_pass)
+		_low_pass_idx = AudioServer.get_bus_effect_count(_bus_index) - 1
+
+	_analyzer = AudioServer.get_bus_effect_instance(_bus_index, spectrum_idx)
+
+
+func _attach_player(stream: AudioStream, silent: bool) -> void:
+	_stream_player = AudioStreamPlayer.new()
+	_stream_player.name = "MusicPlayer"
+	_stream_player.stream = stream
+	_stream_player.bus = "MusicAnalysis"
+	_stream_player.volume_db = -80.0 if silent else 0.0
+	add_child(_stream_player)
+
+
+func _stop_and_release_player() -> void:
+	_running = false
+	if _stream_player != null and is_instance_valid(_stream_player):
+		_stream_player.stop()
+		_stream_player.queue_free()
+	_stream_player = null

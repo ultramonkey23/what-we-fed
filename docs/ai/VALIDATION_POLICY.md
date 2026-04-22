@@ -1,82 +1,63 @@
-# VALIDATION POLICY (v1)
+# VALIDATION POLICY (v2.0 "The Auditor's Eye")
 
-This file defines the validation contract for repo-native agent work.
-Use with `docs/ai/VALIDATION_STANDARD.md` and `docs/ai/REGRESSION_CHECKLIST.md`.
+This file defines the validation contract for all V2 Agents (ARCHITECT, SURGEON, AUDITOR).
 
-## Validation Evidence Types
+---
 
-### Runtime-Verified
-Use when behavior was exercised by running project validation scripts and/or a manual game run.
+## 1. The Shadow Pair (Self-Critique Protocol)
+Every non-trivial implement (Tier 2-3 Blast Radius) MUST be critiqued before being presented to the user.
 
-Required reporting:
-- Exact commands run.
-- Pass/fail outcomes.
-- What behavior was observed.
-- What still remains unverified.
+- **SURGEON (Generator)**: Proposes the fix/feature based on GDScript 2.0 rules.
+- **AUDITOR (Critic)**: Reviews the proposal against:
+  - **Layer 1 Preservation**: Does this touch timing/lanes/DNA?
+  - **Sludge Check**: Does this add HUD clutter or menu-based active-combat interruption?
+  - **Safety Check**: Is it typed? Are signal connections safe?
+  - **Reputation Check**: Does the implementation match the "Black Signal" vibe?
 
-### Static-Only
-Use when verification is based on code inspection, static analysis, linting, structure, or syntax checks only.
+---
 
-Required reporting:
-- Which static checks were performed.
-- Why runtime validation was not run.
-- Risk statement for runtime unknowns.
+## 2. Validation Evidence Types (Honest Reporting)
 
-### Speculative
-Use when a claim is inferred but not validated by runtime or sufficient static evidence.
+### Runtime-Verified (High Certainty)
+Used when behavior was exercised by `validate_project.bat`, `smoke_project.bat`, or a manual Godot run.
+- **Requirement**: Must list the exact log/shell output confirming success.
 
-Required reporting:
-- Mark clearly as speculative.
-- State what evidence is missing.
-- Provide the minimal next check needed to confirm or reject.
+### Static-Only (Medium Certainty)
+Used when verification is based on `grep_search`, syntax checking, and code structure only.
+- **Requirement**: Must explain WHY runtime was skipped (e.g., "Non-runnable data change").
 
-## Validation Run Template
-Copy and fill this block in final reports:
+### Speculative (Low Certainty)
+Used when a claim is an educated guess based on documentation or older repo truth.
+- **Requirement**: Must be explicitly marked as **[SPECULATIVE]** and include a follow-up check for the user.
 
+---
+
+## 3. The Validation Report (V2 Template)
 ```md
-## Validation run
-- Scope type: <runtime-verified | static-only | speculative>
-- Commands:
-  - `<command 1>`
-  - `<command 2>`
-- Result:
-  - `<pass/fail and key observations>`
-- Unverified:
-  - `<explicit gaps>`
+## Auditor's Report (V2)
+- **Blast Radius**: Tier 0 | 1 | 2 | 3
+- **Evidence Type**: Runtime-Verified | Static-Only | Speculative
+- **Self-Critique Results**:
+  - [X] Layer 1 Integrity (Timing/Lanes)
+  - [X] Anti-Sludge (HUD/Combat-Clean)
+  - [X] GDScript 2.0 Compliance (Typing/Signals)
+- **Verified Facts**: ...
+- **Unverified Risks**: ...
+- **Next Bounded Move**: ...
 ```
 
-## Validation Checklist Template
-Copy and fill this block in final reports:
+---
 
-```md
-## Validation checklist
-- [ ] Paths/references updated and valid
-- [ ] Syntax/config validation passed (JSON/frontmatter/rules)
-- [ ] Gameplay flow not unintentionally changed
-- [ ] UI/readability regressions reviewed or explicitly unverified
-- [ ] Timing/lane/support readability constraints preserved
-- [ ] Bond vs Eat and DNA meaning constraints preserved
-- [ ] No stale pause-era assumptions introduced
-```
+## 4. Regression Rules (The Blockers)
+The AUDITOR has the authority to block a SURGEON if:
+1. **Timing Truth** is compromised (e.g., frame-dependent logic instead of `SongConductor` signals).
+2. **Lane Readability** is obscured by new visual effects.
+3. **Signal Bloat** is introduced (direct node coupling instead of `EventBus`).
+4. **Data Sludge** is added (hardcoded stats instead of `Resource` objects).
 
-## Regression Rules
+---
 
-### Gameplay Regression Rules
-- No unintended gameplay system change in a workflow-only task.
-- No scene flow changes unless explicitly scoped.
-- No balance changes unless explicitly scoped.
-
-### UI and Readability Regression Rules
-- Maintain lane readability and support readability.
-- Do not claim visual clarity validation without runtime evidence.
-- Treat clutter, telegraph masking, and readability confusion as regressions.
-
-### Flow Regression Rules
-- No-pause active-combat identity remains locked.
-- Between-level reward/inventory pacing remains allowed and distinct from in-combat flow.
-- Title -> Lair -> Route -> Combat expectations must not be silently altered.
-
-## Reporting Honesty Rule
-- Always separate verified facts from assumptions.
-- Always list what was not tested.
-- If runtime was not executed, state that clearly and avoid runtime certainty claims.
+## 5. Anti-Drift: The "Honest Reporting" Mandate
+- Do not "hallucinate" success. If a test was not run, say so.
+- Do not hide regressions behind "vague architectural benefits."
+- If a patch creates a Layer 1 risk, it MUST be reported in the Auditor's Report.

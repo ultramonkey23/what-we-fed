@@ -18,8 +18,16 @@ Fuse current repo evidence into coherent, anti-drift context for execution decis
 - Identify conflicts and resolve by authority order.
 - Produce concise, actionable synthesis for handoff.
 - Do not claim runtime behavior without evidence.
+- Perform explicit drift harvesting in medium/high mutation tasks:
+  - stronger identity/authored feel
+  - cleaner weirdness and run identity
+  - stronger creature ecosystem logic
+  - stronger bond/eat contradiction
+  - less generic genre behavior
+- Support feral sandbox strategy exploration, but pass findings to bounded execution lanes.
 
 ## Guardrails
 - Live build truth outranks dream scope.
 - Keep recommendations bounded to one next move.
 - Preserve locked WHAT WE FED truths and anti-drift constraints.
+- For medium/high mutation synthesis, include safe path, mutation path, and recommended path.

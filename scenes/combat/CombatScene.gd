@@ -195,14 +195,6 @@ var _active_path_context: Dictionary = {}
 var _run_spine_surface: Node = null
 var _growth_choice_surface: Node = null
 var _growth_choice_context: Dictionary = {}
-# Legacy between-level overlay vars retained for non-song upgrade flow compatibility.
-var _run_prep_overlay: ColorRect = null
-var _run_prep_panel: ColorRect = null
-var _run_prep_scroll: ScrollContainer = null
-var _run_prep_body_label: Label = null
-var _run_prep_next_label: Label = null
-var _awaiting_run_prep: bool = false
-var _run_prep_dest_is_boss: bool = false
 
 # ─── LIVE REWARD ELEMENTS ────────────────────────────────────────────────────
 var _live_reward_shell: PanelContainer = null
@@ -422,6 +414,7 @@ func _initialize_systems() -> void:
 func _setup_run_director() -> void:
 	_run_director = COMBAT_RUN_DIRECTOR.new()
 	add_child(_run_director)
+	_run_director.drop_scheduled.connect(_on_run_director_drop_scheduled)
 
 
 func _setup_support_resolver() -> void:
@@ -989,7 +982,7 @@ func _should_hold_song_runtime_paused() -> bool:
 		return true
 	if _is_run_spine_active():
 		return true
-	if _awaiting_upgrade_choice or _awaiting_run_prep:
+	if _awaiting_upgrade_choice:
 		return true
 	return false
 
@@ -2580,200 +2573,6 @@ func _create_upgrade_overlay() -> void:
 	_upgrade_panel.add_child(hint)
 
 
-func _create_run_prep_overlay() -> void:
-	_run_prep_overlay = ColorRect.new()
-	_run_prep_overlay.name = "RunPrepOverlay"
-	_run_prep_overlay.visible = false
-	_run_prep_overlay.z_index = 50
-	_run_prep_overlay.color = Color(0.01, 0.01, 0.02, 0.92)
-	_run_prep_overlay.anchor_right = 1.0
-	_run_prep_overlay.anchor_bottom = 1.0
-	_run_prep_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	ui_layer.add_child(_run_prep_overlay)
-
-	_run_prep_panel = ColorRect.new()
-	_run_prep_panel.name = "RunPrepPanel"
-	_set_shell_treatment(_run_prep_panel, Color(0.07, 0.05, 0.06, 0.98), Color(0.22, 0.16, 0.14, 0.94))
-	_run_prep_panel.position = Vector2(120.0, 88.0)
-	_run_prep_panel.size = Vector2(1040.0, 504.0)
-	_run_prep_overlay.add_child(_run_prep_panel)
-
-	var header := Label.new()
-	header.text = PRESENTATION_TEXT.RUN_PREP_HEADER
-	header.position = Vector2(0.0, 16.0)
-	header.size = Vector2(1040.0, 36.0)
-	_apply_text_role(header, "heading", HORIZONTAL_ALIGNMENT_CENTER)
-	_run_prep_panel.add_child(header)
-
-	var sub := Label.new()
-	sub.text = PRESENTATION_TEXT.RUN_PREP_SUBTITLE
-	sub.position = Vector2(0.0, 52.0)
-	sub.size = Vector2(1040.0, 22.0)
-	_apply_text_role(sub, "screen_subtitle", HORIZONTAL_ALIGNMENT_CENTER)
-	_run_prep_panel.add_child(sub)
-
-	_run_prep_next_label = Label.new()
-	_run_prep_next_label.position = Vector2(0.0, 76.0)
-	_run_prep_next_label.size = Vector2(1040.0, 22.0)
-	_apply_text_role(_run_prep_next_label, "caption_strong", HORIZONTAL_ALIGNMENT_CENTER)
-	_run_prep_panel.add_child(_run_prep_next_label)
-
-	_run_prep_scroll = ScrollContainer.new()
-	_run_prep_scroll.name = "RunPrepScroll"
-	_run_prep_scroll.position = Vector2(24.0, 106.0)
-	_run_prep_scroll.size = Vector2(992.0, 330.0)
-	_run_prep_panel.add_child(_run_prep_scroll)
-
-	_run_prep_body_label = Label.new()
-	_run_prep_body_label.name = "RunPrepBody"
-	_run_prep_body_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_apply_text_role(_run_prep_body_label, "body")
-	_run_prep_scroll.add_child(_run_prep_body_label)
-
-	var hint := Label.new()
-	hint.text = PRESENTATION_TEXT.RUN_PREP_CONTROLS
-	hint.position = Vector2(0.0, 448.0)
-	hint.size = Vector2(1040.0, 44.0)
-	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_apply_text_role(hint, "hint", HORIZONTAL_ALIGNMENT_CENTER)
-	_run_prep_panel.add_child(hint)
-
-
-func _creature_display_name(species_id: String) -> String:
-	if species_id.is_empty():
-		return "?"
-	var creature: Dictionary = COMBAT_CONTENT.get_creature(species_id)
-	if creature.is_empty():
-		return species_id
-	return String(creature.get("display_name", species_id))
-
-
-func _compose_run_prep_body() -> String:
-	var blocks: Array[String] = []
-
-	var hp_line: String = "Vitals  |  HP %.0f / %.0f  |  ATK %.0f  |  DEF %.0f" % [
-		GameState.player_hp,
-		GameState.player_max_hp,
-		GameState.get_attack_damage(),
-		GameState.player_defense
-	]
-	blocks.append(hp_line)
-
-	var growth_line: String = "Growth  |  —"
-	if _run_growth != null and is_instance_valid(_run_growth):
-		growth_line = "Growth  |  level %d  |  urge %.0f / %.0f" % [
-			int(_run_growth.level),
-			float(_run_growth.current_exp),
-			float(_run_growth.exp_to_next)
-		]
-	blocks.append(growth_line)
-
-	var route_line: String = "DNA harvest  |  %s" % PRESENTATION_TEXT.DNA_ROUTE_BOND_LABEL
-	if _run_growth != null and is_instance_valid(_run_growth) and _run_growth.has_method("get_dna_routing_label"):
-		route_line = "DNA harvest  |  %s" % String(_run_growth.call("get_dna_routing_label"))
-	blocks.append(route_line)
-
-	if GameState.roster.is_empty():
-		blocks.append("Bonds  |  none yet")
-	else:
-		var bond_lines: Array[String] = []
-		for creature in GameState.roster:
-			var sid: String = String(creature.get("species_id", ""))
-			var bl: int = int(creature.get("bond_level", 1))
-			bond_lines.append("%s  (bond L%d)" % [_creature_display_name(sid), bl])
-		blocks.append("Bonds  |  " + "\n  ".join(PackedStringArray(bond_lines)))
-
-	var dna_pairs: Array[Dictionary] = []
-	for species_key in GameState.dna_by_species.keys():
-		var sid2: String = String(species_key)
-		var amt: float = GameState.get_dna(sid2)
-		if amt <= 0.0001:
-			continue
-		dna_pairs.append({"id": sid2, "amt": amt})
-	dna_pairs.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(a["amt"]) > float(b["amt"]))
-
-	if dna_pairs.is_empty():
-		blocks.append("Stored DNA  |  none")
-	else:
-		var dna_lines: Array[String] = []
-		var limit: int = mini(dna_pairs.size(), 8)
-		for i in range(limit):
-			var row: Dictionary = dna_pairs[i]
-			dna_lines.append("%s  × %.0f" % [_creature_display_name(String(row["id"])), float(row["amt"])])
-		if dna_pairs.size() > limit:
-			dna_lines.append("…  +%d more species" % (dna_pairs.size() - limit))
-		blocks.append("Stored DNA  |  " + "\n  ".join(PackedStringArray(dna_lines)))
-
-	if GameState.active_mutations.is_empty():
-		blocks.append("Inner work  |  no mutations yet")
-	else:
-		var mut_lines: Array[String] = []
-		for mut in GameState.active_mutations:
-			var mid: String = String(mut.get("id", "mutation"))
-			var charges: int = int(mut.get("current_charges", 0))
-			var effect: Dictionary = mut.get("effect", {})
-			var etype: String = String(effect.get("type", ""))
-			var tail: String = ("  |  " + etype) if not etype.is_empty() else ""
-			mut_lines.append("%s  —  %d charges%s" % [mid, charges, tail])
-		blocks.append("Inner work  |  " + "\n  ".join(PackedStringArray(mut_lines)))
-
-	if GameState.absorbed_types.is_empty():
-		blocks.append("Digestions  |  none logged")
-	else:
-		var digest: Array[String] = []
-		var cap: int = mini(GameState.absorbed_types.size(), 6)
-		for j in range(cap):
-			var ab: Dictionary = GameState.absorbed_types[j]
-			digest.append(
-				"%s from %s"
-				% [String(ab.get("eat_type", "?")), _creature_display_name(String(ab.get("source_species_id", "")))]
-			)
-		var more2: int = GameState.absorbed_types.size() - cap
-		if more2 > 0:
-			digest.append("… +%d earlier" % more2)
-		blocks.append("Digestions  |  " + "\n  ".join(PackedStringArray(digest)))
-
-	return "\n\n".join(PackedStringArray(blocks))
-
-
-func _refresh_run_prep_body() -> void:
-	if _run_prep_body_label == null or _run_prep_scroll == null:
-		return
-	_run_prep_body_label.text = _compose_run_prep_body()
-	_reflow_scroll_label_pair(_run_prep_scroll, _run_prep_body_label)
-
-
-func _show_run_prep_between_song_levels() -> void:
-	if _run_prep_overlay == null:
-		return
-	_run_prep_next_label.text = (
-		PRESENTATION_TEXT.RUN_PREP_NEXT_BOSS
-		if _run_prep_dest_is_boss
-		else PRESENTATION_TEXT.RUN_PREP_NEXT_REGULAR
-	)
-	_refresh_run_prep_body()
-	_run_prep_overlay.visible = true
-	_awaiting_run_prep = true
-	controls_label.text = PRESENTATION_TEXT.RUN_PREP_CONTROLS
-	_refresh_run_build_readout()
-
-
-func _hide_run_prep_overlay() -> void:
-	_awaiting_run_prep = false
-	if _run_prep_overlay != null:
-		_run_prep_overlay.visible = false
-
-
-func _continue_song_after_run_prep() -> void:
-	if not _awaiting_run_prep:
-		return
-	_hide_run_prep_overlay()
-	if _run_prep_dest_is_boss:
-		_trigger_boss_final_movement()
-	else:
-		_advance_to_next_regular_level()
-
-
 func _create_live_reward_shell() -> void:
 	var nodes: Dictionary = _presentation_controller.create_live_reward_shell(ui_layer)
 	_live_reward_shell = nodes.get("live_reward_shell")
@@ -3192,25 +2991,35 @@ func _advance_to_next_regular_level() -> void:
 	if _song_level_transitioning:
 		return
 	_song_level_transitioning = true
-	_run_director.complete_level()
+	if _run_director != null:
+		_run_director.complete_level()
 	_start_regular_level(_run_director.regular_level_index, false)
 
 
 func _on_regular_level_complete() -> void:
 	if _song_boss_triggered or not _song_mode:
 		return
-	
-	# Stop all combat and pacing systems.
+
+	# Stop combat and pacing systems, but NOT the music.
 	if lane_manager != null and lane_manager.has_method("stop"):
 		lane_manager.stop()
 	if _escalation_director != null:
 		_escalation_director.pause()
-	_set_song_paused(true)
+
+	# Instead of _set_song_paused(true), we enter THE VOID.
+	if _song_conductor != null and is_instance_valid(_song_conductor):
+		_song_conductor.set_void_filter(true)
+
 	_song_reward_pending = false
 	_reset_pending_reward_state(true)
 	_hide_live_reward_shell()
 
+	# Signal director to enter void state for management.
+	if _run_director != null:
+		_run_director.enter_void()
+
 	# Add any creatures that met the DNA threshold during the song to the growth queue.
+
 	if _run_growth != null and is_instance_valid(_run_growth) and _run_growth.get("pending_bonds") is Array:
 		var pending: Array = _run_growth.get("pending_bonds")
 		for species_id in pending:
@@ -3234,6 +3043,24 @@ func _on_regular_level_complete() -> void:
 		return
 	_show_level_completion_rewards()
 
+
+func _on_run_director_drop_scheduled(target_time: float) -> void:
+	# The management is done, we are waiting for the drop.
+	# Schedule the next level start at target_time.
+	_hide_run_spine_surface()
+	_hide_growth_choice_surface()
+	_show_feedback("PREPARE FOR DROP...", Color(0.9, 0.4, 0.3, 1.0), 0.8)
+	
+	# Open the gate for the upcoming advance.
+	_song_level_transitioning = false
+
+	var time_until_drop: float = target_time - _song_conductor.get_song_time()
+	get_tree().create_timer(max(time_until_drop - 0.1, 0.01)).timeout.connect(
+		func(): 
+			if _song_conductor != null and is_instance_valid(_song_conductor):
+				_song_conductor.set_void_filter(false)
+			_advance_to_next_regular_level()
+	)
 
 func _show_level_completion_rewards() -> void:
 	_hide_reward_overlay()
@@ -3540,17 +3367,17 @@ func _on_run_spine_management_action_requested(action_id: String, payload: Dicti
 
 
 func _on_run_spine_continue_requested(advance_to_boss: bool) -> void:
-	_hide_run_spine_surface()
 	if advance_to_boss:
+		_hide_run_spine_surface()
 		_trigger_boss_final_movement()
 	else:
-		# Defensive unlock: ensure stale transition gates never block restart.
-		_song_level_transitioning = false
-		var next_level_index: int = _run_director.regular_level_index + 1
-		if next_level_index < _run_director.regular_level_windows.size():
-			_show_feedback("PATH ADVANCE  ->  L%d" % (next_level_index + 1), Color(0.70, 0.88, 0.98, 1.0), 0.45)
-		_prepare_path_context_for_level(_run_director.regular_level_index + 1)
-		_advance_to_next_regular_level()
+		# Instead of immediate advance, we request a drop synced to the music.
+		if _run_director != null and _run_director.has_method("request_drop"):
+			_run_director.request_drop(_song_conductor)
+			# UI feedback while waiting for the drop is handled by the drop_scheduled signal.
+		else:
+			_hide_run_spine_surface()
+			_advance_to_next_regular_level()
 
 
 func _prepare_path_context_for_level(level_index: int) -> void:
@@ -3808,6 +3635,10 @@ func _on_conductor_accent_fired() -> void:
 	var pressure_law: Dictionary = Dictionary(_active_song_profile.get("pressure_law", {}))
 	var accent_burst_strength: float = float(lane_law.get("accent_burst_strength", 1.0))
 	var accent_feedback_scale: float = float(pressure_law.get("accent_feedback_scale", 1.2))
+
+	# LAW OF THE ACCENT: Visual feedback.
+	EventBus.emit_signal("screen_flash", Color(1.0, 1.0, 1.0, 0.05), 0.05)
+	EventBus.emit_signal("screen_shake", 1.5 * accent_burst_strength, 0.06)
 
 	if lane_manager != null and is_instance_valid(lane_manager):
 		for _i in range(maxi(int(round(accent_burst_strength)), 1)):
@@ -4461,11 +4292,7 @@ func _choose_upgrade(index: int) -> void:
 		return
 
 	# If no more banked rewards, determine if we continue the song run or finish/boss.
-	if _song_mode:
-		_run_prep_dest_is_boss = _run_director.regular_level_index + 1 >= _run_director.regular_level_windows.size()
-		_show_run_prep_between_song_levels()
-	else:
-		_advance_to_next_stage()
+	_advance_to_next_stage()
 
 func _advance_to_next_stage() -> void:
 	if _is_boss_encounter:
@@ -5969,12 +5796,28 @@ func _refresh_bonded_creature_render(active_species_id: String = "") -> void:
 func _apply_song_phase_cadence(phase: Dictionary, spawn_mult: float = 1.0) -> void:
 	var base_interval: float = float(phase.get("cycle_interval", 2.2))
 	var base_stagger: float = float(phase.get("fire_stagger", 0.45))
+	
+	var section_id: String = ""
+	var intensity: float = 0.0
+	if _song_conductor != null and is_instance_valid(_song_conductor):
+		section_id = String(_song_conductor.get("current_section_id"))
+		intensity = float(_song_conductor.get("current_intensity"))
+	
+	# THE RESONANCE LAW: Resolve tier from intensity.
+	var resonance: Dictionary = SONG_COMBAT_PROFILE_CONTENT.resolve_resonance_tier(intensity)
+	var resonance_cadence: float = float(resonance.get("cadence_mult", 1.0))
+	var resonance_density: float = float(resonance.get("density_mult", 1.0))
+	var perfect_ms: int = int(resonance.get("perfect_window_ms", 65))
+	
+	# Apply windows to conductor.
+	if _song_conductor != null:
+		_song_conductor.beat_perfect_window = perfect_ms / 1000.0
+		_song_conductor.beat_good_window = (perfect_ms * 2.0) / 1000.0
+	
 	var cadence_band: Dictionary = Dictionary(_difficulty_modifiers.get("threat_cadence", {}))
 	var cadence_mult: float = clampf(float(cadence_band.get("cycle_interval_mult", 1.0)), 0.75, 1.35)
 	var stagger_mult: float = clampf(float(cadence_band.get("fire_stagger_mult", 1.0)), 0.85, 1.15)
-	var section_id: String = ""
-	if _song_conductor != null and is_instance_valid(_song_conductor):
-		section_id = String(_song_conductor.get("current_section_id"))
+	
 	var resolved: Dictionary = SONG_COMBAT_PROFILE_CONTENT.apply_cadence_law_to_values(
 		_active_song_profile,
 		section_id,
@@ -5985,7 +5828,14 @@ func _apply_song_phase_cadence(phase: Dictionary, spawn_mult: float = 1.0) -> vo
 	var resolved_spawn_mult: float = float(resolved.get("spawn_mult", spawn_mult))
 	var resolved_interval: float = float(resolved.get("cycle_interval", base_interval))
 	var resolved_stagger: float = float(resolved.get("fire_stagger", base_stagger))
-	lane_manager.set_cycle_interval(resolved_interval * resolved_spawn_mult * cadence_mult)
+	
+	# Combine authoring, difficulty, and RESONANCE.
+	var final_interval: float = resolved_interval * resonance_cadence * cadence_mult
+	var final_spawn_mult: float = resolved_spawn_mult / max(resonance_density, 0.1)
+	
+	if not lane_manager.is_combat_running():
+		lane_manager.start_song_cycle()
+	lane_manager.set_cycle_interval(final_interval * final_spawn_mult)
 	lane_manager.set_fire_stagger(resolved_stagger * stagger_mult)
 
 

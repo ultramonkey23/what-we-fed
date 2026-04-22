@@ -43,8 +43,7 @@ Content / tuning:
 - `data/CombatContent.gd`: encounter and creature combat content
 - `data/RouteContent.gd`: route-region data
 - `data/AudioContent.gd`: audio paths and music references
-- `data/SongContent.gd`: track-specific song data
-- `data/SongLibraryContent.gd`: song catalog
+- `data/SongLibraryContent.gd`: centralized song library and metadata
 - `data/EncounterIdentityContent.gd`: region encounter identity data
 
 Visual / UI style:

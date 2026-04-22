@@ -9,7 +9,7 @@ static func validate_system_integrity() -> Dictionary:
 	var warnings: Array[String] = []
 	
 	# Check if all required files exist (basic validation)
-	var required_systems = ["LevelStructure", "SongContent", "RewardSystem", "EnemyTemplates"]
+	var required_systems = ["LevelStructure", "SongLibraryContent", "RewardSystem", "EnemyTemplates"]
 	
 	for system in required_systems:
 		# Note: In a real implementation, you'd check if these classes can be loaded

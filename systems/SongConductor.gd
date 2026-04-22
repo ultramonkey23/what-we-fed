@@ -15,8 +15,9 @@ var current_spawn_mult: float = 1.0
 var current_section_id: String = ""
 var current_cadence_window: String = ""
 
-const BEAT_PERFECT_WINDOW: float = 0.065
-const BEAT_GOOD_WINDOW: float = 0.130
+var beat_perfect_window: float = 0.065
+var beat_good_window: float = 0.130
+
 const DEFAULT_CADENCE_WINDOW_RULES: Array = [
 	{"window": "surge", "section_ids": ["final"], "intensity_gte": 0.85},
 	{"window": "drive", "section_ids": ["chorus"], "intensity_gte": 0.62}
@@ -190,9 +191,9 @@ func get_beat_quality() -> String:
 	var phase: float = get_beat_phase()
 	var dist_phase: float = phase if phase <= 0.5 else 1.0 - phase
 	var dist_seconds: float = dist_phase * _beat_interval
-	if dist_seconds <= BEAT_PERFECT_WINDOW:
+	if dist_seconds <= beat_perfect_window:
 		return "perfect"
-	if dist_seconds <= BEAT_GOOD_WINDOW:
+	if dist_seconds <= beat_good_window:
 		return "good"
 	return "off"
 

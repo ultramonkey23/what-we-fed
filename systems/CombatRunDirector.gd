@@ -123,7 +123,6 @@ func start_level(level_idx: int, _reset_hp: bool = false) -> Dictionary:
 func complete_level() -> void:
 	emit_signal("level_completed", regular_level_index)
 	regular_level_index += 1
-	enter_void()
 
 func enter_void() -> void:
 	in_void = true

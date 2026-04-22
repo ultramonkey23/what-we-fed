@@ -85,8 +85,8 @@ const RESONANCE_TIERS: Dictionary = {
 	"GHOST": {
 		"id": "ghost",
 		"intensity_range": [0.0, 0.2],
-		"cadence_mult": 0.0,
-		"density_mult": 0.0,
+		"cadence_mult": 1.2,
+		"density_mult": 0.8,
 		"perfect_window_ms": 150,
 		"accent_boost": 0.0
 	},
@@ -94,7 +94,7 @@ const RESONANCE_TIERS: Dictionary = {
 		"id": "steady",
 		"intensity_range": [0.2, 0.5],
 		"cadence_mult": 1.0,
-		"density_mult": 0.8,
+		"density_mult": 1.0,
 		"perfect_window_ms": 130,
 		"accent_boost": 0.0
 	},
@@ -117,7 +117,7 @@ const RESONANCE_TIERS: Dictionary = {
 	"APEX": {
 		"id": "apex",
 		"intensity_range": [0.9, 1.0],
-		"cadence_mult": 0.5,
+		"cadence_mult": 0.4,
 		"density_mult": 2.0,
 		"perfect_window_ms": 65,
 		"accent_boost": 80

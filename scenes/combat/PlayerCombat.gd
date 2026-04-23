@@ -871,7 +871,7 @@ func _setup_player_sprite() -> void:
 	
 	# Determine hframes for idle strip (assuming square 512x512 frames)
 	if _idle_tex != null:
-		_player_sprite.hframes = clampi(int(_idle_tex.get_width() / _idle_tex.get_height()), 1, 64)
+		_player_sprite.hframes = clampi(int(float(_idle_tex.get_width()) / _idle_tex.get_height()), 1, 64)
 	else:
 		_player_sprite.hframes = 1
 	
@@ -887,7 +887,7 @@ func _show_player_image(tex: Texture2D, duration: float) -> void:
 		return
 	_player_sprite.texture = tex
 	# Update hframes for the new strip
-	_player_sprite.hframes = clampi(int(tex.get_width() / tex.get_height()), 1, 64)
+	_player_sprite.hframes = clampi(int(float(tex.get_width()) / tex.get_height()), 1, 64)
 	_player_sprite.frame = 0
 	
 	if _image_restore_tween != null:
@@ -897,7 +897,7 @@ func _show_player_image(tex: Texture2D, duration: float) -> void:
 	_image_restore_tween.tween_callback(func() -> void:
 		if _player_sprite != null:
 			_player_sprite.texture = _idle_tex
-			_player_sprite.hframes = clampi(int(_idle_tex.get_width() / _idle_tex.get_height()), 1, 64)
+			_player_sprite.hframes = clampi(int(float(_idle_tex.get_width()) / _idle_tex.get_height()), 1, 64)
 			_player_sprite.frame = 0
 	)
 

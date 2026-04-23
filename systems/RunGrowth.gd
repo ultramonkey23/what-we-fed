@@ -303,6 +303,32 @@ func _on_enemy_defeated(_enemy_id: int) -> void:
 func _on_timed_attack_resolved(lane: int, quality: String, _damage: float) -> void:
 	_grant_exp(GROWTH_CONTENT.EXP_TIMED_ATTACK)
 	_gain_support_charge(GROWTH_CONTENT.CHARGE_TIMED_ATTACK)
+
+	# Trait Pass: Venomous Sting
+	if quality == "perfect":
+		for creature in GameState.roster:
+			if String(creature.get("trait_id", "")) == "venomous_sting_v22":
+				var venom_beats: int = 4
+				var venom_damage: float = 0.10
+				# Synergy Check: Sludge Doom
+				var has_sludge_synergy: bool = false
+				for other in GameState.roster:
+					if String(other.get("secondary_type", "")) == "sludge_doom" or String(other.get("primary_type", "")) == "sludge_doom":
+						has_sludge_synergy = true
+						break
+				
+				if has_sludge_synergy:
+					venom_beats *= 2
+					# Slow effect is now supported in LaneManager via 'slow' parameter
+					EventBus.proc_feedback_requested.emit("SYSTEM BREACH: SLUDGE", Color(0.2, 0.8, 0.2, 1.0))
+				
+				EventBus.enemy_status_applied_requested.emit(lane, "venom", {
+					"beats": venom_beats, 
+					"damage_ratio": venom_damage,
+					"slow": has_sludge_synergy
+				})
+				break
+
 	var rend_charges: float = get_mutation_bonus("rend_on_hit", {"quality": quality})
 	if rend_charges > 0.0:
 		EventBus.enemy_status_applied_requested.emit(lane, "rend", {"charges": int(rend_charges)})
@@ -380,7 +406,7 @@ func _on_creature_bonded(_creature_data: Dictionary) -> void:
 	_grant_tendency("bond", 1.6)
 
 
-func _on_enemy_status_applied(_lane: int, status_id: String) -> void:
+func _on_enemy_status_applied(_lane: int, status_id: String, _params: Dictionary) -> void:
 	if status_id == "gorge_mark_triggered": _gain_support_charge(GROWTH_CONTENT.GORGE_MARK_BONUS_CHARGE)
 
 

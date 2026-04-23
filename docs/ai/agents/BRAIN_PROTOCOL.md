@@ -16,8 +16,8 @@ BRAIN routes tasks through the standard Taxonomy (refer to `AGENTS.md` for detai
 - **Inspect (SYMBIOTE)**: Read, map, sync repo truth.
 - **Spec (BRAIN)**: Plan a change + Blast Radius Analysis + Specialist Selection.
 - **Patch (ALFRED/SURGEON)**: Execute surgical code mutation.
-- **Audit (CYBORG/AUDITOR)**: Critique and verify against Layer 1.
-- **Evolve (BRAIN)**: High-mutation system upgrades or canon promotion.
+- **Audit (CYBORG/AUDITOR)**: Critique and verify against creator intent, repo truth, live-build evidence, and relevant identity guidance.
+- **Evolve (BRAIN)**: High-mutation system upgrades or spine/source-doc promotion.
 
 ---
 

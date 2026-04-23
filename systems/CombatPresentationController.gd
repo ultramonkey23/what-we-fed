@@ -1040,7 +1040,7 @@ func _build_enemy_marker(
 				sprite.name = "CreatureSilhouette"
 				
 				# Handle animation strips (assume square frames)
-				var h_frames: int = clampi(int(tex.get_width() / tex.get_height()), 1, 64)
+				var h_frames: int = clampi(int(float(tex.get_width()) / tex.get_height()), 1, 64)
 				sprite.hframes = h_frames
 				sprite.frame = 0
 				

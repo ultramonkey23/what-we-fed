@@ -1,0 +1,92 @@
+name: BRAIN Remote Command System
+
+on:
+  issues:
+    types: [labeled]
+  workflow_dispatch:
+    inputs:
+      task_classification:
+        description: 'Task Classification (Inspect, Spec, Patch, Audit, Evolve)'
+        required: true
+        default: 'Inspect (SYMBIOTE)'
+      blast_radius:
+        description: 'Blast Radius Analysis (Tier 0, 1, 2, 3)'
+        required: true
+        default: 'Tier 0: Docs/Naming'
+      target_files:
+        description: 'Target File(s)'
+        required: true
+      bounded_goal:
+        description: 'Bounded Goal'
+        required: true
+      context_truth:
+        description: 'Working Truth'
+        required: false
+      creator_intent:
+        description: 'Creator Intent'
+        required: false
+      locked_core_constraint:
+        description: 'Technical Risk / Constraint'
+        required: false
+
+jobs:
+  normalize-command:
+    if: github.event.label.name == 'brain-command' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      contents: read
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Parse and Normalize BRAIN Command
+        id: router
+        env:
+          GITHUB_EVENT_PATH: ${{ github.event_path }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DISPATCH_TASK: ${{ github.event.inputs.task_classification }}
+          DISPATCH_BRA: ${{ github.event.inputs.blast_radius }}
+          DISPATCH_FILES: ${{ github.event.inputs.target_files }}
+          DISPATCH_GOAL: ${{ github.event.inputs.bounded_goal }}
+          DISPATCH_TRUTH: ${{ github.event.inputs.context_truth }}
+          DISPATCH_INTENT: ${{ github.event.inputs.creator_intent }}
+          DISPATCH_CONSTRAINT: ${{ github.event.inputs.locked_core_constraint }}
+        run: |
+          python tools/brain_remote_router.py
+
+      - name: Upload Normalized Payload
+        uses: actions/upload-artifact@v4
+        with:
+          name: brain-payload
+          path: .brain_payload.json
+
+      - name: Comment on Issue
+        if: github.event_name == 'issues'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const payload = JSON.parse(fs.readFileSync('.brain_payload.json', 'utf8'));
+            const body = `### BRAIN REMOTE: Receipt Acknowledged
+            **Status:** Normalized
+            **Classification:** ${payload.classification}
+            **Goal:** ${payload.goal}
+            **Creator Intent:** ${payload.intent || 'Not provided'}
+            
+            BRAIN Kernel loaded from \`docs/ai/agents/BRAIN_KERNEL.md\`.
+            Payload artifact created for future processing.
+            
+            *This is an automated receipt from the WHAT WE FED BRAIN Lobe.*`;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });

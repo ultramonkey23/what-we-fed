@@ -4,6 +4,13 @@ applyTo: "**"
 
 # WHAT WE FED — Copilot Adapter (v2.2)
 
+Creator authority comes first:
+1. User / creator intent
+2. Current repo truth
+3. Current live-build truth
+4. Evolving spine
+5. Older canon / source docs
+
 Default read order:
 1. `docs/ai/SYSTEM_KERNEL.md` (The Unified Pulse)
 2. `docs/ai/PROJECT_KERNEL.md` (Project Identity)

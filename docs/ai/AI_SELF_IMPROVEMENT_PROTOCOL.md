@@ -3,7 +3,7 @@
 This protocol defines how AI agents (Claude, Codex, Gemini) should evolve their own rules and the game's architecture as WHAT WE FED scales.
 
 ## 1. Meta-Correction Protocol
-- **Trigger:** An AI agent makes a mistake that leads to a bug, a broken scene, or a violation of the "Locked Core."
+- **Trigger:** An AI agent makes a mistake that leads to a bug, a broken scene, or a violation of **Creator Intent**.
 - **Action:** The agent **must** analyze the root cause and immediately update the relevant `docs/ai/` file.
 - **Content:** Add an "Anti-Pattern" section or a specific rule addressing the failure.
 - **Goal:** Every mistake should only ever happen once in the repository's history.
@@ -27,4 +27,4 @@ This protocol defines how AI agents (Claude, Codex, Gemini) should evolve their 
 ## 4. Maintenance of the AI Ruleset
 - **Bi-Weekly Review:** Every 2 weeks, an agent should scan the `docs/ai/` folder and consolidate rules that have become redundant or conflicting.
 - **Non-Restriction Rule:** Protocols must remain practical and additive. If a rule stops helping agents write better code, remove or simplify it.
-- **Locked Core Priority:** No AI-driven "self-improvement" or "upgrade" can ever override the "Locked Core" project identity without explicit user direction.
+- **Creator Authority Priority:** No AI-driven "self-improvement" or "upgrade" can ever override the **User / Creator Intent** without explicit direction. Foundational identity anchors should be used as high-value guidance for all improvements.

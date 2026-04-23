@@ -1,10 +1,10 @@
 # CORE SYSTEMS & GROWTH — LOCAL INSTRUCTIONS
 
-## 5-Layer Canon Compliance
-All system design must adhere to the **5-Layer Canon Model**:
-1. **Layer 1 (Locked Core)**: DNA economy, Bond vs Eat tension, and Reward Ecology lanes.
-2. **Layer 2 (Live Build Truth)**: EventBus signals and current `GameState` schema.
-3. **Layer 3 (Evolving Spine)**: UI styling, growth curves, and non-core reward values.
+## THE AUTHORITY HIERARCHY
+All system design must adhere to the project's authority hierarchy:
+1. **User / Creator Intent**: Highest authority.
+2. **Current Repo Truth (Layer 2)**: EventBus signals and current `GameState` schema.
+3. **Older Canon / Source Docs (Layer 1)**: DNA economy, Bond vs Eat tension, and Reward Ecology lanes. Useful memory and guidance.
 
 ## System Philosophy: Management-Rich
 Systems should be decoupled and modular, favoring composition over deep inheritance.

@@ -4,9 +4,10 @@
 - This correction refines the timing of reward resolution to protect combat readability and timing truth.
 - It moves major deliberation and creature-fate routing to a premium end-of-level payoff burst.
 - It preserves the "Combat-Clean, Management-Rich" identity by preventing cognitive overload during high-intensity sequences.
-- Authority Order:
+- Global authority: User / Creator Intent > Current Repo Truth > Current Live-Build Truth > Evolving Spine > Older Source Docs.
+- Source-doc read order:
   1. WHAT WE FED — LOCKED CORE / EVOLVING SPINE DOCTRINE
-  2. WHAT WE FED — CURRENT LIVE BUILD CANON
+  2. WHAT WE FED — CURRENT LIVE-BUILD TRUTH
   3. MASTER CANON CORRECTION PATCH V1
   4. WHAT WE FED — REWARD FLOW CORRECTION V1 (This Document)
   5. WHAT WE FED — FINAL GAME SCOPE CANON FLAGSHIP

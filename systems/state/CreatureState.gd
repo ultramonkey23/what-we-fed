@@ -4,6 +4,7 @@ class_name CreatureState
 var roster: Array[Dictionary] = []
 var lair_roster: Array[Dictionary] = []
 var active_lair_creature_id: String = ""
+var archive_traits: Array[String] = [] # Traits extracted from Eaten creatures
 var dna_by_species: Dictionary = {}
 var predation_debt: Dictionary = {}
 var _bond_order_counter: int = 0
@@ -17,6 +18,9 @@ func reset_run_state() -> void:
 			if String(entry.get("species_id", "")) == active_lair_creature_id:
 				var seed_creature: Dictionary = entry.duplicate(true)
 				seed_creature["bond_order"] = _bond_order_counter
+				# Ensure spliced_traits exists
+				if not seed_creature.has("spliced_traits"):
+					seed_creature["spliced_traits"] = []
 				roster.append(seed_creature)
 				break
 

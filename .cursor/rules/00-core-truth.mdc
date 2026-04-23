@@ -5,20 +5,19 @@ alwaysApply: true
 
 # Core Truth (Default Kernel Mirror)
 
-- Load `docs/ai/PROJECT_KERNEL.md` first.
+- Creator direction overrides startup defaults.
+- Load `docs/ai/SYSTEM_KERNEL.md` first, then `docs/ai/PROJECT_KERNEL.md`.
 - Preserve: timing truth, lane/support readability, DNA meaning, Bond/Eat tension, active-combat no-pause identity.
 - Live build truth outranks stale speculative wording.
 - Choose one bounded move; avoid silent scope widening.
 
 # Authority Order
 
-1. Locked core / evolving spine doctrine
+1. User / creator intent
 2. Current repo truth
-3. Runtime evidence
-4. Source/canon files
-5. Task constraints
-6. Final scope direction
-7. Older assumptions
+3. Current live-build truth
+4. Evolving spine
+5. Older canon / source docs
 
 # Deep References
 

@@ -1,10 +1,10 @@
 # COMBAT & TIMING — LOCAL INSTRUCTIONS
 
-## 5-Layer Canon Compliance
-All combat logic must adhere to the **5-Layer Canon Model** defined in the Project Kernel:
-1. **Layer 1 (Locked Core)**: Timing honesty, lane integrity, and 1:1 input response.
-2. **Layer 2 (Live Build Truth)**: Active `SongConductor` signals override stale documentation.
-3. **Layer 3 (Evolving Spine)**: Combat feel constants and VFX intensity.
+## THE AUTHORITY HIERARCHY
+All combat design must adhere to the project's authority hierarchy:
+1. **User / Creator Intent**: Highest authority.
+2. **Current Repo Truth (Layer 2)**: Active `SongConductor` signals, input buffering, and state transitions.
+3. **Older Canon / Source Docs (Layer 1)**: Timing honesty, lane integrity, and 1:1 input response. Useful memory and guidance.
 
 ## Combat Soul: Combat-Clean
 Combat in WHAT WE FED is about **timing honesty** and **lane integrity**. Every player action must feel responsive and every enemy presence must be readable.

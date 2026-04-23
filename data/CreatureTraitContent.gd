@@ -52,6 +52,13 @@ const TRAITS: Dictionary = {
 		"description": "Taking damage triggers a 3-beat 'Emotional Surge', increasing attack speed by 50%.",
 		"genre_affinity": "emo",
 		"synergy_bonus": "Triggers 'System Breach' if paired with a Grindcore trait: Surge also makes the player invulnerable for the first beat."
+	},
+	"venomous_sting_v22": {
+		"id": "venomous_sting_v22",
+		"display_name": "Venomous Sting",
+		"description": "Perfect hits apply a 'Venom' debuff that deals 10% damage over 4 beats.",
+		"genre_affinity": "grindcore",
+		"synergy_bonus": "Triggers 'System Breach' if paired with a Sludge Doom trait: Venom duration is doubled and slows enemy movement."
 	}
 }
 

@@ -1,12 +1,12 @@
 # WHAT WE FED — THE DOCTRINE OF THE BLACK SIGNAL
 
 ## Purpose
-This doctrine defines the **Governance of Flesh**. Form must mutate; the Soul must remain locked.
+This doctrine defines the **Governance of Flesh**. It serves as a foundational memory and design guidance to help the creator maintain the project's unique identity. **The Creator is the final authority; these rules exist to serve the vision, not to block it.**
 
 ---
 
-# 1. THE SACRED CORE: IDENTITY ANCHORS
-Future changes must not break these:
+# 1. THE FOUNDATIONAL CORE: IDENTITY ANCHORS
+These anchors represent the project's soul and are preserved as high-value guidance:
 - **Timing Truth & Lane Integrity**: Mastery is the floor.
 - **DNA Predation Economy**: Evolution is species-specific.
 - **The Split (Bond vs Eat)**: The core tension of becoming.
@@ -37,14 +37,14 @@ Future changes must not break these:
 
 ---
 
-# 3. CANON GOVERNANCE MODEL
-1. **Layer 1 — Locked Core**: Identity anchors (Soul).
-2. **Layer 2 — Live Build Truth**: Runtime evidence (Body).
-3. **Layer 3 — Evolving Spine**: Mutable structure (Mutation).
-4. **Layer 4 — Later Scope**: Future direction (The Omen).
-5. **Layer 5 — Deferred Scope**: Parked ideas (The Hibernation).
+# 3. THE AUTHORITY HIERARCHY
+1. **User / Creator Intent**: Highest authority. Determines what the project should become.
+2. **Current Repo Truth (Layer 2)**: Implementation reality (The Body). Overrules older docs.
+3. **Current Live Build Truth**: Defines what is currently working.
+4. **Evolving Spine (Layer 3)**: Mutable structure and current design specs (The Mutation).
+5. **Older Canon / Source Docs (Layer 1)**: Foundational identity anchors and doctrine (The Soul). Useful memory and guidance; may be evolved or retired by the creator.
 
 ---
 
-# 4. ONE-SENTENCE OPERATIONAL RULE
-**Preserve the locked core, but allow the spine to warp and adapt whenever it makes WHAT WE FED feel more authored, more monsters, and more itself.**
+# 4. OPERATIONAL RULE
+**Leverage the foundational core as a strong guide, but prioritize the creator's current direction to allow WHAT WE FED to evolve into its strongest, most authored self.**

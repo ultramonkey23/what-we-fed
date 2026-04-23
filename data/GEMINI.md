@@ -1,10 +1,10 @@
 # CONTENT & DATA — LOCAL INSTRUCTIONS
 
-## 5-Layer Canon Compliance
-Data structures must adhere to the **5-Layer Canon Model**:
-1. **Layer 1 (Locked Core)**: Combat identity, Reward Ecology lanes, and DNA economy structure.
-2. **Layer 2 (Live Build Truth)**: Valid resource paths and active UID mappings.
-3. **Layer 3 (Evolving Spine)**: Encounter spawns, enemy stats, and loot tables.
+## THE AUTHORITY HIERARCHY
+Data structures must adhere to the project's authority hierarchy:
+1. **User / Creator Intent**: Highest authority.
+2. **Current Repo Truth (Layer 2)**: Valid resource paths and active UID mappings.
+3. **Older Canon / Source Docs (Layer 1)**: Combat identity, Reward Ecology lanes, and DNA economy structure. Useful memory and guidance.
 
 ## Data Philosophy: Management-Rich
 Data should be structured, authored, and predictable. Avoid "data sludge" (duplicate or vague entries).

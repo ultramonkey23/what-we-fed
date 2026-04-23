@@ -23,37 +23,12 @@ To maintain "Timing Honesty" while scaling "Management-Rich" power:
 
 ---
 
-## 2. The 5-Layer Canon (Governance of Flesh)
-1.  **Layer 1 — Locked Core**: The Soul. Timing truth, Lane integrity, DNA economy, Bond/Eat tension.
-2.  **Layer 2 — Live Build Truth**: The Body. Confirmed GDScript 2.0 implementation.
-3.  **Layer 3 — Evolving Spine**: The Mutation. Modular Wiki structure. **(v2.1: Siralim-style Trait Synergies)**.
-4.  **Layer 4 — Later Scope**: The Omen. **Kaiju Ascents (Godzilla scale)**.
-5.  **Layer 5 — Deferred Scope**: The Hibernation. Parked ideas.
+## 2. THE AUTHORITY HIERARCHY (The Unified Pulse)
+1. **User / Creator Intent**: Highest authority. Determines what the project should become.
+2. **Current Repo Truth (Layer 2)**: Defines what currently exists in implementation (The Body).
+3. **Current Live Build (Runtime Evidence)**: Defines what is currently live and working.
+4. **Evolving Spine (Layer 3)**: The Mutation. Mutable structure and current design specs.
+5. **Older Canon / Source Docs (Layer 1)**: The Soul. Identity anchors, timing truth, DNA economy. Useful memory and guidance; may be softened, restructured, retired, or replaced when stale.
 
----
+**Authority Order**: User Intent > Repo Truth > Live Build Truth > Evolving Spine > Older Canon / Source Docs.
 
-## 3. The Modular Spines (The Living Codex)
-- **Mechanical Spine**: Timing windows, lane logic, input response.
-- **Growth Spine**: Reward Ecology (Loot, DNA, Bond/Eat, **Trait Extraction**).
-- **Narrative Spine**: The "Living Codex Doctrine" (System-Lit identity).
-
----
-
-## 4. The Harvest (Reward Ecology v2.1)
-Lanes must stay distinct to avoid generic "RPG Stat Sludge":
-- **Loot (Grafts/Gear)**: Biological trophies (Vertical Progression).
-- **Artifacts (Run-Shapers)**: Transformative synergies (Horizontal Progression).
-- **DNA (Lineage)**: Species-specific evolution currency.
-- **Traits (Siralim-style)**: Deep, modular synergies extracted from consumed lineages.
-- **Identity Split (Bond vs Eat)**: The moral/mechanical heart.
-
----
-
-## 5. World Origin: The Sacred Start
-The world does not begin in ruin. It begins **Wondrous, Strange, and Sacred.** It is a beautiful thing being claimed, consumed, and rewritten by an invasive system.
-
-## Authority Order
-1. Locked Core / Spine Doctrine.
-2. Current Repo Truth (The Code).
-3. Current Live Build (Runtime Evidence).
-4. Task Constraints.

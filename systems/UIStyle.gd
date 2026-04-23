@@ -201,7 +201,8 @@ static func _make_box_or_texture(
 	corner_radius: int,
 	border_width: int,
 	texture_region: Rect2 = Rect2(),
-	texture_expand_margin: Vector4 = Vector4.ZERO
+	texture_expand_margin: Vector4 = Vector4.ZERO,
+	asym_corners: Vector4 = Vector4.INF # -1 means use corner_radius
 ) -> StyleBox:
 	var texture: Texture2D = _load_texture(texture_path)
 	if texture != null:
@@ -210,10 +211,18 @@ static func _make_box_or_texture(
 
 	var panel := StyleBoxFlat.new()
 	panel.bg_color = bg_color
-	panel.corner_radius_top_left = corner_radius
-	panel.corner_radius_top_right = corner_radius
-	panel.corner_radius_bottom_left = corner_radius
-	panel.corner_radius_bottom_right = corner_radius
+	
+	if asym_corners == Vector4.INF:
+		panel.corner_radius_top_left = corner_radius
+		panel.corner_radius_top_right = corner_radius
+		panel.corner_radius_bottom_left = corner_radius
+		panel.corner_radius_bottom_right = corner_radius
+	else:
+		panel.corner_radius_top_left = int(asym_corners.x)
+		panel.corner_radius_top_right = int(asym_corners.y)
+		panel.corner_radius_bottom_right = int(asym_corners.z)
+		panel.corner_radius_bottom_left = int(asym_corners.w)
+		
 	if border_width > 0:
 		panel.border_width_left = border_width
 		panel.border_width_top = border_width
@@ -341,30 +350,33 @@ static func _shell_palette_for_role(role: String) -> Dictionary:
 				"texture_path": "res://assets/ui/combat/panels/panel_performance.png",
 				"bg_color": Color(0.04, 0.02, 0.05, 0.98),
 				"border_color": MM_BOND_TEAL,
-				"corner_radius": 2,
-				"border_width": 2,
-				"shadow_color": Color(0.0, 0.0, 0.0, 0.5),
-				"shadow_size": 4
+				"corner_radius": 0,
+				"asym_corners": Vector4(12, 2, 8, 2), # Clawed look
+				"border_width": 3, # Thicker manga stroke
+				"shadow_color": MM_INK_BLACK.darkened(0.5),
+				"shadow_size": 6
 			}
 		"mm_alert":
 			return {
 				"texture_path": "res://assets/ui/combat/panels/panel_alert.png",
 				"bg_color": Color(0.08, 0.04, 0.02, 0.98),
 				"border_color": MM_ALERT_GOLD,
-				"corner_radius": 2,
-				"border_width": 2,
-				"shadow_color": Color(0.18, 0.10, 0.02, 0.30),
-				"shadow_size": 3
+				"corner_radius": 0,
+				"asym_corners": Vector4(2, 14, 2, 10),
+				"border_width": 3,
+				"shadow_color": Color(0.18, 0.10, 0.02, 0.40),
+				"shadow_size": 4
 			}
 		"mm_mutation":
 			return {
 				"texture_path": "res://assets/ui/combat/panels/panel_mutation.png",
 				"bg_color": Color(0.06, 0.02, 0.07, 0.98),
 				"border_color": MM_MUTATION_MAGENTA,
-				"corner_radius": 2,
-				"border_width": 2,
-				"shadow_color": Color(0.0, 0.0, 0.0, 0.5),
-				"shadow_size": 4
+				"corner_radius": 0,
+				"asym_corners": Vector4(10, 8, 2, 12),
+				"border_width": 3,
+				"shadow_color": MM_INK_BLACK,
+				"shadow_size": 5
 			}
 		"mm_apex":
 			return {
@@ -372,9 +384,10 @@ static func _shell_palette_for_role(role: String) -> Dictionary:
 				"bg_color": Color(0.10, 0.02, 0.02, 0.98),
 				"border_color": MM_BLOOD_EMBER,
 				"corner_radius": 0,
-				"border_width": 3,
-				"shadow_color": Color(0.20, 0.05, 0.02, 0.36),
-				"shadow_size": 5
+				"asym_corners": Vector4(16, 0, 16, 0), # Dramatic slant
+				"border_width": 4,
+				"shadow_color": Color(0.20, 0.05, 0.02, 0.50),
+				"shadow_size": 8
 			}
 		"hud_left":
 			return {
@@ -479,9 +492,9 @@ static func _bar_palette_for_role(role: String) -> Dictionary:
 	match role:
 		"mm_mutation":
 			return {
-				"under_color": Color(0.05, 0.02, 0.06, 0.90),
-				"fill_color": MM_BOND_TEAL, # XP starts Teal
-				"border_color": Color(0.12, 0.43, 0.37, 0.8),
+				"under_color": Color(0.08, 0.05, 0.10, 0.95),
+				"fill_color": MM_MUTATION_MAGENTA,
+				"border_color": MM_PAPER,
 				"corner_radius": 0,
 				"border_width": 1
 			}
@@ -512,7 +525,7 @@ static func _bar_palette_for_role(role: String) -> Dictionary:
 		"support_idle":
 			return {
 				"under_color": Color(0.05, 0.06, 0.07, 0.96),
-				"fill_color": Color(0.56, 0.78, 0.66, 1.0),
+				"fill_color": MM_BOND_TEAL,
 				"border_color": Color(0.22, 0.28, 0.24, 0.94),
 				"corner_radius": 6,
 				"border_width": 1

@@ -3,6 +3,7 @@ extends Node
 # Persistent run-level state. Modularized for v2.0 Architecture.
 const RITUAL_CONTENT = preload("res://data/RitualConsumableContent.gd")
 const COMBAT_CONTENT = preload("res://data/CombatContent.gd")
+const CREATURE_TRAITS = preload("res://data/CreatureTraitContent.gd")
 
 # Sub-state Components
 var player := PlayerState.new()
@@ -105,6 +106,9 @@ var last_beat_quality: String:
 var dna_by_species: Dictionary:
 	get: return creatures.dna_by_species
 	set(v): creatures.dna_by_species = v
+var archive_traits: Array[String]:
+	get: return creatures.archive_traits
+	set(v): creatures.archive_traits = v
 var predation_debt: Dictionary:
 	get: return creatures.predation_debt
 	set(v): creatures.predation_debt = v
@@ -368,6 +372,13 @@ func absorb_creature_type(creature_data: Dictionary) -> Dictionary:
 	if not is_species_ever_bonded(species_id):
 		creatures.increment_predation_debt(species_id)
 
+	# Trait Extraction (V2.1 Siralim Upgrade)
+	var trait_id: String = String(creature_data.get("trait_id", ""))
+	if not trait_id.is_empty() and not archive_traits.has(trait_id):
+		archive_traits.append(trait_id)
+		# Signal that a new trait was archived
+		EventBus.emit_signal("proc_feedback_requested", "TRAIT EXTRACTED: " + trait_id.to_upper(), Color(0.85, 0.44, 0.18, 1.0))
+
 	var eat_effect: Dictionary = creature_data.get("eat_effect", {})
 	var eat_type: String = String(eat_effect.get("type", "damage_flat"))
 	var value: float = float(eat_effect.get("value", 1.0))
@@ -409,6 +420,54 @@ func absorb_creature_type(creature_data: Dictionary) -> Dictionary:
 			active_mutations.pop_front()
 
 	return entry
+
+
+func splice_trait_to_creature(species_id: String, trait_id: String) -> bool:
+	var cost: int = 250 # Standard splicing cost
+	if not has_dna_for(species_id, float(cost)): return false
+	
+	for i in range(lair_roster.size()):
+		if String(lair_roster[i].get("species_id", "")) == species_id:
+			var spliced: Array = lair_roster[i].get("spliced_traits", [])
+			if spliced.has(trait_id): return false
+			
+			spend_dna(species_id, float(cost))
+			spliced.append(trait_id)
+			lair_roster[i]["spliced_traits"] = spliced
+			
+			# If this is the active creature, update the active roster too
+			for j in range(roster.size()):
+				if String(roster[j].get("species_id", "")) == species_id:
+					roster[j]["spliced_traits"] = spliced
+					break
+			return true
+	return false
+
+
+func ascend_lair_creature(species_id: String) -> bool:
+	var cost: int = 500 # Ascension cost
+	if not has_dna_for(species_id, float(cost)): return false
+	
+	for i in range(lair_roster.size()):
+		if String(lair_roster[i].get("species_id", "")) == species_id:
+			var bond: int = int(lair_roster[i].get("bond_level", 1))
+			if bond < 5: return false # Must be max bond to ascend
+			if bool(lair_roster[i].get("is_ascended", false)): return false
+			
+			spend_dna(species_id, float(cost))
+			lair_roster[i]["is_ascended"] = true
+			lair_roster[i]["is_exceptional"] = true # Ascended are always exceptional
+			lair_roster[i]["variant_id"] = "ascended_sovereign"
+			
+			# Update active roster
+			for j in range(roster.size()):
+				if String(roster[j].get("species_id", "")) == species_id:
+					roster[j]["is_ascended"] = true
+					roster[j]["is_exceptional"] = true
+					roster[j]["variant_id"] = "ascended_sovereign"
+					break
+			return true
+	return false
 
 
 func get_active_mutations_of_type(effect_type: String) -> Array[Dictionary]:

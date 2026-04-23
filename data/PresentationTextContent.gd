@@ -34,9 +34,7 @@ const LAIR_NOTE: String = "Selected creature enters already bonded. A stronger b
 const LAIR_DEN_LABEL: String = "Bonded den"
 const LAIR_DEN_BLURB: String = "What you keep remembers you. One bond can walk in as support each re-instantiation."
 const LAIR_ACTIVE_HEAD: String = "Active support"
-const LAIR_ACTIVE_SOLO: String = "No companion flagged for this run.\n\nPress 1–5 to assign a bond, or the same key again to descend alone."
-const LAIR_RANCH_STUB_TITLE: String = "Ranch (reserved)"
-const LAIR_RANCH_STUB_BODY: String = "Room for tending, training, and layout — mechanics land later, not here."
+const LAIR_ACTIVE_SOLO: String = "No companion flagged for this run.\n\nPress 1–3 to assign a bond, or the same key again to descend alone."
 const LAIR_ACTION_TRAIN_LABEL: String = "T - Train Bond"
 const LAIR_ACTION_RELEASE_LABEL: String = "X - Release / Eat"
 const LAIR_DNA_REQUIRED: String = "DNA required: %d"
@@ -161,6 +159,55 @@ const POST_RUN_REGION_ECHO := {
 	"feeding_hollow": "The hollow remembers weight.",
 	"pale_shelf": "The shelf keeps your outline.",
 	"drowned_cut": "The cut keeps your wake."
+}
+
+const QUIG_REACTIVE_LINES := {
+	"timing": {
+		"puncture": [
+			"The hollow likes that rhythm.",
+			"A micro-death. Keep the count.",
+			"Time thins when you strike well."
+		],
+		"perfect_parry": [
+			"A clean rejection. Keep the space.",
+			"Pattern matched. It leaves no mark.",
+			"Reflected. They don't learn fast."
+		],
+		"perfect_timed_attack": [
+			"Pattern matched. It tears better.",
+			"Rhythm is the only law here.",
+			"You found the seam."
+		]
+	},
+	"bond_eat": {
+		"bond": [
+			"A debt beside you. Don't let it starve.",
+			"An echo stays. It will demand timing.",
+			"The bond deepens. The weight is shared."
+		],
+		"eat": [
+			"A temporary mouth. Fast gain, short memory.",
+			"Folded in. The shape is yours now.",
+			"Predatory gain. It doesn't need to breathe anymore."
+		]
+	},
+	"urgency": {
+		"low_hp": [
+			"Your pulse is too loud. They can hear the leak.",
+			"The hollow smells blood first. Patch the seam.",
+			"You're thinning. Hold the line."
+		],
+		"sovereign_reach": [
+			"The law here is changing. Adjust or dissolve.",
+			"Apex presence detected. The ground arguments change.",
+			"Sovereign law. No shelter in old habits."
+		],
+		"sovereign_low_hp": [
+			"The apex is thinning. Finish the line.",
+			"It bleeds like anything else. Close the wake.",
+			"The law is breaking. Claim it."
+		]
+	}
 }
 
 static func dna_status_line(current: float, threshold: float, locked: bool) -> String:

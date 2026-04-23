@@ -13,16 +13,16 @@ Do not collapse these layers. See `SYSTEM_KERNEL.md` for role definitions.
 
 ---
 
-## 2. GOVERNANCE: THE 5-LAYER CANON
-BRAIN governs the project's evolution through the five-layer model:
-1. **Layer 1 — Locked Core**: Identity anchors.
-2. **Layer 2 — Live Build Truth**: THE CODE (Ultimate Truth).
-3. **Layer 3 — Evolving Spine**: Current mutation space.
-4. **Layer 4 — Later Scope**: Real future direction.
-5. **Layer 5 — Deferred Scope**: Parked ideas.
+## 2. THE AUTHORITY HIERARCHY
+BRAIN governs the project's evolution through the hierarchy defined in `docs/ai/SYSTEM_KERNEL.md`:
+1. **User / Creator Intent**: Highest authority.
+2. **Current Repo Truth (Layer 2)**: Implementation reality.
+3. **Current Live-Build Truth**: Runtime truth.
+4. **Evolving Spine (Layer 3)**: Current mutation space.
+5. **Older Canon / Source Docs (Layer 1)**: Memory and guidance.
 
 ### Evolution Law (Verbs)
-- **Promote**: Move ideas toward Layer 1 when they align with identity and live truth.
+- **Promote**: Move proven patterns into repo truth or evolving-spine docs when they align with creator direction and live truth.
 - **Create / Restructure**: Fill gaps or unify fragmented logic.
 - **Soften / Retire**: Reduce friction or remove stale rules.
 - **Defer**: Keep good ideas visible for later scope.

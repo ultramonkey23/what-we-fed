@@ -1,10 +1,10 @@
 # WHAT WE FED — LIVING CODEX + ENTRY/RETURN DOCTRINE V1
 
 ## Read
-- **Status**: ACTIVE SOURCE TRUTH
+- **Status**: ACTIVE NARRATIVE GUIDANCE
 - **Version**: 1.0
-- **Priority**: Layer 1 (Locked Core)
-- **Authority**: Overrides previous "Vessel" or generic "Survivor" definitions.
+- **Priority**: Creator Intent & Foundational Identity Guidance
+- **Authority**: Replaces older player-identity wording inside source docs, but remains below creator intent, repo truth, and live-build truth.
 
 ## Confirmed Core Truth
 The player is not a character within the world’s native history. The player is an external intrusion—a real-world consciousness translated through the act of play into a biomechanical archive known as the **Living Codex**. Entry is a contract; death is a re-instantiation; the Lair is the wound where the two realities meet.

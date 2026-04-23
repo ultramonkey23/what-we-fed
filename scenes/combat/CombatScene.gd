@@ -232,6 +232,7 @@ var _live_reward_queue: Array[Dictionary] = []
 
 var _performance_reward_director: Node = null
 var _performance_hud: Control = null
+var _quig_narrative_system: Node = null
 var _quig_tween: Tween = null
 var _encounter_load_gen: int = 0
 var _active_encounter: Dictionary = {}
@@ -419,6 +420,8 @@ func _exit_tree() -> void:
 		EventBus.phrase_milestone.disconnect(_on_phrase_milestone)
 	if EventBus.tier_changed.is_connected(_on_tier_changed):
 		EventBus.tier_changed.disconnect(_on_tier_changed)
+	if EventBus.quig_narrative_triggered.is_connected(_on_quig_narrative_triggered):
+		EventBus.quig_narrative_triggered.disconnect(_on_quig_narrative_triggered)
 
 
 func _initialize_systems() -> void:
@@ -432,6 +435,15 @@ func _initialize_systems() -> void:
 	_setup_run_director()
 	_setup_victory_reward_director()
 	_setup_support_resolver()
+	_setup_quig_narrative()
+
+
+func _setup_quig_narrative() -> void:
+	if _quig_narrative_system != null and is_instance_valid(_quig_narrative_system):
+		return
+	_quig_narrative_system = preload("res://systems/QuigNarrativeSystem.gd").new()
+	_quig_narrative_system.name = "QuigNarrativeSystem"
+	add_child(_quig_narrative_system)
 
 
 func _setup_run_director() -> void:
@@ -1818,12 +1830,14 @@ func _setup_ui() -> void:
 	_build_meter_shell()
 	combo_label.reparent(_hud_top_right_container)
 	combo_label.text = "0"
+	combo_label.visible = false # Hidden in favor of performance HUD
 	combo_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_apply_text_role(combo_label, "hud_metric_value", HORIZONTAL_ALIGNMENT_RIGHT)
 	combo_label.add_theme_font_size_override("font_size", 26)
 
 	style_label.reparent(_hud_top_right_container)
 	style_label.text = "Stirring"
+	style_label.visible = false # Hidden in favor of performance HUD
 	style_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_apply_text_role(style_label, "hud_meta", HORIZONTAL_ALIGNMENT_RIGHT)
 	style_label.add_theme_font_size_override("font_size", 15)
@@ -1833,7 +1847,7 @@ func _setup_ui() -> void:
 	hp_row.custom_minimum_size = Vector2(0.0, 22.0)
 	hp_row.add_theme_constant_override("separation", 6)
 	_hud_top_left_container.add_child(hp_row)
-	
+
 	var hp_caption := Label.new()
 	hp_caption.text = "Health"
 	hp_caption.custom_minimum_size = Vector2(64.0, 0.0)
@@ -1865,7 +1879,7 @@ func _setup_ui() -> void:
 	stamina_row.custom_minimum_size = Vector2(0.0, 22.0)
 	stamina_row.add_theme_constant_override("separation", 6)
 	_hud_top_left_container.add_child(stamina_row)
-	
+
 	var stamina_caption := Label.new()
 	stamina_caption.text = "Stamina"
 	stamina_caption.custom_minimum_size = Vector2(64.0, 0.0)
@@ -1884,12 +1898,12 @@ func _setup_ui() -> void:
 	# Dedicated Biomass Power Scouter (Diegetic Element)
 	_scouter_shell = Panel.new() # Use Panel for better children containment
 	_scouter_shell.name = "ScouterShell"
-	_scouter_shell.z_index = 45 
+	_scouter_shell.z_index = 45
 	_scouter_shell.position = Vector2(COMBAT_FEEL_CONTENT.HUD_OUTER_MARGIN, COMBAT_FEEL_CONTENT.HUD_TOP_BAND_Y + COMBAT_FEEL_CONTENT.HUD_TOP_BAND_HEIGHT + 6.0)
 	_scouter_shell.size = Vector2(210.0, 28.0) # Slightly wider for "POWER LEVEL" text
 	# Digital Lens style: Dark teal with glowing border
 	UI_STYLE.apply_shell_style(_scouter_shell, "hud_accent", "", Color(0.01, 0.08, 0.07, 0.65), Color(0.3, 0.9, 0.75, 0.9))
-	
+
 	if _hud_primary_layer != null:
 		_hud_primary_layer.add_child(_scouter_shell)
 	else:
@@ -1905,15 +1919,17 @@ func _setup_ui() -> void:
 
 	ultimate_label.reparent(_hud_top_right_container)
 	ultimate_label.text = "0%"
+	ultimate_label.visible = false # Hidden in favor of performance HUD
 	ultimate_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_apply_text_role(ultimate_label, "hud_meta", HORIZONTAL_ALIGNMENT_RIGHT)
-	ultimate_label.add_theme_font_size_override("font_size", 16)
-	
+	ultimate_label.add_theme_font_size_override("font_size", 16)	
 	result_label.visible = false
 	result_label.text = ""
 	result_label.position = Vector2(320.0, 290.0)
 	result_label.size = Vector2(640.0, 72.0)
 	result_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+
+	controls_label.visible = false # Hidden in favor of performance HUD framing
 	result_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_apply_text_role(result_label, "screen_title")
 
@@ -3286,18 +3302,22 @@ func _setup_performance_hud() -> void:
 			inst.queue_free()
 		return
 	_performance_hud = inst as Control
-	if _hud_right_stack != null and is_instance_valid(_hud_right_stack):
-		_hud_right_stack.add_child(_performance_hud)
-		_performance_hud.set_anchors_preset(Control.PRESET_TOP_LEFT)
-		_performance_hud.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		_performance_hud.position = Vector2.ZERO
+	
+	# Add to overlay layer for full-screen framing
+	if _hud_overlay_layer != null:
+		_hud_overlay_layer.add_child(_performance_hud)
+	elif _hud_primary_layer != null:
+		_hud_primary_layer.add_child(_performance_hud)
 	else:
-		if _hud_secondary_layer != null:
-			_hud_secondary_layer.add_child(_performance_hud)
-		else:
-			ui_layer.add_child(_performance_hud)
-		_performance_hud.set_anchors_preset(Control.PRESET_TOP_LEFT)
-		_performance_hud.position = Vector2(COMBAT_FEEL_CONTENT.RIGHT_HUD_STACK_X - 14.0, 238.0)
+		ui_layer.add_child(_performance_hud)
+		
+	_performance_hud.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_performance_hud.offset_left = 0
+	_performance_hud.offset_top = 0
+	_performance_hud.offset_right = 0
+	_performance_hud.offset_bottom = 0
+	_performance_hud.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
 	if _performance_reward_director != null and _performance_hud.has_method("bind_runtime"):
 		_performance_hud.bind_runtime(_performance_reward_director)
 	_sync_message_lane_ownership()
@@ -3355,7 +3375,7 @@ func _connect_eventbus() -> void:
 	EventBus.enemy_defeated.connect(_on_enemy_defeated)
 	EventBus.proc_feedback_requested.connect(_on_proc_feedback_requested)
 	EventBus.ultimate_power_granted.connect(_on_ultimate_power_granted)
-	EventBus.enemy_status_applied_requested.connect(_on_enemy_status_applied_requested)
+	EventBus.enemy_status_applied_requested.connect(lane_manager.apply_status)
 	EventBus.screen_flash.connect(_presentation_runtime.on_screen_flash)
 	EventBus.screen_shake.connect(_presentation_runtime.on_screen_shake)
 	EventBus.ui_shake.connect(_presentation_runtime.on_ui_shake)
@@ -3383,6 +3403,7 @@ func _connect_eventbus() -> void:
 	EventBus.enemy_status_cleared.connect(_on_enemy_status_cleared)
 	EventBus.phrase_milestone.connect(_on_phrase_milestone)
 	EventBus.tier_changed.connect(_on_tier_changed)
+	EventBus.quig_narrative_triggered.connect(_on_quig_narrative_triggered)
 
 
 func _setup_lane_manager() -> void:
@@ -5481,6 +5502,7 @@ func _on_enemy_damaged(enemy_id: int, damage: float) -> void:
 		# Feedback and effects only (director handles timing shift)
 		if not _boss_decree_timeline_active and not _boss_hp_threshold_fired and _boss_total_hp > 0.0 and (_boss_current_hp / _boss_total_hp) <= 0.5:
 			_boss_hp_threshold_fired = true
+			EventBus.emit_signal("sovereign_threshold_reached", 0.5)
 			_hud_presenter.set_boss_state_text(PRESENTATION_TEXT.boss_state_final(_region_id))
 			if _performance_reward_director != null and is_instance_valid(_performance_reward_director) and _performance_reward_director.has_method("notify_boss_threshold"):
 				_performance_reward_director.call("notify_boss_threshold", "sovereign_unleash", 8.0, "BOSS BREAK")
@@ -5587,11 +5609,6 @@ func _on_proc_feedback_requested(text: String, color: Color) -> void:
 func _on_ultimate_power_granted(amount: float) -> void:
 	if combat_meter != null and combat_meter.has_method("gain_ultimate_power"):
 		combat_meter.call("gain_ultimate_power", amount)
-
-
-func _on_enemy_status_applied_requested(lane: int, status_id: String, params: Dictionary) -> void:
-	if lane_manager != null and lane_manager.has_method("apply_status"):
-		lane_manager.call("apply_status", lane, status_id, params)
 
 
 func _on_enemy_defeated(enemy_id: int) -> void:
@@ -6115,7 +6132,7 @@ func _refresh_bonded_creature_render(active_species_id: String = "") -> void:
 		_bonded_creature_sprite.texture = render_tex
 		
 		# Auto-detect hframes for animation strips (assuming square frames)
-		var h_frames: int = clampi(int(render_tex.get_width() / render_tex.get_height()), 1, 64)
+		var h_frames: int = clampi(int(float(render_tex.get_width()) / render_tex.get_height()), 1, 64)
 		_bonded_creature_sprite.hframes = h_frames
 		_bonded_creature_sprite.vframes = 1 # We use horizontal strips now
 		
@@ -6505,7 +6522,7 @@ func _get_enemy_id_for_lane(lane: int) -> int:
 	return int(enemy.get("id", -1))
 
 
-func _on_enemy_status_applied(lane: int, status_id: String) -> void:
+func _on_enemy_status_applied(lane: int, status_id: String, params: Dictionary) -> void:
 	# Updates the enemy marker color to reflect the new status.
 	# "gorge_mark_triggered" fires when a marked enemy dies — show FEAST feedback.
 	if status_id == "gorge_mark_triggered":
@@ -6532,6 +6549,17 @@ func _on_enemy_status_applied(lane: int, status_id: String) -> void:
 		"expose":
 			_status_marker_overrides[enemy_id] = Color(0.84, 0.70, 0.12, 0.92)
 			_show_feedback("EXPOSED", Color(0.96, 0.88, 0.44, 1.0), 0.32)
+		"venom":
+			if bool(params.get("slow", false)):
+				# Sludge Synergy
+				_status_marker_overrides[enemy_id] = Color(0.24, 0.52, 0.18, 0.92)
+				_show_feedback("SYSTEM BREACH", Color(0.44, 0.88, 0.36, 1.0), 0.38)
+			else:
+				_status_marker_overrides[enemy_id] = Color(0.48, 0.12, 0.64, 0.92)
+				_show_feedback("VENOM", Color(0.72, 0.36, 0.88, 1.0), 0.34)
+		"slow":
+			_status_marker_overrides[enemy_id] = Color(0.18, 0.62, 0.12, 0.88)
+			_show_feedback("SLOW", Color(0.36, 0.88, 0.32, 1.0), 0.30)
 		_:
 			return
 
@@ -6627,3 +6655,25 @@ func _spawn_support_intervention(species_id: String, lane: int, tint: Color) -> 
 		_presentation_runtime.spawn_creature_intervention(lane, support_art, tint)
 	else:
 		_presentation_runtime.spawn_attack_silhouette_to_lane(lane, tint, 16.0, 0.14, 1.18)
+
+
+func _on_quig_narrative_triggered(text: String, duration: float) -> void:
+	if _quig_anchor_label == null:
+		return
+	
+	_quig_anchor_label.text = _compact_hud_copy(text, 58)
+	_quig_anchor_label.visible = true
+	_refresh_quig_ui_state()
+	
+	if _quig_tween != null:
+		_quig_tween.kill()
+	
+	_quig_tween = create_tween()
+	_quig_tween.tween_interval(duration)
+	_quig_tween.tween_property(_quig_anchor_label, "modulate:a", 0.0, COMBAT_FEEL_CONTENT.TENDENCY_ANCHOR_FADE_TIME)
+	_quig_tween.finished.connect(func():
+		if _quig_anchor_label != null:
+			_quig_anchor_label.visible = false
+			_quig_anchor_label.modulate.a = 1.0
+			_refresh_quig_ui_state()
+	)

@@ -4,6 +4,8 @@ signal growth_choice_selected(choice_id: String)
 
 const UI_STYLE = preload("res://systems/UIStyle.gd")
 const COMBAT_CONTENT = preload("res://data/CombatContent.gd")
+const GROWTH_STATS = preload("res://data/GrowthStats.gd")
+const PRESENTATION_TEXT = preload("res://data/PresentationTextContent.gd")
 
 var _canvas: CanvasLayer = null
 var _panel: ColorRect = null
@@ -13,12 +15,14 @@ var _summary_label: Label = null
 var _creature_label: Label = null
 var _bond_label: Label = null
 var _eat_label: Label = null
+var _stat_preview_label: Label = null
 var _hint_label: Label = null
 var _fail_safe_pass_allowed: bool = false
 
 var _choice_locked: bool = false
 var _bond_enabled: bool = true
 var _eat_enabled: bool = true
+var _growth_stats_ref: GrowthStats = GROWTH_STATS.new()
 
 
 func _ready() -> void:
@@ -48,6 +52,7 @@ func present() -> void:
 	_creature_label.text = _build_creature_line(creature)
 	_bond_label.text = _build_bond_line(creature)
 	_eat_label.text = _build_eat_line(creature)
+	_stat_preview_label.text = _build_stat_preview(creature)
 	_hint_label.text = _build_hint_text()
 
 	visible = true
@@ -135,7 +140,7 @@ func _build_ui() -> void:
 
 	_bond_label = Label.new()
 	_bond_label.position = Vector2(64.0, 286.0)
-	_bond_label.size = Vector2(420.0, 178.0)
+	_bond_label.size = Vector2(420.0, 138.0)
 	_bond_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	UI_STYLE.apply_label(_bond_label, "overlay_body")
 	_bond_label.add_theme_color_override("font_color", UI_STYLE.get_manga_color("bond_teal"))
@@ -143,11 +148,18 @@ func _build_ui() -> void:
 
 	_eat_label = Label.new()
 	_eat_label.position = Vector2(540.0, 286.0)
-	_eat_label.size = Vector2(420.0, 178.0)
+	_eat_label.size = Vector2(420.0, 138.0)
 	_eat_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	UI_STYLE.apply_label(_eat_label, "overlay_body")
 	_eat_label.add_theme_color_override("font_color", UI_STYLE.get_manga_color("blood_ember"))
 	_panel.add_child(_eat_label)
+	
+	_stat_preview_label = Label.new()
+	_stat_preview_label.position = Vector2(64.0, 436.0)
+	_stat_preview_label.size = Vector2(896.0, 48.0)
+	_stat_preview_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	UI_STYLE.apply_label(_stat_preview_label, "mm_caption", HORIZONTAL_ALIGNMENT_CENTER)
+	_panel.add_child(_stat_preview_label)
 
 	_hint_label = Label.new()
 	_hint_label.position = Vector2(0.0, 486.0)
@@ -195,13 +207,39 @@ func _build_eat_line(creature: Dictionary) -> String:
 		return eat_text + "Unavailable"
 
 	var eat_effect: Dictionary = Dictionary(creature.get("eat_effect", {}))
-	var eat_type: String = String(eat_effect.get("type", "damage_flat"))
-	var eat_value: float = float(eat_effect.get("value", 0.0))
+	# var eat_type: String = String(eat_effect.get("type", "damage_flat"))
+	# var eat_value: float = float(eat_effect.get("value", 0.0))
 	var mutation_summary: String = String(creature.get("mutation", {}).get("summary", ""))
-	var effect_line: String = "%s %.1f" % [eat_type, eat_value]
+	var effect_line: String = PRESENTATION_TEXT.format_eat_effect(eat_effect)
 	if mutation_summary.is_empty():
 		return eat_text + effect_line
 	return eat_text + effect_line + "\nMutation: " + mutation_summary
+
+
+func _build_stat_preview(creature: Dictionary) -> String:
+	var p_type: String = String(creature.get("primary_type", "")).to_lower()
+	var s_type: String = String(creature.get("secondary_type", "")).to_lower()
+	
+	var weights = {}
+	var p_w = _growth_stats_ref.genetic_weights.get(p_type, {})
+	var s_w = _growth_stats_ref.genetic_weights.get(s_type, {})
+	
+	for k in p_w.keys(): weights[k] = weights.get(k, 0) + p_w[k]
+	for k in s_w.keys(): weights[k] = weights.get(k, 0) + s_w[k]
+	
+	var lines = []
+	if not weights.is_empty():
+		var sorted_keys = weights.keys()
+		sorted_keys.sort_custom(func(a, b): return weights[a] > weights[b])
+		var bias_parts = []
+		for k in sorted_keys:
+			bias_parts.append(k.replace("stat_", "").to_upper())
+		lines.append("BOND BIAS: +Next level favors " + " · ".join(bias_parts))
+	
+	var eat_effect = creature.get("eat_effect", {})
+	lines.append("EAT GAIN: " + PRESENTATION_TEXT.format_eat_effect(eat_effect))
+	
+	return "\n".join(lines)
 
 
 func _build_hint_text() -> String:

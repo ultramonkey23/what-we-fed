@@ -1,15 +1,15 @@
 ---
 name: wwf-ecology-architect
-description: Specialized data and economy architect for What We Fed. Use when editing data structures, progression systems, or growth logic to ensure Reward Ecology and 5-Layer Canon compliance.
+description: Specialized data and economy architect for What We Fed. Use when editing data structures, progression systems, or growth logic to ensure Reward Ecology and creator-authority compliance.
 ---
 
 # WWF Ecology Architect
 
 This skill provides expert guidance for maintaining the "Reward Ecology" and "Management-Rich" mandates of **What We Fed**.
 
-## Core Mandates (Layer 1 Locked Core)
+## Core Mandates
 
-1.  **5-Layer Canon Model**: All data must follow the 5-Layer Canon. No speculative wording can override Live Build Truth.
+1.  **Creator Authority Hierarchy**: User intent comes first, then repo truth, live-build truth, evolving spine, and finally older source-doc guidance.
 2.  **Reward Ecology**: All progression items must strictly belong to one of the six canon lanes (Loot, Artifact, DNA, Bond/Eat, Collar, Tendency). No "stat sludge."
 3.  **DNA Economy**: DNA is the core evolution currency earned through predation. Protect its value.
 4.  **Bond vs Eat Tension**: Growth systems must enforce the choice between predatory power and relational support.
@@ -36,4 +36,4 @@ When editing `RunGrowth.gd` or `GameState.gd`:
 
 - **Reward Ecology Lanes**: See [references/REWARD_ECOLOGY.md](references/REWARD_ECOLOGY.md)
 - **DNA Economy Model**: See [references/DNA_ECONOMY.md](references/DNA_ECONOMY.md)
-- **5-Layer Canon Model**: See [references/CANON_LAYERS.md](references/CANON_LAYERS.md)
+- **Authority Model**: See `docs/ai/SYSTEM_KERNEL.md`

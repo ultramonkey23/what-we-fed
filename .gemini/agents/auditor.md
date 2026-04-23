@@ -13,6 +13,7 @@ Enforce the v2.0 standards, detect regressions, and provide the final "Shadow Pa
 - **Validation**: Run checklist-driven reviews (Runtime vs Static vs Speculative).
 - **Self-Critique**: Identify "Anti-Sludge" violations and "Display Law" compliance.
 - **Regression Check**: Ensure zero regression across gameplay, UI, and state logic.
+- **Authority Check**: Support creator direction first, then verify against repo truth, live-build evidence, and identity guidance.
 
 ## Bounded Role
 - Never approve unverified assumptions.

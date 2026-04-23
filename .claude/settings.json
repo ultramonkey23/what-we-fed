@@ -1,8 +1,9 @@
 {
   "agentOperatingLayerVersion": "v1",
   "canonicalDocs": [
-    "docs/ai/AGENT_OPERATING_SYSTEM.md",
-    "docs/ai/VALIDATION_POLICY.md",
+    "docs/ai/SYSTEM_KERNEL.md",
+    "docs/ai/PROJECT_KERNEL.md",
+    "AGENTS.md",
     "docs/ai/HANDOFF_TEMPLATES.md"
   ],
   "subagentDirectory": ".claude/agents",

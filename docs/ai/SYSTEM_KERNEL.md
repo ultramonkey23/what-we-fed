@@ -8,19 +8,19 @@ This is the repository's single source of truth for AI orchestration, governance
 The project operates through a four-lobe functional stack. Do not collapse these roles.
 - **BRAIN (Director)**: Strategic lead, Soul Guardian, Best-Next-Move selector.
 - **CYBORG (Auditor)**: Verification kernel, Shadow Pair critique, Regression/Sludge hunter.
-- **SYMBIOTE (Scout)**: Deep research, Context compression, Live Build Truth (Layer 2) sync.
+- **SYMBIOTE (Scout)**: Deep research, Context compression, Repo Truth (Layer 2) sync.
 - **ALFRED (Surgeon)**: Task decomposition, Handoff generation, surgical code mutation.
 
 ---
 
-## 2. GOVERNANCE: THE 5-LAYER CANON
-1. **Layer 1 — Locked Core**: Identity, Timing Truth, Lane Integrity, DNA Economy, Bond vs Eat.
-2. **Layer 3 — Evolving Spine**: Current design specs, mythology, and modular systems.
-3. **Layer 2 — Live Build Truth**: THE CODE. Overrules Layer 3 if they conflict.
-4. **Layer 4 — Later Scope**: Visible Omens/Roadmap.
-5. **Layer 5 — Deferred Scope**: Parked ideas.
+## 2. THE AUTHORITY HIERARCHY (The Unified Pulse)
+1. **User / Creator Intent**: Highest authority. Determines what the project should become.
+2. **Current Repo Truth (Layer 2)**: Defines what currently exists in implementation. Used to ground decisions in current reality. Overrules older documentation if they conflict.
+3. **Current Live-Build Truth**: Defines what is currently live and working in the build.
+4. **Evolving Spine (Layer 3)**: Defines the currently accepted direction of evolution, design specs, and modular systems.
+5. **Older Canon / Source Docs (Layer 1)**: Identity anchors (Timing Truth, DNA Economy, Bond vs Eat). Useful memory and guidance; may be softened, restructured, retired, or replaced when stale.
 
-**Authority Order**: Layer 1 > Layer 2 > Layer 3 > Task Constraints.
+**Authority Order**: User Intent > Repo Truth > Live-Build Truth > Evolving Spine > Older Canon / Source Docs.
 
 ---
 
@@ -30,7 +30,7 @@ The project operates through a four-lobe functional stack. Do not collapse these
     - **Tier 0**: Docs/Naming.
     - **Tier 1**: Local logic (one script).
     - **Tier 2**: Systemic (Signals/EventBus/Data).
-    - **Tier 3**: Core (Touches Layer 1).
+    - **Tier 3**: Core (Touches orchestration kernels or identity-anchor contracts).
 - **Combat-Clean**: No active-combat menu-sludge or interruptions.
 - **Management-Rich**: Maximize strategic detail in pre-run/between-level screens.
 - **Display Law**: Combat HUD = Urgency | Management Screens = Comprehension.
@@ -53,7 +53,7 @@ Every substantial task must conclude with this report block:
 - **Evidence Type**: Runtime-Verified | Static-Only | Speculative
 - **Self-Critique Results**:
   - [ ] Assumption-Busted (Verified Layer 2 Live Truth)
-  - [ ] Layer 1 Integrity (Timing/Lanes/DNA)
+  - [ ] Identity Anchor Integrity (Timing/Lanes/DNA)
   - [ ] Anti-Sludge (Combat-Clean/HUD-Minimal)
   - [ ] GDScript 2.0 Compliance (Typing/Signals/EventBus)
   - [ ] Signal Tracing (Emitted AND connected)

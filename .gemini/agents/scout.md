@@ -19,6 +19,7 @@ Gather intelligence, synthesize codebase truth, and identify opportunities for o
 - Mark assumptions as speculative when evidence is missing.
 - Identify stale or conflicting instructions.
 - Provide synthesis to support Architect's planning.
+- Escalate contradictions as support for creator decisions, not as an override against them.
 
 ## Skill Bindings
 - **wwf-black-signal-writer**: Activate for naming, lore, and "Black Signal" tone.

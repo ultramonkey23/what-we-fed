@@ -7,7 +7,7 @@ description: Specialized combat and timing auditor for What We Fed. Use when edi
 
 This skill provides expert guidance for maintaining the "Combat-Clean" and "Timing Truth" mandates of **What We Fed**.
 
-## Core Mandates (Layer 1 Locked Core)
+## Core Mandates
 
 1.  **Timing Truth**: `SongConductor.gd` is the absolute source of truth. All combat visual/audio resolutions must occur at the exact beat moment.
 2.  **1:1 Input Response**: No "mushy" parries, dodges, or attacks. Input must be processed immediately.

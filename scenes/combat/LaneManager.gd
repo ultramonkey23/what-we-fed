@@ -28,6 +28,9 @@ const PALE_DAMAGE_MULT: float = 0.50        # PALE halves the enemy's next fired
 const EXPOSE_DAMAGE_MULT: float = 1.25      # +25% damage to the enemy while EXPOSE is active
 const EXPOSE_BASE_DURATION: float = 2.5     # EXPOSE expires after 2.5 seconds
 const GORGE_MARK_BONUS_CHARGE: float = 5.0  # Extra support charge when a GORGE-MARK enemy is defeated
+const VENOM_DAMAGE_RATIO: float = 0.10      # 10% of max HP (or current?) dealt per beat
+const VENOM_BASE_BEATS: int = 4
+const SLOW_SPEED_MULT: float = 0.70         # -30% projectile speed while SLOW is active
 const ENEMY_DEFENSE_MAX_REDUCTION_RATIO: float = 0.35
 const ENEMY_DEFENSE_MIN_DAMAGE: float = 1.0
 
@@ -123,8 +126,37 @@ func start_combat(enemy_data: Array) -> void:
 	_cycle_task_id += 1
 	_reset_attack_authority_state()
 
+	if not EventBus.song_beat_pulse.is_connected(_on_song_beat_pulse):
+		EventBus.song_beat_pulse.connect(_on_song_beat_pulse)
+
 	EventBus.emit_signal("combat_started", enemy_data)
 	_run_fire_cycle(_cycle_task_id)
+
+
+func _on_song_beat_pulse(_beat_index: int, _intensity: float) -> void:
+	if not _combat_running:
+		return
+	
+	var expired: Array = []
+	for lane in _enemy_statuses:
+		var status: Dictionary = _enemy_statuses[lane]
+		if status.get("id", "") == "venom":
+			var beats: int = int(status.get("beats_remaining", 0))
+			if beats > 0:
+				# Apply venom damage
+				var enemy: Dictionary = get_enemy(lane)
+				if not enemy.is_empty() and enemy.has("max_hp"):
+					var damage: float = float(enemy["max_hp"]) * float(status.get("venom_damage", 0.10))
+					damage_enemy(lane, damage)
+					EventBus.proc_feedback_requested.emit("VENOM", Color(0.48, 0.12, 0.64, 1.0))
+				
+				status["beats_remaining"] = beats - 1
+				if int(status["beats_remaining"]) <= 0:
+					expired.append(lane)
+	
+	for lane in expired:
+		_enemy_statuses.erase(lane)
+		EventBus.emit_signal("enemy_status_cleared", lane)
 
 
 func get_projectile(lane: int):
@@ -287,7 +319,7 @@ func damage_enemy(lane: int, amount: float) -> void:
 		# GORGE-MARK: emit triggered event for bonus charge before clearing.
 		if _enemy_statuses.has(lane) and _enemy_statuses[lane].get("id", "") == "gorge_mark":
 			_enemy_statuses.erase(lane)
-			EventBus.emit_signal("enemy_status_applied", lane, "gorge_mark_triggered")
+			EventBus.emit_signal("enemy_status_applied", lane, "gorge_mark_triggered", {})
 			EventBus.emit_signal("enemy_status_cleared", lane)
 		elif _enemy_statuses.has(lane):
 			_enemy_statuses.erase(lane)
@@ -376,11 +408,17 @@ func apply_status(lane: int, status_id: String, params: Dictionary = {}) -> void
 			var base_dur: float = float(params.get("duration", EXPOSE_BASE_DURATION))
 			var dur_mult: float = float(flags.get("expose_duration_mult", 1.0))
 			status["duration"] = base_dur * dur_mult
+		"venom":
+			status["beats_remaining"] = int(params.get("beats", VENOM_BASE_BEATS))
+			status["venom_damage"] = float(params.get("damage_ratio", VENOM_DAMAGE_RATIO))
+			status["slow"] = bool(params.get("slow", false))
+		"slow":
+			status["duration"] = float(params.get("duration", 2.0))
 		_:
 			return  # Unknown status — do nothing.
 
 	_enemy_statuses[lane] = status
-	EventBus.emit_signal("enemy_status_applied", lane, status_id)
+	EventBus.emit_signal("enemy_status_applied", lane, status_id, params)
 
 
 func get_status_id(lane: int) -> String:
@@ -629,18 +667,34 @@ func _get_enemy_status_flags(enemy: Dictionary) -> Dictionary:
 
 
 func _get_enemy_projectile_speed(enemy: Dictionary) -> float:
+	var base_speed: float = 265.0
+	
 	if enemy.has("projectile_speed"):
 		var explicit_speed: float = float(enemy.get("projectile_speed", 0.0))
 		if explicit_speed > 0.0:
-			return explicit_speed
-
-	var enemy_type: String = String(enemy.get("type", "dreg"))
-	match enemy_type:
-		"dreg":
-			return 265.0
-		"bond_reaper":
-			return 430.0
-		"sovereign":
-			return 310.0
-		_:
-			return 265.0
+			base_speed = explicit_speed
+	else:
+		var enemy_type: String = String(enemy.get("type", "dreg"))
+		match enemy_type:
+			"dreg":
+				base_speed = 265.0
+			"bond_reaper":
+				base_speed = 430.0
+			"sovereign":
+				base_speed = 310.0
+			_:
+				base_speed = 265.0
+	
+	# Apply Slow Status
+	var lane: int = -1
+	for i in range(_enemies.size()):
+		if _enemies[i] == enemy:
+			lane = i
+			break
+	
+	if lane >= 0 and _enemy_statuses.has(lane):
+		var status: Dictionary = _enemy_statuses[lane]
+		if status.get("id", "") == "slow" or (status.get("id", "") == "venom" and bool(status.get("slow", false))):
+			base_speed *= SLOW_SPEED_MULT
+			
+	return base_speed

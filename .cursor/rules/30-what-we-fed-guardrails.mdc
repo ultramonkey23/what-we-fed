@@ -9,7 +9,7 @@ alwaysApply: true
 - Do not widen into ranch, world-state, kaiju, or unrelated gameplay scope unless explicitly requested.
 - Do not reintroduce stale pause-era assumptions.
 
-# Preserve Locked Core
+# Preserve Identity Anchors
 
 - Timing truth and lane readability are non-negotiable.
 - Support readability and telegraph clarity are protected.

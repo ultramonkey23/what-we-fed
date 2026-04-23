@@ -436,8 +436,8 @@ static func _calculate_performance_trend(run_history: Array) -> String:
 	if recent_scores.size() < 2:
 		return "insufficient_data"
 	
-	var first_half = recent_scores.slice(0, recent_scores.size() / 2)
-	var second_half = recent_scores.slice(recent_scores.size() / 2)
+	var first_half = recent_scores.slice(0, recent_scores.size() >> 1)
+	var second_half = recent_scores.slice(recent_scores.size() >> 1)
 	
 	var first_avg = _calculate_average(first_half)
 	var second_avg = _calculate_average(second_half)

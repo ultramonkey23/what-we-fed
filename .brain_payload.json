@@ -1,0 +1,12 @@
+{
+  "version": "2.2-remote",
+  "kernel_verified": true,
+  "classification": "Patch (ALFRED/SURGEON)",
+  "files": [
+    "data/CombatContent.gd"
+  ],
+  "goal": "Add ashclaw enemy",
+  "truth": "",
+  "constraint": "",
+  "blast_radius": "Tier 1: Local logic"
+}

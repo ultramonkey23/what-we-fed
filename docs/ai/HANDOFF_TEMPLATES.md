@@ -42,8 +42,8 @@ At the completion of any task (Inspect, Spec, Patch, Validate, or Evolve), you M
 ## Task type
 - <Inspect | Spec | Patch | Validate | Evolve>
 
-## Working layer(s)
-- <1-5 from Canon Model>
+## Authority layer(s)
+- <creator intent | repo truth | live-build truth | evolving spine | older canon/source docs>
 
 ## Changes made
 - <Brief list of targeted modifications>
@@ -62,12 +62,13 @@ At the completion of any task (Inspect, Spec, Patch, Validate, or Evolve), you M
 - What remains unverified: <explicit gaps>
 
 ## Validation checklist
-- [ ] Locked core preserved & live build truth respected
-- [ ] Timing truth / combat honesty preserved
+- [ ] Creator Intent alignment / Technical Risk analysis
+- [ ] Repo Truth (Layer 2) verified and implementation reality respected
+- [ ] Timing truth / combat honesty guidance followed
 - [ ] Lane readability / support readability protected
 - [ ] Anti-sludge (no active-combat menu interruption)
 - [ ] Anti-drift (no generic roguelite/survivor flattening)
-- [ ] Outdated canon not allowed to block better workflow
+- [ ] Older canon not allowed to block creator direction
 
 ## Next best move
 - <One bounded action or recommendation>

@@ -3,12 +3,13 @@
 Purpose: keep sessions high-power with low token load.
 
 ## Startup Sequence (Default)
-1. Read `docs/ai/PROJECT_KERNEL.md`.
-2. Identify task lane: combat, validation, canon, workflow, data/content.
-3. Open only the mapped files from `docs/ai/CONTEXT_EXPANSION_MAP.md`.
-4. Choose one bounded pass (avoid broad rewrites).
-5. Implement with explicit non-goals.
-6. Validate and report verified vs unverified.
+1. Read the user's current goal first; creator direction outranks startup defaults.
+2. Read `docs/ai/SYSTEM_KERNEL.md`, then `docs/ai/PROJECT_KERNEL.md`.
+3. Identify task lane: combat, validation, canon, workflow, data/content.
+4. Open only the mapped files from `docs/ai/CONTEXT_EXPANSION_MAP.md`.
+5. Choose one bounded pass (avoid broad rewrites).
+6. Implement with explicit non-goals.
+7. Validate and report verified vs unverified.
 
 ## Default-Load Budget Rule
 - Start with kernel + one route file by task lane.
@@ -37,6 +38,6 @@ Purpose: keep sessions high-power with low token load.
 
 ## Done Condition
 - Change solves requested lane.
-- Locked core preserved.
+- Creator Intent alignment and foundational identity guidance preserved.
 - Scope did not silently widen.
 - Report includes: files touched, validation, risks, next bounded follow-up.

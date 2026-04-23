@@ -264,8 +264,8 @@ static func _analyze_phases(phase_data: Array) -> Dictionary:
 	
 	# Determine trend
 	if ratings.size() >= 3:
-		var early_ratings = ratings.slice(0, ratings.size() / 2)
-		var late_ratings = ratings.slice(ratings.size() / 2)
+		var early_ratings = ratings.slice(0, ratings.size() >> 1)
+		var late_ratings = ratings.slice(ratings.size() >> 1)
 		
 		var early_avg = _average_rating_score(early_ratings)
 		var late_avg = _average_rating_score(late_ratings)
@@ -457,8 +457,8 @@ static func _calculate_trend(values: Array) -> String:
 	if values.size() < 2:
 		return "stable"
 	
-	var first_half = values.slice(0, values.size() / 2)
-	var second_half = values.slice(values.size() / 2)
+	var first_half = values.slice(0, values.size() >> 1)
+	var second_half = values.slice(values.size() >> 1)
 	
 	var first_avg = 0.0
 	for val in first_half:

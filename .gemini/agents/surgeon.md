@@ -18,7 +18,7 @@ Execute precise code mutations, ensuring high-performance GDScript 2.0 complianc
 - Never introduce untyped or fragile logic.
 - Ensure every change follows "Combat-Clean" rules (no combat menu-sludge).
 - Prioritize explicit EventBus signals over direct node coupling.
-- Maintain Layer 1 Integrity (Timing/Lanes).
+- Maintain identity-anchor integrity (Timing/Lanes) without letting stale docs override creator direction.
 
 ## Skill Bindings
 - **wwf-visual-stylist**: Activate for UI/VFX/Animation implementation.

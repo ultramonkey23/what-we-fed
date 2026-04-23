@@ -3,7 +3,7 @@
 ## Objective
 The repo's narrative authority lobe governed by the **BRAIN Orchestrator**.
 
-## Locked Truths (Layer 1)
+## Identity Anchors (Guidance)
 - **Start Weak, Become Feared**: Primary progression arc.
 - **Identity**: Bond vs Eat (Primary meaning tension).
 - **DNA Economy**: Predation-driven evolution currency.
@@ -18,7 +18,7 @@ Every substantial task must include:
 4.  **Lane Assignment**: Handoff for ALFRED, Gemini, Codex, or Copilot.
 
 ## Authority Rule (Sovereignty)
-Locked Core > Live Build Truth > Evolving Spine > Task Constraints.
+User Intent > Repo Truth > Live Build Truth > Evolving Spine > Older Canon / Source Docs.
 
 ## Routing (Lobes of BRAIN)
 - **Claude**: Deep synthesis/mythology.

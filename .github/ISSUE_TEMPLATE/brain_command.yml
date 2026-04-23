@@ -1,0 +1,69 @@
+name: "BRAIN Command"
+description: "Send a remote command to the BRAIN orchestrator"
+title: "[BRAIN] "
+labels: ["brain-command"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this template to send a remote command to the BRAIN.
+        It must adhere to **Creator Authority** and **BRAIN PROTOCOL**.
+  - type: dropdown
+    id: task_classification
+    attributes:
+      label: "Task Classification"
+      description: "How is the task categorized? (from BRAIN_PROTOCOL.md)"
+      options:
+        - "Inspect (SYMBIOTE)"
+        - "Spec (BRAIN)"
+        - "Patch (ALFRED/SURGEON)"
+        - "Audit (CYBORG/AUDITOR)"
+        - "Evolve (BRAIN)"
+    validations:
+      required: true
+  - type: dropdown
+    id: blast_radius
+    attributes:
+      label: "Blast Radius Analysis (BRA)"
+      description: "What is the expected impact tier? (from SYSTEM_KERNEL.md)"
+      options:
+        - "Tier 0: Docs/Naming"
+        - "Tier 1: Local logic (one script)"
+        - "Tier 2: Systemic (Signals/EventBus/Data)"
+        - "Tier 3: Core (Touches kernels or identity-anchor contracts)"
+    validations:
+      required: true
+  - type: input
+    id: target_files
+    attributes:
+      label: "Target File(s)"
+      description: "Paths affected by this move (e.g., 'data/CombatContent.gd')"
+      placeholder: "e.g., data/CombatContent.gd"
+    validations:
+      required: true
+  - type: textarea
+    id: bounded_goal
+    attributes:
+      label: "Bounded Goal"
+      description: "Describe the specific task."
+      placeholder: "e.g., Add 'ashclaw' enemy variant to Layer 3."
+    validations:
+      required: true
+  - type: textarea
+    id: context_truth
+    attributes:
+      label: "Working Truth"
+      description: "Current context (Layer 2 truth) that must be respected."
+      placeholder: "e.g., The ashclaw uses the existing claw_vfx signal."
+  - type: textarea
+    id: creator_intent
+    attributes:
+      label: "Creator Intent"
+      description: "What outcome or direction should BRAIN protect above all lower-priority docs?"
+      placeholder: "e.g., keep this bounded and preserve readable no-pause combat while strengthening deferred reward flow"
+  - type: input
+    id: technical_risk
+    attributes:
+      label: "Technical Risk"
+      description: "Which repo constraint, identity anchor, or implementation risk must be respected here?"
+      placeholder: "e.g., protect DNA economy lane integrity without obscuring current repo truth"

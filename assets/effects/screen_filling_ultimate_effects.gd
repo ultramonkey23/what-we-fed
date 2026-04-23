@@ -216,7 +216,7 @@ func create_reality_distortion_waves():
 		await get_tree().create_timer(wave_delay).timeout
 		
 		var distortion_wave = GPUParticles2D.new()
-		distortion_wave.position = Vector2(screen_size.x / 2, screen_size.y * (i + 1) / 7)
+		distortion_wave.position = Vector2(screen_size.x / 2.0, screen_size.y * (i + 1) / 7.0)
 		distortion_wave.amount = 300
 		distortion_wave.lifetime = 2.5
 		distortion_wave.emitting = true

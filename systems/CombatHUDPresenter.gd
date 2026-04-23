@@ -261,17 +261,18 @@ func refresh_support(current: float, maximum: float, active_species_id: String, 
 			_support_value_label.text = "--"
 		elif current >= maximum - 0.05:
 			_support_value_label.text = "RDY"
-			_support_value_label.modulate = Color(0.88, 1.0, 0.90, 1.0)
+			_support_value_label.modulate = _ui_style.MM_ALERT_GOLD
 			if not was_ready:
 				var tween := _support_value_label.create_tween()
 				_support_value_label.scale = Vector2(1.3, 1.3)
 				tween.tween_property(_support_value_label, "scale", Vector2.ONE, 0.15)
 		elif maximum <= 0.0:
 			_support_value_label.text = "0"
-			_support_value_label.modulate = Color(0.98, 0.82, 0.58, 1.0)
+			_support_value_label.modulate = _ui_style.MM_BOND_TEAL
 		else:
 			_support_value_label.text = "%d" % int(floor((current / maximum) * 100.0))
-			_support_value_label.modulate = Color(0.98, 0.82, 0.58, 1.0)
+			_support_value_label.modulate = _ui_style.MM_BOND_TEAL
+
 
 	if _support_name_label != null:
 		if run_growth != null and is_instance_valid(run_growth) and run_growth.has_method("get_active_display_name"):
@@ -368,7 +369,7 @@ func refresh_run_build(run_growth: Node) -> void:
 		var active: Dictionary = GameState.get_active_bonded_creature()
 		if not active.is_empty():
 			var active_bond_level: int = int(active.get("bond_level", 1))
-			var level_mult: float = GameState.get_bond_level_mult(active_bond_level)
+			var level_mult: float = GameState.get_script().get_bond_level_mult(active_bond_level)
 			_bond_value_label.text = _presentation_text.format_bond_passive_short(active.get("bond_passive", {}), level_mult)
 		else:
 			_bond_value_label.text = "--"

@@ -2,9 +2,10 @@
 
 ## Read
 
-- Source authority order for this split:
+- Global authority: User / Creator Intent > Current Repo Truth > Current Live-Build Truth > Evolving Spine > Older Source Docs.
+- Source-doc read order for this split:
   1. WHAT WE FED  LOCKED CORE / EVOLVING SPINE DOCTRINE
-  2. WHAT WE FED  CURRENT LIVE BUILD CANON
+  2. WHAT WE FED  CURRENT LIVE-BUILD TRUTH
   3. MASTER CANON CORRECTION PATCH V1
   4. CREATURE ECONOMY DOCTRINE V1
 - This file defines a hard lane split between Bond Rank and Creature Level.
@@ -164,9 +165,9 @@ SPLIT_ID: WWF_BOND_RANK_VS_CREATURE_LEVEL_V1
 STATUS: ACTIVE
 INTENT: Preserve a hard two-lane creature progression model where Bond Rank owns meaningful evolution and Creature Level owns practical growth.
 
-AUTHORITY_ORDER:
+SOURCE_DOC_READ_ORDER:
 1) LOCKED CORE / EVOLVING SPINE DOCTRINE
-2) CURRENT LIVE BUILD CANON
+2) CURRENT LIVE-BUILD TRUTH
 3) MASTER CANON CORRECTION PATCH V1
 4) CREATURE ECONOMY DOCTRINE V1
 

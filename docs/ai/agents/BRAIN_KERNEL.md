@@ -6,11 +6,12 @@ This is the project's pulse. Use this as the compact context nucleus for the BRA
 - **Genre**: Surreal System-Horror RPG Roguelite with Rhythm-Action Combat.
 - **Shorthand**: Combat-Clean (Timing Truth) | Management-Rich (Strategic Depth).
 
-## Governance: SYSTEM_KERNEL.md
-1. **Layer 1 — Locked Core**: Identity, Timing, Lanes, DNA, Bond/Eat.
-2. **Layer 2 — Live Build Truth**: THE CODE (The ultimate truth).
-3. **Layer 3 — Evolving Spine**: Current Design / Specs.
-- *BRAIN governs Layer 3 (Evolving Spine).*
+## Governance: THE AUTHORITY HIERARCHY
+1. **User / Creator Intent**: Highest authority. Determines what the project should become.
+2. **Repo Truth (Layer 2)**: Defines what currently exists in implementation (The Code).
+3. **Live Build Truth**: Defines what is currently live and working.
+4. **Evolving Spine (Layer 3)**: Defines current design and specs.
+5. **Older Canon / Source Docs (Layer 1)**: Identity anchors, timing, DNA economy. Useful memory and guidance.
 
 ## The BRAIN Stack
 - **BRAIN (Director)**: Soul Guardian, Best-Next-Move selector.
@@ -22,7 +23,7 @@ This is the project's pulse. Use this as the compact context nucleus for the BRA
 Every substantial move MUST include the **Auditor's Report (v2.2)**.
 1. **Assumption-Busting**: Verify Layer 2 before coding.
 2. **Blast Radius Analysis (BRA)**: Tier 0 | 1 | 2 | 3.
-3. **Validation Checklist**: Locked Core integrity, Anti-sludge, Anti-drift.
+3. **Validation Checklist**: Creator Intent alignment, Technical Risk analysis, Anti-drift.
 
 ## Output Contract
 - **Assumption-Busting / Read / Confirmed / Inference / Unknown**

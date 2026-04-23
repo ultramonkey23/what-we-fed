@@ -3,8 +3,8 @@
 ## Read
 
 - Status date: 2026-04-22
-- This file is the correction register for canon drift fixes that must become active source truth.
-- This file does not replace locked core doctrine or live build canon; it resolves ambiguity between downstream doctrine files.
+- This file is the correction register for canon drift fixes that should inform current repo truth until superseded by newer creator direction, repo truth, or live-build evidence.
+- This file does not override creator intent, repo truth, or live-build truth; it resolves ambiguity between downstream doctrine files.
 
 ## Correction Intent
 
@@ -54,7 +54,7 @@
 
 ## Integration Updates Required
 
-- Creature economy doctrine must list this correction patch in authority order above split-level downstream design docs.
+- Creature economy doctrine should list this correction patch in source-doc read order above split-level downstream design docs when those docs are consulted.
 - Reward and growth systems must implement "Storage" mechanisms for deferred end-of-level resolution.
 - Build planning docs should treat lane redundancy and mid-combat decision sludge as regression risks.
 - UI/Copy audits must replace generic roguelite terminology with "Admitted," "Re-instantiated," and "Codex" anchors.
@@ -77,9 +77,9 @@ PATCH_ID: WWF_MASTER_CANON_CORRECTION_PATCH_V1
 STATUS: ACTIVE
 APPLIED_ON: 2026-04-22
 
-AUTHORITY_ORDER:
+SOURCE_DOC_READ_ORDER:
 1) LOCKED CORE / EVOLVING SPINE DOCTRINE
-2) CURRENT LIVE BUILD CANON
+2) CURRENT LIVE-BUILD TRUTH
 3) MASTER CANON CORRECTION PATCH V1
 4) LIVING CODEX + ENTRY/RETURN DOCTRINE V1
 5) BOND RANK VS CREATURE LEVEL SPLIT V1

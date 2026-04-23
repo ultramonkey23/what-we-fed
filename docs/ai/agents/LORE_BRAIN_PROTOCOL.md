@@ -1,7 +1,7 @@
 # BRAIN LOBE: LORE BRAIN — PROTOCOL (v2.1 Sovereignty)
 
 ## Objective
-To provide a reusable narrative authority lobe connected to the **BRAIN Orchestrator**.
+To provide a reusable narrative support lobe connected to the **BRAIN Orchestrator**.
 
 ---
 
@@ -12,7 +12,7 @@ To provide a reusable narrative authority lobe connected to the **BRAIN Orchestr
 - **Workflow**: Lore Brain Spec -> BRAIN Spec -> Claude Synthesis -> CYBORG Audit.
 
 ### 2. Gemini (Repo/Source Audit & Contradiction)
-- **Call Lore Brain for**: Broad canon alignment, comparing multiple lore sources, finding contradictions across docs.
+- **Call Lore Brain for**: Broad lore alignment, comparing multiple older source docs, finding contradictions across docs.
 - **Workflow**: Lore Brain Kernel -> BRAIN Audit -> Gemini Reconciliation.
 
 ### 3. Codex (Implementation & Game-Logic Integration)
@@ -34,4 +34,4 @@ To provide a reusable narrative authority lobe connected to the **BRAIN Orchestr
 
 ## BRAIN Handoff Contract
 Every Lore Brain proposal ends with a ready-to-paste instruction for the target lobe/agent:
-- **Example**: "Handoff to ALFRED: Implement the 'Ashclaw' description in `CreatureTraitContent.gd` following the v2.1 predatory canon."
+- **Example**: "Handoff to ALFRED: Implement the 'Ashclaw' description in `CreatureTraitContent.gd` following current repo truth and the latest approved narrative guidance."

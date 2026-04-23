@@ -162,10 +162,10 @@ func refresh_power_level(power_level: float) -> void:
 	
 	# Power Level HUD Update (Digital Scouter Feel)
 	if displayed_power != current_val:
-		var tween := _power_scouter_label.create_tween()
 		var scouter_color: Color = Color(1.0, 0.85, 0.20, 1.0) # High-contrast Amber
 		
 		if displayed_power > current_val:
+			var tween := _power_scouter_label.create_tween()
 			# Surge effect: Flashing overbright white/yellow
 			_power_scouter_label.modulate = Color(2.0, 2.0, 1.0, 1.0) 
 			_power_scouter_label.scale = Vector2(1.1, 1.1)
@@ -184,7 +184,13 @@ func refresh_power_level(power_level: float) -> void:
 			_power_scouter_label.text = "!!! POWER LEVEL: %d !!!" % displayed_power
 			EventBus.emit_signal("ui_shake", 1.5, 0.2)
 			if _scouter_shell != null:
-				_scouter_shell.color = Color(0.2, 0.02, 0.02, 0.7)
+				_ui_style.apply_shell_style(
+					_scouter_shell,
+					"hud_accent",
+					"",
+					Color(0.20, 0.02, 0.02, 0.70),
+					Color(1.0, 0.22, 0.18, 0.92)
+				)
 	
 	# Digital Noise / Jitter (Always active but subtle)
 	if randf() < 0.05:

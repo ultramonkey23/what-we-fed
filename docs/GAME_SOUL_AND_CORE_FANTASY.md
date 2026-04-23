@@ -1,57 +1,63 @@
-# WHAT WE FED — THE SOUL & THE LAW
+# WHAT WE FED — THE SOUL & THE LAW (v2.1 "The Hybrid Pulse")
 
-## The Core Soul: A Predatory Ascent
-**WHAT WE FED is a dark creature-driven RPG roguelite where you endure the hostile song of the world by shaping a faster, stranger predator. Through timing mastery, feeding, bonding, and the weight of your own choice, you turn the level's pressure into your own personalized domination.**
+## The Core Soul: A Surreal Power-Fantasy
+**WHAT WE FED is a surreal, system-heavy creature RPG where you survive a world of spiraling geometries and kinetic violence by mastering the "Timing Truth." You inhabit the Living Codex, a biomechanical interface between a dying reality and an ascendant archive.**
 
-## Tone: The Black Signal
-The tone is **Dark Cool Creature Power-Fantasy**. This does not mean "heroic." It means **Ascendant.** You are not a savior; you are a becoming. 
+## Tone: The Black Signal (v2.2 Revision)
+The tone is **Kinetic Surrealism**. It is **Stylish, Detached, and Meta-Systemic.**
+- **Stylishness**: Inspired by *Chainsaw Man*, combat is a high-speed expression of skill.
+- **Surrealism**: Inspired by *Junji Ito*, spiraling anatomical impossibilities meet mundane horror.
+- **Meta-Systems**: Diegetic "System-Lit" interface (Slime/Gamer).
+
+**The Pulse of the Archive**: The most potent resonance frequencies of the Codex are **Extreme Death Metal** and **Underground Rap.**
+- **Death Metal (The Apex)**: The raw, blast-beat aggression of death metal defines the most dangerous, high-intensity "Apex" encounters. It is the music of pure systemic domination.
+- **Underground Rap (The Steady)**: The lyrical precision and rhythmic swagger of underground rap drive the methodical, precision-focused "Steady" phases. It is the music of clinical systemic analysis.
 
 ---
 
 # 1. The Real Player Fantasy: The Personalized Predator
-You do not grow through story labels or morality points. You grow through **The Harvest.**
-By the end of a run, you should feel you have become an iconic, recognizable horror.
+You grow through **The Harvest.**
+By the end of a run, you should feel you have become an iconic, recognizable horror—a chimeric god built from the extracted traits of a thousand consumed lineages.
 
-**The Identity (Patch V1):**
-You are the literal real-world person who chose "Entry" as your final act before death.
-- **Translation**: Death completes your transition into the **Living Codex**.
-- **The Archive**: You inhabit a biomechanical DNA archive that re-instantiates you from the Lair (the Interface Wound) after each death in the world.
-- **The Body Dies, the Archive Remembers**: This is why you run.
-- **The Split (Bond vs Eat)**: The core tension: "Do I keep you beside me, or make you part of me?" This must stay sacred.
+**The Identity (The Living Codex):**
+You are the real-world person—a creator of sounds and flesh—who chose "Entry" as your final act.
+- **Translation**: Death completed your transition into the **Living Codex System**.
+- **The Archive**: You are a biomechanical DNA archive re-instantiated at the Lair (the Threshold Wound).
+- **The Body Dies, the System Evolves**: Every run provides "System Experience" and "Trait Data" to the Codex.
+- **The Split (Bond vs Eat)**: "Do I keep you beside me as a support-signal, or extract your trait to make it part of my own system?" This choice defines your build's synergy.
 
 ---
 
 # 2. The Sacred Spine: Start Weak, Become Feared
-You begin exposed and reactive. You end as a specialized machine of efficiency. The song should not just be survived—it should be **mastered and claimed.**
+You begin exposed and reactive. You end as a **Kaiju-grade** machine of efficiency. The song is not survived—it is **claimed and remixed.**
 
 ---
 
-# 3. The Harvest (Reward Ecology)
-Progression is biological, not abstract. Keep the spoils distinct:
-- **Grafts / Gear**: Predator trophies (organs, carapace, teeth).
-- **Relics**: Transformative, mythic artifacts that shape the run's soul.
-- **DNA**: The species relationship economy. Predation is the price of power.
-- **The Doctrine (Collars)**: Ritual restraint tech that shapes your support.
-- **The Split**: Every meal or bond changes the weight of your shadow.
+# 3. The Harvest (Reward Ecology v2.2)
+Lanes are distinct to prevent "Stat Sludge":
+- **Loot (Grafts / Gear)**: Biological trophies (organs, carapace, teeth).
+- **Artifacts (Relics)**: Transformative, mythic items that warp the rules of the system.
+- **DNA (Lineage)**: Currency of evolution. Predation is the price of systemic depth.
+- **Traits (Siralim-style Synergy)**: Modular effects extracted from creatures. Combining a **Death Metal Trait** (Pure Aggression) with a **Rap Trait** (Precision Tempo) creates the most potent "System Breaches."
+- **The Split (Bond vs Eat)**: The core moral/mechanical axis.
 
 ---
 
-# 4. The World: Sacred Origin, Divergent Fate
-The world does not start in ruin. It begins **Wondrous, Strange, and Sacred.**
-Its darkness is not an accident—it is a destination. Through your predation, bonding, and boss outcomes, the world bends into one of four fates:
-- **Predatory**: Hunger made law. Carcass landmarks.
-- **Mythic**: Costly endurance. Sacred relic geometry.
-- **Sterile**: Cold, audited authority. Invasive grids.
-- **Haunted**: Debt and memory. Ritual residue.
+# 4. The World: Sacred Origin, Surreal Fate
+The world begins **Wondrous, Strange, and Sacred.**
+Through your choices, the world bends into one of four fates:
+- **Predatory (The Chainsaw Fate)**: High-kinetic violence, blood-stained architecture.
+- **Mythic (The Kaiju Fate)**: Immense scale, god-like geometry, apocalyptic vistas.
+- **Sterile (The System Fate)**: Cold, audited authority, invasive grids, "The Gamer" UI-leakage.
+- **Haunted (The Ito Fate)**: Spirals, anatomical obsession, mundane items becoming horrific.
 
 ---
 
-# 5. Combat-Clean, Management-Rich: The Honed Edge
-- **Active Combat**: Minimal interruption. Honest timing. Lethal clarity. No menu sludge.
-- **Between Levels**: The "Grafted Growth." Deep, management-rich build-shaping and high-information review.
-- **Display Law**: **Combat HUD = Urgency** (live action) | **Management Screens = Comprehension** (between-level strategy).
+# 5. Combat-Clean, Management-Rich: The Hybrid Edge
+- **Active Combat**: High-speed, lethal clarity. No menu sludge. Combat HUD = **Urgency & Style**.
+- **Between Levels**: The "Grafted Growth." Management screens = **Comprehension & Theory-crafting**. Deep synergy-building and trait-splicing.
 
 ---
 
 # 6. Final Truth
-**WHAT WE FED is at its best when combat stops feeling like survival and starts feeling like the expression of a living monster you built from the spoils of a sacred world.**
+**WHAT WE FED is an artistic subversion of the monster-tamer genre. It is the story of a System becoming a God by consuming the music and flesh of a sacred world.**

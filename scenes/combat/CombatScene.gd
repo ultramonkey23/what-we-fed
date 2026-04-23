@@ -2877,7 +2877,7 @@ func _refresh_hud_snapshot(score_value: int, exp_value: float, style_tier: Strin
 	_refresh_run_build_readout()
 	_hud_presenter.refresh_combo(score_value, style_tier)
 	_hud_presenter.refresh_style(style_tier)
-	_hud_presenter.refresh_power_level(GameState.get_power_level())
+	_refresh_power_level_readout()
 
 
 func _create_feedback_label() -> void:
@@ -5159,7 +5159,23 @@ func _hide_reward_overlay() -> void:
 
 func _refresh_run_build_readout() -> void:
 	_hud_presenter.refresh_run_build(_run_growth)
+	_refresh_power_level_readout()
 	_refresh_dna_hud()
+
+
+func _refresh_power_level_readout() -> void:
+	_hud_presenter.refresh_power_level(_resolve_live_power_level())
+
+
+func _resolve_live_power_level() -> float:
+	var power_level: float = GameState.get_power_level()
+	if _run_growth != null and is_instance_valid(_run_growth) and _run_growth.has_method("get_runtime_effect"):
+		var aggression_effect: Dictionary = Dictionary(_run_growth.call("get_runtime_effect", "timed_attack_bonus_damage"))
+		var cadence_effect: Dictionary = Dictionary(_run_growth.call("get_runtime_effect", "good_timed_bonus_damage"))
+		power_level *= 1.0 + maxf(float(aggression_effect.get("value", 0.0)), 0.0) + maxf(float(cadence_effect.get("value", 0.0)), 0.0)
+	if combat_meter != null and is_instance_valid(combat_meter) and combat_meter.has_method("damage_multiplier"):
+		power_level *= maxf(float(combat_meter.call("damage_multiplier")), 1.0)
+	return power_level
 
 
 func _refresh_dna_hud() -> void:
@@ -5280,6 +5296,7 @@ func _pass_reward() -> void:
 
 func _on_combo_changed(count: int, tier: String) -> void:
 	_hud_presenter.refresh_combo(count, tier)
+	_refresh_power_level_readout()
 
 
 func _on_run_score_changed(score: int) -> void:

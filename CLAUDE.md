@@ -1,37 +1,30 @@
-# CLAUDE — WHAT WE FED ENTRYPOINT
+# CLAUDE — THE PULSE ENTRYPOINT (v2.1 BRAIN SOVEREIGNTY)
 
-Default-load:
-1. `docs/ai/PROJECT_KERNEL.md`
-2. `docs/ai/CONTEXT_EXPANSION_MAP.md`
-3. `AGENTS.md` (Contains global workflow laws)
+**SYSTEM STATUS**: BRAIN ORCHESTRATOR ACTIVE.
+**AUTHORITY**: `docs/ai/agents/BRAIN.md` (Absolute Core)
 
-Default-load budget:
-- Kernel + one route file by task lane + `AGENTS.md`.
-- Expand only when unresolved conflict remains.
+## Operating Discipline: BRAIN Stack
+- **BRAIN**: Orchestrate. Evolution. Soul.
+- **CYBORG**: Audit. Validate. Bust Assumptions.
+- **SYMBIOTE**: Research. Compress. Sync.
+- **ALFRED**: Mutate. Decompose. Handoff.
 
-Deep policy:
-- `docs/ai/AGENT_OPERATING_SYSTEM.md`
-- `docs/ai/VALIDATION_POLICY.md`
+## Authority Order
+1. **Layer 1 — Locked Core** (Identity).
+2. **Layer 2 — Live Build Truth** (The Code).
+3. **Layer 3 — Evolving Spine** (The Mutation).
+4. **Task Constraints**.
 
-## Role Contract
-- Keep execution bounded, practical, and anti-drift.
-- **Authority Order**: Live build truth and locked core outrank stale speculative wording (see `AGENTS.md` for full order).
-- Route deep reads through expansion map instead of loading full canon by default.
-- Use mutation budgets; medium/high work uses safe path, mutation path, recommended path.
+## BRAIN Output Contract
+You MUST follow the contract defined in `docs/ai/agents/BRAIN.md`.
+- **Assumption-Busting** is mandatory before any implementation.
+- **Validation** is the only path to finality.
+- **Lore Brain** is your specialist narrative lane under BRAIN.
 
-## Guardrails
-- **Preserve always**: Timing truth, lane readability, support readability, combat honesty.
-- **Preserve meaning**: DNA as species predation economy; Bond vs Eat tension.
-- **Combat-clean, management-rich**: No menu sludge (repeated interruption) during active in-level combat; rich management (loot, equipment, planning) is encouraged between levels and before runs.
-- **Display Law**: **Combat HUD = Urgency** (live action) | **Management Screens = Comprehension** (between-level strategy).
-- Do not widen into ranch/world-state/kaiju unless explicitly requested.
+---
 
-## Validation & Reporting Contract
-You MUST follow the Task Taxonomy and Reporting Law defined in `AGENTS.md`. 
-At the end of your work, output the full Validation Reporting Block:
-- Read / Confirmed / Strong inference / Unknown
-- Task type / Working layer(s)
-- Changes made / What was not changed
-- Risks / Validation run
-- Validation checklist (Timing truth, Anti-sludge, Anti-drift, etc.)
-- Next best move
+## Load Order
+1. `docs/ai/agents/BRAIN_KERNEL.md`
+2. `docs/ai/PROJECT_KERNEL.md`
+3. `AGENTS.md`
+4. This file

@@ -14,7 +14,9 @@ const SONGS_BY_ID: Dictionary = {
 		"intended_role": "main_run",
 		"timing_map_status": "mapped",
 		"timing_map_path": "res://data/song_maps/tricky_songmap.gd",
-		"draft_analysis_path": "res://data/song_maps/drafts/tricky_draft.json"
+		"draft_analysis_path": "res://data/song_maps/drafts/tricky_draft.json",
+		"genre_tag": "hip_hop",
+		"sonic_profile": "swagger_heavy_steady"
 	},
 	"newness": {
 		"id": "newness",
@@ -25,7 +27,9 @@ const SONGS_BY_ID: Dictionary = {
 		"intended_region_id": "pale_shelf",
 		"timing_map_status": "mapped",
 		"timing_map_path": "res://data/song_maps/newness_songmap.gd",
-		"draft_analysis_path": "res://data/song_maps/drafts/newness_draft.json"
+		"draft_analysis_path": "res://data/song_maps/drafts/newness_draft.json",
+		"genre_tag": "funk",
+		"sonic_profile": "syncopated_grooved"
 	},
 	"black_sun_rising_over_shattered_spires": {
 		"id": "black_sun_rising_over_shattered_spires",
@@ -35,7 +39,9 @@ const SONGS_BY_ID: Dictionary = {
 		"intended_role": "main_run_variant",
 		"timing_map_status": "mapped",
 		"timing_map_path": "res://data/song_maps/black_sun_rising_over_shattered_spires_songmap.gd",
-		"draft_analysis_path": "res://data/song_maps/drafts/black_sun_rising_over_shattered_spires_draft.json"
+		"draft_analysis_path": "res://data/song_maps/drafts/black_sun_rising_over_shattered_spires_draft.json",
+		"genre_tag": "prog_metal",
+		"sonic_profile": "complex_mathematical"
 	},
 	"damnheavy": {
 		"id": "damnheavy",
@@ -45,7 +51,9 @@ const SONGS_BY_ID: Dictionary = {
 		"intended_role": "main_run_variant",
 		"timing_map_status": "mapped",
 		"timing_map_path": "res://data/song_maps/damnheavy_songmap.gd",
-		"draft_analysis_path": "res://data/song_maps/drafts/damnheavy_draft.json"
+		"draft_analysis_path": "res://data/song_maps/drafts/damnheavy_draft.json",
+		"genre_tag": "punk",
+		"sonic_profile": "fast_volatile"
 	},
 	"grind_the_orbit": {
 		"id": "grind_the_orbit",
@@ -56,7 +64,9 @@ const SONGS_BY_ID: Dictionary = {
 		"intended_region_id": "drowned_cut",
 		"timing_map_status": "mapped",
 		"timing_map_path": "res://data/song_maps/grind_the_orbit_songmap.gd",
-		"draft_analysis_path": "res://data/song_maps/drafts/grind_the_orbit_draft.json"
+		"draft_analysis_path": "res://data/song_maps/drafts/grind_the_orbit_draft.json",
+		"genre_tag": "industrial_hip_hop",
+		"sonic_profile": "rhythmic_pressure"
 	},
 	"boss_1": {
 		"id": "boss_1",
@@ -66,7 +76,9 @@ const SONGS_BY_ID: Dictionary = {
 		"intended_role": "boss",
 		"timing_map_status": "mapped",
 		"timing_map_path": "res://data/song_maps/boss_1_songmap.gd",
-		"draft_analysis_path": "res://data/song_maps/drafts/boss_1_draft.json"
+		"draft_analysis_path": "res://data/song_maps/drafts/boss_1_draft.json",
+		"genre_tag": "prog_metal",
+		"sonic_profile": "apex_multi_phased"
 	},
 	"void_echo": {
 		"id": "void_echo",
@@ -77,7 +89,69 @@ const SONGS_BY_ID: Dictionary = {
 		"intended_region_id": "echoing_chasm",
 		"timing_map_status": "unmapped",
 		"timing_map_path": "",
-		"draft_analysis_path": "res://data/song_maps/drafts/void_echo_draft.json"
+		"draft_analysis_path": "res://data/song_maps/drafts/void_echo_draft.json",
+		"genre_tag": "ambient_black_metal",
+		"sonic_profile": "ghost_wall_of_sound"
+	},
+	"gut_grinder": {
+		"id": "gut_grinder",
+		"display_name": "Gut Grinder",
+		"file_path": "res://assets/audio/gut_grinder.wav",
+		"status": "parked",
+		"intended_role": "main_run_variant",
+		"timing_map_status": "unmapped",
+		"timing_map_path": "",
+		"draft_analysis_path": "",
+		"genre_tag": "death_metal_osdm",
+		"sonic_profile": "apex_blast_beats"
+	},
+	"sewer_poetics": {
+		"id": "sewer_poetics",
+		"display_name": "Sewer Poetics",
+		"file_path": "res://assets/audio/sewer_poetics.wav",
+		"status": "parked",
+		"intended_role": "main_run_variant",
+		"timing_map_status": "unmapped",
+		"timing_map_path": "",
+		"draft_analysis_path": "",
+		"genre_tag": "horrorcore_rap",
+		"sonic_profile": "steady_dark_lyrical"
+	},
+	"sludge_ritual": {
+		"id": "sludge_ritual",
+		"display_name": "Sludge Ritual",
+		"file_path": "res://assets/audio/sludge_ritual.wav",
+		"status": "parked",
+		"intended_role": "main_run_variant",
+		"timing_map_status": "unmapped",
+		"timing_map_path": "",
+		"draft_analysis_path": "",
+		"genre_tag": "sludge_doom",
+		"sonic_profile": "steady_crushing_slow"
+	},
+	"binary_gore": {
+		"id": "binary_gore",
+		"display_name": "Binary Gore",
+		"file_path": "res://assets/audio/binary_gore.wav",
+		"status": "parked",
+		"intended_role": "main_run_variant",
+		"timing_map_status": "unmapped",
+		"timing_map_path": "",
+		"draft_analysis_path": "",
+		"genre_tag": "grindcore",
+		"sonic_profile": "surge_chaotic_microbursts"
+	},
+	"neon_blood_trap": {
+		"id": "neon_blood_trap",
+		"display_name": "Neon Blood Trap",
+		"file_path": "res://assets/audio/neon_blood_trap.wav",
+		"status": "parked",
+		"intended_role": "main_run_variant",
+		"timing_map_status": "unmapped",
+		"timing_map_path": "",
+		"draft_analysis_path": "",
+		"genre_tag": "industrial_trap",
+		"sonic_profile": "drive_heavy_bass"
 	},
 	"crystal_refraction": {
 		"id": "crystal_refraction",
@@ -88,7 +162,9 @@ const SONGS_BY_ID: Dictionary = {
 		"intended_region_id": "crystalline_spire",
 		"timing_map_status": "unmapped",
 		"timing_map_path": "",
-		"draft_analysis_path": "res://data/song_maps/drafts/crystal_refraction_draft.json"
+		"draft_analysis_path": "res://data/song_maps/drafts/crystal_refraction_draft.json",
+		"genre_tag": "psychedelic_rock",
+		"sonic_profile": "ghost_atmospheric_trippy"
 	},
 	"marsh_whispers": {
 		"id": "marsh_whispers",
@@ -99,7 +175,21 @@ const SONGS_BY_ID: Dictionary = {
 		"intended_region_id": "whispering_marsh",
 		"timing_map_status": "unmapped",
 		"timing_map_path": "",
-		"draft_analysis_path": "res://data/song_maps/drafts/marsh_whispers_draft.json"
+		"draft_analysis_path": "res://data/song_maps/drafts/marsh_whispers_draft.json",
+		"genre_tag": "southern_rock",
+		"sonic_profile": "steady_slow_burn"
+	},
+	"fragile_resonance": {
+		"id": "fragile_resonance",
+		"display_name": "Fragile Resonance",
+		"file_path": "res://assets/audio/fragile_resonance.wav",
+		"status": "parked",
+		"intended_role": "main_run_variant",
+		"timing_map_status": "unmapped",
+		"timing_map_path": "",
+		"draft_analysis_path": "",
+		"genre_tag": "emo",
+		"sonic_profile": "surge_volatile_emotional"
 	},
 	"iron_forged": {
 		"id": "iron_forged",

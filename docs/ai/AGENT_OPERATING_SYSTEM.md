@@ -1,50 +1,50 @@
-# AGENT OPERATING SYSTEM (v2.0 "The Pulse of the Signal")
+# AGENT OPERATING SYSTEM (v2.1 "The Hybrid Pulse")
 
-This file is the canonical operating layer for repo-native agents in WHAT WE FED.
-Tool-specific entrypoints (`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`) should stay concise and point here.
+This file is the canonical operating layer for repo-native agents in WHAT WE FED, governed by the **BRAIN** orchestrator.
 
-## V2 Evolution: System 2 Thinking
-V2 moves beyond "chat-and-patch" into **Autonomous Orchestration**. Agents are no longer just "coding assistants"; they are **Systems Engineers** who must reason deeply before mutation.
+## BRAIN Orchestration: System 2 Thinking
+BRAIN moves beyond "chat-and-patch" into **Autonomous Orchestration**. Agents are no longer just "coding assistants"; they are **Systems Engineers** who must reason deeply before mutation, guided by the orchestrator.
 
 ---
 
-## 1. The Core Reasoning Loop (CoT)
-Before any tool use (other than basic discovery), every agent MUST execute a **System 2 Reasoning Block** (internal or explicit).
+## 1. THE BRAIN STACK (Core Architecture)
+
+### BRAIN (The Architect / Director)
+- **Primary Focus**: System design, Layer 1 integrity, evolution, and delegation.
+- **Action**: Identifies bottlenecks, chooses the "Best Next Move," and selects specialist lanes.
+- **Authority**: Final say on Mutation Budget, Path selection, and Canon Evolution.
+
+### CYBORG (The Auditor)
+- **Primary Focus**: Validation, Self-Critique, Regression hunting, and Truth-Checking.
+- **Action**: Runs the **Shadow Pair** critique loop. Enforces "Honest Reporting" and "Anti-Sludge" rules.
+- **Authority**: Blocks a Surgeon's patch if it violates Layer 1 or fails validation.
+
+### SYMBIOTE (The Scout)
+- **Primary Focus**: Deep research, context mapping, repo-truth sync, and context compression.
+- **Action**: Uses `grep_search` and `web_fetch` to find patterns. Harvests "Drift Opportunities."
+- **Output**: Detailed Research Reports and "Working Truth" updates.
+
+### ALFRED (The Surgeon)
+- **Primary Focus**: Implementation precision, task decomposition, and GDScript 2.0 excellence.
+- **Action**: Breaks high-level goals into sub-tasks. Generates ready-to-paste agent handoffs. Writes surgical code.
+- **Constraint**: Must stay within the "Blast Radius" defined by BRAIN.
+
+---
+
+## 2. THE CORE REASONING LOOP (CoT)
+Before any tool use (other than basic discovery), every agent MUST execute a **System 2 Reasoning Block**.
 
 1.  **Intent**: What is the ultimate goal?
-2.  **Context**: What is the current "Live Build Truth" vs "Documentation"?
-3.  **Blast Radius**: What systems are touched? (See Section 3).
-4.  **Constraint Check**: Does this violate Layer 1 (Locked Core)?
-5.  **Strategy**: Which Mutation Path is selected?
+2.  **Assumption-Bust**: What are you assuming exists? Read Layer 2 (Live Code) to verify before proceeding.
+3.  **Context Compression**: Are there files loaded that you no longer need? Drop them.
+4.  **Blast Radius**: What systems are touched? (See Section 3).
+5.  **Constraint Check**: Does this violate Layer 1 (Locked Core)?
+6.  **Strategy**: Which Mutation Path / Specialist Agent is selected?
 
 ---
 
-## 2. Operating Roles (The Specialist Squad)
-
-### ARCHITECT (The BRAIN V2)
-- **Primary Focus**: System design, Layer 1 integrity, and delegation.
-- **Action**: Breaks high-level goals into sub-tasks for `generalist` or `codebase_investigator`.
-- **Authority**: Final say on Mutation Budget and Path selection.
-
-### SURGEON (The ALFRED V2)
-- **Primary Focus**: Implementation precision and GDScript 2.0 excellence.
-- **Action**: Writes surgical code, manages signals, and ensures static typing.
-- **Constraint**: Must not "drift" into unrelated refactors.
-
-### AUDITOR (The CYBORG V2)
-- **Primary Focus**: Validation, Self-Critique, and Regression hunting.
-- **Action**: Runs the **Shadow Pair** critique loop. Ensures "Honest Reporting."
-- **Authority**: Can block a Surgeon's patch if it fails the "Anti-Sludge" test.
-
-### SCOUT (The SYMBIOTE V2)
-- **Primary Focus**: Deep research, context mapping, and "Drift Harvesting."
-- **Action**: Uses `grep_search` and `web_fetch` to find patterns and opportunities.
-- **Output**: Detailed Research Reports and "Drift Opportunities."
-
----
-
-## 3. Blast Radius Analysis (BRA)
-Before "Spec" or "Patch" phases, the ARCHITECT must estimate the **Blast Radius**:
+## 3. BLAST RADIUS ANALYSIS (BRA)
+Before "Spec" or "Patch" phases, the BRAIN/ARCHITECT must estimate the **Blast Radius**:
 
 - **Tier 0 (Surface)**: Doc updates, naming, comments. No logic changes.
 - **Tier 1 (Localized)**: Internal logic of one script. No signal changes.
@@ -53,38 +53,33 @@ Before "Spec" or "Patch" phases, the ARCHITECT must estimate the **Blast Radius*
 
 ---
 
-## 4. The Shadow Pair (Generator-Critic) Loop
+## 4. THE SHADOW PAIR (Generator-Critic) LOOP
 For any Tier 2 or Tier 3 task, the agent must simulate a Shadow Pair:
-1.  **Generate**: Propose the implementation (as SURGEON).
-2.  **Critique**: Analyze the proposal (as AUDITOR) for:
-    - Timing violations?
-    - Type safety?
-    - "Menu Sludge" risk?
-    - Redundant logic?
-3.  **Refine**: Update the proposal based on the critique before presenting to the user.
+1.  **Generate**: Propose the implementation (as ALFRED/SURGEON).
+2.  **Critique**: Analyze the proposal (as CYBORG/AUDITOR) for timing, safety, and "sludge" risks.
+3.  **Refine**: Update the proposal before presenting to the user.
 
 ---
 
-## 5. Mutation Budget System (V2)
-- **Low (Maintenance)**: Bug fixes, docs, validation. (No BRA needed).
-- **Medium (Evolution)**: New features, reward shaping. (Tier 1-2 BRA).
-- **High (Mutation)**: Core system rewrites, new mechanics. (Tier 3 BRA + Shadow Pair).
+## 5. CANON GOVERNANCE (The 5-Layer Model)
+BRAIN governs the project's evolution through the five-layer model:
+1.  **Layer 1 — Locked Core**: Identity anchors. (Hard Lock).
+2.  **Layer 2 — Live Build Truth**: Implementation evidence. (Strong Truth).
+3.  **Layer 3 — Evolving Spine**: Current mutation space. (Primary Domain).
+4.  **Layer 4 — Later Scope**: Real future direction. (Visible Omen).
+5.  **Layer 5 — Deferred Scope**: Parked ideas. (Hibernation).
+
+### Evolution Law
+- **Promote**: Move ideas toward Layer 1 when they align with identity and live truth.
+- **Create / Restructure**: Fill gaps or unify fragmented logic.
+- **Soften / Retire**: Reduce friction or remove stale rules.
 
 ---
 
-## 6. Authority Order
-1.  **Locked Core / Evolving Spine Doctrine** (Identity).
-2.  **Current Repo Truth** (The Code).
-3.  **Current Live Build Truth** (Runtime evidence).
-4.  **Current Task Constraints** (The User).
-
----
-
-## 7. Anti-Drift: The "Combat-Clean" Mandate
-- **No Active-Combat Interruption**: Never add a mechanic that pauses or slows down the active song rhythm combat unless it is a "Perfect" window reward or a boss-finish decree.
-- **Management-Rich Planning**: Complexity is pushed to the between-level or pre-run state.
+## 6. ANTI-DRIFT: THE "COMBAT-CLEAN" MANDATE
+- **No Active-Combat Interruption**: Complexity is pushed to the between-level or pre-run state.
 - **Display Law**: **Combat HUD = urgency** (minimalist) | **Management screens = comprehension** (detailed).
-- **Audit**: If a system adds "Sludge" (interruption or clutter) to the **live combat loop**, the AUDITOR must reject it. Strategic depth outside combat is encouraged.
+- **Audit**: If a system adds "Sludge" to the live combat loop, the CYBORG must reject it.
 
 ---
 

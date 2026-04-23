@@ -387,12 +387,12 @@ const CREATURES := {
 	},
 	"pale_shelf_precision_stalker": {
 		"species_id": "pale_shelf_precision_stalker",
-		"display_name": "Precision Stalker",
+		"display_name": "Glintstalker",
 		"base_hp": 30.0,
 		"base_damage": 10.0,
 		"base_defense": 1.0,
 		"dna_threshold": 9.0,
-		"description": "A narrow frame that commits only when your timing opens.",
+		"description": "It counts the silence between your pulses. When the gap widens, it stops being a shadow.",
 		"sprite_path": "res://assets/creatures/pale_shelf/enemies/pale_shelf_precision_stalker.png",
 		"battlefield_sprite_path": "res://assets/creatures/pale_shelf/enemies/pale_shelf_precision_stalker.png",
 		"combat_render": {
@@ -401,16 +401,17 @@ const CREATURES := {
 			"z_index": 5,
 			"modulate": Color(0.84, 0.96, 1.0, 0.88),
 			"marker_modulate": Color(0.82, 0.96, 1.0, 0.92)
-		}
+		},
+		"wrong_detail": "joints clicking like frozen glass but leaving no tracks in the frost"
 	},
 	"pale_shelf_shardshroud_sentinel": {
 		"species_id": "pale_shelf_shardshroud_sentinel",
-		"display_name": "Shardshroud Sentinel",
+		"display_name": "Shardhulk",
 		"base_hp": 38.0,
 		"base_damage": 10.0,
 		"base_defense": 2.0,
 		"dna_threshold": 8.0,
-		"description": "A plated watcher that waits for panic, then closes the lane.",
+		"description": "A plated weight that expects you to panic. It closes the lane with the cold patience of a glacier.",
 		"sprite_path": "res://assets/creatures/pale_shelf/enemies/pale_shelf_shardshroud_sentinel.png",
 		"battlefield_sprite_path": "res://assets/creatures/pale_shelf/enemies/pale_shelf_shardshroud_sentinel.png",
 		"combat_render": {
@@ -419,7 +420,8 @@ const CREATURES := {
 			"z_index": 5,
 			"modulate": Color(0.86, 0.92, 0.88, 0.88),
 			"marker_modulate": Color(0.88, 0.95, 0.90, 0.94)
-		}
+		},
+		"wrong_detail": "eyes frosted over but somehow focusing on your heat"
 	},
 	"siltgrip": {
 		"species_id": "siltgrip",
@@ -796,13 +798,13 @@ const CREATURE_ENCOUNTER_PROFILES := {
 		"dna_reward": 2.75,
 		"marker_modulate": Color(0.82, 0.94, 1.0, 0.98),
 		"status_flags": {"expose_duration_mult": 0.55},
-		"encounter_summary": "Fast precision pressure that strips safe timing windows."
+		"encounter_summary": "Predatory precision that counts the silence between your pulses."
 	},
 	"pale_shelf_shardshroud_sentinel": {
 		"projectile_speed": 286.0,
 		"dna_reward": 2.75,
 		"marker_modulate": Color(0.84, 0.90, 0.86, 0.96),
-		"encounter_summary": "Defensive lane anchor that punishes rushed counterplay."
+		"encounter_summary": "Lane anchor that waits for panic with the cold patience of a glacier."
 	},
 	"siltgrip": {
 		"projectile_speed": 258.0,

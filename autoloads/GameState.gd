@@ -269,6 +269,7 @@ func add_bonded_creature(creature_data: Dictionary) -> Dictionary:
 			creature["bond_order"] = _bond_order_counter
 			roster[i] = creature
 			_sync_to_lair(creature)
+			set_active_lair_creature(species_id)
 			return creature
 
 	var new_creature: Dictionary = creature_data.duplicate(true)
@@ -279,6 +280,7 @@ func add_bonded_creature(creature_data: Dictionary) -> Dictionary:
 
 	roster.append(new_creature)
 	_sync_to_lair(new_creature)
+	set_active_lair_creature(species_id)
 	return new_creature
 
 

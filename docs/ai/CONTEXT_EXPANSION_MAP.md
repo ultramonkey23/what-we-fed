@@ -16,7 +16,8 @@ Open deeper files only when task needs them.
   - `autoloads/EventBus.gd`
   - `.cursor/rules/combat-timing-hotpath.mdc`
   - `docs/ai/VALIDATION_STANDARD.md`
-- Use when: timing honesty, lane clarity, combat flow, support telegraphs are touched.
+  - `docs/ai/PROCEDURAL_MOTION_V1_EXECUTION_PLAN.md`
+- Use when: timing honesty, lane clarity, combat flow, procedural motion, or support telegraphs are touched.
 
 ### Runtime safety / validation evidence
 - Open:

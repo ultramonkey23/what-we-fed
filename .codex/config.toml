@@ -10,3 +10,13 @@ smoke_script = "smoke_project.bat"
 validate_script = "validate_project.bat"
 editor_script = "editor_project.bat"
 resolve_script = "resolve_godot.bat"
+
+[asset_generation]
+orchestrator_script = "tools/asset_orchestrator.py"
+orchestrator_wrapper = "tools/asset_orchestrator.ps1"
+manifest_path = "docs/ai/ASSET_MANIFEST.json"
+prompt_engine_doc = "docs/ai/PROMPT_ENGINE.md"
+automation_doc = "docs/ai/AGENT_ASSET_AUTOMATION.md"
+default_provider = "comfyui"
+manifest_list_command = ".\\tools\\asset_orchestrator.ps1 manifest-list --image-only"
+procedural_refresh_command = ".\\tools\\asset_orchestrator.ps1 procedural-refresh --preset all"

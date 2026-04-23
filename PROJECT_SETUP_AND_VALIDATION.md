@@ -36,6 +36,26 @@ What they do:
 - `resolve_godot.bat`: print the Godot executable path the repo-local wrapper will use
 - `add_tools_to_path.bat`: append `tools\bin\` to your **user** `PATH` so `godot` runs `tools\bin\godot.cmd` in new terminals (see [docs/LOCAL_GODOT_CLI.md](docs/LOCAL_GODOT_CLI.md))
 
+## Agent Asset Generation Commands
+
+Use the headless-only pipeline from repo root:
+
+```powershell
+# list pending image entries from docs/ai/ASSET_MANIFEST.json
+.\tools\asset_orchestrator.ps1 manifest-list --image-only
+
+# generate pending image assets through ComfyUI API (headless)
+.\tools\asset_orchestrator.ps1 manifest-generate --provider comfyui --checkpoint "<your_model>.safetensors"
+
+# preview manifest execution without writing files
+.\tools\asset_orchestrator.ps1 manifest-generate --provider comfyui --checkpoint "<your_model>.safetensors" --dry-run
+
+# refresh deterministic in-repo generated assets
+.\tools\asset_orchestrator.ps1 procedural-refresh --preset all
+```
+
+Automation scope is intentionally limited to headless workflows; GUI-only tools are documented in [docs/ai/AGENT_ASSET_AUTOMATION.md](docs/ai/AGENT_ASSET_AUTOMATION.md).
+
 Wrapper behavior:
 - Uses `tools/godot.ps1`
 - Keeps logs and writable Godot state inside `.godot-cli/`

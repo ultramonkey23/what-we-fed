@@ -39,6 +39,8 @@ const RECENT_HIT_RELIEF_SECONDS: float = 2.2
 const DEFAULT_PRESSURE_CAP: float = 2.2
 const PRESSURE_CAP_MOMENTUM_BONUS: float = 0.55
 const PRESSURE_CAP_RELIEF: float = 0.25
+const AUTHORITY_MOMENTUM_THRESHOLD: float = 0.62
+const AUTHORITY_MOMENTUM_BONUS: int = 1
 
 var _region_id: String = ""
 var _phases: Array = []
@@ -213,11 +215,14 @@ func _seed_initial_phase_enemies(phase: Dictionary) -> void:
 		_request_spawn(int(ordered_lanes[i]))
 		filled += 1
 
-func notify_enemy_defeated(_enemy_id: int, lane: int) -> void:
+func notify_enemy_defeated(_enemy_id: int, lane: int, replaced_immediately: bool = false) -> void:
 	if not _running or _current_phase_index < 0:
 		return
 	
 	_kill_momentum = minf(_kill_momentum + MOMENTUM_KILL_GAIN, MOMENTUM_MAX)
+	if replaced_immediately:
+		_emit_ecology_state_if_changed()
+		return
 	var delay: float = float(_escalation_rules.get("respawn_delay", 0.40))
 	var lane_pressure_band: Dictionary = Dictionary(_difficulty_modifiers.get("lane_pressure", {}))
 	delay *= clampf(float(lane_pressure_band.get("respawn_delay_mult", 1.0)), 0.60, 1.45)
@@ -431,6 +436,7 @@ func get_ecology_snapshot() -> Dictionary:
 		"phase_index": _current_phase_index,
 		"alive_count": lane_manager.alive_count() if lane_manager != null and is_instance_valid(lane_manager) else 0,
 		"authority_budget": authority_budget,
+		"attack_authority_budget": authority_budget,
 		"pressure_points": _resolve_current_pressure_points(),
 		"pressure_cap": pressure_cap,
 		"kill_momentum": _kill_momentum,
@@ -445,6 +451,9 @@ func _resolve_authority_budget(phase: Dictionary) -> int:
 	var lane_pressure_band: Dictionary = Dictionary(_difficulty_modifiers.get("lane_pressure", {}))
 	var authority_target: int = int(phase.get("authority_target", phase.get("max_active_threats", 2)))
 	var max_threats: int = authority_target + int(lane_pressure_band.get("max_active_threats_bonus", 0))
+	var momentum_ratio: float = _resolve_effective_momentum_ratio()
+	if momentum_ratio >= AUTHORITY_MOMENTUM_THRESHOLD and _player_hp_ratio > LOW_HP_RELIEF_RATIO and _recent_hit_timer <= 0.0:
+		max_threats += AUTHORITY_MOMENTUM_BONUS
 	max_threats = clampi(max_threats, 1, lane_manager.LANE_COUNT)
 	if _player_hp_ratio <= LOW_HP_RELIEF_RATIO or _recent_hit_timer > 0.0:
 		max_threats = max(1, max_threats - 1)

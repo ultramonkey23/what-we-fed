@@ -1,5 +1,9 @@
 extends RefCounted
 
+const MOTION_JUICE = preload("res://systems/MotionJuice.gd")
+const BLACK_SIGNAL_SHADER = preload("res://art/vfx/black_signal_combat.gdshader")
+const ENEMY_BEAT_PULSE_INTENSITY: float = 0.03
+
 var _flash_overlay: ColorRect
 var _camera_2d: Camera2D
 var _timing_circle_container: Node2D
@@ -12,6 +16,8 @@ var _ring_highlight_timers: Array[float]
 var _bg_sprite: Control = null
 var _bg_pulse_targets: Array[CanvasItem] = []
 var _flash_tween: Tween = null
+var _enemy_shader_material_by_id: Dictionary = {}
+var _enemy_flash_tweens_by_id: Dictionary = {}
 
 
 func _init(
@@ -38,6 +44,7 @@ func _init(
 	_bg_sprite = bg_sprite
 	
 	_cache_bg_pulse_targets()
+	_bind_enemy_visual_materials()
 
 
 func _cache_bg_pulse_targets() -> void:
@@ -92,6 +99,145 @@ func _get_enemy_marker_center(marker: Node2D) -> Vector2:
 	if body == null:
 		return marker.position
 	return marker.position + body.position + body.size * 0.5
+
+
+func on_song_beat_pulse(_beat_index: int, intensity: float) -> void:
+	_pulse_active_enemy_markers(intensity)
+
+
+func _pulse_active_enemy_markers(_intensity: float) -> void:
+	for enemy_id_variant in _enemy_markers_by_id.keys():
+		var enemy_id: int = int(enemy_id_variant)
+		if not _is_enemy_id_active(enemy_id):
+			continue
+		_ensure_enemy_shader_material(enemy_id)
+		var pulse_target: CanvasItem = _resolve_enemy_visual_target(enemy_id)
+		if pulse_target == null:
+			continue
+		MOTION_JUICE.beat_pulse(pulse_target, ENEMY_BEAT_PULSE_INTENSITY)
+
+
+func _is_enemy_id_active(enemy_id: int) -> bool:
+	if _lane_manager == null or not _lane_manager.has_method("get_enemy"):
+		return true
+	for lane in range(3):
+		var lane_enemy_v: Variant = _lane_manager.call("get_enemy", lane)
+		if not lane_enemy_v is Dictionary:
+			continue
+		var lane_enemy: Dictionary = lane_enemy_v
+		if lane_enemy.is_empty():
+			continue
+		if float(lane_enemy.get("hp", 0.0)) <= 0.0:
+			continue
+		if int(lane_enemy.get("id", -1)) == enemy_id:
+			return true
+	return false
+
+
+func _resolve_enemy_visual_target(enemy_id: int) -> CanvasItem:
+	var marker_data_v: Variant = _enemy_markers_by_id.get(enemy_id, null)
+	if not marker_data_v is Dictionary:
+		return null
+	var marker_data: Dictionary = marker_data_v
+
+	var root_v: Variant = marker_data.get("root", null)
+	if root_v is Node2D and is_instance_valid(root_v):
+		var root: Node2D = root_v
+		var silhouette: Node = root.get_node_or_null("CreatureSilhouette")
+		if silhouette is CanvasItem and is_instance_valid(silhouette):
+			return silhouette as CanvasItem
+
+	var body_v: Variant = marker_data.get("body", null)
+	if body_v is CanvasItem and is_instance_valid(body_v):
+		return body_v as CanvasItem
+
+	if root_v is CanvasItem and is_instance_valid(root_v):
+		return root_v as CanvasItem
+	return null
+
+
+func _bind_enemy_visual_materials() -> void:
+	for enemy_id_variant in _enemy_markers_by_id.keys():
+		_ensure_enemy_shader_material(int(enemy_id_variant))
+
+
+func _get_enemy_shader_material(enemy_id: int) -> ShaderMaterial:
+	var existing_v: Variant = _enemy_shader_material_by_id.get(enemy_id, null)
+	if existing_v is ShaderMaterial and is_instance_valid(existing_v):
+		return existing_v as ShaderMaterial
+	return _ensure_enemy_shader_material(enemy_id)
+
+
+func _ensure_enemy_shader_material(enemy_id: int) -> ShaderMaterial:
+	var target: CanvasItem = _resolve_enemy_visual_target(enemy_id)
+	if target == null:
+		_enemy_shader_material_by_id.erase(enemy_id)
+		return null
+
+	var shader_material: ShaderMaterial = null
+	if target.material is ShaderMaterial:
+		var existing: ShaderMaterial = target.material as ShaderMaterial
+		if existing != null and existing.shader == BLACK_SIGNAL_SHADER:
+			shader_material = existing
+
+	if shader_material == null:
+		shader_material = ShaderMaterial.new()
+		shader_material.shader = BLACK_SIGNAL_SHADER
+		target.material = shader_material
+		var defaults: Dictionary = MOTION_JUICE.build_black_signal_uniforms(0.45)
+		shader_material.set_shader_parameter("hit_flash_color", defaults.get("hit_flash_color", Color(1.0, 0.92, 0.88, 1.0)))
+		shader_material.set_shader_parameter("hit_flash_intensity", 0.0)
+		shader_material.set_shader_parameter("corruption_amount", defaults.get("corruption_amount", 0.24))
+		shader_material.set_shader_parameter("chromatic_aberration", 0.0)
+
+	_enemy_shader_material_by_id[enemy_id] = shader_material
+	return shader_material
+
+
+func flash_enemy_damage(enemy_id: int, profile: Dictionary = {}) -> void:
+	var shader_material: ShaderMaterial = _get_enemy_shader_material(enemy_id)
+	if shader_material == null:
+		return
+
+	var burst_scale: float = float(profile.get("burst_scale", 1.0))
+	var juice: float = clampf((burst_scale - 0.8) * 1.6, 0.0, 2.0)
+	var uniforms: Dictionary = MOTION_JUICE.build_black_signal_uniforms(juice)
+	var flash_color: Color = profile.get("hit_flash_color", uniforms.get("hit_flash_color", Color(1.0, 0.92, 0.88, 1.0)))
+	var corruption: float = clampf(float(uniforms.get("corruption_amount", 0.22)), 0.0, 1.0)
+	var chroma: float = clampf(float(uniforms.get("chromatic_aberration", 0.01)), 0.0, 0.1)
+
+	shader_material.set_shader_parameter("hit_flash_color", flash_color)
+	shader_material.set_shader_parameter("corruption_amount", corruption)
+	shader_material.set_shader_parameter("chromatic_aberration", chroma)
+	shader_material.set_shader_parameter("hit_flash_intensity", 1.0)
+
+	var target: CanvasItem = _resolve_enemy_visual_target(enemy_id)
+	if target == null or not target is Node:
+		return
+
+	_kill_enemy_flash_tween(enemy_id)
+	var tween: Tween = (target as Node).create_tween()
+	_enemy_flash_tweens_by_id[enemy_id] = tween
+	tween.tween_method(func(value: float) -> void:
+		shader_material.set_shader_parameter("hit_flash_intensity", value)
+	, 1.0, 0.0, 0.10)
+	tween.parallel().tween_method(func(value: float) -> void:
+		shader_material.set_shader_parameter("chromatic_aberration", value)
+	, chroma, 0.0, 0.10)
+	tween.finished.connect(func() -> void:
+		if _enemy_flash_tweens_by_id.get(enemy_id, null) == tween:
+			_enemy_flash_tweens_by_id.erase(enemy_id)
+	)
+
+
+func _kill_enemy_flash_tween(enemy_id: int) -> void:
+	var tween_v: Variant = _enemy_flash_tweens_by_id.get(enemy_id, null)
+	if tween_v == null:
+		return
+	var tween: Tween = tween_v as Tween
+	if tween != null and is_instance_valid(tween):
+		tween.kill()
+	_enemy_flash_tweens_by_id.erase(enemy_id)
 
 
 func on_screen_flash(color: Color, duration: float) -> void:
@@ -368,6 +514,7 @@ func apply_impact_profile(profile: Dictionary, lane: int = -1, enemy_id: int = -
 			highlight_timing_ring(lane, burst_color, ring_width)
 
 	if enemy_id >= 0:
+		flash_enemy_damage(enemy_id, profile)
 		animate_enemy_damage(enemy_id, profile)
 		var burst_color: Color = profile.get("burst_color", Color(1.0, 0.55, 0.35, 0.32))
 		var b_scale: float = float(profile.get("burst_scale", 1.0))

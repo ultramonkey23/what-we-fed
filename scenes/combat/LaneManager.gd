@@ -10,6 +10,7 @@ const LANE_COUNT: int = 3
 # by the proximity check. Use set_fire_stagger() to change it at runtime.
 var fire_stagger: float = 0.45
 var cycle_interval: float = 2.2
+var attack_authority_budget: int = LANE_COUNT
 
 const TOP_Y_RATIO: float = 0.24
 const BOTTOM_Y_RATIO: float = 0.74
@@ -46,6 +47,10 @@ var _hit_zone_x: float = 0.0
 var _projectile_scene: PackedScene = null
 var _projectile_slots: Array = [null, null, null]
 var _enemies: Array[Dictionary] = []
+var _lane_authority_debt: Array[float] = [0.0, 0.0, 0.0]
+var _lane_last_fired_cycle: Array[int] = [-999, -999, -999]
+var _fire_cycle_index: int = 0
+var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
 var _combat_running: bool = false
 var _song_mode: bool = false
@@ -114,6 +119,7 @@ func start_combat(enemy_data: Array) -> void:
 
 	_combat_running = true
 	_cycle_task_id += 1
+	_reset_attack_authority_state()
 
 	EventBus.emit_signal("combat_started", enemy_data)
 	_run_fire_cycle(_cycle_task_id)
@@ -183,6 +189,12 @@ func set_song_mode_enabled(enabled: bool) -> void:
 
 func set_punish_damage_mult(mult: float) -> void:
 	_punish_damage_mult = clampf(mult, 0.75, 1.50)
+
+
+func set_attack_authority_budget(budget: int) -> void:
+	# Distinct from alive enemy count: only this many lanes can claim attack authority
+	# in one fire cycle. Presence can stay high without unreadable overlap.
+	attack_authority_budget = clampi(budget, 1, LANE_COUNT)
 
 
 func trigger_accent_burst() -> void:
@@ -309,6 +321,7 @@ func stop() -> void:
 	_cycle_task_id += 1
 	_cycle_stalled = false
 	_enemy_statuses.clear()
+	_reset_attack_authority_state()
 
 	for lane in range(LANE_COUNT):
 		var projectile = get_projectile(lane)
@@ -397,15 +410,17 @@ func _run_fire_cycle(task_id: int) -> void:
 		paused = combat_scene.is_song_paused()
 
 	if not paused:
-		for lane in range(LANE_COUNT):
+		var lanes_to_fire: Array[int] = _resolve_authorized_lanes_for_cycle()
+		for i in range(lanes_to_fire.size()):
 			if not _combat_running or task_id != _cycle_task_id:
 				return
 
-			var enemy: Dictionary = get_enemy(lane)
-			if enemy.has("hp") and float(enemy["hp"]) > 0.0:
-				_fire_lane(lane)
+			var lane: int = lanes_to_fire[i]
+			if _fire_lane(lane):
+				_lane_authority_debt[lane] = maxf(_lane_authority_debt[lane] - 2.0, 0.0)
+				_lane_last_fired_cycle[lane] = _fire_cycle_index
 
-			if lane < LANE_COUNT - 1:
+			if i < lanes_to_fire.size() - 1:
 				var offset_timer: SceneTreeTimer = get_tree().create_timer(fire_stagger)
 				await offset_timer.timeout
 
@@ -427,22 +442,22 @@ func _run_fire_cycle(task_id: int) -> void:
 		_run_fire_cycle(task_id)
 
 
-func _fire_lane(lane: int) -> void:
+func _fire_lane(lane: int) -> bool:
 	if get_projectile(lane) != null:
-		return
+		return false
 
 	var enemy: Dictionary = get_enemy(lane)
 	if enemy.is_empty():
-		return
+		return false
 
 	var projectile_speed: float = _get_enemy_projectile_speed(enemy)
 
 	if not _can_schedule_projectile(projectile_speed):
-		return
+		return false
 
 	var projectile = _projectile_scene.instantiate()
 	if projectile == null:
-		return
+		return false
 
 	var projectile_damage: float = float(enemy.get("damage", 8.0))
 	projectile_damage *= _punish_damage_mult
@@ -500,6 +515,55 @@ func _fire_lane(lane: int) -> void:
 			projectile.call("set_song_sync", conductor, hit_time)
 
 	EventBus.emit_signal("projectile_fired", lane, enemy_id)
+	return true
+
+
+func _resolve_authorized_lanes_for_cycle() -> Array[int]:
+	_fire_cycle_index += 1
+	var candidates: Array = []
+	for lane in range(LANE_COUNT):
+		var enemy: Dictionary = get_enemy(lane)
+		var alive: bool = enemy.has("hp") and float(enemy["hp"]) > 0.0
+		if alive:
+			_lane_authority_debt[lane] = minf(_lane_authority_debt[lane] + 1.0, 8.0)
+		else:
+			_lane_authority_debt[lane] = 0.0
+		if not alive:
+			continue
+		if get_projectile(lane) != null:
+			continue
+		var damage_score: float = clampf(float(enemy.get("damage", 8.0)) / 10.0, 0.60, 1.80)
+		var speed_score: float = clampf(_get_enemy_projectile_speed(enemy) / 320.0, 0.70, 1.70)
+		var cycles_since_last: int = _fire_cycle_index - _lane_last_fired_cycle[lane]
+		var age_bonus: float = clampf(float(cycles_since_last) / 4.0, 0.0, 1.4)
+		var jitter: float = _rng.randf() * 0.08
+		var score: float = _lane_authority_debt[lane] * 1.35 + age_bonus + damage_score * 0.35 + speed_score * 0.25 + jitter
+		candidates.append({
+			"lane": lane,
+			"score": score
+		})
+	if candidates.is_empty():
+		return []
+
+	candidates.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		return float(a.get("score", 0.0)) > float(b.get("score", 0.0))
+	)
+
+	var budget: int = clampi(attack_authority_budget, 1, LANE_COUNT)
+	var selected_count: int = mini(budget, candidates.size())
+	var selected_lanes: Array[int] = []
+	for i in range(selected_count):
+		var lane: int = int(Dictionary(candidates[i]).get("lane", -1))
+		if lane < 0:
+			continue
+		selected_lanes.append(lane)
+	return selected_lanes
+
+
+func _reset_attack_authority_state() -> void:
+	_lane_authority_debt = [0.0, 0.0, 0.0]
+	_lane_last_fired_cycle = [-999, -999, -999]
+	_fire_cycle_index = 0
 
 
 func _can_schedule_projectile(new_speed: float) -> bool:

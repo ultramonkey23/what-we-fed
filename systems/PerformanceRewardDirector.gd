@@ -9,6 +9,39 @@ const WEIGHT_KILL_PRESSURE: float = 0.20
 const WEIGHT_FAMILY_AFFINITY: float = 0.20
 const WEIGHT_BOND_EAT: float = 0.15
 const WEIGHT_TENDENCY: float = 0.05
+const VERDICT_CONTROLLED_SCORE: int = 300
+const VERDICT_DOMINANT_SCORE: int = 700
+const VERDICT_DEVOURING_SCORE: int = 1200
+const VERDICT_PREDATION_KILLS: int = 7
+const VERDICT_ELITE_KILLS: int = 10
+const VERDICT_CLEAN_HIT_LIMIT: int = 3
+const LEVEL_COMPLETION_MIN_CHOICES: int = 1
+const LEVEL_COMPLETION_MAX_CHOICES: int = 3
+const CHOICE_POWER_STEP: float = 180.0
+const CHOICE_SCORE_STEP: int = 450
+const HUNT_MOMENTUM_MAX: float = 100.0
+const HUNT_MOMENTUM_DECAY_PER_SEC: float = 7.5
+const HUNT_MOMENTUM_KILL_GAIN: float = 13.0
+const HUNT_MOMENTUM_PERFECT_GAIN: float = 6.0
+const HUNT_MOMENTUM_PARRY_GAIN: float = 9.0
+const HUNT_MOMENTUM_DODGE_GAIN: float = 5.0
+const HUNT_MOMENTUM_HIT_LOSS: float = 28.0
+const HUNT_MOMENTUM_LOW_HP_CAP: float = 42.0
+const HUNT_MOMENTUM_RECENT_HIT_CAP: float = 34.0
+const HUNT_MOMENTUM_RECENT_HIT_SECONDS: float = 2.0
+const HUNT_PRESSURE_SPAWN_MIN: float = 0.88
+const HUNT_PRESSURE_SPAWN_MAX: float = 1.12
+const HUNT_PRESSURE_SCORE_WEIGHT: float = 0.45
+const HUNT_PRESSURE_STREAK_WEIGHT: float = 0.35
+const HUNT_PRESSURE_CLEAN_WEIGHT: float = 0.20
+const HUNT_STREAK_SCORE_CAP: int = 10
+const HUNT_CLEAN_HIT_SOFT_LIMIT: int = 3
+const KILL_STREAK_PROGRESS_BONUS: float = 12.0
+const PERFECT_STREAK_PROGRESS_BONUS: float = 10.0
+const PARRY_STREAK_PROGRESS_BONUS: float = 12.0
+const DODGE_STREAK_PROGRESS_BONUS: float = 8.0
+const DODGE_STREAK_SUPPORT_CHARGE: float = 4.0
+const KILL_STREAK_SUPPORT_CHARGE: float = 5.0
 # Predatory Tempo Architecture v1 mapping:
 # - puncture: micro-time combat punctuation
 # - void: Suspension (slowed high-value choices under pressure)
@@ -37,6 +70,7 @@ signal offer_started(reward_data: Dictionary)
 signal offer_ended()
 signal reward_claimed(reward_data: Dictionary, source: String)
 signal proc_feedback(text: String, color: Color)
+signal pressure_bias_changed(snapshot: Dictionary)
 
 var _combat_meter: Node = null
 var _run_growth: Node = null
@@ -65,6 +99,7 @@ var _predation_pool_pending: bool = false
 var _active_offer: Dictionary = {}
 var _offer_timer: float = 0.0
 var _queued_offer_ids: Array[String] = []
+var _stored_reward_ids: Array[String] = []
 var _reserved_reward_ids: Array[String] = []
 var _claimed_reward_ids: Array[String] = []
 var _claimed_rewards: Array[Dictionary] = []
@@ -73,6 +108,12 @@ var _runtime_effects: Dictionary = {}
 var _kill_chain_count: int = 0
 var _kill_chain_heavy_count: int = 0
 var _perfect_strike_streak: int = 0
+var _kill_streak: int = 0
+var _parry_streak: int = 0
+var _dodge_streak: int = 0
+var _hunt_momentum: float = 0.0
+var _recent_hit_timer: float = 0.0
+var _last_pressure_snapshot: Dictionary = {}
 var _eat_ratchet_stacks: int = 0
 var _wound_hunger_cooldown: float = 0.0
 var _reward_pressure_band: Dictionary = {
@@ -124,6 +165,7 @@ func start_song_run(_phases: Array) -> void:
 	_active_offer.clear()
 	_offer_timer = 0.0
 	_queued_offer_ids.clear()
+	_stored_reward_ids.clear()
 	_is_level_completion_choice = false
 	
 	# These now persist across levels in a multi-level run.
@@ -136,6 +178,12 @@ func start_song_run(_phases: Array) -> void:
 	_kill_chain_count = 0
 	_kill_chain_heavy_count = 0
 	_perfect_strike_streak = 0
+	_kill_streak = 0
+	_parry_streak = 0
+	_dodge_streak = 0
+	_hunt_momentum = 0.0
+	_recent_hit_timer = 0.0
+	_last_pressure_snapshot.clear()
 	_eat_ratchet_stacks = 0
 	_wound_hunger_cooldown = 0.0
 	_tempo_mastery_claimed_per_phase = {
@@ -149,6 +197,7 @@ func start_song_run(_phases: Array) -> void:
 
 func reset_full_run_data() -> void:
 	_reserved_reward_ids.clear()
+	_stored_reward_ids.clear()
 	_claimed_reward_ids.clear()
 	_claimed_rewards.clear()
 	_claimed_ritual_ids.clear()
@@ -181,6 +230,10 @@ func enter_song_phase(index: int, _phase_data: Dictionary) -> void:
 
 func process_tick(delta: float) -> void:
 	_wound_hunger_cooldown = max(_wound_hunger_cooldown - delta, 0.0)
+	_recent_hit_timer = max(_recent_hit_timer - delta, 0.0)
+	if _hunt_momentum > 0.0:
+		_hunt_momentum = maxf(_hunt_momentum - HUNT_MOMENTUM_DECAY_PER_SEC * delta, 0.0)
+	_emit_pressure_bias_if_changed()
 	if _active_offer.is_empty():
 		return
 	var decay_mult: float = float(_reward_pressure_band.get("offer_decay_mult", 1.0))
@@ -216,6 +269,8 @@ func claim_active_offer(source: String = "manual") -> void:
 	if lane != "consumable" and not effect_type.is_empty():
 		_runtime_effects[effect_type] = effect.duplicate(true)
 	if not reward_id.is_empty():
+		_stored_reward_ids.erase(reward_id)
+		_refresh_banked_reward_count_from_stored()
 		if lane != "consumable" and GameState.has_method("add_upgrade"):
 			GameState.add_upgrade(reward_id)
 		if lane == "consumable":
@@ -295,7 +350,37 @@ func get_status_snapshot() -> Dictionary:
 		"offer_active": not _active_offer.is_empty(),
 		"offer_time_left": _offer_timer,
 		"score_grade": score_grade,
-		"exhausted": _is_reward_pack_exhausted()
+		"exhausted": _is_reward_pack_exhausted(),
+		"pressure_bias": get_pressure_bias_snapshot()
+	}
+
+
+func get_pressure_bias_snapshot() -> Dictionary:
+	var momentum_ratio: float = _resolve_effective_hunt_momentum_ratio()
+	var streak_ratio: float = clampf(float(maxi(_kill_streak, maxi(_perfect_strike_streak, maxi(_parry_streak, _dodge_streak)))) / float(HUNT_STREAK_SCORE_CAP), 0.0, 1.0)
+	var clean_ratio: float = 1.0
+	if _run_stats != null and is_instance_valid(_run_stats):
+		clean_ratio = 1.0 - clampf(float(_run_stats.get("times_hit")) / float(HUNT_CLEAN_HIT_SOFT_LIMIT), 0.0, 1.0)
+	var pressure_ratio: float = clampf(
+		momentum_ratio * HUNT_PRESSURE_SCORE_WEIGHT +
+		streak_ratio * HUNT_PRESSURE_STREAK_WEIGHT +
+		clean_ratio * HUNT_PRESSURE_CLEAN_WEIGHT,
+		0.0,
+		1.0
+	)
+	var spawn_mult: float = lerpf(HUNT_PRESSURE_SPAWN_MAX, HUNT_PRESSURE_SPAWN_MIN, pressure_ratio)
+	if _recent_hit_timer > 0.0 or (GameState.has_method("get_hp_percent") and GameState.get_hp_percent() <= 0.35):
+		spawn_mult = maxf(spawn_mult, 1.0)
+	return {
+		"momentum": _hunt_momentum,
+		"momentum_ratio": momentum_ratio,
+		"pressure_ratio": pressure_ratio,
+		"spawn_interval_mult": spawn_mult,
+		"kill_streak": _kill_streak,
+		"perfect_streak": _perfect_strike_streak,
+		"parry_streak": _parry_streak,
+		"dodge_streak": _dodge_streak,
+		"recent_hit_timer": _recent_hit_timer
 	}
 
 
@@ -308,6 +393,8 @@ func _connect_eventbus() -> void:
 		EventBus.player_parried.connect(_on_player_parried)
 	if not EventBus.player_took_damage.is_connected(_on_player_took_damage):
 		EventBus.player_took_damage.connect(_on_player_took_damage)
+	if not EventBus.player_dodged.is_connected(_on_player_dodged):
+		EventBus.player_dodged.connect(_on_player_dodged)
 	if not EventBus.combat_started.is_connected(_on_combat_started):
 		EventBus.combat_started.connect(_on_combat_started)
 	if not EventBus.phrase_milestone.is_connected(_on_phrase_milestone):
@@ -331,6 +418,8 @@ func _exit_tree() -> void:
 		EventBus.player_parried.disconnect(_on_player_parried)
 	if EventBus.player_took_damage.is_connected(_on_player_took_damage):
 		EventBus.player_took_damage.disconnect(_on_player_took_damage)
+	if EventBus.player_dodged.is_connected(_on_player_dodged):
+		EventBus.player_dodged.disconnect(_on_player_dodged)
 	if EventBus.combat_started.is_connected(_on_combat_started):
 		EventBus.combat_started.disconnect(_on_combat_started)
 	if EventBus.phrase_milestone.is_connected(_on_phrase_milestone):
@@ -376,6 +465,30 @@ func _refresh_run_progress() -> void:
 	_emit_state_changed()
 
 
+func _add_hunt_momentum(amount: float) -> void:
+	if amount <= 0.0:
+		return
+	_hunt_momentum = minf(_hunt_momentum + amount, HUNT_MOMENTUM_MAX)
+	_emit_pressure_bias_if_changed()
+
+
+func _resolve_effective_hunt_momentum_ratio() -> float:
+	var effective_momentum: float = _hunt_momentum
+	if GameState.has_method("get_hp_percent") and GameState.get_hp_percent() <= 0.35:
+		effective_momentum = minf(effective_momentum, HUNT_MOMENTUM_LOW_HP_CAP)
+	if _recent_hit_timer > 0.0:
+		effective_momentum = minf(effective_momentum, HUNT_MOMENTUM_RECENT_HIT_CAP)
+	return clampf(effective_momentum / HUNT_MOMENTUM_MAX, 0.0, 1.0)
+
+
+func _emit_pressure_bias_if_changed() -> void:
+	var snapshot: Dictionary = get_pressure_bias_snapshot()
+	if snapshot == _last_pressure_snapshot:
+		return
+	_last_pressure_snapshot = snapshot.duplicate(true)
+	emit_signal("pressure_bias_changed", snapshot)
+
+
 func _check_thresholds() -> void:
 	while _next_threshold_index < _run_thresholds.size() and _run_progress >= float(_run_thresholds[_next_threshold_index]):
 		_next_threshold_index += 1
@@ -388,11 +501,6 @@ func _check_thresholds() -> void:
 
 
 func _queue_reward_offer() -> void:
-	if not offers_enabled:
-		banked_reward_count += 1
-		emit_signal("proc_feedback", "REWARD BANKED", Color(0.92, 0.76, 0.42, 1.0))
-		return
-		
 	var reward_id: String = _pick_next_reward_id()
 	if reward_id.is_empty():
 		if not _exhaustion_announced:
@@ -400,6 +508,12 @@ func _queue_reward_offer() -> void:
 			emit_signal("proc_feedback", "PACK SEALED", Color(0.76, 0.76, 0.80, 1.0))
 		return
 	_reserved_reward_ids.append(reward_id)
+	if not offers_enabled:
+		_stored_reward_ids.append(reward_id)
+		_refresh_banked_reward_count_from_stored()
+		emit_signal("proc_feedback", "REWARD STORED", Color(0.92, 0.76, 0.42, 1.0))
+		_emit_state_changed()
+		return
 	if _active_offer.is_empty():
 		_start_offer(reward_id)
 	else:
@@ -448,13 +562,131 @@ func _build_upgrade_choices_for_context(count: int, context: Dictionary) -> Arra
 
 func get_level_completion_choices(count: int = 3) -> Array[Dictionary]:
 	_is_level_completion_choice = true
+	var context: Dictionary = _build_completion_context_with_performance_verdict()
+	context["predation_pool"] = false
+	var resolved_count: int = _resolve_level_completion_choice_count(count, context)
+	_predation_pool_pending = false
+	var had_stored_rewards: bool = not _stored_reward_ids.is_empty()
+	var stored_choices: Array[Dictionary] = _build_stored_reward_choices(resolved_count)
+	if stored_choices.size() >= resolved_count:
+		_finalize_stored_reward_choices(had_stored_rewards, stored_choices)
+		return stored_choices
+	var fallback_choices: Array[Dictionary] = _build_upgrade_choices_for_context(resolved_count, context)
+	for choice in fallback_choices:
+		if stored_choices.size() >= resolved_count:
+			break
+		var choice_id: String = String(choice.get("id", ""))
+		var already_present: bool = false
+		for stored_choice in stored_choices:
+			if String(stored_choice.get("id", "")) == choice_id:
+				already_present = true
+				break
+		if not already_present:
+			stored_choices.append(choice)
+	_finalize_stored_reward_choices(had_stored_rewards, stored_choices)
+	return stored_choices
+
+
+func _resolve_level_completion_choice_count(requested_count: int, context: Dictionary) -> int:
+	var score: int = int(context.get("performance_score", 0))
+	var kills: int = int(context.get("performance_kills", 0))
+	var hits_taken: int = int(context.get("performance_hits_taken", 99))
+	var level_index: int = int(context.get("regular_level_index", 0))
+	var growth_level: int = int(context.get("growth_level", 1))
+	var power_level: float = float(context.get("power_level", 0.0))
+	if power_level <= 0.0 and GameState.has_method("get_power_level"):
+		power_level = GameState.get_power_level()
+
+	var choice_count: int = LEVEL_COMPLETION_MIN_CHOICES
+	if score >= VERDICT_CONTROLLED_SCORE or kills >= 4:
+		choice_count += 1
+	if score >= VERDICT_DOMINANT_SCORE or kills >= VERDICT_PREDATION_KILLS:
+		choice_count += 1
+	if score >= VERDICT_DEVOURING_SCORE and hits_taken <= VERDICT_CLEAN_HIT_LIMIT:
+		choice_count += 1
+
+	choice_count += int(floor(power_level / CHOICE_POWER_STEP))
+	choice_count += int(floor(float(growth_level - 1) / 3.0))
+	choice_count += int(floor(float(max(score - VERDICT_CONTROLLED_SCORE, 0)) / float(CHOICE_SCORE_STEP)))
+
+	var early_run_cap: int = 1 + clampi(level_index, 0, 2)
+	var requested_cap: int = max(requested_count, LEVEL_COMPLETION_MIN_CHOICES)
+	var hard_cap: int = mini(LEVEL_COMPLETION_MAX_CHOICES, requested_cap)
+	return clampi(choice_count, LEVEL_COMPLETION_MIN_CHOICES, mini(hard_cap, early_run_cap))
+
+
+func _finalize_stored_reward_choices(had_stored_rewards: bool, choices: Array[Dictionary]) -> void:
+	if not had_stored_rewards:
+		return
+	for choice in choices:
+		var reward_id: String = String(choice.get("id", ""))
+		if not reward_id.is_empty():
+			_stored_reward_ids.erase(reward_id)
+	_refresh_banked_reward_count_from_stored()
+
+
+func _refresh_banked_reward_count_from_stored() -> void:
+	banked_reward_count = _stored_reward_ids.size()
+
+
+func _build_stored_reward_choices(count: int) -> Array[Dictionary]:
+	var choices: Array[Dictionary] = []
+	for reward_id in _stored_reward_ids:
+		if choices.size() >= count:
+			break
+		var reward_data: Dictionary = PERFORMANCE_REWARD_CONTENT.get_reward(reward_id)
+		if reward_data.is_empty():
+			continue
+		if GameState.has_method("is_reward_offer_eligible") and not GameState.is_reward_offer_eligible(reward_data):
+			continue
+		choices.append(reward_data)
+	return choices
+
+
+func _has_predation_offers_available() -> bool:
+	return not PREDATION_POOL.build_offers(1).is_empty()
+
+
+func _build_completion_context_with_performance_verdict() -> Dictionary:
 	var context: Dictionary = _level_completion_context.duplicate(true)
-	var resolved_count: int = count
-	if bool(context.get("predation_pool", false)):
-		resolved_count = 1
-	resolved_count = clampi(resolved_count + int(_reward_pressure_band.get("level_choice_delta", 0)), 1, 4)
-	_predation_pool_pending = bool(context.get("predation_pool", false))
-	return _build_upgrade_choices_for_context(resolved_count, context)
+	if _run_stats == null or not is_instance_valid(_run_stats):
+		return context
+
+	var score: int = int(_run_stats.get("run_score"))
+	var kills: int = int(_run_stats.get("kills"))
+	var hits_taken: int = int(_run_stats.get("times_hit"))
+	var perfects: int = int(_run_stats.get("perfect_attacks")) + int(_run_stats.get("perfect_parries"))
+	var support_triggers: int = int(_run_stats.get("support_triggers"))
+	var bonds: int = int(_run_stats.get("bonds"))
+	var eats: int = int(_run_stats.get("eats"))
+	var grade: String = _get_score_grade_for_verdict(score)
+	var clean_hunt: bool = hits_taken <= VERDICT_CLEAN_HIT_LIMIT
+
+	context["performance_verdict"] = grade
+	context["performance_score"] = score
+	context["performance_kills"] = kills
+	context["performance_hits_taken"] = hits_taken
+
+	if score >= VERDICT_DOMINANT_SCORE and kills >= VERDICT_PREDATION_KILLS:
+		context["predation_pool"] = true
+
+	if score >= VERDICT_DEVOURING_SCORE or (score >= VERDICT_DOMINANT_SCORE and kills >= VERDICT_ELITE_KILLS and clean_hunt):
+		context["elite_reward_tier"] = true
+
+	if bonds > eats or (support_triggers >= 2 and perfects >= 4 and clean_hunt):
+		context["bond_flavored"] = true
+
+	return context
+
+
+func _get_score_grade_for_verdict(score: int) -> String:
+	if score >= VERDICT_DEVOURING_SCORE:
+		return "DEVOURING"
+	if score >= VERDICT_DOMINANT_SCORE:
+		return "DOMINANT"
+	if score >= VERDICT_CONTROLLED_SCORE:
+		return "CONTROLLED"
+	return "BARELY HELD"
 
 
 func consume_banked_reward() -> void:
@@ -742,6 +974,14 @@ func _show_next_queued_offer() -> void:
 
 
 func _on_enemy_defeated(_enemy_id: int) -> void:
+	_kill_streak += 1
+	_add_hunt_momentum(HUNT_MOMENTUM_KILL_GAIN)
+	if _kill_streak > 0 and _kill_streak % 4 == 0:
+		_add_bonus_progress(KILL_STREAK_PROGRESS_BONUS)
+		if _run_growth != null and is_instance_valid(_run_growth) and _run_growth.has_method("gain_reward_support_charge"):
+			_run_growth.call("gain_reward_support_charge", KILL_STREAK_SUPPORT_CHARGE)
+		emit_signal("proc_feedback", "HUNT SURGES", Color(0.92, 0.50, 0.26, 1.0))
+
 	# Carrion Brand: 3 kills → mend + charge
 	var pulse_effect: Dictionary = get_runtime_effect("kill_chain_pulse")
 	if not pulse_effect.is_empty():
@@ -773,29 +1013,53 @@ func _on_enemy_defeated(_enemy_id: int) -> void:
 func _on_timed_attack_resolved(_lane: int, quality: String, _damage: float) -> void:
 	# Veilstrike Chain: 3 perfect attacks in a row → charge 20
 	var chain_effect: Dictionary = get_runtime_effect("perfect_strike_chain")
+	if quality == "perfect":
+		_perfect_strike_streak += 1
+		_add_hunt_momentum(HUNT_MOMENTUM_PERFECT_GAIN)
+		if _perfect_strike_streak > 0 and _perfect_strike_streak % 3 == 0:
+			_add_bonus_progress(PERFECT_STREAK_PROGRESS_BONUS)
+			emit_signal("proc_feedback", "PERFECT FEEDS", Color(0.78, 0.94, 0.62, 1.0))
+	elif quality == "good":
+		_add_hunt_momentum(HUNT_MOMENTUM_PERFECT_GAIN * 0.45)
+	else:
+		_perfect_strike_streak = 0
 	if not chain_effect.is_empty():
 		if quality == "perfect":
-			_perfect_strike_streak += 1
 			var streak_required: int = int(chain_effect.get("streak_required", 3))
 			if _perfect_strike_streak >= streak_required:
 				_perfect_strike_streak = 0
 				if _run_growth != null and is_instance_valid(_run_growth) and _run_growth.has_method("gain_reward_support_charge"):
 					_run_growth.call("gain_reward_support_charge", float(chain_effect.get("support_charge", 0.0)))
 				emit_signal("proc_feedback", "CHAIN FIRES", Color(0.78, 0.94, 0.62, 1.0))
-		elif quality != "perfect":
-			_perfect_strike_streak = 0
 
 
 func _on_player_parried(_lane: int, quality: String, _reflect_damage: float) -> void:
 	match quality:
 		"perfect":
+			_parry_streak += 1
+			_add_hunt_momentum(HUNT_MOMENTUM_PARRY_GAIN)
+			if _parry_streak > 0 and _parry_streak % 2 == 0:
+				_add_bonus_progress(PARRY_STREAK_PROGRESS_BONUS)
 			var support_effect: Dictionary = get_runtime_effect("perfect_parry_support_charge")
 			if not support_effect.is_empty() and _run_growth != null and is_instance_valid(_run_growth) and _run_growth.has_method("gain_reward_support_charge"):
 				_run_growth.call("gain_reward_support_charge", float(support_effect.get("value", 0.0)))
 				emit_signal("proc_feedback", "HOOK PRIES OPEN", Color(0.86, 0.88, 0.40, 1.0))
+		"good":
+			_parry_streak = 0
+			_add_hunt_momentum(HUNT_MOMENTUM_PARRY_GAIN * 0.45)
+		_:
+			_parry_streak = 0
 
 
 func _on_player_took_damage(_amount: float, _source_lane: int) -> void:
+	_kill_streak = 0
+	_perfect_strike_streak = 0
+	_parry_streak = 0
+	_dodge_streak = 0
+	_recent_hit_timer = HUNT_MOMENTUM_RECENT_HIT_SECONDS
+	_hunt_momentum = maxf(_hunt_momentum - HUNT_MOMENTUM_HIT_LOSS, 0.0)
+	_emit_pressure_bias_if_changed()
+
 	# Graveslip Tendons: low HP clutch heal + stamina
 	var clutch_effect: Dictionary = get_runtime_effect("low_hp_clutch")
 	if not clutch_effect.is_empty() and not _phase_clutch_spent:
@@ -815,6 +1079,25 @@ func _on_player_took_damage(_amount: float, _source_lane: int) -> void:
 		if _run_growth != null and is_instance_valid(_run_growth) and _run_growth.has_method("gain_reward_support_charge"):
 			_run_growth.call("gain_reward_support_charge", float(wound_effect.get("value", 0.0)))
 		emit_signal("proc_feedback", "HUNGER RISES", Color(0.92, 0.40, 0.36, 1.0))
+
+
+func _on_player_dodged(_from_lane: int, _to_lane: int) -> void:
+	_dodge_streak += 1
+	_add_hunt_momentum(HUNT_MOMENTUM_DODGE_GAIN)
+
+
+func notify_dodge_timing_quality(_from_lane: int, _to_lane: int, quality: String) -> void:
+	if not _song_started or _phase_index < 0:
+		return
+	if quality == "perfect":
+		_add_hunt_momentum(HUNT_MOMENTUM_DODGE_GAIN)
+		if _dodge_streak > 0 and _dodge_streak % 3 == 0:
+			_add_bonus_progress(DODGE_STREAK_PROGRESS_BONUS)
+			if _run_growth != null and is_instance_valid(_run_growth) and _run_growth.has_method("gain_reward_support_charge"):
+				_run_growth.call("gain_reward_support_charge", DODGE_STREAK_SUPPORT_CHARGE)
+			emit_signal("proc_feedback", "SLIP FEEDS", Color(0.58, 0.80, 1.0, 1.0))
+	elif quality != "good":
+		_dodge_streak = 0
 
 
 func _on_bonded_support_triggered(_species_id: String, _lane: int, _effect_id: String) -> void:
@@ -890,6 +1173,8 @@ func _is_reward_pack_exhausted() -> bool:
 	if not _active_offer.is_empty():
 		return false
 	if not _queued_offer_ids.is_empty():
+		return false
+	if not _stored_reward_ids.is_empty():
 		return false
 	return _pick_next_reward_id().is_empty()
 

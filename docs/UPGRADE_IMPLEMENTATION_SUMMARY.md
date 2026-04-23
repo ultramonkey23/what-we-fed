@@ -31,9 +31,9 @@ The comprehensive upgrade implementation for WHAT WE FED has been completed succ
 ### New Files Created:
 1. `data/EnemyTemplates.gd` - Enemy templates and encounter pools
 2. `data/CombatFeelConstants.gd` - Centralized combat parameters
-3. `systems/EncounterGenerator.gd` - Dynamic encounter generation
-4. `systems/MutationTracker.gd` - Enhanced mutation tracking
-5. `systems/CombatSystemIntegration.gd` - Integration layer
+3. `examples/demo_encounter_stack/EncounterGenerator.gd` - Dynamic encounter generation
+4. `examples/demo_encounter_stack/MutationTracker.gd` - Enhanced mutation tracking
+5. `examples/demo_encounter_stack/CombatSystemIntegration.gd` - Integration layer
 6. `examples/NewSystemsDemo.gd` - Comprehensive demonstration
 7. `docs/UPGRADE_IMPLEMENTATION_GUIDE.md` - Detailed documentation
 8. `docs/UPGRADE_IMPLEMENTATION_SUMMARY.md` - This summary

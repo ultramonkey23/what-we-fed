@@ -1,5 +1,6 @@
 extends Node
 
+# Demo-only: lives under examples/demo_encounter_stack; not wired into CombatScene.
 # Enhanced Mutation Tracker - Better tracking and visual feedback for mutation mechanics
 # This system provides detailed mutation state management and UI feedback
 

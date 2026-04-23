@@ -10,7 +10,7 @@ This guide documents the comprehensive upgrade implementation for WHAT WE FED, f
 
 #### Files Created:
 - `data/EnemyTemplates.gd` - Modular enemy templates and encounter pools
-- `systems/EncounterGenerator.gd` - Dynamic encounter generation system
+- `examples/demo_encounter_stack/EncounterGenerator.gd` - Dynamic encounter generation system
 
 #### Key Features:
 - **Modular Enemy Templates**: Reusable enemy behavior patterns (dreg, bond_reaper, sovereign)
@@ -31,7 +31,7 @@ var boss_encounter = encounter_generator.generate_boss_encounter("pale_shelf", "
 ### 2. Enhanced Mutation System
 
 #### Files Created:
-- `systems/MutationTracker.gd` - Advanced mutation tracking and feedback
+- `examples/demo_encounter_stack/MutationTracker.gd` - Advanced mutation tracking and feedback
 
 #### Key Features:
 - **Detailed Mutation Tracking**: Usage history, charge consumption, timing data
@@ -77,7 +77,7 @@ var scaled_damage = CombatFeelConstants.apply_difficulty_scaling(10.0, "hard", "
 ### 4. System Integration Layer
 
 #### Files Created:
-- `systems/CombatSystemIntegration.gd` - Clean interface for all new systems
+- `examples/demo_encounter_stack/CombatSystemIntegration.gd` - Clean interface for all new systems
 
 #### Key Features:
 - **Unified Interface**: Single point of access for all new systems

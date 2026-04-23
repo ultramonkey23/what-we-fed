@@ -165,7 +165,7 @@ func _resolve_song_duration() -> float:
 	var song_path: String = String(active_song_data.get("file_path", ""))
 	if song_path.is_empty():
 		return RUN_PACING_CONTENT.MAX_REGULAR_LEVEL_DURATION_SECONDS
-	var stream: AudioStream = load(song_path)
+	var stream: AudioStream = ResourceLoader.load(song_path, "", ResourceLoader.CACHE_MODE_IGNORE) as AudioStream
 	if stream == null:
 		return RUN_PACING_CONTENT.MAX_REGULAR_LEVEL_DURATION_SECONDS
 	var stream_duration: float = stream.get_length()

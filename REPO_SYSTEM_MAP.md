@@ -15,7 +15,7 @@ Boot flow:
 
 Autoloads:
 - `autoloads/EventBus.gd`: cross-system signal hub
-- `autoloads/GameState.gd`: persistent run, roster, DNA, lair, and region state
+- `autoloads/GameState.gd`: persistent state orchestrator; delegates to modular components in `systems/state/` (Player, Creature, Reward, WorldFate, Run)
 
 Combat owners:
 - `scenes/combat/CombatScene.gd`: arena setup, encounter flow, song-mode orchestration, boss flow, reward shell
@@ -33,7 +33,7 @@ Song / boss pressure:
 - `data/song_maps/*.gd`: authored song timing maps
 
 Growth / reward:
-- `systems/RunGrowth.gd`: tendency growth, support charge, growth effects
+- `systems/RunGrowth.gd`: growth orchestrator; delegates to modular managers in `systems/growth/` (Progression, Tendency, Support)
 - `systems/PerformanceRewardDirector.gd`: performance reward offers and claims
 - `systems/PotentialGate.gd`: layered Potential ceiling resolver (creature/world/run)
 - `data/RunGrowthContent.gd`: growth tuning and effects
@@ -65,6 +65,10 @@ Repo-local Godot wrappers:
 Dev harness:
 - `scenes/dev/DebugBootScene.gd`: preset selector for fast combat-state boot
 - `autoloads/DevHarness.gd`: inert request holder consumed only by explicit harness runs
+
+Demo-only (not in live combat graph):
+- `examples/demo_encounter_stack/*.gd`: procedural encounter + mutation demo used by `examples/NewSystemsDemo.gd` only; `CombatScene` uses `EncounterIdentityRuntime` + `CombatContent` instead.
+- Debug harness preset `generated_boss` (`debug_generated_boss_encounter` on `DevHarness` request): `CombatScene` runtime-loads `EncounterGenerator` and normalizes via `systems/GeneratedEncounterAdapter.gd` into `_load_encounter_payload` (authored boss remains default).
 
 Repo-local state:
 - `.godot-cli/logs/`: Godot logs for run, smoke, validate, import, editor

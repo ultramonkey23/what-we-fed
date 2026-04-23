@@ -1,5 +1,7 @@
 extends RefCounted
 
+const DEBUG_TRACE = preload("res://systems/DebugTrace.gd")
+
 # ── Bound node references ─────────────────────────────────────────────────────
 # All nodes are created and owned by CombatScene.
 # This presenter holds references only — it never frees them.
@@ -66,23 +68,7 @@ func _init(combat_content: GDScript, presentation_text: GDScript, ui_style: GDSc
 
 #region agent log
 func _agent_debug_log(run_id: String, hypothesis_id: String, location: String, message: String, data: Dictionary) -> void:
-	var payload: Dictionary = {
-		"sessionId": "6fee2f",
-		"runId": run_id,
-		"hypothesisId": hypothesis_id,
-		"location": location,
-		"message": message,
-		"data": data,
-		"timestamp": Time.get_unix_time_from_system() * 1000.0
-	}
-	var file := FileAccess.open("C:/Users/harin/OneDrive/Desktop/gamesdevs/What We Fed/what-we-fed/debug-6fee2f.log", FileAccess.READ_WRITE)
-	if file == null:
-		file = FileAccess.open("C:/Users/harin/OneDrive/Desktop/gamesdevs/What We Fed/what-we-fed/debug-6fee2f.log", FileAccess.WRITE)
-	if file == null:
-		return
-	file.seek_end()
-	file.store_line(JSON.stringify(payload))
-	file.close()
+	DEBUG_TRACE.append_agent_event(run_id, hypothesis_id, location, message, data)
 #endregion
 
 

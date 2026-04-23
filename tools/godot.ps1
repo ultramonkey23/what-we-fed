@@ -147,7 +147,8 @@ function Invoke-Godot {
     param(
         [Parameter(Mandatory = $true)]
         [string[]]$Arguments,
-        [string]$LogPath = ""
+        [string]$LogPath = "",
+        [bool]$Quiet = $false
     )
 
     $godotExe = Resolve-GodotExecutable
@@ -161,10 +162,59 @@ function Invoke-Godot {
         Write-Host ("Log file: {0}" -f $LogPath)
     }
 
-    & $godotExe @Arguments
+    if ($Quiet) {
+        & $godotExe @Arguments *> $null
+    } else {
+        & $godotExe @Arguments
+    }
     $exitCode = $LASTEXITCODE
     if ($exitCode -ne 0) {
         throw ("Godot exited with code {0}." -f $exitCode)
+    }
+}
+
+function Clear-RepoLocalShaderCache {
+    $repoRoot = Get-RepoRoot
+    $stateRoot = Join-Path $repoRoot ".godot-cli"
+    $shaderCache = Join-Path $stateRoot "AppData\Roaming\Godot\app_userdata\What We Fed\shader_cache"
+
+    if (-not (Test-Path $shaderCache)) {
+        return
+    }
+
+    $resolvedStateRoot = (Resolve-Path $stateRoot).Path
+    $resolvedShaderCache = (Resolve-Path $shaderCache).Path
+    if (-not $resolvedShaderCache.StartsWith($resolvedStateRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
+        throw ("Refusing to clear shader cache outside repo-local state: {0}" -f $resolvedShaderCache)
+    }
+
+    Remove-Item -LiteralPath $resolvedShaderCache -Recurse -Force
+}
+
+function Invoke-GodotImport {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RepoRoot,
+        [Parameter(Mandatory = $true)]
+        [string]$ImportLog
+    )
+
+    Clear-RepoLocalShaderCache
+
+    $importArgs = @("--path", $RepoRoot, "--import", "--log-file", $ImportLog)
+    try {
+        Invoke-Godot -Arguments $importArgs -LogPath $ImportLog
+        return @($ImportLog)
+    } catch {
+        Write-Host ""
+        Write-Host "Import pass failed before validation could inspect project errors." -ForegroundColor DarkYellow
+        Write-Host "Retrying import in headless mode to avoid Windows renderer/import crashes." -ForegroundColor DarkYellow
+        Write-Host ""
+
+        $headlessImportLog = Get-DefaultLogFile -ModeName "import-headless"
+        $headlessImportArgs = @("--path", $RepoRoot, "--headless", "--import", "--log-file", $headlessImportLog)
+        Invoke-Godot -Arguments $headlessImportArgs -LogPath $headlessImportLog -Quiet $true
+        return @($ImportLog, $headlessImportLog)
     }
 }
 
@@ -173,7 +223,8 @@ function Get-GodotLogErrors {
     # warnings that appear in every clean headless run on Windows.
     param(
         [Parameter(Mandatory = $true)]
-        [string]$LogPath
+        [string]$LogPath,
+        [string[]]$AdditionalSafePatterns = @()
     )
 
     if (-not (Test-Path $LogPath)) {
@@ -184,7 +235,7 @@ function Get-GodotLogErrors {
     $safePatterns = @(
         "Failed to read the root certificate store",
         "ObjectDB instances leaked at exit"
-    )
+    ) + $AdditionalSafePatterns
 
     $errors = [System.Collections.Generic.List[string]]::new()
     $inErrorBlock = $false
@@ -273,7 +324,7 @@ switch ($Mode) {
     }
     "debug" {
         $logFile = Get-DefaultLogFile -ModeName "debug-harness"
-        $args = @("--path", (Get-RepoRoot), "--log-file", $logFile, "res://scenes/dev/DebugBootScene.tscn") + $GodotArgs
+        $args = @("--path", (Get-RepoRoot), "--log-file", $logFile) + $GodotArgs + @("res://scenes/dev/DebugBootScene.tscn")
         Invoke-Godot -Arguments $args -LogPath $logFile
     }
     "smoke" {
@@ -302,8 +353,12 @@ switch ($Mode) {
         # Step 1: import pass - re-import any new or changed assets.
         # Uses the non-headless path so audio and texture importers have full access.
         $importLog = Get-DefaultLogFile -ModeName "import"
-        $importArgs = @("--path", $repoRoot, "--import", "--log-file", $importLog)
-        Invoke-Godot -Arguments $importArgs -LogPath $importLog
+        $importLogs = @(Invoke-GodotImport -RepoRoot $repoRoot -ImportLog $importLog | Where-Object {
+            -not [string]::IsNullOrWhiteSpace($_) -and $_ -like "*.log"
+        })
+        if ($importLogs.Count -eq 0) {
+            $importLogs = @($importLog)
+        }
 
         # Step 2: headless smoke run - boot the project for one frame and quit.
         # This catches autoload failures, parse errors, and missing-node crashes.
@@ -311,17 +366,34 @@ switch ($Mode) {
         $smokeArgs = @("--path", $repoRoot, "--headless", "--quit-after", "1", "--log-file", $validateLog) + $GodotArgs
         Invoke-Godot -Arguments $smokeArgs -LogPath $validateLog
 
-        # Step 3: scan the smoke log for real errors.
+        # Step 3: scan import and smoke logs for real errors.
         # Godot exits 0 even on GDScript parse or runtime errors.
-        $logErrors = Get-GodotLogErrors -LogPath $validateLog
+        $logErrors = [System.Collections.Generic.List[string]]::new()
+        $headlessImportSafePatterns = @(
+            'Condition "_sock == (SOCKET)(~0)" is true. Returning: FAILED',
+            'Condition "err != OK" is true. Returning: ERR_CANT_CREATE'
+        )
+        foreach ($logPath in $importLogs) {
+            $additionalSafe = @()
+            if ($logPath -like "*godot-import-headless.log") {
+                $additionalSafe = $headlessImportSafePatterns
+            }
+            foreach ($line in (Get-GodotLogErrors -LogPath $logPath -AdditionalSafePatterns $additionalSafe)) {
+                $logErrors.Add(("{0}: {1}" -f (Split-Path $logPath -Leaf), $line))
+            }
+        }
+        foreach ($line in (Get-GodotLogErrors -LogPath $validateLog)) {
+            $logErrors.Add(("{0}: {1}" -f (Split-Path $validateLog -Leaf), $line))
+        }
         if ($logErrors.Count -gt 0) {
             Write-Host ""
-            Write-Host "VALIDATE FAILED - errors found in smoke log:" -ForegroundColor Red
+            Write-Host "VALIDATE FAILED - errors found in validation logs:" -ForegroundColor Red
             foreach ($line in $logErrors) {
                 Write-Host ("  {0}" -f $line) -ForegroundColor Red
             }
             Write-Host ""
-            Write-Host ("Full log: {0}" -f $validateLog)
+            Write-Host ("Import log: {0}" -f $importLog)
+            Write-Host ("Smoke log: {0}" -f $validateLog)
             exit 1
         }
 

@@ -104,6 +104,12 @@ signal boss_outcome_resolved(outcome_id: String, payload: Dictionary)
 @warning_ignore("unused_signal")
 signal world_fate_changed(snapshot: Dictionary)
 
+# Tempo / Combat Feel
+@warning_ignore("unused_signal")
+signal tempo_state_entered(state_id: String)
+@warning_ignore("unused_signal")
+signal tempo_state_exited(state_id: String)
+
 # Presentation
 @warning_ignore("unused_signal")
 signal screen_shake(intensity: float, duration: float)

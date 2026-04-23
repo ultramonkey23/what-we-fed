@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import subprocess
 import sys
 import time
@@ -114,6 +115,72 @@ def _filter_entries(
 
 def _normalize_base_url(url: str) -> str:
     return url.rstrip("/")
+
+
+def _probe_comfy_api(base_url: str, *, timeout_seconds: float = 2.0) -> bool:
+    req = urllib.request.Request(url=f"{base_url}/system_stats")
+    try:
+        with urllib.request.urlopen(req, timeout=timeout_seconds) as response:
+            raw = response.read().decode("utf-8")
+        json.loads(raw) if raw else {}
+        return True
+    except (urllib.error.URLError, json.JSONDecodeError):
+        return False
+
+
+def _discover_comfy_local_ports() -> list[int]:
+    user_home = Path.home()
+    candidate_dirs = [
+        user_home / "Documents" / "ComfyUI" / "user",
+        user_home / "ComfyUI" / "user",
+    ]
+
+    ports: list[int] = []
+    for directory in candidate_dirs:
+        if not directory.is_dir():
+            continue
+        logs = sorted(
+            directory.glob("comfyui_*.log"),
+            key=lambda p: p.stat().st_mtime,
+            reverse=True,
+        )
+        for log_path in logs[:6]:
+            match = re.fullmatch(r"comfyui_(\d+)\.log", log_path.name)
+            if not match:
+                continue
+            try:
+                port = int(match.group(1))
+            except ValueError:
+                continue
+            ports.append(port)
+
+    # Keep insertion order while removing duplicates.
+    return list(dict.fromkeys(ports))
+
+
+def _resolve_comfy_base_url(preferred_url: str) -> str:
+    preferred = _normalize_base_url(preferred_url)
+    candidates: list[str] = [preferred]
+
+    if preferred in ("http://127.0.0.1:8188", "http://localhost:8188"):
+        candidates.extend(["http://127.0.0.1:8000", "http://localhost:8000"])
+        for port in _discover_comfy_local_ports():
+            candidates.extend([f"http://127.0.0.1:{port}", f"http://localhost:{port}"])
+
+    # Keep insertion order while removing duplicates.
+    unique_candidates = list(dict.fromkeys(candidates))
+    for base_url in unique_candidates:
+        if _probe_comfy_api(base_url):
+            if base_url != preferred:
+                print(f"info: ComfyUI reachable at {base_url} (requested {preferred})")
+            return base_url
+
+    tried = ", ".join(unique_candidates)
+    raise RuntimeError(
+        "ComfyUI API is not reachable. "
+        f"Tried: {tried}. "
+        "Start ComfyUI and/or pass --comfyui-url explicitly (for example: http://127.0.0.1:8000)."
+    )
 
 
 def _http_json(url: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -316,7 +383,9 @@ def _manifest_generate_cmd(args: argparse.Namespace) -> int:
         print("No manifest image entries matched filters.")
         return 0
 
-    base_url = _normalize_base_url(args.comfyui_url)
+    base_url = ""
+    if not args.dry_run:
+        base_url = _resolve_comfy_base_url(args.comfyui_url)
     generated = 0
     skipped = 0
 

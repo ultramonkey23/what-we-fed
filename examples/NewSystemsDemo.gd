@@ -12,7 +12,7 @@ var demo_results: Dictionary = {}
 
 func _ready() -> void:
 	# Initialize the combat integration system
-	combat_integration = preload("res://systems/CombatSystemIntegration.gd").new()
+	combat_integration = preload("res://examples/demo_encounter_stack/CombatSystemIntegration.gd").new()
 	add_child(combat_integration)
 	
 	# Wait for systems to be ready

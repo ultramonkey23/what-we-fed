@@ -45,13 +45,18 @@ var _accent_threshold: float = 0.5
 var _accent_cooldown: float = 0.0
 
 
+func _exit_tree() -> void:
+	_stop_and_release_player()
+	_release_analysis_bus()
+
+
 func start(song_map_script, start_time: float = 0.0, window_end_time: float = -1.0, silent: bool = false, options: Dictionary = {}) -> void:
 	_stop_and_release_player()
 	_analyzer = null
 
 	current_song_id = String(options.get("song_id", ""))
 	_song_path = String(song_map_script.SONG_PATH)
-	var stream: AudioStream = load(_song_path)
+	var stream: AudioStream = ResourceLoader.load(_song_path, "", ResourceLoader.CACHE_MODE_IGNORE) as AudioStream
 	if stream == null:
 		push_error("SongConductor: failed to load audio stream: " + _song_path)
 		return
@@ -343,5 +348,18 @@ func _stop_and_release_player() -> void:
 	_running = false
 	if _stream_player != null and is_instance_valid(_stream_player):
 		_stream_player.stop()
+		_stream_player.stream = null
 		_stream_player.queue_free()
 	_stream_player = null
+
+
+func _release_analysis_bus() -> void:
+	_analyzer = null
+	if _bus_index < 0 or _bus_index >= AudioServer.bus_count:
+		_bus_index = -1
+		_low_pass_idx = -1
+		return
+	if AudioServer.get_bus_name(_bus_index) == "MusicAnalysis":
+		AudioServer.remove_bus(_bus_index)
+	_bus_index = -1
+	_low_pass_idx = -1

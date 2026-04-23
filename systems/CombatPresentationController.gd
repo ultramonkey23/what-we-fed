@@ -970,6 +970,13 @@ func _build_enemy_marker(
 ) -> Dictionary:
 	var telegraph_profile: Dictionary = COMBAT_CONTENT.get_enemy_telegraph_profile(enemy)
 	var marker_half: float = marker_size * 0.5
+	var grade_id: String = String(enemy.get("grade", "mature"))
+	var grade_label_text: String = String(enemy.get("grade_label", grade_id.to_upper()))
+	var enemy_type: String = String(enemy.get("type", ""))
+	var tags_value: Variant = enemy.get("behaviour_tags", [])
+	var is_tagged_elite: bool = tags_value is Array and (tags_value as Array).has("elite")
+	var is_boss_marker: bool = marker_size >= 60.0 or enemy_type == "sovereign"
+	var is_elite_marker: bool = is_boss_marker or grade_id == "alpha" or is_tagged_elite
 	var marker_root := Node2D.new()
 	marker_root.name = "Enemy_%d" % enemy_id
 	marker_root.position = Vector2(lane_manager.get_enemy_x(), lane_manager.get_lane_y(lane))
@@ -980,6 +987,8 @@ func _build_enemy_marker(
 	frame.position = Vector2(-marker_half - 2.0, -marker_half - 2.0)
 	frame.color = Color(0.0, 0.0, 0.0, 0.50)
 	marker_root.add_child(frame)
+	if is_elite_marker:
+		frame.color = Color(0.18, 0.05, 0.03, 0.78)
 
 	var body := ColorRect.new()
 	body.name = "Body"
@@ -1029,6 +1038,12 @@ func _build_enemy_marker(
 				var sprite := Sprite2D.new()
 				sprite.texture = tex
 				sprite.name = "CreatureSilhouette"
+				
+				# Handle animation strips (assume square frames)
+				var h_frames: int = clampi(int(tex.get_width() / tex.get_height()), 1, 64)
+				sprite.hframes = h_frames
+				sprite.frame = 0
+				
 				var render: Dictionary = COMBAT_CONTENT.get_creature_combat_render(species_id)
 				var marker_modulate: Color = Color(render.get("marker_modulate", base_color.darkened(0.4)))
 				sprite.modulate = _tune_enemy_silhouette_color(marker_modulate, base_color)
@@ -1038,13 +1053,59 @@ func _build_enemy_marker(
 				marker_root.add_child(sprite)
 				marker_root.move_child(sprite, 3)
 
+	var readout_width: float = marker_size + (28.0 if is_boss_marker else 18.0)
+	var hp_bar_height: float = 7.0 if is_boss_marker else 5.0
+	var hp_track := ColorRect.new()
+	hp_track.name = "HpTrack"
+	hp_track.size = Vector2(readout_width, hp_bar_height)
+	hp_track.position = Vector2(-readout_width * 0.5, marker_half + 7.0)
+	hp_track.color = Color(0.03, 0.02, 0.02, 0.88)
+	marker_root.add_child(hp_track)
+
+	var hp_fill := ColorRect.new()
+	hp_fill.name = "HpFill"
+	hp_fill.size = hp_track.size
+	hp_fill.position = Vector2.ZERO
+	hp_fill.color = Color(0.84, 0.21, 0.16, 0.96) if is_elite_marker else Color(0.68, 0.16, 0.18, 0.92)
+	hp_track.add_child(hp_fill)
+
+	var hp_label := Label.new()
+	hp_label.name = "HpLabel"
+	hp_label.text = "HP %.0f/%.0f" % [float(enemy.get("hp", 0.0)), float(enemy.get("hp", 0.0))]
+	hp_label.position = Vector2(-readout_width * 0.5, marker_half + 12.0)
+	hp_label.size = Vector2(readout_width, 16.0)
+	hp_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hp_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_apply_text_role(hp_label, "hud_meta", HORIZONTAL_ALIGNMENT_CENTER)
+	hp_label.add_theme_font_size_override("font_size", 11 if is_boss_marker else 9)
+	hp_label.add_theme_constant_override("outline_size", 2)
+	marker_root.add_child(hp_label)
+
+	var threat_label := Label.new()
+	threat_label.name = "ThreatLabel"
+	threat_label.text = grade_label_text
+	threat_label.position = Vector2(-readout_width * 0.5, -marker_half - (23.0 if is_boss_marker else 19.0))
+	threat_label.size = Vector2(readout_width, 17.0)
+	threat_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	threat_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_apply_text_role(threat_label, "hud_metric_title", HORIZONTAL_ALIGNMENT_CENTER)
+	threat_label.add_theme_font_size_override("font_size", 13 if is_boss_marker else 10)
+	threat_label.add_theme_constant_override("outline_size", 2)
+	if is_elite_marker:
+		threat_label.modulate = Color(1.0, 0.64, 0.34, 1.0)
+	marker_root.add_child(threat_label)
+
 	return {
 		"root": marker_root,
 		"body": body,
 		"core": core,
 		"edge": edge,
 		"accent": accent,
-		"sigil": sigil
+		"sigil": sigil,
+		"hp_track": hp_track,
+		"hp_fill": hp_fill,
+		"hp_label": hp_label,
+		"threat_label": threat_label
 	}
 
 

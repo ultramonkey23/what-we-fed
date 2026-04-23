@@ -1,21 +1,21 @@
 # What We Fed - Stat System Map
 
 ## Player Stats
-- **Defined in:** autoloads/GameState.gd, systems/RunGrowth.gd, systems/RunStats.gd, systems/CombatMeter.gd
+- **Defined in:** systems/state/PlayerState.gd (orchestrated by GameState.gd), systems/growth/ (orchestrated by RunGrowth.gd), systems/CombatMeter.gd
 - **Stats:**
-  - HP (player_hp, player_max_hp)
-  - Damage (player_base_damage, attack_damage)
-  - Defense (player_defense)
+  - HP (PlayerState.hp, PlayerState.max_hp)
+  - Damage (PlayerState.base_damage, PlayerState.get_attack_damage)
+  - Defense (PlayerState.defense)
   - Stamina (CombatMeter.gd)
-  - Bond Level (roster, RunGrowth.gd)
-  - DNA (dna_by_species)
-  - Tendency (RunGrowth.gd)
-  - Mutations (RunGrowth.gd)
+  - Bond Level (CreatureState.roster, RunGrowth.gd)
+  - DNA (CreatureState.dna_by_species)
+  - Tendency (TendencyManager.gd)
+  - Mutations (RewardState.active_mutations)
 - **Modification:**
-  - Level-up (RunGrowth.gd)
-  - Mutations (RunGrowth.gd)
-  - Region effects (GameState.gd)
-  - Rewards (RunGrowth.gd, PerformanceRewardDirector.gd)
+  - Level-up (RunGrowth.gd / ProgressionManager.gd)
+  - Mutations (RunGrowth.gd / RewardState.gd)
+  - Region effects (GameState.gd / RunState.gd)
+  - Rewards (RunGrowth.gd, PerformanceRewardDirector.gd, RewardState.gd)
 
 ## Enemy Stats
 - **Defined in:** data/CombatContent.gd, region/encounter data

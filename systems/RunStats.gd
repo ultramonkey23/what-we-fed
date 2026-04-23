@@ -77,6 +77,7 @@ func _exit_tree() -> void:
 
 
 func reset() -> void:
+	kills = 0
 	damage_dealt = 0.0
 	perfect_attacks = 0
 	good_attacks = 0

@@ -28,6 +28,8 @@ const PALE_DAMAGE_MULT: float = 0.50        # PALE halves the enemy's next fired
 const EXPOSE_DAMAGE_MULT: float = 1.25      # +25% damage to the enemy while EXPOSE is active
 const EXPOSE_BASE_DURATION: float = 2.5     # EXPOSE expires after 2.5 seconds
 const GORGE_MARK_BONUS_CHARGE: float = 5.0  # Extra support charge when a GORGE-MARK enemy is defeated
+const ENEMY_DEFENSE_MAX_REDUCTION_RATIO: float = 0.35
+const ENEMY_DEFENSE_MIN_DAMAGE: float = 1.0
 
 # Per-enemy-type status flags. bond_reaper: EXPOSE windows are shorter (harder to exploit).
 # sovereign: REND can only be applied once (resilient apex predator).
@@ -262,7 +264,12 @@ func damage_enemy(lane: int, amount: float) -> void:
 	if float(enemy["hp"]) <= 0.0:
 		return
 
-	var actual_amount: float = amount * _get_status_damage_mult(lane)
+	var modified_amount: float = maxf(amount * _get_status_damage_mult(lane), 0.0)
+	if modified_amount <= 0.0:
+		return
+	var defense: float = maxf(float(enemy.get("defense", 0.0)), 0.0)
+	var defense_reduction: float = minf(defense, modified_amount * ENEMY_DEFENSE_MAX_REDUCTION_RATIO)
+	var actual_amount: float = maxf(modified_amount - defense_reduction, ENEMY_DEFENSE_MIN_DAMAGE)
 	enemy["hp"] = max(float(enemy["hp"]) - actual_amount, 0.0)
 	_enemies[lane] = enemy
 

@@ -13,6 +13,13 @@ func _ready() -> void:
 func _exit_tree() -> void:
 	if EventBus.play_sfx.is_connected(_on_play_sfx):
 		EventBus.play_sfx.disconnect(_on_play_sfx)
+	for child in get_children():
+		var player: AudioStreamPlayer = child as AudioStreamPlayer
+		if player == null:
+			continue
+		player.stop()
+		player.stream = null
+		player.queue_free()
 
 
 func _on_play_sfx(cue_id: String) -> void:
@@ -21,7 +28,7 @@ func _on_play_sfx(cue_id: String) -> void:
 		# No asset yet for this cue, or path invalid.
 		return
 
-	var stream: AudioStream = load(sfx_path) as AudioStream
+	var stream: AudioStream = ResourceLoader.load(sfx_path, "", ResourceLoader.CACHE_MODE_IGNORE) as AudioStream
 	if stream == null:
 		return
 

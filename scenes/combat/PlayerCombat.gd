@@ -38,7 +38,7 @@ const PLAYER_PARRY_PATH: String = "res://assets/characters/player/combat/player_
 const PLAYER_HURT_PATH: String = "res://assets/characters/player/combat/player_hurt.png"
 # Base display scale for the Sprite2D. Tune this so the character fits cleanly
 # in the lane area at your target resolution. At 0.18 a 512px image ≈ 92px tall.
-const PLAYER_SPRITE_SCALE_BASE: float = 0.128
+const PLAYER_SPRITE_SCALE_BASE: float = 0.22
 # How long each temporary image holds before returning to idle (seconds).
 const ATTACK_IMAGE_DURATION: float = 0.14
 const PARRY_IMAGE_DURATION: float = 0.22
@@ -56,7 +56,7 @@ const DODGE_WORLD_X_OFFSET: float = -18.0
 const HIT_WORLD_X_OFFSET: float = -26.0
 
 # Sprite-local pose offsets.
-const NEUTRAL_SPRITE_POSITION := Vector2(-42.0, -46.0)
+const NEUTRAL_SPRITE_POSITION := Vector2(-42.0, -82.0)
 const ATTACK_SPRITE_POSITION := Vector2(-12.0, -46.0)
 const PARRY_SPRITE_POSITION := Vector2(-20.0, -46.0)
 const DODGE_SPRITE_POSITION := Vector2(-48.0, -46.0)
@@ -868,10 +868,14 @@ func _setup_player_sprite() -> void:
 	_player_sprite = Sprite2D.new()
 	_player_sprite.name = "PlayerSprite"
 	_player_sprite.texture = _idle_tex
-	# Single images: 1 frame each
-	_player_sprite.hframes = 1
+	
+	# Determine hframes for idle strip (assuming square 512x512 frames)
+	if _idle_tex != null:
+		_player_sprite.hframes = clampi(int(_idle_tex.get_width() / _idle_tex.get_height()), 1, 64)
+	else:
+		_player_sprite.hframes = 1
+	
 	_player_sprite.vframes = 1
-	# flip_h = false keeps the character facing right (toward enemy side).
 	_player_sprite.flip_h = false
 	_player_sprite.position = NEUTRAL_SPRITE_POSITION
 	_player_sprite.scale = NEUTRAL_SPRITE_SCALE * PLAYER_SPRITE_SCALE_BASE
@@ -882,6 +886,10 @@ func _show_player_image(tex: Texture2D, duration: float) -> void:
 	if _player_sprite == null or tex == null:
 		return
 	_player_sprite.texture = tex
+	# Update hframes for the new strip
+	_player_sprite.hframes = clampi(int(tex.get_width() / tex.get_height()), 1, 64)
+	_player_sprite.frame = 0
+	
 	if _image_restore_tween != null:
 		_image_restore_tween.kill()
 	_image_restore_tween = create_tween()
@@ -889,6 +897,8 @@ func _show_player_image(tex: Texture2D, duration: float) -> void:
 	_image_restore_tween.tween_callback(func() -> void:
 		if _player_sprite != null:
 			_player_sprite.texture = _idle_tex
+			_player_sprite.hframes = clampi(int(_idle_tex.get_width() / _idle_tex.get_height()), 1, 64)
+			_player_sprite.frame = 0
 	)
 
 

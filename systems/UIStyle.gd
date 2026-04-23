@@ -108,6 +108,7 @@ static func apply_shell_style(
 		return
 
 	var palette: Dictionary = _shell_palette_for_role(role)
+	var final_texture_path: String = texture_path if not texture_path.is_empty() else String(palette.get("texture_path", ""))
 	var bg_color: Color = override_bg if override_bg.a > 0.0 else Color(palette.get("bg_color", Color(0.08, 0.08, 0.09, 0.84)))
 	var border_color: Color = override_border if override_border.a > 0.0 else Color(palette.get("border_color", Color(0.24, 0.22, 0.20, 0.88)))
 	var corner_radius: int = int(palette.get("corner_radius", 6))
@@ -117,7 +118,7 @@ static func apply_shell_style(
 
 	control.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
-	var texture: Texture2D = _load_texture(texture_path)
+	var texture: Texture2D = _load_texture(final_texture_path)
 	if texture != null:
 		var panel_tex := _stylebox_texture_from_source(
 			texture,
@@ -337,6 +338,7 @@ static func _shell_palette_for_role(role: String) -> Dictionary:
 	match role:
 		"mm_command":
 			return {
+				"texture_path": "res://assets/ui/combat/panels/panel_performance.png",
 				"bg_color": Color(0.04, 0.02, 0.05, 0.98),
 				"border_color": MM_BOND_TEAL,
 				"corner_radius": 2,
@@ -346,6 +348,7 @@ static func _shell_palette_for_role(role: String) -> Dictionary:
 			}
 		"mm_alert":
 			return {
+				"texture_path": "res://assets/ui/combat/panels/panel_alert.png",
 				"bg_color": Color(0.08, 0.04, 0.02, 0.98),
 				"border_color": MM_ALERT_GOLD,
 				"corner_radius": 2,
@@ -355,6 +358,7 @@ static func _shell_palette_for_role(role: String) -> Dictionary:
 			}
 		"mm_mutation":
 			return {
+				"texture_path": "res://assets/ui/combat/panels/panel_mutation.png",
 				"bg_color": Color(0.06, 0.02, 0.07, 0.98),
 				"border_color": MM_MUTATION_MAGENTA,
 				"corner_radius": 2,
@@ -364,6 +368,7 @@ static func _shell_palette_for_role(role: String) -> Dictionary:
 			}
 		"mm_apex":
 			return {
+				"texture_path": "res://assets/ui/combat/panels/panel_apex.png",
 				"bg_color": Color(0.10, 0.02, 0.02, 0.98),
 				"border_color": MM_BLOOD_EMBER,
 				"corner_radius": 0,
@@ -437,6 +442,7 @@ static func _shell_palette_for_role(role: String) -> Dictionary:
 			}
 		"live_reward":
 			return {
+				"texture_path": "res://assets/ui/combat/panels/panel_alert.png",
 				"bg_color": Color(0.08, 0.04, 0.05, 0.95),
 				"border_color": Color(0.74, 0.42, 0.22, 1.0),
 				"corner_radius": 9,

@@ -1,5 +1,6 @@
 extends Node
 
+# Demo-only: not used by CombatScene, CombatRunDirector, or autoloads. Entry: examples/NewSystemsDemo.gd.
 # Combat System Integration - Connects new systems with existing CombatScene
 # Provides a clean interface for using the new encounter generation and mutation tracking systems
 
@@ -23,12 +24,12 @@ func _ready() -> void:
 
 func _initialize_systems() -> void:
 	# Create and initialize the encounter generator
-	encounter_generator = preload("res://systems/EncounterGenerator.gd").new()
+	encounter_generator = preload("res://examples/demo_encounter_stack/EncounterGenerator.gd").new()
 	add_child(encounter_generator)
 	encounter_generator.encounter_generated.connect(_on_encounter_generated)
 	
 	# Create and initialize the mutation tracker
-	mutation_tracker = preload("res://systems/MutationTracker.gd").new()
+	mutation_tracker = preload("res://examples/demo_encounter_stack/MutationTracker.gd").new()
 	add_child(mutation_tracker)
 	mutation_tracker.mutation_activated.connect(_on_mutation_activated)
 	mutation_tracker.mutation_charge_consumed.connect(_on_mutation_charge_consumed)

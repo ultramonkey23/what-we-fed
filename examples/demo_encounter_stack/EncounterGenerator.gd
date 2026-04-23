@@ -1,5 +1,6 @@
 extends Node
 
+# Demo-only: lives under examples/demo_encounter_stack; not wired into CombatScene.
 # Dynamic Encounter Generator - Creates encounters using templates and pools
 # This system replaces hardcoded encounter data with procedural generation
 

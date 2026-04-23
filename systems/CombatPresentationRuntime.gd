@@ -136,22 +136,22 @@ func _is_enemy_id_active(enemy_id: int) -> bool:
 
 func _resolve_enemy_visual_target(enemy_id: int) -> CanvasItem:
 	var marker_data_v: Variant = _enemy_markers_by_id.get(enemy_id, null)
-	if not marker_data_v is Dictionary:
+	if marker_data_v == null or not marker_data_v is Dictionary:
 		return null
 	var marker_data: Dictionary = marker_data_v
 
 	var root_v: Variant = marker_data.get("root", null)
-	if root_v is Node2D and is_instance_valid(root_v):
+	if is_instance_valid(root_v) and root_v is Node2D:
 		var root: Node2D = root_v
 		var silhouette: Node = root.get_node_or_null("CreatureSilhouette")
-		if silhouette is CanvasItem and is_instance_valid(silhouette):
+		if is_instance_valid(silhouette) and silhouette is CanvasItem:
 			return silhouette as CanvasItem
 
 	var body_v: Variant = marker_data.get("body", null)
-	if body_v is CanvasItem and is_instance_valid(body_v):
+	if is_instance_valid(body_v) and body_v is CanvasItem:
 		return body_v as CanvasItem
 
-	if root_v is CanvasItem and is_instance_valid(root_v):
+	if is_instance_valid(root_v) and root_v is CanvasItem:
 		return root_v as CanvasItem
 	return null
 

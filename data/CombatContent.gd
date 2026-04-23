@@ -75,7 +75,7 @@ const CREATURES := {
 	   "support_portrait_path": "res://assets/creatures/ashclaw/forms/ashclaw_teen.png",
 	   "battlefield_sprite_path": "res://assets/creatures/ashclaw/forms/ashclaw_adult.png",
 	   "combat_render": {
-		   "scale": 0.058,
+		   "scale": 0.22,
 		   "world_offset": Vector2(-116.0, 82.0),
 		   "z_index": 6,
 		   "modulate": Color(0.92, 0.91, 0.88, 0.90),
@@ -120,7 +120,7 @@ const CREATURES := {
 		   "support_portrait_path": "res://assets/creatures/bond_remnant/forms/bond_remnant_adult.png",
 		   "battlefield_sprite_path": "res://assets/creatures/bond_remnant/forms/bond_remnant_adult.png",
 		   "combat_render": {
-			   "scale": 0.062,
+			   "scale": 0.22,
 			   "world_offset": Vector2(-124.0, 88.0),
 			   "z_index": 6,
 			   "modulate": Color(0.84, 0.88, 1.0, 0.85),
@@ -1045,7 +1045,7 @@ static func get_creature_combat_render(species_id: String) -> Dictionary:
 		return {}
 
 	var render: Dictionary = {
-		"scale": 0.052,
+		"scale": 0.18,
 		"world_offset": Vector2(-108.0, 74.0),
 		"z_index": 5,
 		"modulate": Color(0.90, 0.89, 0.86, 0.86)

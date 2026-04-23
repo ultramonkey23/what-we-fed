@@ -126,9 +126,14 @@ func notify_path_committed(_node_id: String) -> void:
 
 
 func notify_upgrade_committed(_selected_index: int) -> void:
+	_shell_phase = "review"
 	_awaiting_upgrade_choice = false
 	_awaiting_continue = true
 	_awaiting_path_choice = false
+	_choices.clear()
+	_apply_shell_titles()
+	_refresh_cards()
+	_refresh_card_layout()
 	_rebuild_management_sections()
 	_refresh_prep_body()
 	_refresh_hint()

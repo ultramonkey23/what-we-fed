@@ -89,6 +89,21 @@ const PRESETS: Array[Dictionary] = [
 			"support_charge": 100.0
 		},
 		"player_hp_ratio": 0.84
+	},
+	{
+		"id": "generated_boss",
+		"name": "Generated Boss (debug bridge)",
+		"summary": "Boss handoff loads EncounterGenerator output normalized for CombatScene (harness only).",
+		"start_mode": "boss",
+		"debug_generated_boss_encounter": true,
+		"default_support_species_id": "thornback",
+		"run_growth": {
+			"level": 4,
+			"exp": 20.0,
+			"tendency_levels": {"aggression": 1, "cadence": 1, "guard": 1, "bond": 1},
+			"tendency_points": {"aggression": 2.0, "cadence": 2.0, "guard": 2.0, "bond": 2.0},
+			"support_charge": 70.0
+		}
 	}
 ]
 
@@ -144,6 +159,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		KEY_3: _set_preset_index(2)
 		KEY_4: _set_preset_index(3)
 		KEY_5: _set_preset_index(4)
+		KEY_6: _set_preset_index(5)
 		KEY_LEFT: _cycle_region(-1)
 		KEY_RIGHT: _cycle_region(1)
 		KEY_UP: _cycle_support(-1)
@@ -185,6 +201,9 @@ func _launch_selected_preset() -> void:
 	request["region_id"] = String(region.get("id", "feeding_hollow"))
 	request["support_species_id"] = support_species_id
 	request["support_bond_level"] = 2 if not support_species_id.is_empty() else 0
+	var autoquit_seconds: float = _resolve_autoquit_seconds()
+	if autoquit_seconds > 0.0:
+		request["debug_autoquit_seconds"] = autoquit_seconds
 
 	GameState.set_active_region(region)
 	DevHarness.queue_request(request)
@@ -223,7 +242,7 @@ func _build_ui() -> void:
 	var preset_shell: ColorRect = ColorRect.new()
 	preset_shell.color = Color(0.11, 0.07, 0.07, 1.0)
 	preset_shell.position = Vector2(76.0, 126.0)
-	preset_shell.size = Vector2(450.0, 432.0)
+	preset_shell.size = Vector2(450.0, 500.0)
 	canvas.add_child(preset_shell)
 
 	var preset_title: Label = Label.new()
@@ -296,7 +315,7 @@ func _build_ui() -> void:
 	config_shell.add_child(_detail_label)
 
 	var hint: Label = Label.new()
-	hint.text = "1-5 preset  |  Left/Right region  |  Up/Down support  |  Enter launch  |  T / Esc title"
+	hint.text = "1-6 preset  |  Left/Right region  |  Up/Down support  |  Enter launch  |  T / Esc title"
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hint.size = Vector2(1280.0, 28.0)
 	hint.position = Vector2(0.0, 662.0)
@@ -360,11 +379,20 @@ func _should_autolaunch_from_env() -> bool:
 	return DisplayServer.get_name() == "headless" and not OS.get_environment("WHAT_WE_FED_DEBUG_PRESET").strip_edges().is_empty()
 
 
+func _resolve_autoquit_seconds() -> float:
+	var raw_value: String = OS.get_environment("WHAT_WE_FED_DEBUG_AUTOQUIT_SECONDS").strip_edges()
+	if raw_value.is_empty():
+		return 0.0
+	return maxf(raw_value.to_float(), 0.0)
+
+
 func _build_detail_text(preset: Dictionary, support_species_id: String) -> String:
 	var parts: Array[String] = []
 	var start_mode: String = String(preset.get("start_mode", "song"))
 	if start_mode == "boss":
 		parts.append("Boot: live boss handoff")
+		if bool(preset.get("debug_generated_boss_encounter", false)):
+			parts.append("Boss encounter: EncounterGenerator via GeneratedEncounterAdapter (debug)")
 		if bool(preset.get("trigger_boss_threshold", false)):
 			parts.append("Boss: 50 percent threshold forced")
 	else:

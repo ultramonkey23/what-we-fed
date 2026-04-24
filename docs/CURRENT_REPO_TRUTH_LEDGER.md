@@ -1,69 +1,54 @@
-# CURRENT REPO TRUTH LEDGER
+# CURRENT_REPO_TRUTH_LEDGER
 
-## Scope
-- Date: 2026-04-24
-- Task mode: validation-only inspection
-- Constraint followed: no gameplay/code changes made in inspected files
+## Evidence Source
+- Source: Gemini audit summary provided in current task context.
+- Validation method: static/file/code review summary only.
+- Explicit non-evidence: no Godot launch and no manual playtest confirmed by this seed.
 
-## Evidence Collected This Pass
-- `git -C what-we-fed status --short`
-- `git -C what-we-fed status --short -- autoloads/EventBus.gd scenes/combat/CombatScene.gd scenes/combat/LaneManager.gd scenes/combat/PlayerCombat.gd tools/godot.ps1`
-- `git -C what-we-fed diff --stat -- autoloads/EventBus.gd scenes/combat/CombatScene.gd scenes/combat/LaneManager.gd scenes/combat/PlayerCombat.gd tools/godot.ps1`
-- `git -C what-we-fed diff -- autoloads/EventBus.gd scenes/combat/CombatScene.gd scenes/combat/LaneManager.gd scenes/combat/PlayerCombat.gd tools/godot.ps1`
-- `cmd /c what-we-fed\validate_project.bat`
-- File existence/size and line-count checks for:
-  - `autoloads/EventBus.gd`
-  - `scenes/combat/CombatScene.gd`
-  - `scenes/combat/LaneManager.gd`
-  - `scenes/combat/PlayerCombat.gd`
-  - `tools/godot.ps1`
+## Verified Current Systems
+- Combat: functional 4-cardinal-lane rhythm combat system.
+- Input: `PlayerCombat.gd` has robust input buffering, recovery, and i-frame logic.
+- Rhythm: `SongConductor.gd` exists and drives beat timing.
+- State: `EventBus.gd` and `GameState.gd` exist as core systems.
 
-## Current Working Tree Truth
-- Targeted files inspected in this pass:
-  - `autoloads/EventBus.gd`
-  - `scenes/combat/CombatScene.gd`
-  - `scenes/combat/LaneManager.gd`
-  - `scenes/combat/PlayerCombat.gd`
-  - `tools/godot.ps1`
-- Current `HEAD` delta for all five targeted files: none (no local diff output).
-- Current modified/untracked files in repo are docs/meta files, not the five targeted gameplay/tooling files.
+## Files Confirmed Touched / Inspected
+- `scenes/combat/CombatScene.gd` (architecture risk focus)
+- `scenes/combat/PlayerCombat.gd` (input robustness focus)
+- `systems/SongConductor.gd` (rhythm timing system exists)
+- `autoloads/EventBus.gd` (core system exists)
+- `autoloads/GameState.gd` (core system exists)
 
-## Per-File Inspection Summary
-| File | What changed (from this pass evidence) | Affected systems | Risk level | Validation state |
-|---|---|---|---|---|
-| `autoloads/EventBus.gd` | No current working-tree diff vs `HEAD` | Global event routing/state signaling | High impact surface; unverified runtime behavior | Static-inspected only |
-| `scenes/combat/CombatScene.gd` | No current working-tree diff vs `HEAD` | Core combat flow, lane/timing readability, attack authority/HUD integration | High (large monolith; 5,774 lines) | Static-inspected only |
-| `scenes/combat/LaneManager.gd` | No current working-tree diff vs `HEAD` | Lane mapping/readability/fairness | Medium-High | Static-inspected only |
-| `scenes/combat/PlayerCombat.gd` | No current working-tree diff vs `HEAD` | Input buffer/recovery/i-frame behavior | High player-feel sensitivity | Static-inspected only |
-| `tools/godot.ps1` | No current working-tree diff vs `HEAD` | Local validation/tooling entry points | Medium (tooling reliability) | Static-inspected only |
+## Validated Behavior
+- Validation scope for this seeded ledger is static/file/code review only.
+- No runtime or manual gameplay behavior is validated in this seed.
 
-## Safe Validation Results (This Pass)
-- `validate_project.bat`: completed.
-- Import path required headless retry; validation then reported:
-  - `VALIDATE OK`
-  - `DATA VALIDATION OK`
-- Observed warnings:
-  - WASAPI device init failure in this environment
-  - fallback to dummy audio driver
-  - ObjectDB leak warning at exit
-- Runtime/manual combat playtest: not run in this pass.
+## Unverified Claims
+- Any claim requiring Godot runtime execution.
+- Any claim requiring manual lane readability/playability confirmation.
+- Any claim requiring end-to-end song/run/lair flow playthrough confirmation.
 
-## Confirmed / Unconfirmed
-- Confirmed:
-  - The five targeted files are currently unchanged in working tree relative to `HEAD`.
-  - Static project/data validation commands can complete in current environment.
-- Unconfirmed:
-  - Any gameplay behavior change claim tied to prior edits (no runtime/manual evidence captured here).
-  - Combat feel, lane fairness, timing honesty, or player-response quality under play.
+## Known Failures / Risks
+- Repo is functional but fragile (from audit summary).
+- Architecture risk: `CombatScene.gd` monolith around 6,728 lines.
 
-## Residual Risks
-- Prior claimed modifications to high-impact combat files are not visible as current uncommitted diffs, so historical change intent/effect cannot be proven by this pass alone.
-- `CombatScene.gd` remains large, increasing regression risk when touched.
-- Validation logs show environment-specific audio driver warnings; these are not gameplay proof.
+## Design vs Repo Mismatches
+- No mismatch asserted in this seed beyond documented architecture fragility risk.
 
-## Ledger Rule
-- Keep repo truth evidence-backed:
-  - direct `git` state/diff evidence, and/or
-  - reproducible validation command output, and/or
-  - explicit runtime/manual test steps with observed results.
-- Do not promote assumptions or design intent to validated behavior.
+## Current Implementation Status
+| Area | Status | Evidence |
+|---|---|---|
+| Combat lane model | Present | Audit: 4-cardinal-lane rhythm combat |
+| Player combat input core | Present | Audit: robust buffering/recovery/i-frame logic |
+| Combat scene architecture | Risk | Audit: monolith around 6,728 lines |
+| Rhythm conductor | Present | Audit: `SongConductor.gd` exists and drives beat timing |
+| Core state bus | Present | Audit: `EventBus.gd` exists |
+| Core game state | Present | Audit: `GameState.gd` exists |
+| Runtime validation | Unverified | No launch/manual playtest confirmed in seed |
+
+## Next Safest Repo Action
+- Run a bounded runtime verification pass (launch + smoke + manual lane/readability checks) before any combat refactor claims.
+
+## Ledger Update Rule
+- Add or update entries only with directly inspected evidence.
+- Label runtime claims as validated only when backed by executed checks/playtests.
+- Keep unverified claims explicitly separated until evidence is collected.

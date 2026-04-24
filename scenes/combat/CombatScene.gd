@@ -320,6 +320,24 @@ var _active_song_data: Dictionary = {}
 var _active_song_profile: Dictionary = SONG_COMBAT_PROFILE_CONTENT.get_profile("")
 var _boss_song_profile: Dictionary = SONG_COMBAT_PROFILE_CONTENT.get_profile("boss_1")
 var _last_applied_hunt_pressure_step: int = -1
+var _feedback_tween: Tween = null
+var _beat_feedback_tween: Tween = null
+var _feedback_active_priority: int = 0
+var _feedback_active_until_ms: int = 0
+var _feedback_last_low_ms: int = 0
+var _feedback_block_low_until_ms: int = 0
+var _beat_feedback_last_ms: int = 0
+var _critical_threat_pressure: float = 0.0
+var _readability_pulse_mult: float = 1.0
+var _critical_warning_cooldown_until_ms: int = 0
+
+const FEEDBACK_PRIORITY_LOW: int = 0
+const FEEDBACK_PRIORITY_MEDIUM: int = 1
+const FEEDBACK_PRIORITY_HIGH: int = 2
+const LOW_FEEDBACK_MIN_INTERVAL_MS: int = 260
+const BEAT_FEEDBACK_MIN_INTERVAL_MS: int = 260
+const URGENT_FEEDBACK_HOLD_MS: int = 320
+const CRITICAL_WARNING_COOLDOWN_MS: int = 900
 
 
 # ─── LIFECYCLE ───────────────────────────────────────────────────────────────
@@ -524,12 +542,74 @@ func _on_escalation_phase_changed(index: int, _phase_data: Dictionary) -> void:
 func _on_escalation_spawn_requested(lane: int, enemy_data: Dictionary) -> void:
 	if lane_manager != null and is_instance_valid(lane_manager):
 		lane_manager.set_enemy(lane, enemy_data)
-		var live_enemy: Dictionary = lane_manager.call("get_enemy", lane)
-		if not live_enemy.is_empty():
-			var enemy_id: int = int(live_enemy.get("id", -1))
-			if enemy_id >= 0:
-				_all_enemies_by_id[enemy_id] = live_enemy.duplicate(true)
-				_enemy_max_hp[enemy_id] = float(live_enemy.get("max_hp", live_enemy.get("hp", 1.0)))
+		var live_enemy: Dictionary = _resolve_spawned_live_enemy(lane, enemy_data)
+		if live_enemy.is_empty():
+			return
+		var enemy_id: int = int(live_enemy.get("id", -1))
+		if enemy_id < 0:
+			return
+		_all_enemies_by_id[enemy_id] = live_enemy.duplicate(true)
+		_enemy_max_hp[enemy_id] = float(live_enemy.get("max_hp", live_enemy.get("hp", 1.0)))
+		if not _enemy_phase_by_id.has(enemy_id):
+			_enemy_phase_by_id[enemy_id] = _current_phase_index
+		_ensure_enemy_marker_for_live_enemy(enemy_id, live_enemy)
+
+
+func _resolve_spawned_live_enemy(spawn_lane: int, enemy_seed: Dictionary) -> Dictionary:
+	if lane_manager == null or not is_instance_valid(lane_manager):
+		return {}
+
+	# Fast path: lane spawn landed directly in a striker lane.
+	var lane_enemy: Dictionary = lane_manager.call("get_enemy", spawn_lane)
+	if not lane_enemy.is_empty():
+		return lane_enemy.duplicate(true)
+
+	if not lane_manager.has_method("get_all_enemies"):
+		return {}
+	var all_live: Dictionary = Dictionary(lane_manager.call("get_all_enemies"))
+	if all_live.is_empty():
+		return {}
+
+	# Preferred path: reuse seeded id when present.
+	var seeded_id: int = int(enemy_seed.get("id", -1))
+	if seeded_id >= 0 and all_live.has(seeded_id):
+		return Dictionary(all_live.get(seeded_id, {})).duplicate(true)
+
+	# Fallback: choose newest unknown live enemy id.
+	var newest_id: int = -1
+	for key in all_live.keys():
+		var eid: int = int(key)
+		if _all_enemies_by_id.has(eid):
+			continue
+		if newest_id < 0 or eid > newest_id:
+			newest_id = eid
+	if newest_id >= 0:
+		return Dictionary(all_live.get(newest_id, {})).duplicate(true)
+
+	return {}
+
+
+func _ensure_enemy_marker_for_live_enemy(enemy_id: int, enemy_data: Dictionary) -> void:
+	if enemy_id < 0:
+		return
+	if _enemy_markers_by_id.has(enemy_id):
+		return
+	if _enemy_marker_container == null or not is_instance_valid(_enemy_marker_container):
+		return
+	if _presentation_controller == null:
+		return
+
+	var lane: int = int(enemy_data.get("lane", -1))
+	var marker_size: float = 64.0 if _is_boss_encounter else 42.0
+	var biome: Dictionary = _active_encounter.get("biome", {})
+	var base_color: Color = biome.get("enemy_inactive_color", Color(0.40, 0.20, 0.20, 0.5))
+	var marker_data: Dictionary = _build_enemy_marker(enemy_id, lane, enemy_data, marker_size, base_color)
+	var root = marker_data.get("root")
+	if not is_instance_valid(root):
+		return
+	_enemy_marker_container.add_child(root)
+	_enemy_markers_by_id[enemy_id] = marker_data
+	_refresh_enemy_marker_states()
 
 
 func _on_escalation_feedback_requested(text: String, color: Color, duration: float) -> void:
@@ -1252,7 +1332,7 @@ func _update_background_effects() -> void:
 	else:
 		focus_pos = get_viewport().get_mouse_position()
 	
-	_presentation_controller.update_background_parallax(_bg_sprite, focus_pos)
+	_presentation_controller.update_background_parallax(_bg_sprite, focus_pos, _readability_pulse_mult)
 	
 	# Only update tendency reaction every few frames to save performance
 	if Engine.get_process_frames() % 30 == 0 and _run_growth != null:
@@ -1303,9 +1383,10 @@ func _on_conductor_beat_pulse(beat_index: int, quality: String, intensity: float
 	_last_beat_index = beat_index
 	if GameState.has_method("set_last_beat_quality"):
 		GameState.call("set_last_beat_quality", quality)
-	EventBus.emit_signal("song_beat_pulse", beat_index, intensity)
+	var beat_intensity: float = intensity * _readability_pulse_mult
+	EventBus.emit_signal("song_beat_pulse", beat_index, beat_intensity)
 	if _presentation_runtime != null:
-		_presentation_runtime.on_beat_pulse(quality, 1.0)
+		_presentation_runtime.on_beat_pulse(quality, _readability_pulse_mult)
 
 
 func _should_hold_song_runtime_paused() -> bool:
@@ -1449,6 +1530,7 @@ func _update_lane_visual_states() -> void:
 	var active_color: Color = biome.get("ring_active_color", ring_palette.get("active", Color(1.0, 0.95, 0.55, 1.0)))
 	var inactive_color: Color = biome.get("ring_inactive_color", ring_palette.get("inactive", Color(0.7, 0.7, 0.8, 0.45)))
 	var time: float = Time.get_ticks_msec() / 1000.0
+	var critical_peak: float = 0.0
 
 	for lane in range(lane_manager.THREAT_COUNT if lane_manager else 4):
 		var intercept_dist: float = _lane_intercept_distance(lane)
@@ -1499,12 +1581,21 @@ func _update_lane_visual_states() -> void:
 				focus_alpha = lerp(focus_alpha, 1.0, 0.70 + critical_t * 0.30)
 				focus_scale = lerp(focus_scale, 1.18, 0.70 + critical_t * 0.30)
 				focus_color = accent_color.lightened(0.12)
+				critical_peak = maxf(critical_peak, critical_t)
 		else:
 			strip.scale.y = 1.0
 
 		strip.modulate = Color(state_color.r, state_color.g, state_color.b, state_alpha)
 		focus.modulate = Color(focus_color.r, focus_color.g, focus_color.b, focus_alpha)
 		focus.scale = Vector2(focus_scale, focus_scale)
+
+	_critical_threat_pressure = lerpf(_critical_threat_pressure, critical_peak, 0.35)
+	var target_pulse_mult: float = lerpf(1.0, 0.58, clampf(_critical_threat_pressure, 0.0, 1.0))
+	_readability_pulse_mult = lerpf(_readability_pulse_mult, target_pulse_mult, 0.25)
+	var now_ms: int = Time.get_ticks_msec()
+	if _critical_threat_pressure >= 0.86 and now_ms >= _critical_warning_cooldown_until_ms:
+		_show_feedback("THREAT CLOSE", Color(1.0, 0.56, 0.38, 1.0), 0.20)
+		_critical_warning_cooldown_until_ms = now_ms + CRITICAL_WARNING_COOLDOWN_MS
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -5061,6 +5152,26 @@ func _show_title_card(title_text: String, subtitle_text: String) -> void:
 
 
 func _show_feedback(text: String, color: Color, lifetime: float = COMBAT_FEEL_CONTENT.COMBAT_FEEDBACK_MIN_LIFETIME) -> void:
+	if _feedback_label == null:
+		return
+	var now_ms: int = Time.get_ticks_msec()
+	var priority: int = _feedback_priority_for_text(text)
+	if priority == FEEDBACK_PRIORITY_LOW:
+		if now_ms < _feedback_block_low_until_ms:
+			return
+		if now_ms - _feedback_last_low_ms < LOW_FEEDBACK_MIN_INTERVAL_MS:
+			return
+		_feedback_last_low_ms = now_ms
+	if priority < _feedback_active_priority and now_ms < _feedback_active_until_ms:
+		return
+	if _feedback_tween != null and is_instance_valid(_feedback_tween):
+		_feedback_tween.kill()
+
+	if priority >= FEEDBACK_PRIORITY_HIGH:
+		_feedback_block_low_until_ms = now_ms + URGENT_FEEDBACK_HOLD_MS
+	_feedback_active_priority = priority
+	_feedback_active_until_ms = now_ms + URGENT_FEEDBACK_HOLD_MS
+
 	var punch: float = COMBAT_FEEL_CONTENT.HUD_COMBAT_FEEDBACK_PUNCH_SCALE
 	_feedback_label.text = text
 	_feedback_label.modulate = color
@@ -5071,15 +5182,15 @@ func _show_feedback(text: String, color: Color, lifetime: float = COMBAT_FEEL_CO
 		_feedback_backing.scale = Vector2(punch, punch)
 	_feedback_label.scale = Vector2(punch, punch)
 
-	var tween := create_tween()
-	tween.tween_property(_feedback_label, "scale", Vector2.ONE, 0.10).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
+	_feedback_tween = create_tween()
+	_feedback_tween.tween_property(_feedback_label, "scale", Vector2.ONE, 0.10).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
 	if _feedback_backing != null:
-		tween.parallel().tween_property(_feedback_backing, "scale", Vector2.ONE, 0.10).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
-	tween.tween_interval(max(lifetime, COMBAT_FEEL_CONTENT.COMBAT_FEEDBACK_MIN_LIFETIME))
-	tween.tween_property(_feedback_label, "modulate:a", 0.0, COMBAT_FEEL_CONTENT.COMBAT_FEEDBACK_FADE_TIME)
+		_feedback_tween.parallel().tween_property(_feedback_backing, "scale", Vector2.ONE, 0.10).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
+	_feedback_tween.tween_interval(max(lifetime, COMBAT_FEEL_CONTENT.COMBAT_FEEDBACK_MIN_LIFETIME))
+	_feedback_tween.tween_property(_feedback_label, "modulate:a", 0.0, COMBAT_FEEL_CONTENT.COMBAT_FEEDBACK_FADE_TIME)
 	if _feedback_backing != null:
-		tween.parallel().tween_property(_feedback_backing, "modulate:a", 0.0, COMBAT_FEEL_CONTENT.COMBAT_FEEDBACK_FADE_TIME)
-	tween.tween_callback(func() -> void:
+		_feedback_tween.parallel().tween_property(_feedback_backing, "modulate:a", 0.0, COMBAT_FEEL_CONTENT.COMBAT_FEEDBACK_FADE_TIME)
+	_feedback_tween.tween_callback(func() -> void:
 		_feedback_label.visible = false
 		_feedback_label.modulate.a = 1.0
 		_feedback_label.scale = Vector2.ONE
@@ -5103,16 +5214,35 @@ func _show_beat_feedback(text: String, color: Color) -> void:
 	# the timing rings. Fades out quickly so it does not crowd the main feedback.
 	if _beat_feedback_label == null:
 		return
+	var now_ms: int = Time.get_ticks_msec()
+	if _critical_threat_pressure > 0.72 and now_ms - _beat_feedback_last_ms < BEAT_FEEDBACK_MIN_INTERVAL_MS:
+		return
+	_beat_feedback_last_ms = now_ms
+	if _beat_feedback_tween != null and is_instance_valid(_beat_feedback_tween):
+		_beat_feedback_tween.kill()
 	_beat_feedback_label.text = text
 	_beat_feedback_label.modulate = Color(color.r, color.g, color.b, 1.0)
 	_beat_feedback_label.visible = true
-	var tween := create_tween()
-	tween.tween_interval(COMBAT_FEEL_CONTENT.BEAT_FEEDBACK_HOLD_TIME)
-	tween.tween_property(_beat_feedback_label, "modulate:a", 0.0, COMBAT_FEEL_CONTENT.BEAT_FEEDBACK_FADE_TIME)
-	tween.tween_callback(func() -> void:
+	_beat_feedback_tween = create_tween()
+	_beat_feedback_tween.tween_interval(COMBAT_FEEL_CONTENT.BEAT_FEEDBACK_HOLD_TIME)
+	_beat_feedback_tween.tween_property(_beat_feedback_label, "modulate:a", 0.0, COMBAT_FEEL_CONTENT.BEAT_FEEDBACK_FADE_TIME)
+	_beat_feedback_tween.tween_callback(func() -> void:
 		_beat_feedback_label.visible = false
 		_beat_feedback_label.modulate.a = 1.0
 	)
+
+
+func _feedback_priority_for_text(text: String) -> int:
+	var token: String = text.to_upper().strip_edges()
+	if token.find("NO STAMINA") >= 0 or token.find("NO CHARGE") >= 0 or token.find("RECOVERING") >= 0 or token.find("WRONG LANE") >= 0 or token.find("DENIED") >= 0:
+		return FEEDBACK_PRIORITY_HIGH
+	if token.find("STRUCK") >= 0 or token.find("EXPOSED") >= 0 or token.find("PARRY") >= 0 or token.find("DODGE") >= 0 or token.find("THREAT CLOSE") >= 0:
+		return FEEDBACK_PRIORITY_HIGH
+	if token.find("TIMED") >= 0 or token.find("HIT") >= 0 or token.find("DEFEATED") >= 0 or token.find("BROKEN") >= 0:
+		return FEEDBACK_PRIORITY_MEDIUM
+	if token.find("QUEUE") >= 0:
+		return FEEDBACK_PRIORITY_LOW
+	return FEEDBACK_PRIORITY_LOW
 
 
 func _flash_meter_shell(color: Color, duration: float) -> void:
@@ -5603,6 +5733,9 @@ func _refresh_enemy_marker_health(enemy_id: int) -> void:
 
 
 func _on_proc_feedback_requested(text: String, color: Color) -> void:
+	if text.strip_edges().to_upper() == "EMPTY PARRY":
+		_show_feedback("WRONG LANE", color, 0.28)
+		return
 	_show_feedback(text, color, 0.40)
 
 
@@ -5966,12 +6099,24 @@ func _on_combat_input_resolved(
 		return
 	if accepted:
 		return
+	_show_feedback(_compact_rejection_feedback(action, reason, state), Color(1.0, 0.56, 0.50, 1.0), 0.24)
+
+
+func _compact_rejection_feedback(action: String, reason: String, state: String) -> String:
 	match reason:
-		"no_stamina", "no_charge":
-			return
-		_:
-			var denied_text: String = "%s %s" % [action.to_upper(), reason.replace("_", " ").to_upper()]
-			_show_feedback(denied_text, Color(1.0, 0.56, 0.50, 1.0), 0.20)
+		"no_stamina":
+			return "NO STAMINA"
+		"no_charge":
+			return "NO CHARGE"
+		"locked":
+			return "RECOVERING"
+		"wrong_lane":
+			return "WRONG LANE"
+		"combat_disabled", "missing_runtime":
+			return "UNAVAILABLE"
+	if state != "idle":
+		return "RECOVERING"
+	return "%s DENIED" % action.to_upper()
 
 
 func _on_combo_broken(_lost: int) -> void:

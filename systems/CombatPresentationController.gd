@@ -368,7 +368,7 @@ func _create_particles(data: Dictionary, vp: Vector2) -> CPUParticles2D:
 	return p
 
 
-func update_background_parallax(bg_sprite: Control, focus_pos: Vector2) -> void:
+func update_background_parallax(bg_sprite: Control, focus_pos: Vector2, pulse_scale: float = 1.0) -> void:
 	if bg_sprite == null or not is_instance_valid(bg_sprite) or _active_bg_env.is_empty():
 		return
 	
@@ -381,6 +381,7 @@ func update_background_parallax(bg_sprite: Control, focus_pos: Vector2) -> void:
 	if GameState.has_method("is_beat_active") and GameState.call("is_beat_active"):
 		# We'll use a simple sine wave pulse based on time if we don't have a direct phase
 		beat_pulse = abs(sin(Time.get_ticks_msec() * 0.008)) * 0.04
+	beat_pulse *= clampf(pulse_scale, 0.45, 1.0)
 	
 	# PREMIUM: Kinetic Haze Drift Reaction
 	for child in bg_sprite.get_children():
@@ -1079,12 +1080,17 @@ func refresh_enemy_marker_states(
 
 	for enemy_id in enemy_markers_by_id.keys():
 		var marker_data: Dictionary = enemy_markers_by_id[enemy_id]
+		var marker_root = marker_data.get("root")
+		if is_instance_valid(marker_root):
+			marker_root.visible = true
 		var body_node = marker_data.get("body")
 		if not is_instance_valid(body_node):
 			continue
 		var marker_body: ColorRect = body_node
 		var enemy_phase: int = int(enemy_phase_by_id.get(enemy_id, -1))
-		if enemy_phase == current_phase_index:
+		# Dynamic/song-escalated enemies may not have authored phase mapping (-1).
+		# Treat them as active so enemy presence remains readable.
+		if enemy_phase == current_phase_index or enemy_phase < 0:
 			marker_body.color = active_color
 		else:
 			marker_body.color = inactive_color
@@ -1372,7 +1378,9 @@ func update_enemy_marker_threat_states(
 			marker_root.position = lane_manager.get_enemy_pos(enemy_id)
 		
 		var enemy: Dictionary = all_enemies_by_id.get(enemy_id, {})
-		var lane: int = int(enemy.get("lane", -1))
+		var lane: int = _resolve_live_lane_for_enemy(lane_manager, enemy_id)
+		if lane < 0:
+			lane = int(enemy.get("lane", -1))
 		
 		# For markers in orbit (no lane), we just show them as idle.
 		# Threat visuals (pressure/imminent) only apply if they are in a lane and attacking.
@@ -1406,6 +1414,22 @@ func update_enemy_marker_threat_states(
 		accent.color = Color(marker_color.r, marker_color.g, marker_color.b, 0.18 + pressure * 0.30 + imminent * 0.14)
 		sigil.color = Color(accent_color.r, accent_color.g, accent_color.b, 0.22 + pressure * 0.34 + imminent * 0.18)
 		core.color = Color(accent_color.r, accent_color.g, accent_color.b, 0.08 + pressure * 0.08 + imminent * 0.06)
+
+
+func _resolve_live_lane_for_enemy(lane_manager: Node, enemy_id: int) -> int:
+	if lane_manager == null or not lane_manager.has_method("get_enemy"):
+		return -1
+	var lane_count: int = int(lane_manager.get("THREAT_COUNT")) if "THREAT_COUNT" in lane_manager else 4
+	for lane in range(lane_count):
+		var enemy_v: Variant = lane_manager.call("get_enemy", lane)
+		if not (enemy_v is Dictionary):
+			continue
+		var enemy: Dictionary = enemy_v
+		if enemy.is_empty():
+			continue
+		if int(enemy.get("id", -1)) == enemy_id:
+			return lane
+	return -1
 
 
 func create_reward_overlay(ui_layer: CanvasLayer) -> Dictionary:

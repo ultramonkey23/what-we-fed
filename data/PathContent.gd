@@ -101,12 +101,38 @@ const NODE_BOSS: Dictionary = {
 	"reward_context": {}
 }
 
+const NODE_WHISPER: Dictionary = {
+	"id": "whisper",
+	"display_name": "Whisper",
+	"tag": "VOICE",
+	"summary": "A moment of stillness. The world speaks directly to the Codex.",
+	"entry_cost": {},
+	"risk_modifier": {},
+	"potential_reward_bias": "NARRATIVE: fate resonance",
+	"encounter_options": {"is_event": true, "event_type": "narrative"},
+	"reward_context": {"is_event": true}
+}
+
+const NODE_EXCHANGE: Dictionary = {
+	"id": "exchange",
+	"display_name": "Exchange",
+	"tag": "TRADE",
+	"summary": "A Remnant Merchant offers rare grafts for your stored DNA.",
+	"entry_cost": {},
+	"risk_modifier": {},
+	"potential_reward_bias": "TRADE: graft/resource swap",
+	"encounter_options": {"is_event": true, "event_type": "trade"},
+	"reward_context": {"is_event": true}
+}
+
 const NODES_BY_ID: Dictionary = {
 	"prey": NODE_PREY,
 	"elite_hunt": NODE_ELITE_HUNT,
 	"bond_rite": NODE_BOND_RITE,
 	"predation_pool": NODE_PREDATION_POOL,
-	"boss": NODE_BOSS
+	"boss": NODE_BOSS,
+	"whisper": NODE_WHISPER,
+	"exchange": NODE_EXCHANGE
 }
 
 const DEFAULT_NODE_ID: String = "prey"

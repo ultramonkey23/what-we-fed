@@ -45,6 +45,16 @@ const ATTACK_IMAGE_DURATION: float = 0.14
 const PARRY_IMAGE_DURATION: float = 0.22
 const HURT_IMAGE_DURATION: float = 0.30
 
+# Cardinal focus rules.
+# The player stays centered; direction input chooses the incoming lane focus that
+# the next verb resolves against. current_lane remains the transient action lane
+# for legacy event and motion compatibility.
+const LANE_NORTH: int = 0
+const LANE_SOUTH: int = 1
+const LANE_EAST: int = 2
+const LANE_WEST: int = 3
+const DEFAULT_FOCUS_LANE: int = LANE_EAST
+
 # Neutral stance rules.
 # NEUTRAL_LANE is a core design rule: the player always returns here after every action.
 # All action tweens return to this lane's Y position via _play_world_motion.
@@ -98,6 +108,7 @@ var _parry_tex: Texture2D = null
 var _hurt_tex: Texture2D = null
 var _image_restore_tween: Tween = null
 var _input_buffer: Dictionary = {}
+var active_focus_lane: int = DEFAULT_FOCUS_LANE
 
 
 func _ready() -> void:
@@ -148,6 +159,12 @@ func _unhandled_input(event: InputEvent) -> void:
 	if lane_manager == null or combat_meter == null:
 		return
 
+	var focus_lane: int = _get_focus_lane_from_event(event)
+	if focus_lane >= 0:
+		_set_active_focus_lane(focus_lane)
+		get_viewport().set_input_as_handled()
+		return
+
 	var target_dir: int = _get_target_direction()
 
 	if event.is_action_pressed("action_attack"):
@@ -162,13 +179,65 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _get_target_direction() -> int:
-	# Priority: N/S then E/W. Default to E (2) if nothing pressed.
-	# Mapping from LaneManager: 0=N, 1=S, 2=E, 3=W
-	if Input.is_action_pressed("mod_up"): return 0
-	if Input.is_action_pressed("mod_down"): return 1
-	if Input.is_action_pressed("mod_left"): return 3
-	if Input.is_action_pressed("mod_right"): return 2
-	return 2 # Default to East when no directional input held
+	var held_focus: int = _get_held_focus_lane()
+	if held_focus >= 0:
+		_set_active_focus_lane(held_focus, false)
+	return active_focus_lane
+
+
+func get_active_focus_lane() -> int:
+	return active_focus_lane
+
+
+func debug_force_focus_and_action(lane: int, action_type: String) -> bool:
+	if not OS.is_debug_build():
+		return false
+	if lane_manager == null or combat_meter == null:
+		return false
+	_set_active_focus_lane(lane)
+	_handle_directional_action(active_focus_lane, action_type)
+	return true
+
+
+func _set_active_focus_lane(lane: int, show_ring_feedback: bool = true) -> void:
+	lane = clampi(lane, 0, lane_manager.THREAT_COUNT - 1 if lane_manager != null else 3)
+	if active_focus_lane == lane:
+		return
+	active_focus_lane = lane
+	if show_ring_feedback:
+		EventBus.emit_signal("timing_ring_pressed", active_focus_lane)
+
+
+func _get_focus_lane_from_event(event: InputEvent) -> int:
+	if _event_action_pressed(event, "lane_focus_north") or _event_action_pressed(event, "mod_up"):
+		return LANE_NORTH
+	if _event_action_pressed(event, "lane_focus_south") or _event_action_pressed(event, "mod_down"):
+		return LANE_SOUTH
+	if _event_action_pressed(event, "lane_focus_west") or _event_action_pressed(event, "mod_left"):
+		return LANE_WEST
+	if _event_action_pressed(event, "lane_focus_east") or _event_action_pressed(event, "mod_right"):
+		return LANE_EAST
+	return -1
+
+
+func _get_held_focus_lane() -> int:
+	if _is_action_pressed("lane_focus_north") or _is_action_pressed("mod_up"):
+		return LANE_NORTH
+	if _is_action_pressed("lane_focus_south") or _is_action_pressed("mod_down"):
+		return LANE_SOUTH
+	if _is_action_pressed("lane_focus_west") or _is_action_pressed("mod_left"):
+		return LANE_WEST
+	if _is_action_pressed("lane_focus_east") or _is_action_pressed("mod_right"):
+		return LANE_EAST
+	return -1
+
+
+func _event_action_pressed(event: InputEvent, action_name: StringName) -> bool:
+	return InputMap.has_action(action_name) and event.is_action_pressed(action_name)
+
+
+func _is_action_pressed(action_name: StringName) -> bool:
+	return InputMap.has_action(action_name) and Input.is_action_pressed(action_name)
 
 
 func _handle_directional_action(target_dir: int, action_type: String) -> void:
@@ -207,6 +276,7 @@ func setup(new_lane_manager: Node, new_combat_meter: Node) -> void:
 	combat_meter = new_combat_meter
 	combat_enabled = true
 	current_lane = NEUTRAL_LANE
+	active_focus_lane = DEFAULT_FOCUS_LANE
 
 	if not EventBus.projectile_fired.is_connected(_on_projectile_fired):
 		EventBus.projectile_fired.connect(_on_projectile_fired)

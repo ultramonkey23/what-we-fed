@@ -627,6 +627,10 @@ func spend_dna(species_id: String, amount: float) -> void:
 	creatures.spend_dna(species_id, amount)
 
 
+func spend_dna_any(amount: float) -> void:
+	creatures.spend_dna_any(amount)
+
+
 func has_dna_for(species_id: String, threshold: float) -> bool:
 	if threshold <= 0.0: return true
 	return get_dna(species_id) >= threshold

@@ -104,6 +104,23 @@ const PRESETS: Array[Dictionary] = [
 			"tendency_points": {"aggression": 2.0, "cadence": 2.0, "guard": 2.0, "bond": 2.0},
 			"support_charge": 70.0
 		}
+	},
+	{
+		"id": "control_focus",
+		"name": "Control Focus Sequence",
+		"summary": "Harness-only sequence that exercises N/E/S/W focus with attack, parry, and dodge timing.",
+		"start_mode": "song",
+		"song_phase_index": 0,
+		"default_support_species_id": "veilskin",
+		"debug_control_sequence": true,
+		"debug_autoquit_seconds": 7.5,
+		"run_growth": {
+			"level": 3,
+			"exp": 16.0,
+			"tendency_levels": {"aggression": 1, "cadence": 1, "guard": 1, "bond": 1},
+			"tendency_points": {"aggression": 1.6, "cadence": 1.6, "guard": 1.6, "bond": 1.6},
+			"support_charge": 100.0
+		}
 	}
 ]
 
@@ -160,6 +177,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		KEY_4: _set_preset_index(3)
 		KEY_5: _set_preset_index(4)
 		KEY_6: _set_preset_index(5)
+		KEY_7: _set_preset_index(6)
 		KEY_LEFT: _cycle_region(-1)
 		KEY_RIGHT: _cycle_region(1)
 		KEY_UP: _cycle_support(-1)
@@ -315,7 +333,7 @@ func _build_ui() -> void:
 	config_shell.add_child(_detail_label)
 
 	var hint: Label = Label.new()
-	hint.text = "1-6 preset  |  Left/Right region  |  Up/Down support  |  Enter launch  |  T / Esc title"
+	hint.text = "1-7 preset  |  Left/Right region  |  Up/Down support  |  Enter launch  |  T / Esc title"
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hint.size = Vector2(1280.0, 28.0)
 	hint.position = Vector2(0.0, 662.0)
@@ -397,6 +415,8 @@ func _build_detail_text(preset: Dictionary, support_species_id: String) -> Strin
 			parts.append("Boss: 50 percent threshold forced")
 	else:
 		parts.append("Song phase: %d" % int(preset.get("song_phase_index", 0)))
+		if bool(preset.get("debug_control_sequence", false)):
+			parts.append("Harness: auto N/E/S/W focus plus attack/parry/dodge sequence")
 
 	if not support_species_id.is_empty():
 		parts.append("Support: %s bonded at level 2" % String(COMBAT_CONTENT.get_creature(support_species_id).get("display_name", support_species_id)))

@@ -7,9 +7,10 @@ const RUN_PACING_CONTENT = preload("res://data/RunPacingContent.gd")
 const BOND_NODE_IDS: Array[String] = ["bond_rite"]
 
 const BRANCH_TEMPLATE_SETS: Array[Array] = [
-	["prey", "elite_hunt", "bond_rite"],
-	["prey", "elite_hunt", "predation_pool"],
-	["prey", "bond_rite", "predation_pool"]
+	["prey", "elite_hunt", "whisper"],
+	["prey", "bond_rite", "exchange"],
+	["prey", "elite_hunt", "bond_rite", "whisper"],
+	["prey", "bond_rite", "predation_pool", "exchange"]
 ]
 
 

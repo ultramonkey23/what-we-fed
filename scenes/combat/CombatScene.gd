@@ -58,6 +58,8 @@ const COMBAT_PERFORMANCE_HUD_SCENE: PackedScene = preload("res://scenes/ui/Power
 const COMBAT_HUD_ROOT_SCENE: PackedScene = preload("res://scenes/ui/CombatHudRoot.tscn")
 const RUN_SPINE_SCENE: PackedScene = preload("res://scenes/ui/RunSpineScene.tscn")
 const GROWTH_CHOICE_SCENE: PackedScene = preload("res://scenes/ui/GrowthChoiceIntersection.tscn")
+const EVENT_SCENE: PackedScene = preload("res://scenes/ui/EventScene.tscn")
+const EVENT_CONTENT = preload("res://data/EventContent.gd")
 const PREDATION_POOL = preload("res://systems/PredationPool.gd")
 const ENEMY_LOW_HP_THRESHOLD: float = 0.25
 const SUPPORT_MASTERY_CONTEXT_TIMEOUT: float = 1.75
@@ -204,6 +206,7 @@ var _pending_path_choice_level_index: int = -1
 var _active_path_context: Dictionary = {}
 
 var _run_spine_surface: Node = null
+var _event_surface: Node = null
 var _growth_choice_surface: Node = null
 var _growth_choice_context: Dictionary = {}
 
@@ -1106,9 +1109,7 @@ func _resolve_song_empty_lane_near_player() -> int:
 	if lane_manager == null:
 		return 2 # East fallback
 		
-	var player_lane: int = 2
-	if player_combat != null:
-		player_lane = player_combat.current_lane
+	var player_lane: int = _get_player_focus_lane()
 	
 	# Priority 1: Current lane if empty
 	if lane_manager.call("is_lane_empty", player_lane):
@@ -1131,6 +1132,14 @@ func _resolve_song_empty_lane_near_player() -> int:
 			return i
 			
 	return player_lane # Fallback to player lane if everything is full (will be handled by queue/stall logic)
+
+
+func _get_player_focus_lane() -> int:
+	if player_combat == null:
+		return 2
+	if player_combat.has_method("get_active_focus_lane"):
+		return int(player_combat.call("get_active_focus_lane"))
+	return int(player_combat.get("current_lane"))
 
 
 func _song_reserve_count() -> int:
@@ -1428,7 +1437,7 @@ func _update_lane_visual_states() -> void:
 		var focus_scale: float = 1.0
 		var focus_color: Color = inactive_color
 
-		if lane == int(player_combat.get("current_lane")):
+		if lane == _get_player_focus_lane():
 			state_alpha += 0.02
 			focus_alpha = COMBAT_FEEL_CONTENT.FOCAL_MARKER_ACTIVE_ALPHA * 0.45
 
@@ -3278,6 +3287,18 @@ func _advance_to_next_regular_level() -> void:
 	if _song_level_transitioning:
 		return
 	_song_level_transitioning = true
+	
+	if _run_director != null:
+		_prepare_path_context_for_level(_run_director.regular_level_index)
+		var encounter_options: Dictionary = Dictionary(_active_path_context.get("encounter_options", {}))
+		if bool(encounter_options.get("is_event", false)):
+			_song_level_transitioning = false # Reset so we can transition after event
+			_create_event_surface()
+			var event_type = String(encounter_options.get("event_type", "narrative"))
+			var event_id = EVENT_CONTENT.get_random_event_id_for_type(event_type)
+			_event_surface.call("present_event", event_id)
+			return
+
 	if _run_director != null:
 		_run_director.complete_level()
 	_start_regular_level(_run_director.regular_level_index, false)
@@ -3437,6 +3458,73 @@ func _create_run_spine_surface() -> void:
 		_run_spine_surface.connect("path_node_selected", Callable(self, "_on_run_spine_path_node_selected"))
 	if _run_spine_surface.has_signal("management_action_requested"):
 		_run_spine_surface.connect("management_action_requested", Callable(self, "_on_run_spine_management_action_requested"))
+
+
+func _create_event_surface() -> void:
+	if _event_surface != null and is_instance_valid(_event_surface):
+		return
+	_event_surface = EVENT_SCENE.instantiate()
+	add_child(_event_surface)
+	if _event_surface.has_signal("event_completed"):
+		_event_surface.connect("event_completed", Callable(self, "_on_event_completed"))
+
+
+func _on_event_completed(choice: Dictionary) -> void:
+	if choice.is_empty():
+		# User just closed or no choice made, skip and move on
+		_complete_event_flow()
+		return
+	
+	# Apply cost
+	var cost: Dictionary = Dictionary(choice.get("cost", {}))
+	if not cost.is_empty():
+		var type = String(cost.get("type", ""))
+		var val = float(cost.get("value", 0))
+		if type == "dna" and GameState.has_method("spend_dna"):
+			GameState.call("spend_dna", String(cost.get("species", "")), val)
+		elif type == "dna_any" and GameState.has_method("spend_dna_any"):
+			GameState.call("spend_dna_any", val)
+	
+	# Apply effects
+	var effect: Dictionary = Dictionary(choice.get("effect", {}))
+	_apply_event_effect(effect)
+	
+	_show_feedback("EVENT RESOLVED  •  %s" % String(choice.get("label", "Outcome")).to_upper(), Color(0.72, 0.90, 0.66, 1.0), 0.55)
+	_complete_event_flow()
+
+
+func _apply_event_effect(effect: Dictionary) -> void:
+	var type = String(effect.get("type", ""))
+	match type:
+		"fate_shift":
+			var fate_id = String(effect.get("fate_id", ""))
+			var amount = float(effect.get("amount", 0.0))
+			if GameState.world_fate_channels.has(fate_id):
+				GameState.world_fate_channels[fate_id] = clampf(GameState.world_fate_channels[fate_id] + amount, 0.0, 1.0)
+				# Trigger re-dominance check if GameState has it
+				if GameState.has_method("_resolve_world_fate_dominance"):
+					GameState.call("_resolve_world_fate_dominance")
+		"hp_restore":
+			GameState.player_hp = minf(GameState.player_hp + float(effect.get("value", 0)), GameState.player_max_hp)
+		"hp_restore_percent":
+			GameState.player_hp = minf(GameState.player_hp + GameState.player_max_hp * float(effect.get("value", 0)), GameState.player_max_hp)
+		"permanent_stat_gain":
+			var stat = String(effect.get("stat", ""))
+			var val = float(effect.get("value", 0))
+			if stat in ["player_base_damage", "player_max_hp", "player_defense"]:
+				GameState.set(stat, GameState.get(stat) + val)
+		"multi":
+			for e in effect.get("effects", []):
+				_apply_event_effect(Dictionary(e))
+
+
+func _complete_event_flow() -> void:
+	if _run_director != null:
+		_run_director.complete_level()
+		# After an event, we usually want to present the next path choice immediately
+		_try_present_path_choice_after_run_spine()
+	else:
+		_advance_to_next_regular_level()
 
 
 func _create_growth_choice_surface() -> void:
@@ -4199,6 +4287,9 @@ func _apply_dev_harness_post_boot_state() -> void:
 	if String(_dev_harness_request.get("start_mode", "song")) == "boss":
 		await _debug_begin_boss_preview(bool(_dev_harness_request.get("trigger_boss_threshold", false)))
 
+	if bool(_dev_harness_request.get("debug_control_sequence", false)):
+		await _run_dev_harness_control_sequence()
+
 	_schedule_dev_harness_autoquit()
 
 	DevHarness.clear_request()
@@ -4230,6 +4321,95 @@ func _begin_dev_harness_autoquit() -> void:
 	queue_free()
 	var quit_timer: SceneTreeTimer = get_tree().create_timer(0.50)
 	quit_timer.timeout.connect(get_tree().quit)
+
+
+func _run_dev_harness_control_sequence() -> void:
+	if lane_manager == null or player_combat == null:
+		push_warning("CONTROL_FOCUS_SEQUENCE FAIL missing combat runtime")
+		return
+	if not player_combat.has_method("debug_force_focus_and_action"):
+		push_warning("CONTROL_FOCUS_SEQUENCE FAIL missing player debug action seam")
+		return
+
+	print("CONTROL_FOCUS_SEQUENCE BEGIN")
+	lane_manager.stop()
+	if lane_manager.has_method("set_song_mode_enabled"):
+		lane_manager.call("set_song_mode_enabled", false)
+	if lane_manager.has_method("set_attack_authority_budget"):
+		lane_manager.call("set_attack_authority_budget", lane_manager.THREAT_COUNT)
+
+	for lane in range(lane_manager.THREAT_COUNT):
+		lane_manager.call("set_enemy", lane, _build_debug_control_enemy(lane))
+
+	var steps: Array[Dictionary] = [
+		{"lane": 0, "action": "attack", "threshold": 0.99, "label": "N_ATTACK"},
+		{"lane": 2, "action": "parry", "threshold": 0.99, "label": "E_PARRY"},
+		{"lane": 1, "action": "dodge", "threshold": 1.13, "label": "S_DODGE"},
+		{"lane": 3, "action": "attack", "threshold": 0.99, "label": "W_ATTACK"}
+	]
+
+	for step in steps:
+		var lane: int = int(step.get("lane", 0))
+		var label: String = String(step.get("label", "STEP"))
+		if not _debug_fire_control_lane(lane):
+			print("CONTROL_FOCUS_SEQUENCE %s FAIL fire" % label)
+			continue
+
+		var reached: bool = await _debug_wait_for_projectile_progress(lane, float(step.get("threshold", 0.99)), 2.8)
+		if not reached:
+			print("CONTROL_FOCUS_SEQUENCE %s FAIL timing" % label)
+			continue
+
+		var action_ok: bool = bool(player_combat.call("debug_force_focus_and_action", lane, String(step.get("action", ""))))
+		await get_tree().create_timer(0.26).timeout
+		var focused_lane: int = _get_player_focus_lane()
+		var projectile_cleared: bool = lane_manager.call("get_projectile", lane) == null
+		print("CONTROL_FOCUS_SEQUENCE %s %s focus=%d projectile_cleared=%s" % [
+			label,
+			"PASS" if action_ok and focused_lane == lane and projectile_cleared else "CHECK",
+			focused_lane,
+			str(projectile_cleared)
+		])
+
+	print("CONTROL_FOCUS_SEQUENCE END")
+
+
+func _build_debug_control_enemy(lane: int) -> Dictionary:
+	return {
+		"id": 9400 + lane,
+		"type": "dreg",
+		"species_id": "dreg",
+		"display_name": "Control Dreg %d" % lane,
+		"hp": 999.0,
+		"max_hp": 999.0,
+		"damage": 6.0,
+		"defense": 0.0,
+		"dna_reward": 0.0,
+		"lane": lane,
+		"projectile_speed": 265.0
+	}
+
+
+func _debug_fire_control_lane(lane: int) -> bool:
+	var projectile = lane_manager.call("get_projectile", lane)
+	if projectile != null and is_instance_valid(projectile):
+		projectile.call("resolve", "debug_reset")
+		lane_manager.call("clear_slot", lane)
+	if not lane_manager.has_method("_fire_lane"):
+		return false
+	return bool(lane_manager.call("_fire_lane", lane))
+
+
+func _debug_wait_for_projectile_progress(lane: int, threshold: float, max_wait: float) -> bool:
+	var elapsed: float = 0.0
+	while elapsed < max_wait:
+		var projectile = lane_manager.call("get_projectile", lane)
+		if projectile != null and is_instance_valid(projectile):
+			if not bool(projectile.get("is_resolved")) and float(projectile.get("progress")) >= threshold:
+				return true
+		await get_tree().create_timer(0.02).timeout
+		elapsed += 0.02
+	return false
 
 
 func _debug_set_player_hp_ratio(ratio: float) -> void:
@@ -4461,11 +4641,14 @@ func _start_current_phase() -> void:
 		_show_feedback(String(phase_intro_texts[_current_phase_index]), Color(0.92, 0.88, 0.74, 1.0), 0.45)
 
 	var phase_enemies: Array = phases[_current_phase_index]
-	var lane_array: Array = [{}, {}, {}]
+	var lane_count: int = lane_manager.THREAT_COUNT if lane_manager != null else 4
+	var lane_array: Array = []
+	for _i in range(lane_count):
+		lane_array.append({})
 
 	for enemy in phase_enemies:
 		var lane: int = int(enemy.get("lane", -1))
-		if lane >= 0 and lane < 3:
+		if lane >= 0 and lane < lane_count:
 			lane_array[lane] = enemy.duplicate(true)
 
 	lane_manager.start_combat(lane_array)
@@ -5448,6 +5631,10 @@ func _on_slow_motion(requested_scale: float, duration: float) -> void:
 func _impact_lane_forward(lane: int) -> Vector2:
 	if lane_manager == null or player_combat == null:
 		return Vector2.RIGHT
+	if lane_manager.has_method("get_threat_hit_zone_pos") and lane_manager.has_method("get_player_pos"):
+		var radial_delta: Vector2 = lane_manager.get_threat_hit_zone_pos(lane) - lane_manager.get_player_pos()
+		if radial_delta.length_squared() >= 1.0:
+			return radial_delta.normalized()
 	var start_point: Vector2 = player_combat.position + Vector2(10.0, -6.0)
 	var end_point: Vector2 = Vector2(
 		lane_manager.get_hit_zone_x() + 8.0,
@@ -5462,6 +5649,8 @@ func _impact_lane_forward(lane: int) -> Vector2:
 func _impact_pos_lane(lane: int, t: float = 0.52) -> Vector2:
 	if lane_manager == null or player_combat == null:
 		return Vector2.ZERO
+	if lane_manager.has_method("get_threat_hit_zone_pos") and lane_manager.has_method("get_player_pos"):
+		return lane_manager.get_player_pos().lerp(lane_manager.get_threat_hit_zone_pos(lane), t)
 	var lane_y: float = lane_manager.get_lane_y(lane)
 	var hz: float = lane_manager.get_hit_zone_x() + 8.0
 	var px: float = player_combat.position.x + 10.0
@@ -5498,10 +5687,11 @@ func _enemy_is_elite_for_impact(enemy_id: int) -> bool:
 
 
 func _on_attack_timing_early_resolved(lane: int) -> void:
-	if lane < 0 or lane > 2:
+	var lane_count: int = lane_manager.THREAT_COUNT if lane_manager != null else 4
+	if lane < 0 or lane >= lane_count:
 		return
 	var fwd: Vector2 = _impact_lane_forward(lane)
-	var jitter: float = 0.06 if lane == 1 else -0.06
+	var jitter: float = 0.06 if lane == 1 or lane == 3 else -0.06
 	impact_fx_requested.emit(&"miss", _impact_pos_lane(lane, 0.36), fwd.rotated(jitter), 0.74)
 
 

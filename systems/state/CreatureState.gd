@@ -35,6 +35,19 @@ func spend_dna(species_id: String, amount: float) -> void:
 	var current: float = get_dna(species_id)
 	dna_by_species[species_id] = max(current - amount, 0.0)
 
+func spend_dna_any(amount: float) -> void:
+	var remaining: float = amount
+	var species_list: Array = dna_by_species.keys()
+	# Sort species by DNA amount descending to spend from largest pools first
+	species_list.sort_custom(func(a, b): return dna_by_species[a] > dna_by_species[b])
+	
+	for species_id in species_list:
+		if remaining <= 0: break
+		var current = dna_by_species[species_id]
+		var spend = min(current, remaining)
+		dna_by_species[species_id] -= spend
+		remaining -= spend
+
 func is_species_bonded(species_id: String) -> bool:
 	for creature in roster:
 		if String(creature.get("species_id", "")) == species_id: return true

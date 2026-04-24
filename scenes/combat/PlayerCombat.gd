@@ -168,7 +168,7 @@ func _get_target_direction() -> int:
 	if Input.is_action_pressed("mod_down"): return 1
 	if Input.is_action_pressed("mod_left"): return 3
 	if Input.is_action_pressed("mod_right"): return 2
-	return 2 # East is the primary approach direction in horizontal-biased combat
+	return 2 # Default to East when no directional input held
 
 
 func _handle_directional_action(target_dir: int, action_type: String) -> void:
@@ -749,22 +749,19 @@ func _trigger_parry_counter_warp(target_lane: int, damage: float, quality: Strin
 
 
 func _play_counter_warp_state(target_lane: int) -> void:
-	# High-speed warp forward and weighted return.
-	# Instead of a hardcoded offset, we reach into the enemy zone.
-	var enemy_x: float = lane_manager.call("get_enemy_x")
-	var hit_zone_x: float = lane_manager.call("get_hit_zone_x")
-	# Strike target is slightly in front of the actual enemy anchor.
-	var strike_x: float = enemy_x - (enemy_x - hit_zone_x) * 0.15
-	# Relative offset from player's anchor for _action_world_position calculation.
-	var local_reach_x: float = strike_x - lane_manager.call("get_player_x")
+	# Radial warp: reach 85% toward the spawn from the hit zone, matching original
+	# strike depth but now correct for all 4 cardinal directions (not East-only).
+	var spawn_dist: float = lane_manager.get_threat_spawn_pos(target_lane).distance_to(lane_manager.get_player_pos())
+	var hit_zone_dist: float = lane_manager.get_threat_hit_zone_pos(target_lane).distance_to(lane_manager.get_player_pos())
+	var reach_dist: float = lerp(spawn_dist, hit_zone_dist, 0.15)
 
 	_show_attack_image()
 	_play_sprite_pose(ATTACK_SPRITE_POSITION, ATTACK_SPRITE_SCALE, 0.18)
 	_play_world_motion(
-		_action_world_position(target_lane, local_reach_x),
+		_action_world_position(target_lane, reach_dist),
 		_neutral_world_position(),
-		0.05, # Weighty speed (visible dash)
-		0.24  # Snap return
+		0.05,
+		0.24
 	)
 
 

@@ -356,7 +356,7 @@ func on_beat_pulse(quality: String, strength: float) -> void:
 
 
 func highlight_timing_ring(lane: int, color: Color, width: float = 4.0) -> void:
-	var group: Node2D = _timing_circle_container.get_node_or_null("TimingRing_%d" % lane)
+	var group: Node2D = _get_timing_receiver(lane)
 	if group == null:
 		return
 
@@ -380,7 +380,7 @@ func highlight_timing_ring(lane: int, color: Color, width: float = 4.0) -> void:
 
 
 func animate_timing_ring_press(lane: int) -> void:
-	var group: Node2D = _timing_circle_container.get_node_or_null("TimingRing_%d" % lane)
+	var group: Node2D = _get_timing_receiver(lane)
 	if group == null:
 		return
 
@@ -393,6 +393,17 @@ func animate_timing_ring_press(lane: int) -> void:
 	var tween := group.create_tween()
 	tween.tween_property(group, "scale", original_scale, 0.06)
 	tween.parallel().tween_property(group, "position", original_position, 0.06)
+
+
+func _get_timing_receiver(lane: int) -> Node2D:
+	if _timing_circle_container == null:
+		return null
+
+	var group: Node2D = _timing_circle_container.get_node_or_null("TimingRing_%d" % lane)
+	if group != null:
+		return group
+
+	return _timing_circle_container.get_node_or_null("TimingRing_Core")
 
 
 func spawn_attack_silhouette_to_lane(

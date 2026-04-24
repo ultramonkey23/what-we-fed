@@ -6,6 +6,10 @@ const COMBAT_BG_CONTENT = preload("res://data/CombatBackgroundContent.gd")
 const UI_STYLE = preload("res://systems/UIStyle.gd")
 const HUD_PANEL_ART = preload("res://systems/HUDPanelArt.gd")
 
+const PLAYER_SIGIL_OUTER_RADIUS: float = 82.0
+const PLAYER_SIGIL_INNER_RADIUS: float = 43.0
+const PLAYER_SIGIL_CORE_RADIUS: float = 20.0
+
 var _active_bg_env: Dictionary = {}
 var _shared_noise_tex: NoiseTexture2D = null
 
@@ -496,76 +500,142 @@ func draw_timing_circles(
 	var active_color: Color = biome.get("ring_active_color", Color(1.0, 0.95, 0.55, 1.0))
 	var inactive_color: Color = biome.get("ring_inactive_color", Color(0.7, 0.7, 0.8, 0.45))
 
-	for lane in range(lane_manager.THREAT_COUNT):
-		var lane_group := Node2D.new()
-		lane_group.name = "TimingRing_%d" % lane
-		lane_group.position = Vector2(
-			lane_manager.get_hit_zone_x(),
-			lane_manager.get_lane_y(lane)
-		)
+	var base_color: Color = active_color if player_combat != null else inactive_color
+	var sigil_group := Node2D.new()
+	sigil_group.name = "TimingRing_Core"
+	if player_combat != null:
+		sigil_group.position = player_combat.position
 
-		var player_current_lane: int = int(player_combat.get("current_lane"))
-		var is_active_lane: bool = lane == player_current_lane
-		var base_color: Color = active_color if is_active_lane else inactive_color
+	var receiver_glow := _make_disc_polygon(
+		PLAYER_SIGIL_OUTER_RADIUS + 18.0,
+		Color(base_color.r, base_color.g, base_color.b, 0.0)
+	)
+	receiver_glow.name = "ReceiverGlow"
 
-		var receiver_glow := _make_disc_polygon(
-			COMBAT_FEEL_CONTENT.RING_OUTER_RADIUS + 6.0,
-			Color(base_color.r, base_color.g, base_color.b, 0.0)
-		)
-		receiver_glow.name = "ReceiverGlow"
+	var receiver_fill := _make_disc_polygon(
+		PLAYER_SIGIL_CORE_RADIUS + 16.0,
+		Color(base_color.r, base_color.g, base_color.b, 0.08)
+	)
+	receiver_fill.name = "ReceiverFill"
 
-		var fill_alpha: float = 0.07 if is_active_lane else 0.03
-		var receiver_fill := _make_disc_polygon(
-			COMBAT_FEEL_CONTENT.RING_PERFECT_RADIUS + 9.0,
-			Color(base_color.r, base_color.g, base_color.b, fill_alpha)
-		)
-		receiver_fill.name = "ReceiverFill"
+	var edge_ring := _make_anomaly_sigil_ring(
+		PLAYER_SIGIL_OUTER_RADIUS + 8.0,
+		Color(base_color.r, base_color.g, base_color.b, 0.0),
+		1.2,
+		7.0
+	)
+	edge_ring.name = "Edge"
 
-		var outer_ring := _make_ring_line(
-			COMBAT_FEEL_CONTENT.RING_OUTER_RADIUS,
-			Color(base_color.r, base_color.g, base_color.b, base_color.a * 0.45),
-			2.2
-		)
-		outer_ring.name = "Outer"
+	var outer_ring := _make_anomaly_sigil_ring(
+		PLAYER_SIGIL_OUTER_RADIUS,
+		Color(base_color.r, base_color.g, base_color.b, base_color.a * 0.52),
+		2.8,
+		5.0
+	)
+	outer_ring.name = "Outer"
 
-		var perfect_ring := _make_ring_line(
-			COMBAT_FEEL_CONTENT.RING_PERFECT_RADIUS,
-			base_color.lightened(0.32),
-			4.2
-		)
-		perfect_ring.name = "Perfect"
+	var perfect_ring := _make_anomaly_sigil_ring(
+		PLAYER_SIGIL_INNER_RADIUS,
+		base_color.lightened(0.32),
+		4.6,
+		3.0
+	)
+	perfect_ring.name = "Perfect"
 
-		var edge_ring := _make_ring_line(
-			COMBAT_FEEL_CONTENT.RING_OUTER_RADIUS + 4.0,
-			Color(base_color.r, base_color.g, base_color.b, 0.0),
-			1.0
-		)
-		edge_ring.name = "Edge"
+	var fault_lines := _make_sigil_fault_lines(
+		PLAYER_SIGIL_INNER_RADIUS + 8.0,
+		PLAYER_SIGIL_OUTER_RADIUS - 6.0,
+		Color(base_color.r, base_color.g, base_color.b, 0.34),
+		1.5
+	)
+	fault_lines.name = "FaultLines"
 
-		var beat_mark := Line2D.new()
-		beat_mark.name = "BeatMark"
-		beat_mark.default_color = Color(base_color.r, base_color.g, base_color.b, base_color.a * 0.55)
-		beat_mark.width = 1.2
-		beat_mark.add_point(Vector2(0.0, -COMBAT_FEEL_CONTENT.RING_OUTER_RADIUS))
-		beat_mark.add_point(Vector2(0.0, COMBAT_FEEL_CONTENT.RING_OUTER_RADIUS))
+	var rune_chords := _make_sigil_chords(
+		PLAYER_SIGIL_INNER_RADIUS - 6.0,
+		Color(base_color.r, base_color.g, base_color.b, 0.25),
+		1.1
+	)
+	rune_chords.name = "RuneChords"
 
-		lane_group.add_child(receiver_glow)
-		lane_group.add_child(receiver_fill)
-		lane_group.add_child(edge_ring)
-		lane_group.add_child(outer_ring)
-		lane_group.add_child(perfect_ring)
-		lane_group.add_child(beat_mark)
-		timing_circle_container.add_child(lane_group)
+	var beat_mark := Line2D.new()
+	beat_mark.name = "BeatMark"
+	beat_mark.default_color = Color(base_color.r, base_color.g, base_color.b, base_color.a * 0.55)
+	beat_mark.width = 1.4
+	beat_mark.add_point(Vector2(0.0, -PLAYER_SIGIL_OUTER_RADIUS + 10.0))
+	beat_mark.add_point(Vector2(0.0, PLAYER_SIGIL_OUTER_RADIUS - 10.0))
 
-		timing_rings_cache.append({
-			"root": lane_group,
-			"outer": outer_ring,
-			"perfect": perfect_ring,
-			"fill": receiver_fill,
-			"glow": receiver_glow,
-			"edge": edge_ring,
-			"beat": beat_mark
-		})
+	sigil_group.add_child(receiver_glow)
+	sigil_group.add_child(receiver_fill)
+	sigil_group.add_child(edge_ring)
+	sigil_group.add_child(fault_lines)
+	sigil_group.add_child(rune_chords)
+	sigil_group.add_child(outer_ring)
+	sigil_group.add_child(perfect_ring)
+	sigil_group.add_child(beat_mark)
+	timing_circle_container.add_child(sigil_group)
+
+	timing_rings_cache.append({
+		"root": sigil_group,
+		"outer": outer_ring,
+		"perfect": perfect_ring,
+		"fill": receiver_fill,
+		"glow": receiver_glow,
+		"edge": edge_ring,
+		"beat": beat_mark
+	})
+
+
+func _make_anomaly_sigil_ring(radius: float, color: Color, width: float, jitter: float) -> Line2D:
+	var line := Line2D.new()
+	line.default_color = color
+	line.width = width
+	line.closed = true
+	line.joint_mode = Line2D.LINE_JOINT_SHARP
+	line.begin_cap_mode = Line2D.LINE_CAP_ROUND
+	line.end_cap_mode = Line2D.LINE_CAP_ROUND
+	var points: PackedVector2Array = PackedVector2Array()
+	for i in range(48):
+		var a: float = (float(i) / 48.0) * TAU
+		var notch: float = sin(float(i) * 2.31) * jitter
+		if i % 9 == 0:
+			notch -= jitter * 1.45
+		elif i % 7 == 0:
+			notch += jitter * 0.9
+		points.append(Vector2(cos(a), sin(a)) * (radius + notch))
+	line.points = points
+	return line
+
+
+func _make_sigil_fault_lines(inner_radius: float, outer_radius: float, color: Color, width: float) -> Line2D:
+	var line := Line2D.new()
+	line.default_color = color
+	line.width = width
+	line.joint_mode = Line2D.LINE_JOINT_SHARP
+	line.begin_cap_mode = Line2D.LINE_CAP_ROUND
+	line.end_cap_mode = Line2D.LINE_CAP_ROUND
+	var points: PackedVector2Array = PackedVector2Array()
+	for i in range(8):
+		var a: float = (float(i) / 8.0) * TAU + (0.18 if i % 2 == 0 else -0.07)
+		var b: float = a + 0.16 + (0.07 if i % 3 == 0 else 0.0)
+		points.append(Vector2(cos(a), sin(a)) * inner_radius)
+		points.append(Vector2(cos(b), sin(b)) * outer_radius)
+		points.append(Vector2(cos(b + 0.05), sin(b + 0.05)) * (inner_radius + 8.0))
+	line.points = points
+	return line
+
+
+func _make_sigil_chords(radius: float, color: Color, width: float) -> Line2D:
+	var line := Line2D.new()
+	line.default_color = color
+	line.width = width
+	line.closed = true
+	line.joint_mode = Line2D.LINE_JOINT_SHARP
+	var points: PackedVector2Array = PackedVector2Array()
+	for i in [0, 3, 6, 1, 4, 7, 2, 5]:
+		var a: float = (float(i) / 8.0) * TAU
+		points.append(Vector2(cos(a), sin(a)) * radius)
+	line.points = points
+	return line
 
 
 func _make_ring_line(radius: float, color: Color, width: float) -> Line2D:
@@ -640,121 +710,125 @@ func update_timing_ring_proximity(
 	# Pre-compute surge window fade factor once — used inside the per-lane loop.
 	var surge_wf: float = clamp(surge_window_timer / 4.0, 0.0, 1.0) if surge_window_timer > 0.0 else 0.0
 
-	for lane in range(min(lane_manager.THREAT_COUNT, timing_rings_cache.size())):
-		if ring_highlight_timers[lane] > 0.0:
+	if timing_rings_cache.is_empty():
+		return
+
+	var cache: Dictionary = timing_rings_cache[0]
+	var root: Node2D = cache["root"]
+	var outer_ring: Line2D = cache["outer"]
+	var perfect_ring: Line2D = cache["perfect"]
+	var receiver_fill: Polygon2D = cache["fill"]
+	var receiver_glow: Polygon2D = cache["glow"]
+	var edge_ring: Line2D = cache["edge"]
+	var beat_mark: Line2D = cache["beat"]
+	if player_combat != null:
+		root.position = player_combat.position
+
+	for timer in ring_highlight_timers:
+		if timer > 0.0:
+			return
+
+	var base_color: Color = active_color
+	var outer_color: Color = Color(base_color.r, base_color.g, base_color.b, base_color.a * 0.52)
+	var perfect_color: Color = base_color.lightened(0.32)
+	var outer_width: float = 2.8
+	var perfect_width: float = 4.6
+	var receiver_alpha: float = 0.10
+	var receiver_glow_alpha: float = 0.0
+	var edge_alpha: float = 0.0
+	var beat_color: Color = base_color.lightened(0.06)
+	var fill_color: Color = Color(base_color.r, base_color.g, base_color.b, receiver_alpha)
+	var strongest_pressure: float = -1.0
+
+	for lane in range(lane_manager.THREAT_COUNT):
+		var proj = lane_manager.get_projectile(lane)
+		if proj == null or proj.is_resolved or proj.is_reflected:
 			continue
 
-		var cache: Dictionary = timing_rings_cache[lane]
-		var outer_ring: Line2D = cache["outer"]
-		var perfect_ring: Line2D = cache["perfect"]
-		var receiver_fill: Polygon2D = cache["fill"]
-		var receiver_glow: Polygon2D = cache["glow"]
-		var edge_ring: Line2D = cache["edge"]
-		var beat_mark: Line2D = cache["beat"]
+		var p: float = proj.progress
+		var pressure: float = 0.0
+		if p >= approach_start and p < outer_entry:
+			pressure = clamp((p - approach_start) / (outer_entry - approach_start), 0.0, 1.0) * 0.65
+		elif p >= outer_entry and p <= outer_exit:
+			pressure = 1.0
+			if p >= perfect_entry and p <= perfect_exit:
+				pressure = 1.25
 
-		var base_color: Color = active_color if lane == player_combat.current_lane else inactive_color
-		var outer_color: Color = Color(base_color.r, base_color.g, base_color.b, base_color.a * 0.45)
-		var perfect_color: Color = base_color.lightened(0.32)
-		var outer_width: float = 2.2
-		var perfect_width: float = 4.2
-		var receiver_alpha: float = 0.10 if lane == player_combat.current_lane else 0.05
-		var receiver_glow_alpha: float = 0.0
-		var edge_alpha: float = 0.0
-		var beat_color: Color = base_color.lightened(0.06)
+		if pressure <= strongest_pressure:
+			continue
 
-		var proj = lane_manager.get_projectile(lane)
-		if proj != null and not proj.is_resolved and not proj.is_reflected:
-			var p: float = proj.progress
-			var telegraph_profile: Dictionary = proj.telegraph_profile
-			var threat_color: Color = Color(telegraph_profile.get("lane_color", active_color))
-			var accent_color: Color = Color(telegraph_profile.get("accent_color", threat_color.lightened(0.18)))
-			var warning_bias: float = max(float(telegraph_profile.get("warning_bias", 1.0)), 0.84)
-			
-			# Dynamic Ring Feedback: Weight and thickness based on threat type
-			var ring_w_mult: float = float(telegraph_profile.get("ring_width_mult", 1.0))
-			var ring_t_base: float = float(telegraph_profile.get("ring_thickness_base", 1.0))
-			outer_width *= ring_t_base
-			perfect_width *= ring_t_base
+		strongest_pressure = pressure
+		var telegraph_profile: Dictionary = proj.telegraph_profile
+		var threat_color: Color = Color(telegraph_profile.get("lane_color", active_color))
+		var accent_color: Color = Color(telegraph_profile.get("accent_color", threat_color.lightened(0.18)))
+		var warning_bias: float = max(float(telegraph_profile.get("warning_bias", 1.0)), 0.84)
+		var ring_t_base: float = float(telegraph_profile.get("ring_thickness_base", 1.0))
+		outer_width = 2.8 * ring_t_base
+		perfect_width = 4.6 * ring_t_base
 
-			if p >= approach_start and p < outer_entry:
-				# Projectile is approaching - fade the receiver into focus gradually.
-				var t: float = clamp(((p - approach_start) / (outer_entry - approach_start)) * warning_bias, 0.0, 1.0)
-				outer_color = outer_color.lerp(threat_color, t)
-				receiver_alpha = lerp(receiver_alpha, 0.18, t)
-				receiver_glow_alpha = lerp(0.0, 0.10, t)
-				beat_color = beat_color.lerp(accent_color, t * 0.55)
+		if p >= approach_start and p < outer_entry:
+			var t: float = clamp(((p - approach_start) / (outer_entry - approach_start)) * warning_bias, 0.0, 1.0)
+			outer_color = outer_color.lerp(threat_color, t)
+			receiver_alpha = lerp(0.10, 0.18, t)
+			receiver_glow_alpha = lerp(0.0, 0.10, t)
+			beat_color = beat_color.lerp(accent_color, t * 0.55)
+			fill_color = Color(threat_color.r, threat_color.g, threat_color.b, receiver_alpha)
+		elif p >= outer_entry and p <= outer_exit:
+			outer_color = threat_color.lightened(0.08)
+			receiver_alpha = 0.24
+			receiver_glow_alpha = 0.18
+			beat_color = accent_color.lightened(0.18)
+			fill_color = Color(threat_color.r, threat_color.g, threat_color.b, receiver_alpha)
 
-			elif p >= outer_entry and p <= outer_exit:
-				# Projectile is inside the outer ring - active threat and edge pressure.
-				outer_color = threat_color.lightened(0.08)
-				receiver_alpha = 0.22
-				receiver_glow_alpha = 0.16
-				beat_color = accent_color.lightened(0.18)
+			if p >= perfect_entry and p <= perfect_exit:
+				perfect_color = accent_color.lightened(0.26)
+				perfect_width = 5.4
+				receiver_alpha = 0.36
+				receiver_glow_alpha = 0.24
+				beat_color = accent_color.lightened(0.34)
+				fill_color = Color(threat_color.r, threat_color.g, threat_color.b, receiver_alpha)
 
-				if p >= perfect_entry and p <= perfect_exit:
-					# Projectile is inside the perfect ring - sharpen the inner receiver truth.
-					perfect_color = accent_color.lightened(0.26)
-					perfect_width = 4.4
-					receiver_alpha = 0.34
-					receiver_glow_alpha = 0.22
-					beat_color = accent_color.lightened(0.34)
+			var edge_distance: float = min(abs(p - outer_entry), abs(p - outer_exit))
+			if edge_distance <= COMBAT_FEEL_CONTENT.EDGE_STATE_WIDTH:
+				var edge_t: float = 1.0 - clamp(edge_distance / COMBAT_FEEL_CONTENT.EDGE_STATE_WIDTH, 0.0, 1.0)
+				edge_alpha = 0.20 + (0.30 * edge_t)
+				outer_width = lerp(outer_width, 4.0, edge_t)
 
-				var edge_distance: float = min(abs(p - outer_entry), abs(p - outer_exit))
-				if edge_distance <= COMBAT_FEEL_CONTENT.EDGE_STATE_WIDTH:
-					var edge_t: float = 1.0 - clamp(edge_distance / COMBAT_FEEL_CONTENT.EDGE_STATE_WIDTH, 0.0, 1.0)
-					edge_alpha = 0.20 + (0.30 * edge_t)
-					outer_width = lerp(outer_width, 3.0, edge_t)
+	receiver_alpha = minf(receiver_alpha + beat_pulse, 0.52)
+	fill_color.a = receiver_alpha
+	if beat_pulse > 0.03:
+		beat_color = beat_color.lerp(active_color.lightened(0.38), beat_pulse / 0.13)
 
-		# Apply beat pulse on top of proximity-driven alpha.
-		# The pulse is identical across all lanes — it is a global metronome, not lane-specific.
-		receiver_alpha = minf(receiver_alpha + beat_pulse, 0.52)
-		if beat_pulse > 0.03:
-			beat_color = beat_color.lerp(active_color.lightened(0.38), beat_pulse / 0.13)
+	if surge_wf > 0.0:
+		match surge_window_tendency:
+			"aggression":
+				var aggression_color: Color = UI_STYLE.get_tendency_surge_color("aggression")
+				perfect_color = perfect_color.lerp(Color(aggression_color.r, aggression_color.g, aggression_color.b, perfect_color.a), surge_wf * 0.28)
+				perfect_width = minf(perfect_width + surge_wf * 0.8, 7.0)
+			"cadence":
+				var cadence_color: Color = UI_STYLE.get_tendency_surge_color("cadence")
+				beat_color = beat_color.lerp(Color(cadence_color.r, cadence_color.g, cadence_color.b, beat_color.a), surge_wf * 0.42)
+				receiver_alpha = minf(receiver_alpha + surge_wf * 0.04, 0.52)
+			"guard":
+				receiver_alpha = minf(receiver_alpha + surge_wf * 0.04, 0.52)
+			"bond":
+				var bond_color: Color = UI_STYLE.get_tendency_surge_color("bond")
+				beat_color = beat_color.lerp(Color(bond_color.r, bond_color.g, bond_color.b, beat_color.a), surge_wf * 0.38)
+				receiver_alpha = minf(receiver_alpha + surge_wf * 0.03, 0.52)
 
-		# ── Surge identity window ──────────────────────────────────────────────
-		# After a tendency surge, tint the timing rings toward the tendency's
-		# identity color for 4 s. Fades out linearly via surge_wf.
-		# This presses the run's active character into the most-watched surface
-		# without touching hitbox, timing windows, or lane readability.
-		if surge_wf > 0.0:
-			match surge_window_tendency:
-				"aggression":
-					# Perfect ring warms to orange-red — attack authority cue.
-					var aggression_color: Color = UI_STYLE.get_tendency_surge_color("aggression")
-					perfect_color = perfect_color.lerp(Color(aggression_color.r, aggression_color.g, aggression_color.b, perfect_color.a), surge_wf * 0.28)
-					perfect_width = minf(perfect_width + surge_wf * 0.8, 6.2)
-				"cadence":
-					# Beat mark brightens to gold — rhythm clarity cue.
-					var cadence_color: Color = UI_STYLE.get_tendency_surge_color("cadence")
-					beat_color = beat_color.lerp(Color(cadence_color.r, cadence_color.g, cadence_color.b, beat_color.a), surge_wf * 0.42)
-					receiver_alpha = minf(receiver_alpha + surge_wf * 0.04, 0.52)
-				"guard":
-					# Receiver fill gets a faint blue wash — defensive awareness cue.
-					# Color applied below at the receiver_fill assignment step.
-					receiver_alpha = minf(receiver_alpha + surge_wf * 0.04, 0.52)
-				"bond":
-					# Beat mark shifts teal — bond partner resonance cue.
-					var bond_color: Color = UI_STYLE.get_tendency_surge_color("bond")
-					beat_color = beat_color.lerp(Color(bond_color.r, bond_color.g, bond_color.b, beat_color.a), surge_wf * 0.38)
-					receiver_alpha = minf(receiver_alpha + surge_wf * 0.03, 0.52)
+	fill_color.a = receiver_alpha
+	if surge_wf > 0.0 and surge_window_tendency == "guard":
+		var guard_color: Color = UI_STYLE.get_tendency_surge_color("guard")
+		fill_color = fill_color.lerp(Color(guard_color.r, guard_color.g, guard_color.b, receiver_alpha), surge_wf * 0.20)
+	receiver_fill.color = fill_color
+	receiver_glow.color = Color(fill_color.r, fill_color.g, fill_color.b, receiver_glow_alpha)
+	edge_ring.default_color = Color(fill_color.r, fill_color.g, fill_color.b, edge_alpha)
+	beat_mark.default_color = beat_color
 
-		var rf_color: Color = Color(active_color.r, active_color.g, active_color.b, receiver_alpha)
-		if proj != null and not proj.is_resolved and not proj.is_reflected:
-			var telegraph_profile2: Dictionary = proj.telegraph_profile
-			var threat_color2: Color = Color(telegraph_profile2.get("lane_color", active_color))
-			rf_color = Color(threat_color2.r, threat_color2.g, threat_color2.b, receiver_alpha)
-		if surge_wf > 0.0 and surge_window_tendency == "guard":
-			var guard_color: Color = UI_STYLE.get_tendency_surge_color("guard")
-			rf_color = rf_color.lerp(Color(guard_color.r, guard_color.g, guard_color.b, receiver_alpha), surge_wf * 0.20)
-		receiver_fill.color = rf_color
-		receiver_glow.color = Color(rf_color.r, rf_color.g, rf_color.b, receiver_glow_alpha)
-		edge_ring.default_color = Color(rf_color.r, rf_color.g, rf_color.b, edge_alpha)
-		beat_mark.default_color = beat_color
-
-		outer_ring.default_color = outer_color
-		outer_ring.width = outer_width
-		perfect_ring.default_color = perfect_color
-		perfect_ring.width = perfect_width
+	outer_ring.default_color = outer_color
+	outer_ring.width = outer_width
+	perfect_ring.default_color = perfect_color
+	perfect_ring.width = perfect_width
 
 
 func build_arena_visuals(

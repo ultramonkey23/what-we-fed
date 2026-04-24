@@ -351,12 +351,15 @@ func _get_cadence_window() -> String:
 	return ""
 
 
-func _emit_slowmo_context(context_id: String, fallback_scale: float, fallback_duration: float) -> void:
+func _emit_slowmo_context(context_id: String) -> void:
+	var base_scale: float = COMBAT_FEEL_CONSTANTS.get_slow_motion_scale(context_id)
+	var base_duration: float = COMBAT_FEEL_CONSTANTS.get_slow_motion_duration(context_id)
+	
 	var preset: Dictionary = COMBAT_FEEL_CONTENT.get_slowmo_preset(context_id, {
-		"scale": fallback_scale,
-		"duration": fallback_duration
+		"scale": base_scale,
+		"duration": base_duration
 	})
-	EventBus.emit_signal("slow_motion", float(preset.get("scale", fallback_scale)), float(preset.get("duration", fallback_duration)))
+	EventBus.emit_signal("slow_motion", float(preset.get("scale", base_scale)), float(preset.get("duration", base_duration)))
 
 
 func _emit_mastery_context(event_id: String, lane: int, action_quality: String, beat_quality: String) -> void:
@@ -534,11 +537,11 @@ func _try_parry() -> void:
 		_flash_sprite_color(Color(0.55, 1.0, 0.72, 1.0), 0.14)
 		EventBus.emit_signal("screen_flash", Color(0.45, 1.0, 0.75, 0.16), 0.08)
 		if beat == "perfect":
-			_emit_slowmo_context("parry_perfect_beat_perfect", 0.52, 0.10)
+			_emit_slowmo_context("parry_perfect_beat_perfect")
 		elif beat == "good":
-			_emit_slowmo_context("parry_perfect_beat_good", 0.64, 0.08)
+			_emit_slowmo_context("parry_perfect_beat_good")
 		else:
-			_emit_slowmo_context("parry_perfect_offbeat", 0.76, 0.08)
+			_emit_slowmo_context("parry_perfect_offbeat")
 	else:
 		_flash_sprite_color(Color(0.45, 0.88, 0.62, 1.0), 0.10)
 		EventBus.emit_signal("screen_flash", Color(0.45, 1.0, 0.75, 0.10), 0.06)
@@ -631,11 +634,11 @@ func _try_ultimate() -> void:
 	EventBus.emit_signal("screen_flash", Color(1.0, 0.75, 0.3, 0.16), 0.10)
 
 	if beat == "perfect":
-		EventBus.emit_signal("slow_motion", 0.55, 0.14)
+		_emit_slowmo_context("ultimate_perfect")
 	elif beat == "good":
-		EventBus.emit_signal("slow_motion", 0.62, 0.12)
+		_emit_slowmo_context("ultimate_good")
 	else:
-		EventBus.emit_signal("slow_motion", 0.72, 0.10)
+		_emit_slowmo_context("ultimate_base")
 
 	chain_bypass_available = false
 	chain_bypass_timer = 0.0
@@ -714,13 +717,13 @@ func _resolve_timed_attack(projectile, combo_mult: float, quality: String) -> vo
 		EventBus.emit_signal("screen_flash", Color(1.0, 0.85, 0.35, 0.14), 0.08)
 		recovery = PERFECT_ATTACK_RECOVERY
 		if beat == "perfect":
-			_emit_slowmo_context("timed_attack_perfect_beat_perfect", 0.68, 0.08)
+			_emit_slowmo_context("timed_attack_perfect_beat_perfect")
 		else:
-			_emit_slowmo_context("timed_attack_perfect_other", 0.80, 0.06)
+			_emit_slowmo_context("timed_attack_perfect_other")
 	else:
 		_flash_sprite_color(Color(0.95, 0.62, 0.18, 1.0), 0.10)
 		EventBus.emit_signal("screen_flash", Color(1.0, 0.95, 0.55, 0.12), 0.07)
-		_emit_slowmo_context("timed_attack_good", 0.88, 0.04)
+		_emit_slowmo_context("timed_attack_good")
 
 	_grant_chain_bypass()
 	_lock_action(recovery, "timed_attack")
@@ -768,7 +771,7 @@ func _fire_parry_followup(combo_mult: float) -> void:
 	combat_meter.call("record_lane_read")
 	EventBus.emit_signal("player_attacked", current_lane, followup_damage, true)
 	EventBus.emit_signal("screen_flash", Color(1.0, 0.95, 0.65, 0.08), 0.05)
-	_emit_slowmo_context("parry_followup", 0.86, 0.04)
+	_emit_slowmo_context("parry_followup")
 
 	parry_followup_active = false
 	parry_followup_timer = 0.0
@@ -780,24 +783,16 @@ func _fire_parry_followup(combo_mult: float) -> void:
 
 func _trigger_parry_counter_warp(target_lane: int, damage: float, quality: String) -> void:
 	# Automated physical counter-strike on projectile parry.
-	# This feels like one cohesive movement from parry to strike.
 	# Sequencing: Parry Impact -> Short Freeze (Hit-Stop) -> Warp Strike.
 	
-	# 1. Hit-Stop: Momentarily freeze the action to sell the parry's weight.
-	# Perfect parries get a deeper freeze for extra "premium" feel.
 	var is_perfect: bool = (quality == "perfect")
 	var preset_id: String = "counter_warp_perfect" if is_perfect else "counter_warp_good"
-	var preset: Dictionary = COMBAT_FEEL_CONTENT.get_slowmo_preset(preset_id, {
-		"scale": 0.05 if is_perfect else 0.12,
-		"duration": 0.12 if is_perfect else 0.08
-	})
-	var freeze_dur: float = float(preset.get("duration", 0.12 if is_perfect else 0.08))
-	var freeze_scale: float = float(preset.get("scale", 0.05 if is_perfect else 0.12))
 	
-	EventBus.emit_signal("slow_motion", freeze_scale, freeze_dur)
+	_emit_slowmo_context(preset_id)
 	EventBus.emit_signal("screen_flash", Color(1.0, 1.0, 1.0, 0.20 if is_perfect else 0.12), 0.05)
 
 	# 2. Sequential Strike: Execute the warp-attack after a tiny beat.
+	# TODO: Clarify fragile delayed state - should this align with SongConductor beat?
 	var warp_timer := get_tree().create_timer(0.06)
 	warp_timer.timeout.connect(func():
 		_play_counter_warp_state(target_lane)

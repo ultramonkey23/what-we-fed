@@ -5,11 +5,36 @@ extends RefCounted
 
 # === TIMING CONSTANTS ===
 const SLOW_MOTION_DURATION := {
-	"perfect_parry": 0.25,
-	"perfect_attack": 0.15,
-	"ultimate_activation": 0.4,
+	"parry_perfect_beat_perfect": 0.10,
+	"parry_perfect_beat_good": 0.08,
+	"parry_perfect_offbeat": 0.08,
+	"timed_attack_perfect_beat_perfect": 0.08,
+	"timed_attack_perfect_other": 0.06,
+	"timed_attack_good": 0.04,
+	"parry_followup": 0.04,
+	"ultimate_perfect": 0.14,
+	"ultimate_good": 0.12,
+	"ultimate_base": 0.10,
+	"counter_warp_perfect": 0.12,
+	"counter_warp_good": 0.08,
 	"boss_defeat": 0.8,
 	"critical_hit": 0.2
+}
+
+const SLOW_MOTION_SCALES := {
+	"parry_perfect_beat_perfect": 0.52,
+	"parry_perfect_beat_good": 0.64,
+	"parry_perfect_offbeat": 0.76,
+	"timed_attack_perfect_beat_perfect": 0.68,
+	"timed_attack_perfect_other": 0.80,
+	"timed_attack_good": 0.88,
+	"parry_followup": 0.86,
+	"ultimate_perfect": 0.55,
+	"ultimate_good": 0.62,
+	"ultimate_base": 0.72,
+	"counter_warp_perfect": 0.05,
+	"counter_warp_good": 0.12,
+	"hit_stop": 0.05
 }
 
 const HIT_STOP_DURATION := {
@@ -123,6 +148,22 @@ const SCREEN_FLASH := {
 	"shield": {
 		"color": Color(0.4, 0.8, 1.0, 0.3),
 		"duration": 0.15
+	},
+	"boss_intro_1": {
+		"color": Color(0.68, 0.32, 0.06, 0.34),
+		"duration": 0.20
+	},
+	"boss_intro_2": {
+		"color": Color(0.62, 0.24, 0.04, 0.20),
+		"duration": 0.14
+	},
+	"boss_threshold": {
+		"color": Color(0.74, 0.28, 0.04, 0.34),
+		"duration": 0.20
+	},
+	"boss_threshold_pulse": {
+		"color": Color(0.80, 0.32, 0.04, 0.20),
+		"duration": 0.16
 	}
 }
 
@@ -282,6 +323,9 @@ const PARTICLE_SYSTEMS := {
 # === UTILITY FUNCTIONS ===
 static func get_slow_motion_duration(event_type: String) -> float:
 	return SLOW_MOTION_DURATION.get(event_type, 0.1)
+
+static func get_slow_motion_scale(event_type: String) -> float:
+	return SLOW_MOTION_SCALES.get(event_type, 1.0)
 
 static func get_hit_stop_duration(attack_type: String) -> float:
 	return HIT_STOP_DURATION.get(attack_type, 0.1)

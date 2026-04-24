@@ -16,14 +16,14 @@ Goal:
 - make the current run build readable [DONE]
 - add organic UI animations (scale pulses) for feedback [DONE]
 
-### 3. Combat Feel Cleanup & Polish
+### [DONE] 3. Combat Feel Cleanup & Polish
 Goal:
-- centralize slow-motion constants
-- centralize repeated feel/timing values
-- clarify fragile delayed state handling
-- [DONE] unify tier visual identity (labels/colors)
-- [DONE] background "beat bloom" environmental feedback
-- [DONE] simulated chromatic jitter on heavy impacts
+- centralize slow-motion constants [DONE]
+- centralize repeated feel/timing values [DONE]
+- clarify fragile delayed state handling [DONE]
+- unify tier visual identity (labels/colors) [DONE]
+- background "beat bloom" environmental feedback [DONE]
+- simulated chromatic jitter on heavy impacts [DONE]
 
 ### 4. Data Extraction Bundle
 Goal:

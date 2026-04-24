@@ -115,6 +115,15 @@ const ENEMY_TEMPLATES := {
 		"spawn_weight": 0.25,
 		"difficulty_tier": 3,
 		"behaviour_tags": ["elite", "fast", "late_game"]
+	},
+	"stalker": {
+		"base_hp": 52.0,
+		"base_damage": 14.0,
+		"base_defense": 2.0,
+		"approach_speed": 80.0,
+		"spawn_weight": 0.45,
+		"difficulty_tier": 2,
+		"behaviour_tags": ["melee", "approach"]
 	}
 }
 

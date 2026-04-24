@@ -76,10 +76,11 @@ const SONG_PHASES_BY_REGION: Dictionary = {
 			"authority_target": 2,
 			"pressure_cap": 2.25,
 			"enemy_pool": [
-				{"species_id": "gruvek", "hp": 36.0, "damage": 10.0, "weight": 0.28},
-				{"species_id": "gorefane", "hp": 35.0, "damage": 9.0, "weight": 0.24},
-				{"species_id": "thornback", "hp": 38.0, "damage": 10.0, "weight": 0.30},
-				{"species_id": "bond_remnant", "grade": "brood", "hp": 40.0, "damage": 10.0, "weight": 0.18}
+				{"species_id": "gruvek", "hp": 36.0, "damage": 10.0, "weight": 0.24},
+				{"species_id": "gorefane", "hp": 35.0, "damage": 9.0, "weight": 0.20},
+				{"species_id": "thornback", "hp": 38.0, "damage": 10.0, "weight": 0.26},
+				{"species_id": "bond_remnant", "grade": "brood", "hp": 40.0, "damage": 10.0, "weight": 0.16},
+				{"species_id": "stalker", "grade": "brood", "hp": 52.0, "damage": 13.0, "approach_speed": 80.0, "weight": 0.14, "behaviour_tags": ["melee", "approach"]}
 			],
 			"intro_text": "The song opens its mouth.",
 			"reward_pool": ["gruvek", "gorefane", "thornback", "bond_remnant"]
@@ -95,10 +96,11 @@ const SONG_PHASES_BY_REGION: Dictionary = {
 			"authority_target": 2,
 			"pressure_cap": 1.90,
 			"enemy_pool": [
-				{"species_id": "ashclaw", "hp": 30.0, "damage": 8.0, "weight": 0.32},
-				{"species_id": "bond_remnant", "hp": 42.0, "damage": 11.0, "weight": 0.30},
-				{"species_id": "hushcoil", "hp": 34.0, "damage": 8.0, "weight": 0.20},
-				{"species_id": "knellspine", "grade": "brood", "hp": 31.0, "damage": 8.0, "weight": 0.18}
+				{"species_id": "ashclaw", "hp": 30.0, "damage": 8.0, "weight": 0.28},
+				{"species_id": "bond_remnant", "hp": 42.0, "damage": 11.0, "weight": 0.26},
+				{"species_id": "hushcoil", "hp": 34.0, "damage": 8.0, "weight": 0.18},
+				{"species_id": "knellspine", "grade": "brood", "hp": 31.0, "damage": 8.0, "weight": 0.16},
+				{"species_id": "stalker", "grade": "brood", "hp": 55.0, "damage": 14.0, "approach_speed": 75.0, "weight": 0.12, "behaviour_tags": ["melee", "approach"]}
 			],
 			"intro_text": "A breath. Then the weight returns.",
 			"reward_pool": ["bond_remnant", "hushcoil", "knellspine"]

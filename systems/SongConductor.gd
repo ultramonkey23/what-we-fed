@@ -194,12 +194,23 @@ func get_beat_quality() -> String:
 	if not is_beat_active():
 		return "off"
 	var phase: float = get_beat_phase()
+	
+	# Timing Truth: dist_seconds is the absolute distance to the nearest beat.
 	var dist_phase: float = phase if phase <= 0.5 else 1.0 - phase
 	var dist_seconds: float = dist_phase * _beat_interval
+	
 	if dist_seconds <= beat_perfect_window:
 		return "perfect"
-	if dist_seconds <= beat_good_window:
+	
+	# Coyote Beat: provide leniency for slightly LATE inputs.
+	# Inputs just after the beat (phase < 0.2) get the coyote window.
+	var late_leniency: float = 0.0
+	if phase > 0.0 and phase < 0.2:
+		late_leniency = 0.045 # The Coyote Beat window.
+		
+	if dist_seconds <= (beat_good_window + late_leniency):
 		return "good"
+		
 	return "off"
 
 

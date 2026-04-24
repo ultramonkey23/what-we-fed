@@ -121,6 +121,21 @@ const PRESETS: Array[Dictionary] = [
 			"tendency_points": {"aggression": 1.6, "cadence": 1.6, "guard": 1.6, "bond": 1.6},
 			"support_charge": 100.0
 		}
+	},
+	{
+		"id": "melee_stress",
+		"name": "Melee Approach Stress",
+		"summary": "Jump into chorus with stalker melee enemies seeded — validates approach/bounce/timing loop.",
+		"start_mode": "song",
+		"song_phase_index": 2,
+		"default_support_species_id": "ashclaw",
+		"run_growth": {
+			"level": 3,
+			"exp": 16.0,
+			"tendency_levels": {"aggression": 1, "cadence": 1, "guard": 0, "bond": 1},
+			"tendency_points": {"aggression": 1.4, "cadence": 1.8, "guard": 0.4, "bond": 1.2},
+			"support_charge": 60.0
+		}
 	}
 ]
 

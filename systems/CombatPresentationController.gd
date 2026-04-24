@@ -6,9 +6,9 @@ const COMBAT_BG_CONTENT = preload("res://data/CombatBackgroundContent.gd")
 const UI_STYLE = preload("res://systems/UIStyle.gd")
 const HUD_PANEL_ART = preload("res://systems/HUDPanelArt.gd")
 
-const PLAYER_SIGIL_OUTER_RADIUS: float = 100.0
-const PLAYER_SIGIL_INNER_RADIUS: float = 52.0
-const PLAYER_SIGIL_CORE_RADIUS: float = 24.0
+const PLAYER_SIGIL_OUTER_RADIUS: float = 130.0
+const PLAYER_SIGIL_INNER_RADIUS: float = 90.0
+const PLAYER_SIGIL_CORE_RADIUS: float = 28.0
 
 var _active_bg_env: Dictionary = {}
 var _shared_noise_tex: NoiseTexture2D = null
@@ -548,19 +548,27 @@ func draw_timing_circles(
 	perfect_ring.name = "Perfect"
 
 	var fault_lines := _make_sigil_fault_lines(
-		PLAYER_SIGIL_INNER_RADIUS + 8.0,
-		PLAYER_SIGIL_OUTER_RADIUS - 6.0,
-		Color(base_color.r, base_color.g, base_color.b, 0.34),
+		PLAYER_SIGIL_INNER_RADIUS + 6.0,
+		PLAYER_SIGIL_OUTER_RADIUS - 4.0,
+		Color(base_color.r, base_color.g, base_color.b, 0.48),
 		1.5
 	)
 	fault_lines.name = "FaultLines"
 
 	var rune_chords := _make_sigil_chords(
-		PLAYER_SIGIL_INNER_RADIUS - 6.0,
-		Color(base_color.r, base_color.g, base_color.b, 0.25),
+		PLAYER_SIGIL_INNER_RADIUS - 8.0,
+		Color(base_color.r, base_color.g, base_color.b, 0.38),
 		1.1
 	)
 	rune_chords.name = "RuneChords"
+
+	var cardinal_arms := _make_sigil_cardinal_arms(
+		PLAYER_SIGIL_INNER_RADIUS - 4.0,
+		PLAYER_SIGIL_OUTER_RADIUS + 6.0,
+		Color(base_color.r, base_color.g, base_color.b, 0.40),
+		1.6
+	)
+	cardinal_arms.name = "CardinalArms"
 
 	var beat_mark := Line2D.new()
 	beat_mark.name = "BeatMark"
@@ -574,6 +582,7 @@ func draw_timing_circles(
 	sigil_group.add_child(edge_ring)
 	sigil_group.add_child(fault_lines)
 	sigil_group.add_child(rune_chords)
+	sigil_group.add_child(cardinal_arms)
 	sigil_group.add_child(outer_ring)
 	sigil_group.add_child(perfect_ring)
 	sigil_group.add_child(beat_mark)
@@ -641,6 +650,21 @@ func _make_sigil_chords(radius: float, color: Color, width: float) -> Line2D:
 		points.append(Vector2(cos(a), sin(a)) * radius)
 	line.points = points
 	return line
+
+
+func _make_sigil_cardinal_arms(inner_radius: float, outer_radius: float, color: Color, width: float) -> Node2D:
+	var group := Node2D.new()
+	for i in range(4):
+		var a: float = (float(i) / 4.0) * TAU
+		var arm := Line2D.new()
+		arm.default_color = color
+		arm.width = width
+		arm.begin_cap_mode = Line2D.LINE_CAP_ROUND
+		arm.end_cap_mode = Line2D.LINE_CAP_ROUND
+		arm.add_point(Vector2(cos(a), sin(a)) * inner_radius)
+		arm.add_point(Vector2(cos(a), sin(a)) * outer_radius)
+		group.add_child(arm)
+	return group
 
 
 func _make_ring_line(radius: float, color: Color, width: float) -> Line2D:

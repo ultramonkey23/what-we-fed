@@ -16,6 +16,7 @@ const SPAWN_DISTANCE_RATIO: float = 0.42
 const HIT_ZONE_DISTANCE: float = 110.0
 
 const PROJECTILE_SCENE_PATH: String = "res://scenes/combat/Projectile.tscn"
+const MELEE_APPROACH_SCRIPT_PATH: String = "res://scenes/combat/MeleeApproach.gd"
 const MIN_IMPACT_SEPARATION: float = 0.40
 
 # Status effect constants.
@@ -46,6 +47,7 @@ var _threat_spawn_positions: Array[Vector2] = []
 var _threat_hit_zone_positions: Array[Vector2] = []
 
 var _projectile_scene: PackedScene = null
+var _melee_approach_script: Script = null
 var _projectile_slots: Array = [null, null, null, null]
 var _enemies: Dictionary = {} # enemy_id -> Dictionary (Population)
 var _strikers: Array[int] = [-1, -1, -1, -1] # enemy_id per direction (N, S, E, W)
@@ -110,6 +112,12 @@ func load_scene() -> bool:
 		return false
 
 	_projectile_scene = loaded_resource as PackedScene
+
+	if ResourceLoader.exists(MELEE_APPROACH_SCRIPT_PATH):
+		var melee_script: Resource = load(MELEE_APPROACH_SCRIPT_PATH)
+		if melee_script is Script:
+			_melee_approach_script = melee_script as Script
+
 	return true
 
 
@@ -207,6 +215,12 @@ func is_lane_empty(lane: int) -> bool:
 func clear_slot(lane: int) -> void:
 	if lane < 0 or lane >= THREAT_COUNT:
 		return
+
+	var existing = _projectile_slots[lane]
+	if existing != null and is_instance_valid(existing) \
+			and bool(existing.get("is_melee_approach")) \
+			and not bool(existing.get("is_resolved")):
+		return  # Alive melee stays in slot; it bounces, not vanishes
 
 	_projectile_slots[lane] = null
 
@@ -598,6 +612,10 @@ func _fire_lane(lane: int) -> bool:
 	if enemy.is_empty():
 		return false
 
+	var behaviour_tags = enemy.get("behaviour_tags", [])
+	if behaviour_tags is Array and (behaviour_tags as Array).has("melee"):
+		return _fire_melee_lane(lane, enemy, id)
+
 	var projectile_speed: float = _get_enemy_projectile_speed(enemy)
 
 	if not _can_schedule_projectile(projectile_speed):
@@ -662,6 +680,46 @@ func _fire_lane(lane: int) -> bool:
 
 	EventBus.emit_signal("projectile_fired", lane, id)
 	return true
+
+
+func _fire_melee_lane(lane: int, enemy: Dictionary, id: int) -> bool:
+	if get_projectile(lane) != null:
+		return false
+
+	if _melee_approach_script == null:
+		return false
+
+	var melee: Node2D = _melee_approach_script.new() as Node2D
+	if melee == null:
+		return false
+
+	var melee_damage: float = float(enemy.get("damage", 14.0)) * _punish_damage_mult
+	var approach_speed: float = float(enemy.get("approach_speed", 80.0))
+
+	combat_scene.add_child(melee)
+	melee.call("setup",
+		lane,
+		id,
+		melee_damage,
+		approach_speed,
+		get_threat_spawn_pos(lane),
+		get_threat_hit_zone_pos(lane),
+		get_player_pos(),
+		{}
+	)
+
+	melee.connect("resolved", _on_projectile_resolved.bind(lane))
+	melee.connect("player_contact", _on_melee_player_contact.bind(lane))
+	_projectile_slots[lane] = melee
+
+	EventBus.emit_signal("projectile_fired", lane, id)
+	return true
+
+
+func _on_melee_player_contact(_melee: Node2D, _lane: int) -> void:
+	# Player damage is handled by PlayerCombat via its player_contact listener.
+	# The melee entity auto-bounces in MeleeApproach._process_approach().
+	pass
 
 
 func _resolve_authorized_lanes_for_cycle() -> Array[int]:

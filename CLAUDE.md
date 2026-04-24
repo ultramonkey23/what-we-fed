@@ -48,3 +48,6 @@ Do not claim gameplay feel validation from smoke/validate alone. State exactly w
 - Visual evidence loop: `docs/ai/VISUAL_TRUTH_LOOP.md`
 
 Default behavior: inspect real files first, identify the bottleneck, choose one bounded fix, preserve working behavior, validate honestly, and report compactly.
+
+## AI Control Plane
+Before repo work, read `docs/ai/AI_CONTROL_PLANE.md` and follow the relevant routing/report/validation contract.

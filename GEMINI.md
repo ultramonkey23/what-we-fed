@@ -31,3 +31,9 @@ You MUST follow the contract defined in `SYSTEM_KERNEL.md`.
 - **SYMBIOTE Focus**: Scan the repo for truth; compress context; sync Layer 2.
 - **CYBORG Support**: Critique duplicated instructions, stale adapters, and validation gaps; propose extraction when repeated friction appears.
 - **Inspector Support**: For visual work, map likely target files and doctrine references, but do not replace screenshot/capture inspection. Use `docs/ai/VISUAL_TRUTH_LOOP.md`.
+
+---
+
+## AI Control Plane
+Before repo work, read `docs/ai/AI_CONTROL_PLANE.md` and follow the relevant routing/report/validation contract.
+Fresh audit prompt template: `docs/ai/PROMPT_CONTRACTS.md` → Gemini Fresh Repo Audit.

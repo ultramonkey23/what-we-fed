@@ -99,3 +99,10 @@ When handing off to INSPECTOR, include this block. If a value is unavailable, wr
 - **Patch**: Execute surgical code mutation (ALFRED).
 - **Audit**: Critique and verify (CYBORG).
 - **Evolve**: High-mutation upgrades and canon governance (BRAIN).
+
+---
+
+## AI Control Plane
+Before repo work, read `docs/ai/AI_CONTROL_PLANE.md` and follow the relevant routing, report, and validation contract.
+Quick routing lookup: `docs/ai/AGENT_ROUTING_MATRIX.md`
+Prompt templates: `docs/ai/PROMPT_CONTRACTS.md`

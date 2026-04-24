@@ -151,6 +151,21 @@ cat report.txt | python tools/ai/score_agent_report.py
 
 The script process exits 0 (PASS), 1 (WARN), or 2 (FAIL) — usable in CI or shell pipelines.
 
+## Local Validation
+
+Run:
+
+```bash
+python tools/ai/validate_report_scorer.py
+```
+
+Expected:
+- PASS fixture exits 0
+- WARN fixture exits 1
+- FAIL fixture exits 2
+
+GitHub Actions also validates this contract in `.github/workflows/ai_report_scorer.yml`.
+
 Fixture expectations:
 
 ```bash

@@ -1,0 +1,29 @@
+name: AI Report Scorer
+
+on:
+  push:
+    paths:
+      - "tools/ai/**"
+      - "docs/ai/**"
+      - ".github/workflows/ai_report_scorer.yml"
+  pull_request:
+    paths:
+      - "tools/ai/**"
+      - "docs/ai/**"
+      - ".github/workflows/ai_report_scorer.yml"
+  workflow_dispatch:
+
+jobs:
+  validate-fixtures:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Validate AI report scorer fixtures
+        run: python tools/ai/validate_report_scorer.py

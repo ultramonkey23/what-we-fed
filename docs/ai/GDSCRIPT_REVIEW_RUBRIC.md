@@ -25,7 +25,7 @@ Before reviewing code, explicitly state:
 
 ## 5. Gameplay Regression Risk (Project Identity)
 - [ ] **Timing:** Does this alter the `SongConductor`'s authority or introduce "floaty" input windows?
-- [ ] **Lanes:** Does it violate the strict 3-lane logic (0, 1, 2)?
+- [ ] **Cardinal Directions:** Does it violate the strict cardinal logic (N, S, E, W)?
 - [ ] **Economy:** Does it bypass or break the species-specific DNA predation loop?
 
 ## 6. UI & Readability Risk

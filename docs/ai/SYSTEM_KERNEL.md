@@ -92,5 +92,6 @@ The Inspector must emit a machine-readable receipt before ALFRED mutates visuals
 - **No Hallucinations**: If a test wasn't run, report it as "Static-Only" or "Speculative."
 - **No Flattening**: Do not replace unique project traits with generic roguelite/RPG tropes.
 - **Timing Integrity**: No frame-dependent logic; respect `SongConductor`.
-- **Lane Readability**: Do not obscure lanes 0, 1, 2 with visual effects.
+- **Lane Readability**: Do not obscure cardinal threat lanes (N, S, E, W) with visual effects.
+- **Input Responsiveness**: Respect the 0.14s Action Buffer; no "eaten" inputs during recovery.
 - **Start Weak, Become Feared**: Maintain the kinetic progression fantasy.

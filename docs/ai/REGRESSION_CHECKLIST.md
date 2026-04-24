@@ -28,7 +28,7 @@
 
 ## 5. Visual Truth Check
 - [ ] Screenshot/capture evidence exists when making visual-readability claims.
-- [ ] Lane floors 0, 1, 2 remain visible through VFX, HUD shells, support triggers, and boss spectacle.
+- [ ] Cardinal threat lanes (N, S, E, W) remain visible through VFX, HUD shells, support triggers, and boss spectacle.
 - [ ] Projectiles and timing markers are distinguishable from background, support VFX, and enemy effects.
 - [ ] Support effects read as support and do not look like enemy threat unless intentionally overridden.
 - [ ] Any Inspector receipt has acceptance criteria and a same-moment re-capture plan.

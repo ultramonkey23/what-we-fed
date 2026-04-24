@@ -572,7 +572,8 @@ const ENEMY_TELEGRAPH_PROFILES := {
 		"lane_color": Color(0.88, 0.40, 0.18, 1.0),
 		"marker_color": Color(0.98, 0.72, 0.44, 1.0),
 		"reflected_color": Color(0.52, 0.98, 0.76, 1.0),
-		"warning_bias": 1.0
+		"warning_bias": 1.0,
+		"ring_thickness_base": 1.0
 	},
 	"bond_reaper": {
 		"family": "needle",
@@ -582,7 +583,8 @@ const ENEMY_TELEGRAPH_PROFILES := {
 		"lane_color": Color(0.70, 0.80, 0.98, 1.0),
 		"marker_color": Color(0.76, 0.88, 1.0, 1.0),
 		"reflected_color": Color(0.46, 0.92, 1.0, 1.0),
-		"warning_bias": 1.14
+		"warning_bias": 1.14,
+		"ring_thickness_base": 0.85
 	},
 	"sovereign": {
 		"family": "sovereign",
@@ -592,7 +594,8 @@ const ENEMY_TELEGRAPH_PROFILES := {
 		"lane_color": Color(0.96, 0.54, 0.16, 1.0),
 		"marker_color": Color(1.0, 0.82, 0.42, 1.0),
 		"reflected_color": Color(0.78, 1.0, 0.58, 1.0),
-		"warning_bias": 1.18
+		"warning_bias": 1.18,
+		"ring_thickness_base": 1.45
 	},
 	"ashclaw": {
 		"family": "fang",
@@ -603,7 +606,8 @@ const ENEMY_TELEGRAPH_PROFILES := {
 		"lane_color": Color(0.82, 0.48, 0.28, 1.0),
 		"marker_color": Color(0.94, 0.76, 0.52, 1.0),
 		"reflected_color": Color(0.60, 0.98, 0.64, 1.0),
-		"warning_bias": 1.04
+		"warning_bias": 1.04,
+		"ring_thickness_base": 1.1
 	},
 	"bond_remnant": {
 		"family": "veil",
@@ -613,7 +617,8 @@ const ENEMY_TELEGRAPH_PROFILES := {
 		"lane_color": Color(0.60, 0.68, 0.94, 1.0),
 		"marker_color": Color(0.80, 0.88, 1.0, 1.0),
 		"reflected_color": Color(0.50, 0.88, 1.0, 1.0),
-		"warning_bias": 0.98
+		"warning_bias": 0.98,
+		"ring_thickness_base": 0.9
 	},
 	"gruvek": {
 		"family": "mass",
@@ -623,7 +628,8 @@ const ENEMY_TELEGRAPH_PROFILES := {
 		"lane_color": Color(0.80, 0.42, 0.14, 1.0),
 		"marker_color": Color(0.94, 0.72, 0.44, 1.0),
 		"reflected_color": Color(0.72, 1.0, 0.56, 1.0),
-		"warning_bias": 0.90
+		"warning_bias": 0.90,
+		"ring_thickness_base": 1.35
 	},
 	"veilskin": {
 		"family": "needle",
@@ -633,7 +639,8 @@ const ENEMY_TELEGRAPH_PROFILES := {
 		"lane_color": Color(0.62, 0.88, 1.0, 1.0),
 		"marker_color": Color(0.82, 0.96, 1.0, 1.0),
 		"reflected_color": Color(0.42, 0.94, 1.0, 1.0),
-		"warning_bias": 1.20
+		"warning_bias": 1.20,
+		"ring_thickness_base": 0.8
 	},
 	"thornback": {
 		"family": "fang",
@@ -644,7 +651,8 @@ const ENEMY_TELEGRAPH_PROFILES := {
 		"lane_color": Color(0.88, 0.28, 0.22, 1.0),
 		"marker_color": Color(0.98, 0.56, 0.44, 1.0),
 		"reflected_color": Color(0.88, 1.0, 0.52, 1.0),
-		"warning_bias": 1.08
+		"warning_bias": 1.08,
+		"ring_thickness_base": 1.25
 	},
 	"knellspine": {
 		"family": "chorus",
@@ -654,7 +662,8 @@ const ENEMY_TELEGRAPH_PROFILES := {
 		"lane_color": Color(0.92, 0.76, 0.24, 1.0),
 		"marker_color": Color(1.0, 0.90, 0.56, 1.0),
 		"reflected_color": Color(0.92, 0.96, 0.52, 1.0),
-		"warning_bias": 1.06
+		"warning_bias": 1.06,
+		"ring_thickness_base": 1.15
 	},
 	"marrowward": {
 		"family": "mass",
@@ -664,7 +673,8 @@ const ENEMY_TELEGRAPH_PROFILES := {
 		"lane_color": Color(0.52, 0.74, 0.62, 1.0),
 		"marker_color": Color(0.82, 0.92, 0.84, 1.0),
 		"reflected_color": Color(0.58, 1.0, 0.80, 1.0),
-		"warning_bias": 0.94
+		"warning_bias": 0.94,
+		"ring_thickness_base": 1.4
 	},
 	"gorefane": {
 		"family": "fang",
@@ -675,7 +685,8 @@ const ENEMY_TELEGRAPH_PROFILES := {
 		"lane_color": Color(0.92, 0.22, 0.14, 1.0),
 		"marker_color": Color(0.98, 0.50, 0.36, 1.0),
 		"reflected_color": Color(0.68, 1.0, 0.60, 1.0),
-		"warning_bias": 1.10
+		"warning_bias": 1.10,
+		"ring_thickness_base": 1.3
 	},
 	"hushcoil": {
 		"family": "veil",
@@ -685,7 +696,8 @@ const ENEMY_TELEGRAPH_PROFILES := {
 		"lane_color": Color(0.42, 0.70, 0.62, 1.0),
 		"marker_color": Color(0.76, 0.92, 0.86, 1.0),
 		"reflected_color": Color(0.54, 0.86, 1.0, 1.0),
-		"warning_bias": 0.92
+		"warning_bias": 0.92,
+		"ring_thickness_base": 0.95
 	},
 	"coldvein": {
 		"family": "needle",
@@ -695,7 +707,8 @@ const ENEMY_TELEGRAPH_PROFILES := {
 		"lane_color": Color(0.54, 0.82, 1.0, 1.0),
 		"marker_color": Color(0.84, 0.94, 1.0, 1.0),
 		"reflected_color": Color(0.44, 0.92, 1.0, 1.0),
-		"warning_bias": 1.18
+		"warning_bias": 1.18,
+		"ring_thickness_base": 0.85
 	},
 	"pale_shelf_precision_stalker": {
 		"family": "needle",
@@ -705,7 +718,8 @@ const ENEMY_TELEGRAPH_PROFILES := {
 		"lane_color": Color(0.58, 0.84, 1.0, 1.0),
 		"marker_color": Color(0.86, 0.96, 1.0, 1.0),
 		"reflected_color": Color(0.48, 0.90, 1.0, 1.0),
-		"warning_bias": 1.20
+		"warning_bias": 1.20,
+		"ring_thickness_base": 0.85
 	},
 	"pale_shelf_shardshroud_sentinel": {
 		"family": "mass",
@@ -715,7 +729,8 @@ const ENEMY_TELEGRAPH_PROFILES := {
 		"lane_color": Color(0.50, 0.72, 0.64, 1.0),
 		"marker_color": Color(0.80, 0.90, 0.84, 1.0),
 		"reflected_color": Color(0.56, 1.0, 0.78, 1.0),
-		"warning_bias": 0.96
+		"warning_bias": 0.96,
+		"ring_thickness_base": 1.4
 	},
 	"siltgrip": {
 		"family": "mass",
@@ -725,7 +740,8 @@ const ENEMY_TELEGRAPH_PROFILES := {
 		"lane_color": Color(0.32, 0.64, 0.54, 1.0),
 		"marker_color": Color(0.64, 0.86, 0.78, 1.0),
 		"reflected_color": Color(0.48, 0.90, 0.80, 1.0),
-		"warning_bias": 0.88
+		"warning_bias": 0.88,
+		"ring_thickness_base": 1.3
 	}
 }
 

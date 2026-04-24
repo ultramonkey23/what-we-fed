@@ -301,7 +301,7 @@ func _build_choice_cards() -> void:
 	var gap: float = 24.0
 	var start_x: float = 32.0
 
-	for i in range(3):
+	for i in range(4):
 		var card: ColorRect = ColorRect.new()
 		card.name = "RunSpineUpgradeCard_%d" % i
 		card.position = Vector2(start_x + i * (card_w + gap), 104.0)

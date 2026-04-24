@@ -331,19 +331,16 @@ func _process_incoming_song_synced(delta: float) -> void:
 		elif player_ref != null:
 			var center: Vector2 = player_pos # Global center point
 			var player_actual: Vector2 = player_ref.global_position
-			var desired_radial_vector: Vector2 = (player_actual - center).normalized()
+			var player_delta: Vector2 = player_actual - center
 			
-			# We want to rotate _current_radial_vector towards desired_radial_vector
-			# But wait, _current_radial_vector points FROM center TO projectile.
-			# So we rotate it towards (projectile - center) direction? No.
-			# The radial vector defines the angle of approach.
-			# Player is at some angle. We want to approach that angle.
-			var current_angle: float = _current_radial_vector.angle()
-			var target_angle: float = (player_actual - center).angle()
-			var angle_diff: float = angle_difference(current_angle, target_angle)
-			
-			var turn_step: float = clamp(angle_diff, -max_turn_rate * delta, max_turn_rate * delta)
-			_current_radial_vector = _current_radial_vector.rotated(turn_step)
+			if player_delta.length() > 0.1:
+				var desired_radial_vector: Vector2 = player_delta.normalized()
+				var current_angle: float = _current_radial_vector.angle()
+				var target_angle: float = desired_radial_vector.angle()
+				var angle_diff: float = angle_difference(current_angle, target_angle)
+				
+				var turn_step: float = clamp(angle_diff, -max_turn_rate * delta, max_turn_rate * delta)
+				_current_radial_vector = _current_radial_vector.rotated(turn_step)
 			
 			# Face the center (direction of travel)
 			rotation = _current_radial_vector.angle() + PI

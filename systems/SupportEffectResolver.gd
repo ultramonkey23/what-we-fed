@@ -150,7 +150,7 @@ func resolve(ctx: Dictionary) -> void:
 				
 			stamina_requested.emit(stamina_amount)
 			feedback_requested.emit(phase_text, Color(0.78, 0.92, 1.0, 1.0), 0.36)
-			for ring_lane in range(3):
+			for ring_lane in range(4):
 				highlight_ring_requested.emit(ring_lane, Color(0.72, 0.88, 1.0, 1.0), 5.5)
 				intervention_requested.emit(species_id, ring_lane, Color(0.72, 0.88, 1.0, 0.55))
 			flash_requested.emit(Color(0.10, 0.18, 0.26, 0.92), 0.10)
@@ -195,7 +195,7 @@ func resolve(ctx: Dictionary) -> void:
 			heal_requested.emit(ward_heal)
 			stamina_requested.emit(ward_stamina)
 			feedback_requested.emit(ward_text, Color(0.78, 0.92, 0.82, 1.0), 0.34)
-			for ring_lane in range(3):
+			for ring_lane in range(4):
 				highlight_ring_requested.emit(ring_lane, Color(0.78, 0.92, 0.82, 1.0), 5.4)
 				intervention_requested.emit(species_id, ring_lane, Color(0.78, 0.92, 0.82, 0.55))
 			flash_requested.emit(Color(0.12, 0.18, 0.14, 0.92), 0.10)
@@ -238,7 +238,7 @@ func resolve(ctx: Dictionary) -> void:
 				lull_text = "DEEP LULL"
 				
 			feedback_requested.emit(lull_text, Color(0.72, 0.82, 0.98, 1.0), 0.34)
-			for ring_lane in range(3):
+			for ring_lane in range(4):
 				highlight_ring_requested.emit(ring_lane, Color(0.68, 0.80, 0.98, 1.0), 5.8)
 				intervention_requested.emit(species_id, ring_lane, Color(0.68, 0.80, 0.98, 0.55))
 			flash_requested.emit(Color(0.10, 0.14, 0.24, 0.92), 0.10)
@@ -282,7 +282,7 @@ func resolve(ctx: Dictionary) -> void:
 			lane_manager.apply_status(lane, "expose", {"duration": cold_expose_time})
 			
 			if cadence_surge:
-				for cold_lane: int in range(3):
+				for cold_lane: int in range(4):
 					if cold_lane != lane:
 						lane_manager.apply_status(cold_lane, "pale", {})
 				cold_text = "COLD CASCADE"
@@ -310,7 +310,7 @@ func resolve(ctx: Dictionary) -> void:
 				silt_text = "DEEP DRAG"
 			
 			heal_requested.emit(silt_heal)
-			for silt_lane: int in range(3):
+			for silt_lane: int in range(4):
 				var silt_enemy: Dictionary = lane_manager.get_enemy(silt_lane)
 				if silt_enemy.has("hp") and float(silt_enemy["hp"]) > 0.0:
 					lane_manager.apply_status(silt_lane, "rend", {"charges": silt_charges})
@@ -320,7 +320,7 @@ func resolve(ctx: Dictionary) -> void:
 			else:
 				feedback_requested.emit(silt_text, Color(0.38, 0.78, 0.60, 1.0), 0.34)
 				
-			for silt_ring: int in range(3):
+			for silt_ring: int in range(4):
 				highlight_ring_requested.emit(silt_ring, Color(0.36, 0.74, 0.58, 1.0), 5.2)
 				intervention_requested.emit(species_id, silt_ring, Color(0.36, 0.74, 0.58, 0.55))
 			flash_requested.emit(Color(0.06, 0.16, 0.14, 0.92), 0.10)
@@ -361,7 +361,7 @@ func _apply_collar_behavior(ctx: Dictionary, collar_mod: Dictionary) -> void:
 		lane_manager.apply_status(lane, status_id, {})
 
 	if collar_mod.has("redirected_lane") and lane_manager != null and lane >= 0:
-		for neighbor_lane in range(3):
+		for neighbor_lane in range(4):
 			if neighbor_lane != lane:
 				lane_manager.apply_status(neighbor_lane, "pale", {})
 

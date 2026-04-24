@@ -16,4 +16,4 @@ Specialist Lobe of BRAIN (ALFRED). Responsible for improving game readability an
 - **Readability First, Spectacle Second**.
 
 ## Output Contract
-Must follow the **BRAIN Output Contract (v2.1)** for all UI implementation passes.
+Must follow the **Auditor's Report (v2.2)** as defined in `docs/ai/SYSTEM_KERNEL.md`.

@@ -30,6 +30,7 @@ const DODGE_IFRAME_WINDOW_ON_BEAT: float = 0.15
 const ULTIMATE_RECOVERY: float = 0.45
 
 const CHAIN_BYPASS_WINDOW: float = 0.60
+const INPUT_BUFFER_WINDOW: float = 0.10 # Synced with COMBAT_FEEL_CONSTANTS.TIMING_WINDOWS.attack_buffer_ms
 
 # Player sprite images.
 const PLAYER_IDLE_PATH: String = "res://assets/characters/player/combat/player_idle.png"
@@ -49,11 +50,10 @@ const HURT_IMAGE_DURATION: float = 0.30
 # All action tweens return to this lane's Y position via _play_world_motion.
 # Do not remove the return-to-center snap without updating every action state function.
 const NEUTRAL_LANE: int = 1
-const NEUTRAL_WORLD_X_OFFSET: float = -36.0
-const ATTACK_WORLD_X_OFFSET: float = 8.0
-const PARRY_WORLD_X_OFFSET: float = -8.0
-const DODGE_WORLD_X_OFFSET: float = -18.0
-const HIT_WORLD_X_OFFSET: float = -26.0
+const ATTACK_WORLD_X_OFFSET: float = 28.0
+const PARRY_WORLD_X_OFFSET: float = -12.0
+const DODGE_WORLD_X_OFFSET: float = -22.0
+const HIT_WORLD_X_OFFSET: float = -18.0
 
 # Sprite-local pose offsets.
 const NEUTRAL_SPRITE_POSITION := Vector2(-42.0, -82.0)
@@ -97,6 +97,7 @@ var _attack_tex: Texture2D = null
 var _parry_tex: Texture2D = null
 var _hurt_tex: Texture2D = null
 var _image_restore_tween: Tween = null
+var _input_buffer: Dictionary = {}
 
 
 func _ready() -> void:
@@ -116,6 +117,13 @@ func _process(delta: float) -> void:
 		action_lock_timer = max(action_lock_timer - delta, 0.0)
 		if action_lock_timer <= 0.0:
 			current_action_state = "idle"
+			_check_input_buffer()
+	
+	if not _input_buffer.is_empty():
+		_input_buffer["time_left"] -= delta
+		if _input_buffer["time_left"] <= 0.0:
+			_input_buffer.clear()
+
 	if dodge_invuln_timer > 0.0:
 		dodge_invuln_timer = max(dodge_invuln_timer - delta, 0.0)
 
@@ -165,7 +173,15 @@ func _get_target_direction() -> int:
 
 func _handle_directional_action(target_dir: int, action_type: String) -> void:
 	if not _can_accept_action() and action_type != "dodge":
+		_input_buffer = {
+			"action": action_type,
+			"lane": target_dir,
+			"time_left": INPUT_BUFFER_WINDOW
+		}
 		return
+	
+	if action_type == "dodge":
+		_input_buffer.clear() # Clear any other buffered action if dodging immediately
 	
 	_consume_chain_bypass_if_needed()
 	EventBus.emit_signal("timing_ring_pressed", target_dir)
@@ -201,7 +217,7 @@ func setup(new_lane_manager: Node, new_combat_meter: Node) -> void:
 	if not EventBus.song_beat_pulse.is_connected(_on_song_beat_pulse):
 		EventBus.song_beat_pulse.connect(_on_song_beat_pulse)
 
-	for lane in range(3):
+	for lane in range(lane_manager.THREAT_COUNT if lane_manager else 4):
 		var projectile: Projectile = lane_manager.get_projectile(lane) as Projectile
 		if is_instance_valid(projectile):
 			_connect_projectile_signals(projectile)
@@ -334,26 +350,6 @@ func _lock_action(duration: float, state: String) -> void:
 	current_action_state = state
 
 
-func _handle_lane_action(target_lane: int) -> void:
-	target_lane = clampi(target_lane, 0, 2)
-	_clear_buffered_dodge()
-	_consume_chain_bypass_if_needed()
-	# Immediate ring feedback on button press.
-	EventBus.emit_signal("timing_ring_pressed", target_lane)
-
-	if Input.is_action_pressed("mod_forward"):
-		_try_dodge(target_lane, _read_dodge_direction())
-		return
-
-	_select_action_lane(target_lane)
-
-	if Input.is_action_pressed("mod_back"):
-		_try_parry()
-		return
-
-	_try_attack()
-
-
 func _select_action_lane(target_lane: int) -> void:
 	var previous_lane: int = current_lane
 	current_lane = target_lane
@@ -439,13 +435,13 @@ func _try_parry() -> void:
 				
 			var expose_all: float = _run_growth.get_mutation_bonus("expose_all_on_perfect_parry")
 			if expose_all > 0.0:
-				for ex_lane in range(3):
+				for ex_lane in range(lane_manager.THREAT_COUNT if lane_manager else 4):
 					lane_manager.call("apply_status", ex_lane, "expose", {"duration": expose_all})
 				_run_growth.consume_mutation_charges("expose_all_on_perfect_parry", 1)
 		
 		var pale_all: float = _run_growth.get_mutation_bonus("pale_on_parry")
 		if pale_all > 0.0:
-			for pa_lane in range(3):
+			for pa_lane in range(lane_manager.THREAT_COUNT if lane_manager else 4):
 				lane_manager.call("apply_status", pa_lane, "pale", {})
 			_run_growth.consume_mutation_charges("pale_on_parry", 1)
 
@@ -556,7 +552,7 @@ func _try_ultimate() -> void:
 	var total_damage: float = GameState.get_attack_damage() * multiplier * beat_mult * GameState.stat_intelligence
 	total_damage += _get_creature_bonus()
 
-	for lane in range(3):
+	for lane in range(lane_manager.THREAT_COUNT if lane_manager else 4):
 		lane_manager.call("damage_enemy", lane, total_damage)
 
 	EventBus.emit_signal("screen_flash", Color(1.0, 0.75, 0.3, 0.16), 0.10)
@@ -855,17 +851,18 @@ func _neutral_world_position() -> Vector2:
 	if lane_manager == null:
 		return Vector2.ZERO
 
-	return lane_manager.get_player_pos() + Vector2(NEUTRAL_WORLD_X_OFFSET, 0.0)
+	return lane_manager.get_player_pos()
 
 
-func _action_world_position(target_lane: int, x_offset: float) -> Vector2:
+func _action_world_position(target_dir: int, reach_distance: float) -> Vector2:
 	if lane_manager == null:
 		return Vector2.ZERO
 
-	return Vector2(
-		lane_manager.get_player_x() + x_offset,
-		lane_manager.get_lane_y(target_lane)
-	)
+	var center: Vector2 = lane_manager.get_player_pos()
+	var threat_pos: Vector2 = lane_manager.get_threat_hit_zone_pos(target_dir)
+	var dir_vec: Vector2 = (threat_pos - center).normalized()
+	
+	return center + dir_vec * reach_distance
 
 
 func _setup_player_sprite() -> void:
@@ -1130,9 +1127,33 @@ func _on_projectile_player_contact(projectile: Node) -> void:
 
 	if combat_enabled:
 		_take_damage(proj_damage, proj_lane)
+
+
+func _check_input_buffer() -> void:
+	if _input_buffer.is_empty():
+		return
 	
-	projectile.call("resolve", "miss")
-	lane_manager.call("clear_slot", proj_lane)
+	var action: String = String(_input_buffer.get("action", ""))
+	var lane: int = int(_input_buffer.get("lane", -1))
+	var time_left: float = float(_input_buffer.get("time_left", 0.0))
+	
+	_input_buffer.clear()
+	
+	if time_left > 0.0:
+		match action:
+			"attack": _handle_directional_action(lane, "attack")
+			"parry": _handle_directional_action(lane, "parry")
+			"dodge": _handle_directional_action(lane, "dodge")
+
+
+func _clear_buffered_dodge() -> void:
+	if String(_input_buffer.get("action", "")) == "dodge":
+		_input_buffer.clear()
+
+
+func _read_dodge_direction() -> int:
+	# In centered combat, dodge direction is towards the threat.
+	return _get_target_direction()
 
 
 func _spawn_dodge_afterimage() -> void:

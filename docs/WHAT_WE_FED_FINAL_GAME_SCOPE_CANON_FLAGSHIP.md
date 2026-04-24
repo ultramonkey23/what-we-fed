@@ -45,7 +45,7 @@ Repeated runs bend the world across four fate channels. The world reacts to play
 Timing truth is non-negotiable.
 
 ## Pillar 2 — Lane Pressure
-Three lanes for reading pressure and prioritization.
+Cardinal directions for reading pressure and prioritization (N, S, E, W).
 
 ## Pillar 3 — Bond vs Eat
 Immediate predation vs long-term relational power.

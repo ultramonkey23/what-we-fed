@@ -120,7 +120,7 @@ func _pulse_active_enemy_markers(_intensity: float) -> void:
 func _is_enemy_id_active(enemy_id: int) -> bool:
 	if _lane_manager == null or not _lane_manager.has_method("get_enemy"):
 		return true
-	for lane in range(3):
+	for lane in range(_lane_manager.THREAT_COUNT if _lane_manager else 4):
 		var lane_enemy_v: Variant = _lane_manager.call("get_enemy", lane)
 		if not lane_enemy_v is Dictionary:
 			continue
@@ -406,10 +406,11 @@ func spawn_attack_silhouette_to_lane(
 		return
 
 	var start_point: Vector2 = _player_combat.position + Vector2(10.0, -6.0)
-	var end_point: Vector2 = Vector2(
-		_lane_manager.get_hit_zone_x() + 8.0,
-		_lane_manager.get_lane_y(lane)
-	)
+	var end_point: Vector2 = _lane_manager.get_threat_hit_zone_pos(lane)
+	# Add a small outward offset for the slash tip
+	var dir_vec: Vector2 = (end_point - _lane_manager.get_player_pos()).normalized()
+	end_point += dir_vec * 8.0
+	
 	var delta: Vector2 = (end_point - start_point) * reach_scale
 	var length: float = max(delta.length(), 10.0)
 	var angle: float = delta.angle()
@@ -456,10 +457,10 @@ func spawn_creature_intervention(
 	
 	# Start slightly behind the player, leaning into the field.
 	var start_pos: Vector2 = _player_combat.position + Vector2(-40.0, -12.0)
-	var end_pos: Vector2 = Vector2(
-		_lane_manager.get_hit_zone_x() - 20.0,
-		_lane_manager.get_lane_y(lane)
-	)
+	var end_pos: Vector2 = _lane_manager.get_threat_hit_zone_pos(lane)
+	# Inset slightly toward player from hit zone
+	var dir_vec: Vector2 = (end_pos - _lane_manager.get_player_pos()).normalized()
+	end_pos -= dir_vec * 20.0
 	
 	sprite.position = start_pos
 	# Intervention scale: start large and slightly transparent, punch in.

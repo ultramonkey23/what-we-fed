@@ -731,7 +731,7 @@ func _show_victory_reward_internal(creature_data: Dictionary, is_dna_locked: boo
 func _resolve_runtime_authority_budget(phase: Dictionary = {}, snapshot: Dictionary = {}) -> int:
 	var lane_count: int = 3
 	if lane_manager != null and is_instance_valid(lane_manager):
-		lane_count = int(lane_manager.LANE_COUNT)
+		lane_count = int(lane_manager.THREAT_COUNT)
 	var authority_budget: int = lane_count
 	if not snapshot.is_empty():
 		authority_budget = int(snapshot.get("attack_authority_budget", snapshot.get("authority_budget", authority_budget)))
@@ -817,7 +817,7 @@ func _process(delta: float) -> void:
 func _update_timers(delta: float) -> void:
 	_update_tempo_state()
 
-	for i in range(3):
+	for i in range(lane_manager.THREAT_COUNT if lane_manager else 4):
 		if _ring_highlight_timers[i] > 0.0:
 			_ring_highlight_timers[i] = max(_ring_highlight_timers[i] - delta, 0.0)
 	
@@ -1094,8 +1094,6 @@ func _rehydrate_song_pressure_after_reward() -> void:
 	if _song_phase_index < 0 or _song_phase_index >= _song_phases.size():
 		return
 	var target_lane: int = _resolve_song_empty_lane_near_player()
-	if _promote_song_reserve_to_lane(target_lane):
-		return
 	var phase: Dictionary = _song_phases[_song_phase_index]
 	var pool: Array = phase.get("enemy_pool", [])
 	if pool.is_empty():
@@ -1104,8 +1102,39 @@ func _rehydrate_song_pressure_after_reward() -> void:
 	_place_song_enemy_data(target_lane, chosen)
 
 
+func _resolve_song_empty_lane_near_player() -> int:
+	if lane_manager == null:
+		return 2 # East fallback
+		
+	var player_lane: int = 2
+	if player_combat != null:
+		player_lane = player_combat.current_lane
+	
+	# Priority 1: Current lane if empty
+	if lane_manager.call("is_lane_empty", player_lane):
+		return player_lane
+		
+	# Priority 2: Adjacent cardinal lanes
+	var adjacents: Array = []
+	if player_lane == 0 or player_lane == 1: # North/South
+		adjacents = [2, 3] # East/West
+	else: # East/West
+		adjacents = [0, 1] # North/South
+		
+	for adj in adjacents:
+		if lane_manager.call("is_lane_empty", adj):
+			return adj
+			
+	# Priority 3: Any empty lane
+	for i in range(lane_manager.THREAT_COUNT if lane_manager else 4):
+		if lane_manager.call("is_lane_empty", i):
+			return i
+			
+	return player_lane # Fallback to player lane if everything is full (will be handled by queue/stall logic)
+
+
 func _blank_song_reserve_lane_map() -> Dictionary:
-	return {0: [], 1: [], 2: []}
+	return {0: [], 1: [], 2: [], 3: []}
 
 
 func _reset_song_reserve_state(_clear_visuals: bool = true) -> void:
@@ -1401,7 +1430,7 @@ func _update_lane_visual_states() -> void:
 	var outer_entry: float = 1.0 - COMBAT_FEEL_CONTENT.RING_OUTER_RADIUS / intercept_dist
 	var outer_exit: float = 1.0 + COMBAT_FEEL_CONTENT.RING_OUTER_RADIUS / intercept_dist
 
-	for lane in range(3):
+	for lane in range(lane_manager.THREAT_COUNT if lane_manager else 4):
 		var strip: TextureRect = _lane_strips.get(lane, null)
 		var focus: Node2D = _lane_hit_focus.get(lane, null)
 		if strip == null or focus == null or not is_instance_valid(strip) or not is_instance_valid(focus):
@@ -2837,7 +2866,7 @@ func _create_upgrade_overlay() -> void:
 	var gap: float = 32.0
 	var start_x: float = (1040.0 - (card_w * 3 + gap * 2)) * 0.5
 
-	for i in range(3):
+	for i in range(lane_manager.THREAT_COUNT if lane_manager else 4):
 		var card := ColorRect.new()
 		card.name = "UpgradeCard_%d" % i
 		card.position = Vector2(start_x + i * (card_w + gap), 110.0)
@@ -3171,7 +3200,7 @@ func _setup_lane_manager() -> void:
 
 	lane_manager.combat_scene = self
 	if lane_manager.has_method("set_attack_authority_budget"):
-		_active_attack_authority_budget = int(lane_manager.LANE_COUNT)
+		_active_attack_authority_budget = int(lane_manager.THREAT_COUNT)
 		lane_manager.call("set_attack_authority_budget", _active_attack_authority_budget)
 
 
@@ -3259,7 +3288,7 @@ func _start_regular_level(level_index: int, reset_hp: bool) -> void:
 	if lane_manager != null and lane_manager.has_method("stop"):
 		lane_manager.stop()
 	lane_manager.set_song_mode_enabled(true)
-	_active_attack_authority_budget = int(lane_manager.LANE_COUNT)
+	_active_attack_authority_budget = int(lane_manager.THREAT_COUNT)
 	_apply_attack_authority_budget()
 
 	_base_difficulty_modifiers = Dictionary(level_data.get("difficulty_modifiers", {}))
@@ -3739,20 +3768,33 @@ func _enter_song_phase(new_idx: int) -> void:
 
 
 func _place_song_enemy_data(lane: int, enemy_data: Dictionary) -> void:
+	if enemy_data.is_empty():
+		return
+		
 	# LaneManager handles internal orbiting if the active attack budget is full.
 	# It also handles ID generation if needed.
 	lane_manager.set_enemy(lane, enemy_data)
 	
-	# Registration and visual markers for markers that may appear during orbit.
-	# We rely on lane_manager.get_enemies() to refresh visual state.
-	var enemy_id: int = int(enemy.get("id", 0))
-	_all_enemies_by_id[enemy_id] = enemy.duplicate(true)
-	_enemy_max_hp[enemy_id] = float(enemy.get("hp", 1.0))
+	# We need the ID to register markers. Since set_enemy might generate one,
+	# we search for the enemy we just added in the population.
+	var enemy_id: int = -1
+	var enemies: Dictionary = lane_manager.call("get_all_enemies")
+	for id in enemies:
+		var e: Dictionary = enemies[id]
+		if e.get("hp") == enemy_data.get("hp") and e.get("type") == enemy_data.get("type"):
+			enemy_id = id
+			break
+			
+	if enemy_id == -1: return
+
+	var enemy_final: Dictionary = enemies[enemy_id]
+	_all_enemies_by_id[enemy_id] = enemy_final.duplicate(true)
+	_enemy_max_hp[enemy_id] = float(enemy_final.get("hp", 1.0))
 	_enemy_phase_by_id[enemy_id] = _song_phase_index
 
 	var biome: Dictionary = _active_encounter.get("biome", {})
 	var inactive_color: Color = biome.get("enemy_inactive_color", Color(0.38, 0.18, 0.18, 0.55))
-	var marker_data: Dictionary = _build_enemy_marker(enemy_id, lane, enemy, 42.0, inactive_color)
+	var marker_data: Dictionary = _build_enemy_marker(enemy_id, lane, enemy_final, 42.0, inactive_color)
 	
 	if _enemy_marker_container != null and is_instance_valid(_enemy_marker_container):
 		_enemy_marker_container.add_child(marker_data["root"])
@@ -3797,7 +3839,7 @@ func _trigger_boss_final_movement() -> void:
 		_escalation_director.stop()
 	_latest_ecology_snapshot.clear()
 	if lane_manager != null and is_instance_valid(lane_manager) and lane_manager.has_method("set_attack_authority_budget"):
-		_active_attack_authority_budget = int(lane_manager.LANE_COUNT)
+		_active_attack_authority_budget = int(lane_manager.THREAT_COUNT)
 		lane_manager.call("set_attack_authority_budget", _active_attack_authority_budget)
 	_boss_hp_threshold_fired = false
 	_boss_decree_timeline_active = false
@@ -4615,7 +4657,7 @@ func _show_upgrade_choices() -> void:
 	_awaiting_upgrade_choice = true
 	_pending_upgrades = _performance_reward_director.call("get_upgrade_choices", 3)
 	
-	for i in range(3):
+	for i in range(lane_manager.THREAT_COUNT if lane_manager else 4):
 		var card := _upgrade_card_nodes[i] as ColorRect
 		if i < _pending_upgrades.size():
 			var up: Dictionary = _pending_upgrades[i]
@@ -4769,7 +4811,7 @@ func _show_boss_intro(boss_name: String) -> void:
 	# First strike: flash + shake + all rings flare to threat color.
 	EventBus.emit_signal("screen_flash", Color(0.68, 0.32, 0.06, 0.34), 0.20)
 	EventBus.emit_signal("screen_shake", 2.2, 0.16)
-	for _intro_lane in range(3):
+	for _intro_lane in range(lane_manager.THREAT_COUNT if lane_manager else 4):
 		_presentation_runtime.highlight_timing_ring(_intro_lane, Color(0.92, 0.42, 0.12, 1.0), 6.2)
 
 	_title_card.text = boss_name
@@ -5352,7 +5394,8 @@ func _refresh_enemy_marker_health(enemy_id: int) -> void:
 	if lane < 0:
 		return
 	var max_hp: float = maxf(float(_enemy_max_hp.get(enemy_id, 0.0)), 1.0)
-	var current_hp: float = clampf(float(lane_manager.get_enemy(lane).get("hp", 0.0)), 0.0, max_hp)
+	var enemy_data_v: Dictionary = lane_manager.call("get_enemy", lane)
+	var current_hp: float = clampf(float(enemy_data_v.get("hp", 0.0)), 0.0, max_hp)
 	var ratio: float = current_hp / max_hp
 	var track_node = marker_data.get("hp_track")
 	var fill_node = marker_data.get("hp_fill")
@@ -6290,7 +6333,7 @@ func _on_tier_changed(new_tier: String, _old_tier: String) -> void:
 
 
 func _get_enemy_id_for_lane(lane: int) -> int:
-	var enemy: Dictionary = lane_manager.get_enemy(lane)
+	var enemy: Dictionary = lane_manager.call("get_enemy", lane)
 	if enemy.is_empty():
 		return -1
 	return int(enemy.get("id", -1))

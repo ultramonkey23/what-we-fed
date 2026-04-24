@@ -4,7 +4,8 @@ extends RefCounted
 # Orchestrates how equipped collars modify support context during combat.
 
 func apply_to_support_context(ctx: Dictionary, game_state: Node) -> Dictionary:
-	var collar_id: String = String(game_state.get("equipped_collar_id", ""))
+	var collar_id_raw = game_state.get("equipped_collar_id")
+	var collar_id: String = String(collar_id_raw) if collar_id_raw != null else ""
 	if collar_id.is_empty():
 		return ctx
 

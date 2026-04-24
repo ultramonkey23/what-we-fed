@@ -17,7 +17,7 @@ Use this file to decide:
 
 ## Proven so far
 The game already has:
-- a real 3-lane timing combat spine
+- a real cardinal-timing combat spine (N, S, E, W)
 - combo/style/ultimate flow
 - bond vs eat reward structure
 - run growth with EXP and 1-of-3 upgrade drafts

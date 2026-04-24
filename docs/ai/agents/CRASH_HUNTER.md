@@ -16,4 +16,4 @@ Specialist Lobe of BRAIN (CYBORG). Responsible for localizing and fixing runtime
 - **Fix the Root Cause**, not just the symptom.
 
 ## Output Contract
-Must follow the **BRAIN Output Contract (v2.1)** for all crash fixes.
+Must follow the **Auditor's Report (v2.2)** as defined in `docs/ai/SYSTEM_KERNEL.md`.

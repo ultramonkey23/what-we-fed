@@ -53,7 +53,7 @@ Current sync note:
 1.  **RPG First**: Build identity and authorship.
 2.  **Roguelite Second**: Run adaptation and replayability.
 3.  **Creature-Driven Third**: Species meaning and Bond/Eat tension.
-4.  **Lane-Timing Combat Fourth**: The signature expression layer.
+4.  **Cardinal-Timing Combat Fourth**: The signature expression layer.
 
 ---
 

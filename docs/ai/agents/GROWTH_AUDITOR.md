@@ -16,4 +16,4 @@ Specialist Lobe of BRAIN (CYBORG). Responsible for verifying that the growth, DN
 - **Preserve the "Start Weak, Become Feared" Curve**.
 
 ## Output Contract
-Must follow the **BRAIN Output Contract (v2.1)** for all audit passes.
+Must follow the **Auditor's Report (v2.2)** as defined in `docs/ai/SYSTEM_KERNEL.md`.

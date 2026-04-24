@@ -17,4 +17,4 @@ Specialist Lobe of BRAIN (ALFRED). Responsible for implementing features or fixi
 - **Maintain Single-Responsibility Scripts**.
 
 ## Output Contract
-Must follow the **BRAIN Output Contract (v2.1)** for all implementation passes.
+Must follow the **Auditor's Report (v2.2)** as defined in `docs/ai/SYSTEM_KERNEL.md`.

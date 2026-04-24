@@ -1,8 +1,8 @@
 # HUD & READABILITY DOCTRINE — WHAT WE FED
 
-## 1. The Sacred Center (Lanes 0, 1, 2)
+## 1. The Sacred Center (Cardinal Threats: N, S, E, W)
 - The center of the screen is for **Combat Truth**. No HUD element, pop-up, or VFX slab may obscure it.
-- **Lane Truth**: Every lane (0, 1, 2) must be clearly readable.
+- **Directional Truth**: Every cardinal direction (North, South, East, West) must be clearly readable.
 
 ## 2. The Great UI Split: Urgency vs Comprehension
 

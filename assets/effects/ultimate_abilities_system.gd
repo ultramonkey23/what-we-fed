@@ -136,7 +136,7 @@ func dominate_screen_with_power():
 	tween.tween_property(screen_overlay, "modulate", Color(1, 1, 1, 0.9), 0.3)
 	
 	# Screen pulse effects
-	for i in range(3):
+	for i in range(4):
 		tween.tween_property(screen_overlay, "scale", Vector2(1.1, 1.1), 0.2)
 		tween.tween_property(screen_overlay, "scale", Vector2(1.0, 1.0), 0.2)
 

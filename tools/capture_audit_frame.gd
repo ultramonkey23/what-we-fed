@@ -227,7 +227,7 @@ func _song_metadata(song_conductor: Node, game_state: Node, scene: Node) -> Dict
 func _lane_metadata(lane_manager: Node, player_combat: Node, context: Dictionary) -> Dictionary:
 	var y_positions: Array[float] = []
 	if lane_manager != null and lane_manager.has_method("get_lane_y"):
-		for lane in range(3):
+		for lane in range(4):
 			y_positions.append(float(lane_manager.call("get_lane_y", lane)))
 	var active_lane: int = -1
 	active_lane = int(_get_object_property(player_combat, "current_lane", -1))

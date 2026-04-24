@@ -3,8 +3,7 @@ extends Node
 const COMBAT_CONTENT = preload("res://data/CombatContent.gd")
 
 const THREAT_COUNT: int = 4
-const LANE_COUNT: int = 4 # Shim for backward compatibility during refactor
-# fire_stagger is the wait between firing successive lanes in a single cycle.
+# fire_stagger is the wait between firing successive directions in a single cycle.
 # Wider = each lane projectile arrives as a distinct timed event.
 # Tighter = projectiles arrive in a cluster, reading the whole lane set at once.
 # Must stay >= MIN_IMPACT_SEPARATION to avoid the second lane being blocked
@@ -14,7 +13,7 @@ var cycle_interval: float = 2.2
 var attack_authority_budget: int = THREAT_COUNT
 
 const SPAWN_DISTANCE_RATIO: float = 0.42
-const HIT_ZONE_DISTANCE: float = 85.0
+const HIT_ZONE_DISTANCE: float = 110.0
 
 const PROJECTILE_SCENE_PATH: String = "res://scenes/combat/Projectile.tscn"
 const MIN_IMPACT_SEPARATION: float = 0.40
@@ -49,7 +48,7 @@ var _threat_hit_zone_positions: Array[Vector2] = []
 var _projectile_scene: PackedScene = null
 var _projectile_slots: Array = [null, null, null, null]
 var _enemies: Dictionary = {} # enemy_id -> Dictionary (Population)
-var _lane_strikers: Array[int] = [-1, -1, -1, -1] # enemy_id per lane
+var _strikers: Array[int] = [-1, -1, -1, -1] # enemy_id per direction (N, S, E, W)
 var _orbiting_enemy_ids: Array[int] = [] # Ordered for fair authority
 var _lane_authority_debt: Array[float] = [0.0, 0.0, 0.0, 0.0]
 var _lane_last_fired_cycle: Array[int] = [-999, -999, -999, -999]
@@ -58,6 +57,7 @@ var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
 var _orbit_angles: Dictionary = {} # enemy_id -> float
 var _orbit_radius_offsets: Dictionary = {} # enemy_id -> float
+var _orbit_drift_accum: Dictionary = {} # enemy_id -> float
 var _orbit_speed: float = 0.35 # Rad/sec
 var _next_enemy_id: int = 5000 # For non-song mode or internal spawns
 
@@ -126,12 +126,13 @@ func start_combat(enemy_data: Array) -> void:
 	stop()
 
 	_enemies.clear()
-	_lane_strikers = [-1, -1, -1, -1]
+	_strikers = [-1, -1, -1, -1]
 	_orbiting_enemy_ids.clear()
 	_orbit_angles.clear()
 	_orbit_radius_offsets.clear()
+	_orbit_drift_accum.clear()
 
-	for lane in range(LANE_COUNT):
+	for lane in range(THREAT_COUNT):
 		if lane < enemy_data.size():
 			var enemy = enemy_data[lane].duplicate(true)
 			var id = int(enemy.get("id", _next_enemy_id))
@@ -139,7 +140,7 @@ func start_combat(enemy_data: Array) -> void:
 			enemy["id"] = id
 			enemy["lane"] = lane
 			_enemies[id] = enemy
-			_lane_strikers[lane] = id
+			_strikers[lane] = id
 
 	_combat_running = true
 	_cycle_task_id += 1
@@ -183,7 +184,7 @@ func _on_song_beat_pulse(_beat_index: int, _intensity: float) -> void:
 
 
 func get_projectile(lane: int):
-	if lane < 0 or lane >= LANE_COUNT:
+	if lane < 0 or lane >= THREAT_COUNT:
 		return null
 
 	var projectile = _projectile_slots[lane]
@@ -197,6 +198,12 @@ func get_projectile(lane: int):
 	return projectile
 
 
+func is_lane_empty(lane: int) -> bool:
+	if lane < 0 or lane >= THREAT_COUNT:
+		return false
+	return _strikers[lane] == -1
+
+
 func clear_slot(lane: int) -> void:
 	if lane < 0 or lane >= THREAT_COUNT:
 		return
@@ -205,13 +212,12 @@ func clear_slot(lane: int) -> void:
 
 
 func get_lane_y(lane: int) -> float:
-	# Shim for horizontal logic: returns the Y of the threat position.
-	if lane < 0 or lane >= _threat_spawn_positions.size():
-		return _center_pos.y
-	return _threat_spawn_positions[lane].y
+	# RADIAL: Used by legacy visual systems. Returns Y of the cardinal spawn.
+	return get_threat_spawn_pos(lane).y
 
 
 func get_player_x() -> float:
+	# RADIAL: Player is centered.
 	return _center_pos.x
 
 
@@ -220,17 +226,13 @@ func get_player_pos() -> Vector2:
 
 
 func get_enemy_x() -> float:
-	# Shim: returns X of the Eastern threat (lane 2) or Center.
-	if _threat_spawn_positions.size() > 2:
-		return _threat_spawn_positions[2].x
-	return _center_pos.x
+	# RADIAL: Representative 'enemy' X for legacy UI, uses East (2).
+	return get_threat_spawn_pos(2).x
 
 
 func get_hit_zone_x() -> float:
-	# Shim: returns X of the Eastern hit zone or Center.
-	if _threat_hit_zone_positions.size() > 2:
-		return _threat_hit_zone_positions[2].x
-	return _center_pos.x
+	# RADIAL: Representative 'hit zone' X for legacy UI, uses East (2).
+	return get_threat_hit_zone_pos(2).x
 
 
 func get_threat_spawn_pos(lane: int) -> Vector2:
@@ -274,7 +276,7 @@ func set_punish_damage_mult(mult: float) -> void:
 func set_attack_authority_budget(budget: int) -> void:
 	# Distinct from alive enemy count: only this many lanes can claim attack authority
 	# in one fire cycle. Presence can stay high without unreadable overlap.
-	attack_authority_budget = clampi(budget, 1, LANE_COUNT)
+	attack_authority_budget = clampi(budget, 1, THREAT_COUNT)
 
 
 func trigger_accent_burst() -> void:
@@ -316,8 +318,8 @@ func set_enemy(lane: int, enemy_data: Dictionary) -> void:
 	_enemies[id] = enemy
 	
 	# Decide if they join orbit or take an empty lane
-	if lane >= 0 and lane < LANE_COUNT and _lane_strikers[lane] == -1 and alive_striker_count() < attack_authority_budget:
-		_lane_strikers[lane] = id
+	if lane >= 0 and lane < THREAT_COUNT and _strikers[lane] == -1 and alive_striker_count() < attack_authority_budget:
+		_strikers[lane] = id
 		enemy["lane"] = lane
 	else:
 		_orbiting_enemy_ids.append(id)
@@ -335,10 +337,10 @@ func set_enemy(lane: int, enemy_data: Dictionary) -> void:
 
 func damage_enemy(lane: int, amount: float) -> void:
 	# Applies damage to a lane's active enemy.
-	if lane < 0 or lane >= LANE_COUNT:
+	if lane < 0 or lane >= THREAT_COUNT:
 		return
 	
-	var id = _lane_strikers[lane]
+	var id = _strikers[lane]
 	if id == -1:
 		return
 		
@@ -400,7 +402,7 @@ func _handle_enemy_defeat(id: int) -> void:
 		if projectile != null:
 			projectile.resolve("enemy_defeated")
 			clear_slot(lane)
-		_lane_strikers[lane] = -1
+		_strikers[lane] = -1
 	
 	_orbiting_enemy_ids.erase(id)
 	_orbit_angles.erase(id)
@@ -416,10 +418,14 @@ func _handle_enemy_defeat(id: int) -> void:
 
 
 func get_enemy(lane: int) -> Dictionary:
-	if lane < 0 or lane >= LANE_COUNT:
+	if lane < 0 or lane >= THREAT_COUNT:
 		return {}
-	var id = _lane_strikers[lane]
+	var id = _strikers[lane]
 	return _enemies.get(id, {})
+
+
+func get_all_enemies() -> Dictionary:
+	return _enemies
 
 
 func alive_count() -> int:
@@ -433,15 +439,15 @@ func alive_count() -> int:
 
 func alive_striker_count() -> int:
 	var total: int = 0
-	for id in _lane_strikers:
+	for id in _strikers:
 		if id != -1:
 			total += 1
 	return total
 
 
 func _find_lane_for_enemy(id: int) -> int:
-	for i in range(LANE_COUNT):
-		if _lane_strikers[i] == id:
+	for i in range(THREAT_COUNT):
+		if _strikers[i] == id:
 			return i
 	return -1
 
@@ -454,12 +460,13 @@ func stop() -> void:
 	_enemy_statuses.clear()
 	_reset_attack_authority_state()
 	_enemies.clear()
-	_lane_strikers = [-1, -1, -1, -1]
+	_strikers = [-1, -1, -1, -1]
 	_orbiting_enemy_ids.clear()
 	_orbit_angles.clear()
 	_orbit_radius_offsets.clear()
+	_orbit_drift_accum.clear()
 
-	for lane in range(LANE_COUNT):
+	for lane in range(THREAT_COUNT):
 		var projectile = get_projectile(lane)
 		if projectile != null:
 			projectile.queue_free()
@@ -469,7 +476,14 @@ func stop() -> void:
 func _process(delta: float) -> void:
 	# 1. Update Orbit Positions
 	for id in _orbiting_enemy_ids:
-		_orbit_angles[id] = wrapf(_orbit_angles.get(id, 0.0) + _orbit_speed * delta, 0.0, TAU)
+		var current_angle: float = float(_orbit_angles[id]) if _orbit_angles.has(id) else 0.0
+		_orbit_angles[id] = wrapf(current_angle + _orbit_speed * delta, 0.0, TAU)
+		
+		# Predatory Drifting: radius oscillates subtly to feel more "alive"
+		var drift: float = float(_orbit_drift_accum[id]) if _orbit_drift_accum.has(id) else 0.0
+		_orbit_drift_accum[id] = drift + delta * 0.4
+		var base_offset: float = float(_orbit_radius_offsets[id]) if _orbit_radius_offsets.has(id) else 0.0
+		_orbit_radius_offsets[id] = base_offset + sin(_orbit_drift_accum[id]) * 0.15
 		
 	# 2. Tick EXPOSE duration; clear when expired.
 	var expired: Array = []
@@ -488,9 +502,9 @@ func _process(delta: float) -> void:
 
 func apply_status(lane: int, status_id: String, params: Dictionary = {}) -> void:
 	# Applies a combat status to the enemy in the given lane.
-	if lane < 0 or lane >= LANE_COUNT:
+	if lane < 0 or lane >= THREAT_COUNT:
 		return
-	var id = _lane_strikers[lane]
+	var id = _strikers[lane]
 	if id == -1:
 		return
 	apply_status_by_id(id, status_id, params)
@@ -533,8 +547,8 @@ func apply_status_by_id(id: int, status_id: String, params: Dictionary = {}) -> 
 
 
 func get_status_id(lane: int) -> String:
-	if lane < 0 or lane >= LANE_COUNT: return ""
-	var id = _lane_strikers[lane]
+	if lane < 0 or lane >= THREAT_COUNT: return ""
+	var id = _strikers[lane]
 	if id == -1 or not _enemy_statuses.has(id):
 		return ""
 	return String(_enemy_statuses[id].get("id", ""))
@@ -596,7 +610,7 @@ func _fire_lane(lane: int) -> bool:
 	if get_projectile(lane) != null:
 		return false
 
-	var id = _lane_strikers[lane]
+	var id = _strikers[lane]
 	if id == -1:
 		return false
 		
@@ -677,8 +691,8 @@ func _resolve_authorized_lanes_for_cycle() -> Array[int]:
 	_promote_orbiting_to_strikers()
 	
 	var candidates: Array = []
-	for lane in range(LANE_COUNT):
-		var id = _lane_strikers[lane]
+	for lane in range(THREAT_COUNT):
+		var id = _strikers[lane]
 		if id == -1: continue
 		
 		var enemy: Dictionary = _enemies.get(id, {})
@@ -706,7 +720,7 @@ func _resolve_authorized_lanes_for_cycle() -> Array[int]:
 		return float(a.get("score", 0.0)) > float(b.get("score", 0.0))
 	)
 
-	var budget: int = clampi(attack_authority_budget, 1, LANE_COUNT)
+	var budget: int = clampi(attack_authority_budget, 1, THREAT_COUNT)
 	var selected_count: int = mini(budget, candidates.size())
 	var selected_lanes: Array[int] = []
 	for i in range(selected_count):
@@ -718,7 +732,7 @@ func _promote_orbiting_to_strikers() -> void:
 	if _orbiting_enemy_ids.is_empty():
 		return
 		
-	var budget = clampi(attack_authority_budget, 1, LANE_COUNT)
+	var budget = clampi(attack_authority_budget, 1, THREAT_COUNT)
 	var current_strikers = alive_striker_count()
 	
 	# Try to fill lanes from orbit
@@ -727,7 +741,7 @@ func _promote_orbiting_to_strikers() -> void:
 		var id = _orbiting_enemy_ids[orbit_index]
 		var best_lane = _pick_best_lane_for_strike(id)
 		if best_lane != -1:
-			_lane_strikers[best_lane] = id
+			_strikers[best_lane] = id
 			_enemies[id]["lane"] = best_lane
 			_orbiting_enemy_ids.remove_at(orbit_index)
 			_orbit_angles.erase(id)
@@ -740,8 +754,8 @@ func _promote_orbiting_to_strikers() -> void:
 
 func _pick_best_lane_for_strike(_id: int) -> int:
 	var free_lanes = []
-	for i in range(LANE_COUNT):
-		if _lane_strikers[i] == -1:
+	for i in range(THREAT_COUNT):
+		if _strikers[i] == -1:
 			free_lanes.append(i)
 	
 	if free_lanes.is_empty():
@@ -760,8 +774,8 @@ func get_enemy_pos(id: int) -> Vector2:
 		
 	# If orbiting
 	if _orbit_angles.has(id):
-		var angle = _orbit_angles[id]
-		var radius = (_viewport_size.y * SPAWN_DISTANCE_RATIO) + _orbit_radius_offsets.get(id, 0.0)
+		var angle: float = float(_orbit_angles.get(id, 0.0))
+		var radius: float = (_viewport_size.y * SPAWN_DISTANCE_RATIO) + float(_orbit_radius_offsets.get(id, 0.0))
 		return _center_pos + Vector2(cos(angle), sin(angle)) * radius
 		
 	return _center_pos
@@ -848,14 +862,9 @@ func _get_enemy_projectile_speed(enemy: Dictionary) -> float:
 				base_speed = 265.0
 	
 	# Apply Slow Status
-	var lane: int = -1
-	for i in range(_enemies.size()):
-		if _enemies[i] == enemy:
-			lane = i
-			break
-	
-	if lane >= 0 and _enemy_statuses.has(lane):
-		var status: Dictionary = _enemy_statuses[lane]
+	var id = int(enemy.get("id", -1))
+	if id != -1 and _enemy_statuses.has(id):
+		var status: Dictionary = _enemy_statuses[id]
 		if status.get("id", "") == "slow" or (status.get("id", "") == "venom" and bool(status.get("slow", false))):
 			base_speed *= SLOW_SPEED_MULT
 			

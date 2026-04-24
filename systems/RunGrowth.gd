@@ -572,7 +572,7 @@ func _resolve_tendency_level_up(id: String, lvl: int) -> Dictionary:
 	if weights.is_empty(): weights = {"stat_potential": 10}
 	var keys: Array = weights.keys(); var total: int = 0
 	for v in weights.values(): total += int(v)
-	for i in range(3):
+	for i in range(4):
 		var roll: int = randi() % total; var cur: int = 0
 		for sid in keys:
 			cur += int(weights[sid])

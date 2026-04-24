@@ -669,6 +669,12 @@ func update_timing_ring_proximity(
 			var threat_color: Color = Color(telegraph_profile.get("lane_color", active_color))
 			var accent_color: Color = Color(telegraph_profile.get("accent_color", threat_color.lightened(0.18)))
 			var warning_bias: float = max(float(telegraph_profile.get("warning_bias", 1.0)), 0.84)
+			
+			# Dynamic Ring Feedback: Weight and thickness based on threat type
+			var ring_w_mult: float = float(telegraph_profile.get("ring_width_mult", 1.0))
+			var ring_t_base: float = float(telegraph_profile.get("ring_thickness_base", 1.0))
+			outer_width *= ring_t_base
+			perfect_width *= ring_t_base
 
 			if p >= approach_start and p < outer_entry:
 				# Projectile is approaching - fade the receiver into focus gradually.

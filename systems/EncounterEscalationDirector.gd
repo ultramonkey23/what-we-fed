@@ -202,13 +202,13 @@ func _seed_initial_phase_enemies(phase: Dictionary) -> void:
 		
 	var max_threats: int = _resolve_authority_budget(phase)
 	var current_alive: int = lane_manager.alive_count()
-	var lanes_to_fill: int = min(max_threats - current_alive, lane_manager.LANE_COUNT)
+	var lanes_to_fill: int = min(max_threats - current_alive, lane_manager.THREAT_COUNT)
 	
 	if lanes_to_fill <= 0:
 		return
 
 	var empty_lanes: Array = []
-	for lane in range(lane_manager.LANE_COUNT):
+	for lane in range(lane_manager.THREAT_COUNT):
 		if lane_manager.get_enemy(lane).is_empty() or float(lane_manager.get_enemy(lane).get("hp", 0.0)) <= 0.0:
 			empty_lanes.append(lane)
 
@@ -321,7 +321,7 @@ func _pick_best_empty_lane(exclude_lane: int) -> int:
 
 	var empty_lanes: Array = []
 	var any_empty_lanes: Array = []
-	for lane in range(lane_manager.LANE_COUNT):
+	for lane in range(lane_manager.THREAT_COUNT):
 		if lane_manager.get_enemy(lane).is_empty() or float(lane_manager.get_enemy(lane).get("hp", 0.0)) <= 0.0:
 			any_empty_lanes.append(lane)
 			if lane != exclude_lane:
@@ -530,7 +530,7 @@ func _resolve_authority_budget(phase: Dictionary) -> int:
 	var momentum_ratio: float = _resolve_effective_momentum_ratio()
 	if momentum_ratio >= AUTHORITY_MOMENTUM_THRESHOLD and _player_hp_ratio > LOW_HP_RELIEF_RATIO and _recent_hit_timer <= 0.0:
 		max_threats += AUTHORITY_MOMENTUM_BONUS
-	max_threats = clampi(max_threats, 1, lane_manager.LANE_COUNT)
+	max_threats = clampi(max_threats, 1, lane_manager.THREAT_COUNT)
 	if _player_hp_ratio <= LOW_HP_RELIEF_RATIO or _recent_hit_timer > 0.0:
 		max_threats = max(1, max_threats - 1)
 	return max_threats
@@ -555,7 +555,7 @@ func _resolve_current_pressure_points() -> float:
 	if lane_manager == null or not is_instance_valid(lane_manager):
 		return 0.0
 	var total: float = 0.0
-	for lane in range(lane_manager.LANE_COUNT):
+	for lane in range(lane_manager.THREAT_COUNT):
 		var enemy: Dictionary = lane_manager.get_enemy(lane)
 		if not enemy.is_empty() and float(enemy.get("hp", 0.0)) > 0.0:
 			total += _estimate_enemy_pressure_points(enemy) * 0.52

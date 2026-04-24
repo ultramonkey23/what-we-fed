@@ -30,16 +30,16 @@ const DODGE_IFRAME_WINDOW_ON_BEAT: float = 0.15
 const ULTIMATE_RECOVERY: float = 0.45
 
 const CHAIN_BYPASS_WINDOW: float = 0.60
-const INPUT_BUFFER_WINDOW: float = 0.10 # Synced with COMBAT_FEEL_CONSTANTS.TIMING_WINDOWS.attack_buffer_ms
+const INPUT_BUFFER_WINDOW: float = 0.14
 
 # Player sprite images.
 const PLAYER_IDLE_PATH: String = "res://assets/characters/player/combat/player_idle.png"
 const PLAYER_ATTACK_PATH: String = "res://assets/characters/player/combat/player_attack.png"
 const PLAYER_PARRY_PATH: String = "res://assets/characters/player/combat/player_parry.png"
 const PLAYER_HURT_PATH: String = "res://assets/characters/player/combat/player_hurt.png"
-# Base display scale for the Sprite2D. Tune this so the character fits cleanly
-# in the lane area at your target resolution. At 0.18 a 512px image ≈ 92px tall.
-const PLAYER_SPRITE_SCALE_BASE: float = 0.22
+# Base display scale for the Sprite2D. 0.13 → 512px image ≈ 67px tall.
+# Kept compact so the character reads as a focal point inside the timing sigil.
+const PLAYER_SPRITE_SCALE_BASE: float = 0.13
 # How long each temporary image holds before returning to idle (seconds).
 const ATTACK_IMAGE_DURATION: float = 0.14
 const PARRY_IMAGE_DURATION: float = 0.22
@@ -60,17 +60,19 @@ const DEFAULT_FOCUS_LANE: int = LANE_EAST
 # All action tweens return to this lane's Y position via _play_world_motion.
 # Do not remove the return-to-center snap without updating every action state function.
 const NEUTRAL_LANE: int = 1
-const ATTACK_WORLD_X_OFFSET: float = 58.0
-const PARRY_WORLD_X_OFFSET: float = -22.0
-const DODGE_WORLD_X_OFFSET: float = -44.0
-const HIT_WORLD_X_OFFSET: float = -36.0
+const ATTACK_WORLD_X_OFFSET: float = 38.0
+const PARRY_WORLD_X_OFFSET: float = -14.0
+const DODGE_WORLD_X_OFFSET: float = -28.0
+const HIT_WORLD_X_OFFSET: float = -22.0
 
-# Sprite-local pose offsets.
-const NEUTRAL_SPRITE_POSITION := Vector2(-42.0, -82.0)
-const ATTACK_SPRITE_POSITION := Vector2(-12.0, -46.0)
-const PARRY_SPRITE_POSITION := Vector2(-20.0, -46.0)
-const DODGE_SPRITE_POSITION := Vector2(-48.0, -46.0)
-const HIT_SPRITE_POSITION := Vector2(-52.0, -46.0)
+# Sprite-local pose offsets. Neutral is centered on the logical origin so the
+# character sits inside the timing sigil. Action offsets scale proportionally
+# from the old values (~0.59× to match new 0.13 vs old 0.22 scale).
+const NEUTRAL_SPRITE_POSITION := Vector2(0.0, -18.0)
+const ATTACK_SPRITE_POSITION := Vector2(18.0, 2.0)
+const PARRY_SPRITE_POSITION := Vector2(13.0, 3.0)
+const DODGE_SPRITE_POSITION := Vector2(-4.0, 3.0)
+const HIT_SPRITE_POSITION := Vector2(-6.0, 3.0)
 
 const NEUTRAL_SPRITE_SCALE := Vector2(1.0, 1.0)
 const ATTACK_SPRITE_SCALE := Vector2(1.14, 0.90)
@@ -108,6 +110,7 @@ var _parry_tex: Texture2D = null
 var _hurt_tex: Texture2D = null
 var _image_restore_tween: Tween = null
 var _input_buffer: Dictionary = {}
+var _last_input_report: Dictionary = {}
 var active_focus_lane: int = DEFAULT_FOCUS_LANE
 
 
@@ -133,6 +136,13 @@ func _process(delta: float) -> void:
 	if not _input_buffer.is_empty():
 		_input_buffer["time_left"] -= delta
 		if _input_buffer["time_left"] <= 0.0:
+			_emit_input_report(
+				String(_input_buffer.get("action", "")),
+				int(_input_buffer.get("lane", active_focus_lane)),
+				false,
+				false,
+				"buffer_expired"
+			)
 			_input_buffer.clear()
 
 	if dodge_invuln_timer > 0.0:
@@ -153,29 +163,30 @@ func _process(delta: float) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if not combat_enabled:
-		return
-
-	if lane_manager == null or combat_meter == null:
-		return
-
 	var focus_lane: int = _get_focus_lane_from_event(event)
 	if focus_lane >= 0:
 		_set_active_focus_lane(focus_lane)
 		get_viewport().set_input_as_handled()
 		return
 
+	var action_type: String = _get_combat_action_from_event(event)
+	if action_type.is_empty():
+		return
+
 	var target_dir: int = _get_target_direction()
 
-	if event.is_action_pressed("action_attack"):
-		_handle_directional_action(target_dir, "attack")
-	elif event.is_action_pressed("action_parry"):
-		_handle_directional_action(target_dir, "parry")
-	elif event.is_action_pressed("action_dodge"):
-		_handle_directional_action(target_dir, "dodge")
-	elif event.is_action_pressed("action_ultimate"):
-		_clear_buffered_dodge()
-		_try_ultimate()
+	if not combat_enabled:
+		_emit_input_report(action_type, target_dir, false, false, "combat_disabled")
+		get_viewport().set_input_as_handled()
+		return
+
+	if lane_manager == null or combat_meter == null:
+		_emit_input_report(action_type, target_dir, false, false, "missing_runtime")
+		get_viewport().set_input_as_handled()
+		return
+
+	_handle_directional_action(target_dir, action_type)
+	get_viewport().set_input_as_handled()
 
 
 func _get_target_direction() -> int:
@@ -195,8 +206,7 @@ func debug_force_focus_and_action(lane: int, action_type: String) -> bool:
 	if lane_manager == null or combat_meter == null:
 		return false
 	_set_active_focus_lane(lane)
-	_handle_directional_action(active_focus_lane, action_type)
-	return true
+	return _handle_directional_action(active_focus_lane, action_type)
 
 
 func _set_active_focus_lane(lane: int, show_ring_feedback: bool = true) -> void:
@@ -240,30 +250,132 @@ func _is_action_pressed(action_name: StringName) -> bool:
 	return InputMap.has_action(action_name) and Input.is_action_pressed(action_name)
 
 
-func _handle_directional_action(target_dir: int, action_type: String) -> void:
-	if not _can_accept_action() and action_type != "dodge":
-		_input_buffer = {
-			"action": action_type,
-			"lane": target_dir,
-			"time_left": INPUT_BUFFER_WINDOW
-		}
-		return
-	
-	if action_type == "dodge":
-		_input_buffer.clear() # Clear any other buffered action if dodging immediately
-	
+func _get_combat_action_from_event(event: InputEvent) -> String:
+	if event.is_action_pressed("action_attack"):
+		return "attack"
+	if event.is_action_pressed("action_parry"):
+		return "parry"
+	if event.is_action_pressed("action_dodge"):
+		return "dodge"
+	if event.is_action_pressed("action_ultimate"):
+		return "ultimate"
+	return ""
+
+
+func _handle_directional_action(target_dir: int, action_type: String) -> bool:
+	target_dir = clampi(target_dir, 0, lane_manager.THREAT_COUNT - 1 if lane_manager != null else 3)
+
+	var immediate_reject: String = _get_immediate_rejection_reason(action_type)
+	if not immediate_reject.is_empty():
+		_emit_input_report(action_type, target_dir, false, false, immediate_reject)
+		_emit_rejected_input_feedback(action_type, immediate_reject)
+		return false
+
+	if not _can_accept_action():
+		_buffer_action(action_type, target_dir, "locked")
+		return true
+
 	_consume_chain_bypass_if_needed()
 	EventBus.emit_signal("timing_ring_pressed", target_dir)
 	
 	match action_type:
 		"attack":
 			_select_action_lane(target_dir)
+			_emit_input_report(action_type, target_dir, true, false, "accepted")
 			_try_attack()
 		"parry":
 			_select_action_lane(target_dir)
+			_emit_input_report(action_type, target_dir, true, false, "accepted")
 			_try_parry()
 		"dodge":
+			_emit_input_report(action_type, target_dir, true, false, "accepted")
 			_try_dodge_radial(target_dir)
+		"ultimate":
+			_emit_input_report(action_type, target_dir, true, false, "accepted")
+			_try_ultimate()
+		_:
+			_emit_input_report(action_type, target_dir, false, false, "unknown_action")
+			return false
+	return true
+
+
+func _buffer_action(action_type: String, target_dir: int, reason: String) -> void:
+	_input_buffer = {
+		"action": action_type,
+		"lane": target_dir,
+		"time_left": INPUT_BUFFER_WINDOW
+	}
+	_emit_input_report(action_type, target_dir, false, true, reason)
+	EventBus.emit_signal("timing_ring_pressed", target_dir)
+
+
+func _get_immediate_rejection_reason(action_type: String) -> String:
+	if not combat_enabled:
+		return "combat_disabled"
+	if lane_manager == null or combat_meter == null:
+		return "missing_runtime"
+	match action_type:
+		"parry":
+			if not bool(combat_meter.call("can_parry")):
+				return "no_stamina"
+		"dodge":
+			if not bool(combat_meter.call("can_dodge")):
+				return "no_stamina"
+		"ultimate":
+			if not bool(combat_meter.call("is_ultimate_available")):
+				return "no_charge"
+		"attack":
+			pass
+		_:
+			return "unknown_action"
+	return ""
+
+
+func _emit_rejected_input_feedback(action_type: String, reason: String) -> void:
+	match reason:
+		"no_stamina":
+			EventBus.emit_signal("player_no_stamina")
+		"no_charge":
+			EventBus.emit_signal("proc_feedback_requested", "NOT READY", Color(1.0, 0.55, 0.28, 1.0))
+			EventBus.emit_signal("screen_flash", Color(1.0, 0.32, 0.10, 0.06), 0.04)
+		"combat_disabled", "missing_runtime":
+			pass
+		_:
+			EventBus.emit_signal("proc_feedback_requested", action_type.to_upper() + " DENIED", Color(1.0, 0.45, 0.45, 1.0))
+
+
+func _emit_input_report(action_type: String, lane: int, accepted: bool, buffered: bool, reason: String) -> void:
+	var cooldowns: Dictionary = _build_input_cooldowns()
+	_last_input_report = {
+		"action": action_type,
+		"lane": lane,
+		"accepted": accepted,
+		"buffered": buffered,
+		"reason": reason,
+		"state": current_action_state,
+		"cooldowns": cooldowns
+	}
+	EventBus.emit_signal(
+		"combat_input_resolved",
+		action_type,
+		lane,
+		accepted,
+		buffered,
+		reason,
+		current_action_state,
+		cooldowns
+	)
+
+
+func _build_input_cooldowns() -> Dictionary:
+	return {
+		"action_lock": action_lock_timer,
+		"dodge_iframe": dodge_invuln_timer,
+		"chain_bypass": chain_bypass_timer if chain_bypass_available else 0.0,
+		"parry_followup": parry_followup_timer if parry_followup_active else 0.0,
+		"stamina": float(combat_meter.get("stamina")) if combat_meter != null else 0.0,
+		"ultimate_ready": bool(combat_meter.call("is_ultimate_available")) if combat_meter != null else false
+	}
 
 
 func _try_dodge_radial(target_dir: int) -> void:
@@ -465,6 +577,12 @@ func _try_parry() -> void:
 
 	var projectile: Node2D = lane_manager.call("get_projectile", current_lane)
 	if not is_instance_valid(projectile):
+		combat_meter.call("record_bad_timing")
+		_clear_mastery_context("failed_parry", current_lane)
+		_flash_sprite_color(Color(0.82, 0.24, 0.28, 1.0), 0.12)
+		EventBus.emit_signal("proc_feedback_requested", "EMPTY PARRY", Color(1.0, 0.45, 0.45, 1.0))
+		EventBus.emit_signal("screen_flash", Color(1.0, 0.2, 0.2, 0.06), 0.04)
+		_lock_action(FAILED_PARRY_RECOVERY, "failed_parry")
 		return
 
 	if not combat_meter.call("can_parry"):
@@ -1004,14 +1122,14 @@ func _setup_ground_shadow() -> void:
 	shadow.name = "GroundShadow"
 	shadow.z_index = -1
 	var pts := PackedVector2Array()
-	var rx := 26.0
-	var ry := 7.0
+	var rx := 16.0
+	var ry := 4.0
 	for i in range(24):
 		var a := (i / 24.0) * TAU
 		pts.append(Vector2(cos(a) * rx, sin(a) * ry))
 	shadow.polygon = pts
 	shadow.color = Color(0.0, 0.0, 0.0, 0.28)
-	shadow.position = Vector2(-6.0, 6.0)
+	shadow.position = Vector2(0.0, 6.0)
 	add_child(shadow)
 
 
@@ -1025,15 +1143,15 @@ func _setup_energy_aura() -> void:
 	
 	var mat = ParticleProcessMaterial.new()
 	mat.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_RING
-	mat.emission_ring_radius = 40.0
-	mat.emission_ring_inner_radius = 30.0
+	mat.emission_ring_radius = 24.0
+	mat.emission_ring_inner_radius = 18.0
 	mat.direction = Vector3(0, -1, 0)
 	mat.spread = 20.0
-	mat.initial_velocity_min = 40.0
-	mat.initial_velocity_max = 80.0
-	mat.gravity = Vector3(0, -20, 0)
-	mat.scale_min = 2.0
-	mat.scale_max = 4.0
+	mat.initial_velocity_min = 24.0
+	mat.initial_velocity_max = 48.0
+	mat.gravity = Vector3(0, -12, 0)
+	mat.scale_min = 1.5
+	mat.scale_max = 3.0
 	mat.color = Color(0.24, 0.86, 0.74, 0.4) # Starting Cyan
 	
 	_energy_aura.process_material = mat
@@ -1243,6 +1361,7 @@ func _check_input_buffer() -> void:
 			"attack": _handle_directional_action(lane, "attack")
 			"parry": _handle_directional_action(lane, "parry")
 			"dodge": _handle_directional_action(lane, "dodge")
+			"ultimate": _handle_directional_action(lane, "ultimate")
 
 
 func _clear_buffered_dodge() -> void:

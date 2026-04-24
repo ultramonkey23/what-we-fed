@@ -173,6 +173,7 @@ var _scouter_shell: Panel = null
 var _power_scouter_label: Label = null
 var _combat_audio_player: Node = null
 var _timing_debug_label: Label = null
+var _last_combat_input_report: Dictionary = {}
 
 # ─── REWARD OVERLAY ELEMENTS ─────────────────────────────────────────────────
 var _reward_overlay: ColorRect = null
@@ -390,6 +391,8 @@ func _exit_tree() -> void:
 		EventBus.player_parried.disconnect(_on_player_parried)
 	if EventBus.player_dodged.is_connected(_on_player_dodged):
 		EventBus.player_dodged.disconnect(_on_player_dodged)
+	if EventBus.combat_input_resolved.is_connected(_on_combat_input_resolved):
+		EventBus.combat_input_resolved.disconnect(_on_combat_input_resolved)
 	if EventBus.player_no_stamina.is_connected(_on_player_no_stamina):
 		EventBus.player_no_stamina.disconnect(_on_player_no_stamina)
 	if EventBus.combo_broken.is_connected(_on_combo_broken):
@@ -1386,6 +1389,28 @@ func _update_timing_debug() -> void:
 				pressure_points,
 				pressure_cap
 			]
+	if not _last_combat_input_report.is_empty():
+		var input_action: String = str(_last_combat_input_report.get("action", "--")).to_upper()
+		var input_lane: int = int(_last_combat_input_report.get("lane", -1))
+		var accepted: bool = bool(_last_combat_input_report.get("accepted", false))
+		var buffered: bool = bool(_last_combat_input_report.get("buffered", false))
+		var input_reason: String = str(_last_combat_input_report.get("reason", ""))
+		var input_state: String = str(_last_combat_input_report.get("state", "idle"))
+		var cooldowns: Dictionary = Dictionary(_last_combat_input_report.get("cooldowns", {}))
+		var lock_left: float = float(cooldowns.get("action_lock", 0.0))
+		var stamina_now: float = float(cooldowns.get("stamina", 0.0))
+		var ult_ready: bool = bool(cooldowns.get("ultimate_ready", false))
+		var status_text: String = "OK" if accepted else ("BUF" if buffered else "NO")
+		debug_text += "\nInput: %s L%d %s [%s] %s  lock=%.2f  sta=%.1f  ult=%s" % [
+			input_action,
+			input_lane,
+			status_text,
+			input_state,
+			input_reason,
+			lock_left,
+			stamina_now,
+			"Y" if ult_ready else "N"
+		]
 	_timing_debug_label.text = debug_text
 	_timing_debug_label.modulate = UI_STYLE.get_quality_feedback_color(quality)
 
@@ -3114,6 +3139,7 @@ func _connect_eventbus() -> void:
 	EventBus.attack_timing_early_resolved.connect(_on_attack_timing_early_resolved)
 	EventBus.player_parried.connect(_on_player_parried)
 	EventBus.player_dodged.connect(_on_player_dodged)
+	EventBus.combat_input_resolved.connect(_on_combat_input_resolved)
 	EventBus.player_no_stamina.connect(_on_player_no_stamina)
 	EventBus.combo_broken.connect(_on_combo_broken)
 	EventBus.player_teleported.connect(_on_player_teleported)
@@ -4354,10 +4380,10 @@ func _run_dev_harness_control_sequence() -> void:
 		lane_manager.call("set_enemy", lane, _build_debug_control_enemy(lane))
 
 	var steps: Array[Dictionary] = [
-		{"lane": 0, "action": "attack", "threshold": 0.99, "label": "N_ATTACK"},
-		{"lane": 2, "action": "parry", "threshold": 0.99, "label": "E_PARRY"},
-		{"lane": 1, "action": "dodge", "threshold": 1.13, "label": "S_DODGE"},
-		{"lane": 3, "action": "attack", "threshold": 0.99, "label": "W_ATTACK"}
+		{"lane": 0, "action": "attack", "threshold": 0.99, "label": "N_ATTACK", "expect_projectile_cleared": true},
+		{"lane": 2, "action": "parry", "threshold": 0.99, "label": "E_PARRY", "expect_projectile_cleared": true},
+		{"lane": 1, "action": "dodge", "threshold": 1.13, "label": "S_DODGE", "expect_projectile_cleared": false},
+		{"lane": 3, "action": "attack", "threshold": 0.99, "label": "W_ATTACK", "expect_projectile_cleared": true}
 	]
 
 	for step in steps:
@@ -4375,12 +4401,26 @@ func _run_dev_harness_control_sequence() -> void:
 		var action_ok: bool = bool(player_combat.call("debug_force_focus_and_action", lane, str(step.get("action", ""))))
 		await get_tree().create_timer(0.26).timeout
 		var focused_lane: int = _get_player_focus_lane()
+		var expect_cleared: bool = bool(step.get("expect_projectile_cleared", true))
 		var projectile_cleared: bool = lane_manager.call("get_projectile", lane) == null
-		print("CONTROL_FOCUS_SEQUENCE %s %s focus=%d projectile_cleared=%s" % [
+		if expect_cleared and not projectile_cleared:
+			projectile_cleared = await _debug_wait_for_projectile_clear(lane, 0.35)
+		var step_passed: bool = action_ok and focused_lane == lane and (projectile_cleared or not expect_cleared)
+		var reason: String = ""
+		if not action_ok:
+			reason = "action_rejected"
+		elif focused_lane != lane:
+			reason = "focus_mismatch"
+		elif expect_cleared and not projectile_cleared:
+			reason = "projectile_not_cleared"
+		else:
+			reason = "ok"
+		print("CONTROL_FOCUS_SEQUENCE %s %s focus=%d projectile_cleared=%s reason=%s" % [
 			label,
-			"PASS" if action_ok and focused_lane == lane and projectile_cleared else "CHECK",
+			"PASS" if step_passed else "FAIL",
 			focused_lane,
-			str(projectile_cleared)
+			str(projectile_cleared),
+			reason
 		])
 
 	print("CONTROL_FOCUS_SEQUENCE END")
@@ -4403,13 +4443,15 @@ func _build_debug_control_enemy(lane: int) -> Dictionary:
 
 
 func _debug_fire_control_lane(lane: int) -> bool:
-	var projectile = lane_manager.call("get_projectile", lane)
-	if projectile != null and is_instance_valid(projectile):
-		projectile.call("resolve", "debug_reset")
-		lane_manager.call("clear_slot", lane)
+	for clear_lane in range(lane_manager.THREAT_COUNT if lane_manager != null else 4):
+		var projectile = lane_manager.call("get_projectile", clear_lane)
+		if projectile != null and is_instance_valid(projectile):
+			projectile.call("resolve", "debug_reset")
+			lane_manager.call("clear_slot", clear_lane)
 	if not lane_manager.has_method("_fire_lane"):
 		return false
-	return bool(lane_manager.call("_fire_lane", lane))
+	var fired_v: Variant = lane_manager.call("_fire_lane", lane)
+	return fired_v == true
 
 
 func _debug_wait_for_projectile_progress(lane: int, threshold: float, max_wait: float) -> bool:
@@ -4419,6 +4461,17 @@ func _debug_wait_for_projectile_progress(lane: int, threshold: float, max_wait: 
 		if projectile != null and is_instance_valid(projectile):
 			if not bool(projectile.get("is_resolved")) and float(projectile.get("progress")) >= threshold:
 				return true
+		await get_tree().create_timer(0.02).timeout
+		elapsed += 0.02
+	return false
+
+
+func _debug_wait_for_projectile_clear(lane: int, max_wait: float) -> bool:
+	var elapsed: float = 0.0
+	while elapsed < max_wait:
+		var projectile = lane_manager.call("get_projectile", lane)
+		if projectile == null or not is_instance_valid(projectile):
+			return true
 		await get_tree().create_timer(0.02).timeout
 		elapsed += 0.02
 	return false
@@ -5383,6 +5436,23 @@ func _on_ultimate_fired(_power: float) -> void:
 	elif bq == "good":
 		_show_beat_feedback("ON THE DROP", Color(0.92, 0.80, 0.36, 1.0))
 	_flash_meter_shell(Color(0.33, 0.16, 0.08, 0.94), 0.18)
+	var ultimate_profile: Dictionary = {
+		"flash_color": Color(1.0, 0.78, 0.32, 0.20),
+		"flash_duration": 0.10,
+		"shake_intensity": 2.8,
+		"shake_duration": 0.14,
+		"hitstop_scale": 0.62,
+		"hitstop_duration": 0.08,
+		"ring_width": 7.0,
+		"burst_color": Color(1.0, 0.72, 0.24, 0.66),
+		"burst_scale": 1.6
+	}
+	if bq == "perfect":
+		ultimate_profile["shake_intensity"] = 3.6
+		ultimate_profile["hitstop_scale"] = 0.54
+		ultimate_profile["hitstop_duration"] = 0.10
+		ultimate_profile["burst_scale"] = 1.85
+	_presentation_runtime.apply_impact_profile(ultimate_profile)
 
 
 func _on_combat_ended(victory: bool) -> void:
@@ -5527,6 +5597,9 @@ func _refresh_enemy_marker_health(enemy_id: int) -> void:
 	if is_instance_valid(label_node):
 		var hp_label: Label = label_node
 		hp_label.text = "HP %.0f/%.0f" % [current_hp, max_hp]
+		var hp_tween := hp_label.create_tween()
+		hp_tween.tween_property(hp_label, "scale", Vector2(1.06, 1.06), 0.05)
+		hp_tween.tween_property(hp_label, "scale", Vector2.ONE, 0.10)
 
 
 func _on_proc_feedback_requested(text: String, color: Color) -> void:
@@ -5868,6 +5941,37 @@ func _on_player_dodged(from_lane: int, to_lane: int) -> void:
 func _on_player_no_stamina() -> void:
 	_show_feedback("NO STAMINA", Color(1.0, 0.45, 0.45, 1.0), 0.42)
 	_flash_meter_shell(Color(0.28, 0.11, 0.11, 0.92), 0.12)
+
+
+func _on_combat_input_resolved(
+	action: String,
+	lane: int,
+	accepted: bool,
+	buffered: bool,
+	reason: String,
+	state: String,
+	cooldowns: Dictionary
+) -> void:
+	_last_combat_input_report = {
+		"action": action,
+		"lane": lane,
+		"accepted": accepted,
+		"buffered": buffered,
+		"reason": reason,
+		"state": state,
+		"cooldowns": cooldowns
+	}
+	if buffered:
+		_show_feedback("QUEUE %s" % action.to_upper(), Color(0.84, 0.90, 1.0, 1.0), 0.16)
+		return
+	if accepted:
+		return
+	match reason:
+		"no_stamina", "no_charge":
+			return
+		_:
+			var denied_text: String = "%s %s" % [action.to_upper(), reason.replace("_", " ").to_upper()]
+			_show_feedback(denied_text, Color(1.0, 0.56, 0.50, 1.0), 0.20)
 
 
 func _on_combo_broken(_lost: int) -> void:

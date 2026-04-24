@@ -25,6 +25,8 @@ signal attack_timing_early_resolved(lane: int)
 signal player_parried(lane: int, quality: String, reflect_damage: float)
 @warning_ignore("unused_signal")
 signal player_dodged(from_lane: int, to_lane: int)
+@warning_ignore("unused_signal")
+signal combat_input_resolved(action: String, lane: int, accepted: bool, buffered: bool, reason: String, state: String, cooldowns: Dictionary)
 
 # Player state
 @warning_ignore("unused_signal")

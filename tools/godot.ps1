@@ -234,7 +234,9 @@ function Get-GodotLogErrors {
     # These patterns appear in clean headless runs on Windows and are not real errors.
     $safePatterns = @(
         "Failed to read the root certificate store",
-        "ObjectDB instances leaked at exit"
+        "ObjectDB instances leaked at exit",
+        'Condition "hr != ((HRESULT)0x00000000)" is true. Returning: ERR_CANT_OPEN',
+        "WASAPI: init_output_device error."
     ) + $AdditionalSafePatterns
 
     $errors = [System.Collections.Generic.List[string]]::new()
@@ -323,9 +325,84 @@ switch ($Mode) {
         Invoke-Godot -Arguments $args -LogPath $logFile
     }
     "debug" {
+        $repoRoot = Get-RepoRoot
         $logFile = Get-DefaultLogFile -ModeName "debug-harness"
-        $args = @("--path", (Get-RepoRoot), "--log-file", $logFile) + $GodotArgs + @("res://scenes/dev/DebugBootScene.tscn")
-        Invoke-Godot -Arguments $args -LogPath $logFile
+        $forwardArgs = [System.Collections.Generic.List[string]]::new()
+        $runControlSequence = $false
+        $autoquitSeconds = ""
+
+        for ($i = 0; $i -lt $GodotArgs.Count; $i++) {
+            $arg = $GodotArgs[$i]
+            if ($arg -eq "--debug-control-sequence") {
+                $runControlSequence = $true
+                continue
+            }
+            if ($arg -eq "--debug-autoquit-seconds") {
+                if ($i + 1 -lt $GodotArgs.Count) {
+                    $autoquitSeconds = $GodotArgs[$i + 1]
+                    $i += 1
+                }
+                continue
+            }
+            $forwardArgs.Add($arg)
+        }
+
+        if ($runControlSequence) {
+            $headlessRequested = $false
+            $audioDriverConfigured = $false
+            for ($i = 0; $i -lt $forwardArgs.Count; $i++) {
+                if ($forwardArgs[$i] -eq "--headless") {
+                    $headlessRequested = $true
+                }
+                if ($forwardArgs[$i] -eq "--audio-driver") {
+                    $audioDriverConfigured = $true
+                }
+            }
+            if (-not $headlessRequested) {
+                $forwardArgs.Add("--headless")
+            }
+            if (-not $audioDriverConfigured) {
+                $forwardArgs.Add("--audio-driver")
+                $forwardArgs.Add("Dummy")
+            }
+        }
+
+        $prevPreset = $env:WHAT_WE_FED_DEBUG_PRESET
+        $prevAutolaunch = $env:WHAT_WE_FED_DEBUG_AUTOLAUNCH
+        $prevAutoquit = $env:WHAT_WE_FED_DEBUG_AUTOQUIT_SECONDS
+
+        if ($runControlSequence) {
+            $env:WHAT_WE_FED_DEBUG_PRESET = "control_focus"
+            $env:WHAT_WE_FED_DEBUG_AUTOLAUNCH = "1"
+            if (-not [string]::IsNullOrWhiteSpace($autoquitSeconds)) {
+                $env:WHAT_WE_FED_DEBUG_AUTOQUIT_SECONDS = $autoquitSeconds
+            }
+        }
+
+        try {
+            $args = @("--path", $repoRoot, "--log-file", $logFile) + @($forwardArgs.ToArray()) + @("res://scenes/dev/DebugBootScene.tscn")
+            Invoke-Godot -Arguments $args -LogPath $logFile
+        } finally {
+            if ($runControlSequence) {
+                if ($null -eq $prevPreset) {
+                    Remove-Item Env:WHAT_WE_FED_DEBUG_PRESET -ErrorAction SilentlyContinue
+                } else {
+                    $env:WHAT_WE_FED_DEBUG_PRESET = $prevPreset
+                }
+                if ($null -eq $prevAutolaunch) {
+                    Remove-Item Env:WHAT_WE_FED_DEBUG_AUTOLAUNCH -ErrorAction SilentlyContinue
+                } else {
+                    $env:WHAT_WE_FED_DEBUG_AUTOLAUNCH = $prevAutolaunch
+                }
+                if (-not [string]::IsNullOrWhiteSpace($autoquitSeconds)) {
+                    if ($null -eq $prevAutoquit) {
+                        Remove-Item Env:WHAT_WE_FED_DEBUG_AUTOQUIT_SECONDS -ErrorAction SilentlyContinue
+                    } else {
+                        $env:WHAT_WE_FED_DEBUG_AUTOQUIT_SECONDS = $prevAutoquit
+                    }
+                }
+            }
+        }
     }
     "smoke" {
         $repoRoot = Get-RepoRoot

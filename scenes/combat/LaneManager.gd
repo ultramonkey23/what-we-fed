@@ -217,10 +217,11 @@ func clear_slot(lane: int) -> void:
 		return
 
 	var existing = _projectile_slots[lane]
-	if existing != null and is_instance_valid(existing) \
-			and bool(existing.get("is_melee_approach")) \
-			and not bool(existing.get("is_resolved")):
-		return  # Alive melee stays in slot; it bounces, not vanishes
+	if existing != null and is_instance_valid(existing):
+		var is_melee_approach: bool = ("is_melee_approach" in existing and existing.get("is_melee_approach"))
+		var is_resolved: bool = ("is_resolved" in existing and existing.get("is_resolved"))
+		if is_melee_approach and not is_resolved:
+			return  # Alive melee stays in slot; it bounces, not vanishes
 
 	_projectile_slots[lane] = null
 

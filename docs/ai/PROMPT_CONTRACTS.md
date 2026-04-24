@@ -62,6 +62,7 @@ Validation required:
 
 End with a full agent report in WHAT WE FED AGENT REPORT format.
 No broad refactors. No invented repo truth. One bounded change only.
+Reports may be checked with tools/ai/score_agent_report.py and must be complete enough to pass the Report Ingestion Gate.
 ```
 
 ---
@@ -89,6 +90,7 @@ Validation required:
 
 End with a full agent report in WHAT WE FED AGENT REPORT format.
 Fix only what is named. Do not clean unrelated code.
+Reports may be checked with tools/ai/score_agent_report.py and must be complete enough to pass the Report Ingestion Gate.
 ```
 
 ---
@@ -141,3 +143,4 @@ Mark pass/warn/fail and give one recommended next step.
 - If unsure which template to use, start with Gemini fresh repo audit.
 - Do not use Claude Complex Implementation if repo truth is stale — audit first.
 - Prompt contracts are minimal by design. Add repo-specific context as needed, but keep the task to one objective.
+- Reports from all templates may be checked with tools/ai/score_agent_report.py and must be complete enough to pass the Report Ingestion Gate.

@@ -62,6 +62,21 @@ One next move:
 
 ---
 
+## Automated Score Assist
+Before accepting an agent report, optionally run:
+
+```
+python tools/ai/score_agent_report.py path/to/report.txt
+```
+
+The script does not replace human judgment. It catches missing fields, validation exaggeration,
+stale-truth risk for fragile systems, and routing problems. Exits 0 (PASS), 1 (WARN), 2 (FAIL).
+
+Scoring guide: `docs/ai/AGENT_REPORT_SCORECARD.md`
+Examples: `docs/ai/examples/AGENT_REPORT_SCORE_EXAMPLE.md`
+
+---
+
 ## Notes
 - Ingestion is not the same as implementation. A PASS report confirms truth; it does not automatically authorize the next step.
 - A WARN report can still be useful — flag the caveats and use it with eyes open.

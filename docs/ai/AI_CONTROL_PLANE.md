@@ -142,6 +142,22 @@ Full prompt templates: `docs/ai/PROMPT_CONTRACTS.md`
 
 ---
 
+## Report Scoring — Validation Discipline
+Before any agent report is accepted as repo truth, score it:
+
+```
+python tools/ai/score_agent_report.py path/to/report.txt
+```
+
+- Scoring guide: `docs/ai/AGENT_REPORT_SCORECARD.md`
+- Script: `tools/ai/score_agent_report.py`
+- Examples: `docs/ai/examples/AGENT_REPORT_SCORE_EXAMPLE.md`
+
+The scorer checks required fields, validation level honesty, stale-truth risk on fragile systems,
+and routing problems. It does not replace human judgment — it catches mechanical gaps.
+
+---
+
 ## Relation To Existing Docs
 - `MULTI_AI_OPERATING_LAYER.md` — shared authority/lane contract (canonical)
 - `SYSTEM_KERNEL.md` — full governance rules
@@ -149,3 +165,5 @@ Full prompt templates: `docs/ai/PROMPT_CONTRACTS.md`
 - `REPORT_INGESTION_GATE.md` — report acceptance criteria (this layer)
 - `PROMPT_CONTRACTS.md` — reusable prompt templates (this layer)
 - `HUMAN_PLAYTEST_PROTOCOL.md` — playtest evidence format (this layer)
+- `AGENT_REPORT_SCORECARD.md` — human-readable scoring guide (this layer)
+- `tools/ai/score_agent_report.py` — automated report scorer (this layer)

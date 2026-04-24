@@ -496,7 +496,7 @@ func draw_timing_circles(
 	var active_color: Color = biome.get("ring_active_color", Color(1.0, 0.95, 0.55, 1.0))
 	var inactive_color: Color = biome.get("ring_inactive_color", Color(0.7, 0.7, 0.8, 0.45))
 
-	for lane in range(3):
+	for lane in range(lane_manager.THREAT_COUNT):
 		var lane_group := Node2D.new()
 		lane_group.name = "TimingRing_%d" % lane
 		lane_group.position = Vector2(
@@ -640,7 +640,7 @@ func update_timing_ring_proximity(
 	# Pre-compute surge window fade factor once — used inside the per-lane loop.
 	var surge_wf: float = clamp(surge_window_timer / 4.0, 0.0, 1.0) if surge_window_timer > 0.0 else 0.0
 
-	for lane in range(min(3, timing_rings_cache.size())):
+	for lane in range(min(lane_manager.THREAT_COUNT, timing_rings_cache.size())):
 		if ring_highlight_timers[lane] > 0.0:
 			continue
 
@@ -792,7 +792,7 @@ func build_arena_visuals(
 	var lane_color: Color = biome.get("lane_color", Color(0.30, 0.30, 0.35, 1.0))
 	var inactive_enemy_color: Color = biome.get("enemy_inactive_color", Color(0.40, 0.20, 0.20, 0.5))
 
-	for lane in range(3):
+	for lane in range(lane_manager.THREAT_COUNT):
 		var lane_group := Node2D.new()
 		lane_group.name = "LaneGroup_%d" % lane
 		lane_marker_container.add_child(lane_group)
@@ -1175,32 +1175,42 @@ func update_enemy_marker_threat_states(
 		var marker_root = marker_data.get("root")
 		if not is_instance_valid(marker_root):
 			continue
+		
+		# UPDATE POSITION: Use the new LaneManager authority-aware positioning
+		if lane_manager.has_method("get_enemy_pos"):
+			marker_root.position = lane_manager.get_enemy_pos(enemy_id)
+		
 		var enemy: Dictionary = all_enemies_by_id.get(enemy_id, {})
 		var lane: int = int(enemy.get("lane", -1))
-		if lane < 0:
-			continue
-		var telegraph_profile: Dictionary = COMBAT_CONTENT.get_enemy_telegraph_profile(enemy)
+		
+		# For markers in orbit (no lane), we just show them as idle.
+		# Threat visuals (pressure/imminent) only apply if they are in a lane and attacking.
 		var edge_node = marker_data.get("edge")
 		var accent_node = marker_data.get("accent")
 		var sigil_node = marker_data.get("sigil")
 		var core_node = marker_data.get("core")
 		if not is_instance_valid(edge_node) or not is_instance_valid(accent_node) or not is_instance_valid(sigil_node) or not is_instance_valid(core_node):
 			continue
+			
 		var edge: ColorRect = edge_node
 		var accent: ColorRect = accent_node
 		var sigil: ColorRect = sigil_node
 		var core: ColorRect = core_node
 		var pressure: float = 0.0
 		var imminent: float = 0.0
-		var projectile = lane_manager.get_projectile(lane)
-		if projectile != null and not projectile.is_resolved and not projectile.is_reflected and int(projectile.enemy_id) == enemy_id:
-			var warning_bias: float = max(float(telegraph_profile.get("warning_bias", 1.0)), 0.84)
-			pressure = clamp(((projectile.progress - 0.70) / 0.30) * warning_bias, 0.0, 1.0)
-			imminent = clamp((projectile.progress - 0.96) / 0.08, 0.0, 1.0)
+		
+		if lane >= 0:
+			var projectile = lane_manager.get_projectile(lane)
+			if projectile != null and not projectile.is_resolved and not projectile.is_reflected and int(projectile.enemy_id) == enemy_id:
+				var telegraph_profile: Dictionary = COMBAT_CONTENT.get_enemy_telegraph_profile(enemy)
+				var warning_bias: float = max(float(telegraph_profile.get("warning_bias", 1.0)), 0.84)
+				pressure = clamp(((projectile.progress - 0.70) / 0.30) * warning_bias, 0.0, 1.0)
+				imminent = clamp((projectile.progress - 0.96) / 0.08, 0.0, 1.0)
 
-		var threat_color: Color = Color(telegraph_profile.get("projectile_color", Color.WHITE))
-		var accent_color: Color = Color(telegraph_profile.get("accent_color", threat_color.lightened(0.18)))
-		var marker_color: Color = Color(telegraph_profile.get("marker_color", accent_color))
+		var telegraph_profile_base: Dictionary = COMBAT_CONTENT.get_enemy_telegraph_profile(enemy)
+		var threat_color: Color = Color(telegraph_profile_base.get("projectile_color", Color.WHITE))
+		var accent_color: Color = Color(telegraph_profile_base.get("accent_color", threat_color.lightened(0.18)))
+		var marker_color: Color = Color(telegraph_profile_base.get("marker_color", accent_color))
 		edge.color = Color(threat_color.r, threat_color.g, threat_color.b, pressure * 0.12 + imminent * 0.24)
 		accent.color = Color(marker_color.r, marker_color.g, marker_color.b, 0.18 + pressure * 0.30 + imminent * 0.14)
 		sigil.color = Color(accent_color.r, accent_color.g, accent_color.b, 0.22 + pressure * 0.34 + imminent * 0.18)

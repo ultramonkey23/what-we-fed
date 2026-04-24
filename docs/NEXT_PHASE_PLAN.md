@@ -10,6 +10,8 @@ Use the current What We Fed prototype as the implementation base and improve it 
 - **Data-Driven UI**: Reward body text, effect descriptions, and tier identities are now centralized in `PresentationTextContent.gd` and `UIStyle.gd`.
 - **Visual Polish**: Added background beat-blooms, chromatic impact jitters, and organic UI scale pulses.
 - **Stability**: Resolved circular dependencies and parse errors in core combat scripts.
+- **Creature Breadth Pass v1**: Multiple species now have distinct eat effects, bond passives, support roles, encounter profiles, affinities, and reward-pool placement.
+- **Performance Reward Pack v1**: Performance reward content and director logic now include score/kill pressure, active affinity, bond/eat history, tendency alignment, stored reward flow, and between-level choice context.
 
 ## Potential quick-start (v1)
 When touching Potential, treat it as a **ceiling/unlock/escalation** system, not flat combat power.
@@ -28,10 +30,10 @@ When touching Potential, treat it as a **ceiling/unlock/escalation** system, not
 
 ## Right now
 Focus on:
-- identifying safe data extraction targets (Encounter/Enemy data)
-- improving readability of hardcoded encounter content
-- centralizing repeated feel/timing values (slow-motion, hitstop)
-- adding clearer comments around lane/timing rules
+- proving upgrade depth from the expanded creature roster
+- making performance rewards read as earned by score, kills, clean play, support usage, and bond/eat history
+- balancing affinity-biased reward offers so different bonded creatures imply different build paths
+- improving between-level reward comprehension without adding active-combat menu sludge
 - keeping the style direction aligned with dark-cool ascendant creature power fantasy
 
 ## Canon-evolution implementation impact map
@@ -58,9 +60,11 @@ Do not do these yet unless explicitly requested:
 - pull ranch into near-term priority before reward ecology and support identity are ready
 
 ## Good next tasks
-- move creature and encounter data out of `CombatScene.gd`
-- centralize combat feel constants (slow-motion, camera shake defaults)
-- improve Quig commentary logic and data-driven triggers
+- tune and audit the current performance reward pack against real combat score/kills/clean-play outcomes
+- make bond-level scaling matter for support value without turning Bond Rank into routine stat drip
+- improve reward-card/readout clarity for why each offer appeared
+- verify expanded creature support readability under pressure with visual evidence
+- keep extracting stale hardcoded combat content only when it directly improves readability or reward/combat payoff
 
 ## Future merge direction
 Later, after the current prototype is better understood and stabilized, begin merging in:

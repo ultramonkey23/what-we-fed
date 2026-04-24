@@ -97,9 +97,6 @@ var _attack_tex: Texture2D = null
 var _parry_tex: Texture2D = null
 var _hurt_tex: Texture2D = null
 var _image_restore_tween: Tween = null
-var _buffered_dodge_lane: int = -1
-var _buffered_dodge_dir: int = 0
-var _buffered_dodge_timer: float = 0.0
 
 
 func _ready() -> void:
@@ -121,10 +118,6 @@ func _process(delta: float) -> void:
 			current_action_state = "idle"
 	if dodge_invuln_timer > 0.0:
 		dodge_invuln_timer = max(dodge_invuln_timer - delta, 0.0)
-	if _buffered_dodge_timer > 0.0:
-		_buffered_dodge_timer = max(_buffered_dodge_timer - delta, 0.0)
-		if _buffered_dodge_timer <= 0.0:
-			_clear_buffered_dodge()
 
 	if parry_followup_active:
 		parry_followup_timer -= delta
@@ -139,9 +132,6 @@ func _process(delta: float) -> void:
 			chain_bypass_available = false
 			chain_bypass_timer = 0.0
 
-	if _buffered_dodge_timer > 0.0 and _can_accept_action() and combat_enabled and lane_manager != null and combat_meter != null:
-		_execute_buffered_dodge()
-
 
 func _unhandled_input(event: InputEvent) -> void:
 	if not combat_enabled:
@@ -150,22 +140,51 @@ func _unhandled_input(event: InputEvent) -> void:
 	if lane_manager == null or combat_meter == null:
 		return
 
-	var lane_press: int = _read_lane_press(event)
-	if lane_press >= 0:
-		if not _can_accept_action():
-			if Input.is_action_pressed("mod_forward"):
-				_queue_buffered_dodge(lane_press, _read_dodge_direction())
-			return
-		_handle_lane_action(lane_press)
-		return
+	var target_dir: int = _get_target_direction()
 
-	if not _can_accept_action():
-		return
-
-	if event.is_action_pressed("action_ultimate"):
+	if event.is_action_pressed("action_attack"):
+		_handle_directional_action(target_dir, "attack")
+	elif event.is_action_pressed("action_parry"):
+		_handle_directional_action(target_dir, "parry")
+	elif event.is_action_pressed("action_dodge"):
+		_handle_directional_action(target_dir, "dodge")
+	elif event.is_action_pressed("action_ultimate"):
 		_clear_buffered_dodge()
 		_try_ultimate()
+
+
+func _get_target_direction() -> int:
+	# Priority: N/S then E/W. Default to E (2) if nothing pressed.
+	# Mapping from LaneManager: 0=N, 1=S, 2=E, 3=W
+	if Input.is_action_pressed("mod_up"): return 0
+	if Input.is_action_pressed("mod_down"): return 1
+	if Input.is_action_pressed("mod_left"): return 3
+	if Input.is_action_pressed("mod_right"): return 2
+	return 2 # East is the primary approach direction in horizontal-biased combat
+
+
+func _handle_directional_action(target_dir: int, action_type: String) -> void:
+	if not _can_accept_action() and action_type != "dodge":
 		return
+	
+	_consume_chain_bypass_if_needed()
+	EventBus.emit_signal("timing_ring_pressed", target_dir)
+	
+	match action_type:
+		"attack":
+			_select_action_lane(target_dir)
+			_try_attack()
+		"parry":
+			_select_action_lane(target_dir)
+			_try_parry()
+		"dodge":
+			_try_dodge_radial(target_dir)
+
+
+func _try_dodge_radial(target_dir: int) -> void:
+	# In radial combat, dodge moves the player "through" the threat or to the center.
+	# For now, we reuse _try_dodge logic but map the target_dir correctly.
+	_try_dodge(target_dir)
 
 func setup(new_lane_manager: Node, new_combat_meter: Node) -> void:
 	lane_manager = new_lane_manager
@@ -461,45 +480,27 @@ func _try_parry() -> void:
 	_lock_action(recovery, "parry")
 
 
-func _try_dodge(action_lane: int, direction_hint: int = 0) -> void:
-	action_lane = clampi(action_lane, 0, 2)
-	var from_lane: int = action_lane
-	var to_lane: int = action_lane + 1
-
-	if direction_hint < 0:
-		to_lane = action_lane - 1
-	elif direction_hint > 0:
-		to_lane = action_lane + 1
-	else:
-		to_lane = action_lane + 1 if action_lane < 2 else action_lane - 1
-
-	to_lane = clampi(to_lane, 0, 2)
-
-	if to_lane == from_lane:
-		return
-
+func _try_dodge(target_dir: int) -> void:
+	# Clamping to valid threat indices.
+	target_dir = clampi(target_dir, 0, 3)
+	
 	if not combat_meter.call("spend_stamina_for_dodge"):
 		return
 
-	if current_lane != action_lane:
-		var previous_lane: int = current_lane
-		current_lane = action_lane
-		EventBus.emit_signal("player_teleported", previous_lane, action_lane)
+	# In centered combat, dodge is an iframe-dash toward the threat or to the center.
+	# We snap the player toward the threat briefly and return to neutral.
+	var from_pos: Vector2 = _neutral_world_position()
+	var to_pos: Vector2 = lane_manager.get_threat_hit_zone_pos(target_dir)
 
-	current_lane = to_lane
-	EventBus.emit_signal("player_teleported", from_lane, to_lane)
-	_play_dodge_state(to_lane)
+	EventBus.emit_signal("player_teleported", current_lane, target_dir)
+	_play_dodge_state_radial(target_dir, to_pos)
 
-	var destination_projectile: Projectile = lane_manager.call("get_projectile", to_lane) as Projectile
-	if is_instance_valid(destination_projectile):
-		destination_projectile.call("resolve", "dodged_through")
-		lane_manager.call("clear_slot", to_lane)
-
+	# I-frames and masteries.
 	var beat: String = _get_beat_quality()
 	combat_meter.call("record_dodge")
 	combat_meter.call("record_phrase_action", "good")
-	_emit_mastery_context("dodge", to_lane, "good", beat)
-	EventBus.emit_signal("player_dodged", from_lane, to_lane)
+	_emit_mastery_context("dodge", target_dir, "good", beat)
+	EventBus.emit_signal("player_dodged", current_lane, target_dir)
 	dodge_invuln_timer = DODGE_IFRAME_WINDOW_ON_BEAT if (beat == "perfect" or beat == "good") else DODGE_IFRAME_WINDOW
 
 	if beat == "perfect" or beat == "good":
@@ -509,6 +510,22 @@ func _try_dodge(action_lane: int, direction_hint: int = 0) -> void:
 	else:
 		EventBus.emit_signal("screen_flash", Color(0.65, 0.85, 1.0, 0.06), 0.05)
 		_lock_action(DODGE_RECOVERY, "dodge")
+
+
+func _play_dodge_state_radial(target_dir: int, target_pos: Vector2) -> void:
+	_spawn_dodge_afterimage()
+	_play_sprite_pose(DODGE_SPRITE_POSITION, DODGE_SPRITE_SCALE, 0.10)
+	
+	# Motion toward the threat hit-zone, then return to neutral center.
+	if _world_motion_tween != null:
+		_world_motion_tween.kill()
+
+	_world_motion_tween = create_tween()
+	_world_motion_tween.tween_property(self, "position", target_pos, 0.05)
+	_world_motion_tween.tween_property(self, "position", _neutral_world_position(), 0.16)
+	_world_motion_tween.tween_callback(func() -> void:
+		current_lane = NEUTRAL_LANE
+	)
 
 
 func _try_ultimate() -> void:
@@ -838,10 +855,7 @@ func _neutral_world_position() -> Vector2:
 	if lane_manager == null:
 		return Vector2.ZERO
 
-	return Vector2(
-		lane_manager.get_player_x() + NEUTRAL_WORLD_X_OFFSET,
-		lane_manager.get_lane_y(NEUTRAL_LANE)
-	)
+	return lane_manager.get_player_pos() + Vector2(NEUTRAL_WORLD_X_OFFSET, 0.0)
 
 
 func _action_world_position(target_lane: int, x_offset: float) -> Vector2:
@@ -1119,53 +1133,6 @@ func _on_projectile_player_contact(projectile: Node) -> void:
 	
 	projectile.call("resolve", "miss")
 	lane_manager.call("clear_slot", proj_lane)
-
-
-func _read_lane_press(event: InputEvent) -> int:
-	if event.is_action_pressed("lane_attack_0"):
-		return 0
-	if event.is_action_pressed("lane_attack_1"):
-		return 1
-	if event.is_action_pressed("lane_attack_2"):
-		return 2
-	return -1
-
-
-func _read_dodge_direction() -> int:
-	if Input.is_action_pressed("mod_up"):
-		return -1
-	if Input.is_action_pressed("mod_down"):
-		return 1
-	return 0
-
-
-func _queue_buffered_dodge(target_lane: int, direction_hint: int) -> void:
-	var buffer_ms: float = float(COMBAT_FEEL_CONSTANTS.get_timing_window_ms("dodge_buffer_ms"))
-	if buffer_ms <= 0.0:
-		return
-	_buffered_dodge_lane = clampi(target_lane, 0, 2)
-	_buffered_dodge_dir = clampi(direction_hint, -1, 1)
-	_buffered_dodge_timer = buffer_ms / 1000.0
-
-
-func _clear_buffered_dodge() -> void:
-	_buffered_dodge_lane = -1
-	_buffered_dodge_dir = 0
-	_buffered_dodge_timer = 0.0
-
-
-func _execute_buffered_dodge() -> void:
-	if _buffered_dodge_lane < 0:
-		_clear_buffered_dodge()
-		return
-
-	var target_lane: int = _buffered_dodge_lane
-	var direction_hint: int = _buffered_dodge_dir
-	_clear_buffered_dodge()
-
-	_consume_chain_bypass_if_needed()
-	EventBus.emit_signal("timing_ring_pressed", target_lane)
-	_try_dodge(target_lane, direction_hint)
 
 
 func _spawn_dodge_afterimage() -> void:

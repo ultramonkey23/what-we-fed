@@ -11,6 +11,8 @@ const PRESENTATION_TEXT = preload("res://data/PresentationTextContent.gd")
 const COMBAT_CONTENT = preload("res://data/CombatContent.gd")
 const PERFORMANCE_REWARD_CONTENT = preload("res://data/PerformanceRewardContent.gd")
 const RITUAL_CONTENT = preload("res://data/RitualConsumableContent.gd")
+const COLLAR_CONTENT = preload("res://data/CollarContent.gd")
+const PATH_RUN_PLAN = preload("res://systems/PathRunPlan.gd")
 
 var _choices: Array[Dictionary] = []
 var _run_growth: Node = null
@@ -34,6 +36,8 @@ var _management_sections: Array[Dictionary] = []
 var _management_section_index: int = 0
 var _management_item_index_by_section: Dictionary = {}
 var _management_status_line: String = ""
+var _collar_menu_open: bool = false
+var _collar_menu_index: int = 0
 
 
 func _ready() -> void:
@@ -154,6 +158,8 @@ func hide_surface() -> void:
 	_management_item_index_by_section.clear()
 	_management_section_index = 0
 	_management_status_line = ""
+	_collar_menu_open = false
+	_collar_menu_index = 0
 
 
 func refresh_prep_summary() -> void:
@@ -208,9 +214,11 @@ func _unhandled_input(event: InputEvent) -> void:
 				path_index = 0
 			KEY_2:
 				path_index = 1
+			KEY_3:
+				path_index = 2
 		if path_index >= 0 and path_index < _choices.size():
 			var node_id: String = String(_choices[path_index].get("id", ""))
-			if not node_id.is_empty():
+			if not node_id.is_empty() and PATH_RUN_PLAN.validate_node_access(node_id, GameState):
 				emit_signal("path_node_selected", node_id)
 				get_viewport().set_input_as_handled()
 		return
@@ -335,10 +343,36 @@ func _build_choice_cards() -> void:
 		var body_label: Label = Label.new()
 		body_label.name = "Body"
 		body_label.position = Vector2(14.0, 136.0)
-		body_label.size = Vector2(card_w - 28.0, 70.0)
+		body_label.size = Vector2(card_w - 28.0, 34.0)
 		body_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		UI_STYLE.apply_label(body_label, "overlay_body")
 		card.add_child(body_label)
+
+		var cost_label: Label = Label.new()
+		cost_label.name = "Cost"
+		cost_label.position = Vector2(14.0, 172.0)
+		cost_label.size = Vector2(card_w - 28.0, 16.0)
+		UI_STYLE.apply_label(cost_label, "mm_caption")
+		cost_label.add_theme_color_override("font_color", UI_STYLE.get_manga_color("blood_ember"))
+		cost_label.add_theme_font_size_override("font_size", 13)
+		card.add_child(cost_label)
+
+		var risk_label: Label = Label.new()
+		risk_label.name = "Risk"
+		risk_label.position = Vector2(14.0, 188.0)
+		risk_label.size = Vector2(card_w - 28.0, 16.0)
+		UI_STYLE.apply_label(risk_label, "mm_caption")
+		risk_label.add_theme_font_size_override("font_size", 12)
+		card.add_child(risk_label)
+
+		var reward_label: Label = Label.new()
+		reward_label.name = "Reward"
+		reward_label.position = Vector2(14.0, 204.0)
+		reward_label.size = Vector2(card_w - 28.0, 16.0)
+		UI_STYLE.apply_label(reward_label, "mm_caption")
+		reward_label.add_theme_color_override("font_color", UI_STYLE.get_manga_color("alert_gold"))
+		reward_label.add_theme_font_size_override("font_size", 12)
+		card.add_child(reward_label)
 
 
 func _refresh_cards() -> void:
@@ -347,9 +381,19 @@ func _refresh_cards() -> void:
 		if i < _choices.size():
 			var choice: Dictionary = _choices[i]
 			card.visible = true
+			var is_locked: bool = _shell_phase == "path" and not PATH_RUN_PLAN.validate_node_access(String(choice.get("id", "")), GameState)
+			card.modulate = Color(0.45, 0.45, 0.45, 0.76) if is_locked else Color.WHITE
 			card.get_node("Category").text = String(choice.get("tag", "EVOLUTION"))
-			card.get_node("Title").text = String(choice.get("title", "Unknown"))
-			card.get_node("Body").text = String(choice.get("summary", ""))
+			card.get_node("Title").text = String(choice.get("display_name", choice.get("title", "Unknown")))
+			card.get_node("Body").text = _compose_choice_body(choice, is_locked)
+			card.get_node("Cost").visible = _shell_phase == "path"
+			card.get_node("Risk").visible = _shell_phase == "path"
+			card.get_node("Reward").visible = _shell_phase == "path"
+			if _shell_phase == "path":
+				var lock_prefix: String = "LOCKED  |  " if is_locked else ""
+				card.get_node("Cost").text = "%sENTRY COST: %s" % [lock_prefix, _entry_cost_text(Dictionary(choice.get("entry_cost", {})))]
+				card.get_node("Risk").text = "RISK TAGS: %s" % _risk_modifier_text(Dictionary(choice.get("risk_modifier", {})))
+				card.get_node("Reward").text = "REWARD PROMISE: %s" % String(choice.get("potential_reward_bias", "unknown"))
 		else:
 			card.visible = false
 	_refresh_card_layout()
@@ -378,14 +422,50 @@ func _apply_shell_titles() -> void:
 			_header_label.text = PRESENTATION_TEXT.RUN_SPINE_PREDATION_HEADER
 			_subtitle_label.text = PRESENTATION_TEXT.RUN_SPINE_PREDATION_SUBTITLE
 		"review":
-			_header_label.text = PRESENTATION_TEXT.RUN_SPINE_REVIEW_HEADER
-			_subtitle_label.text = PRESENTATION_TEXT.RUN_SPINE_REVIEW_SUBTITLE
+			var resonance: Dictionary = GameState.get_current_resonance_perk()
+			if resonance.get("id") != "unclaimed":
+				_header_label.text = String(resonance.get("title", PRESENTATION_TEXT.RUN_SPINE_REVIEW_HEADER))
+				_subtitle_label.text = String(resonance.get("flavor", PRESENTATION_TEXT.RUN_SPINE_REVIEW_SUBTITLE))
+			else:
+				_header_label.text = PRESENTATION_TEXT.RUN_SPINE_REVIEW_HEADER
+				_subtitle_label.text = PRESENTATION_TEXT.RUN_SPINE_REVIEW_SUBTITLE
 		"path":
 			_header_label.text = "CHOOSE THE NEXT HUNT"
 			_subtitle_label.text = "Shape this run's creature path."
 		_:
 			_header_label.text = PRESENTATION_TEXT.RUN_SPINE_LEVEL_HEADER
 			_subtitle_label.text = PRESENTATION_TEXT.RUN_SPINE_LEVEL_SUBTITLE
+
+
+func _compose_choice_body(choice: Dictionary, is_locked: bool) -> String:
+	if _shell_phase != "path":
+		return String(choice.get("summary", ""))
+	if is_locked:
+		return String(choice.get("summary", "")) + "\nCannot pay entry."
+	return String(choice.get("summary", ""))
+
+
+func _entry_cost_text(cost: Dictionary) -> String:
+	if cost.is_empty():
+		return "none"
+	var value: float = float(cost.get("value", 0.0))
+	match String(cost.get("type", "")):
+		"hp":
+			return "%.0f HP" % value
+		"dna":
+			return "%.0f %s DNA" % [value, _creature_display_name(String(cost.get("species", "")))]
+		_:
+			return "unknown"
+
+
+func _risk_modifier_text(risk_modifier: Dictionary) -> String:
+	if risk_modifier.is_empty():
+		return "none"
+	var label: String = String(risk_modifier.get("display_name", risk_modifier.get("id", "RISK"))).to_upper()
+	var summary: String = String(risk_modifier.get("summary", ""))
+	if summary.is_empty():
+		return label
+	return "%s: %s" % [label, summary]
 
 
 func _refresh_hint() -> void:
@@ -449,6 +529,12 @@ func _compose_run_prep_body() -> String:
 	if _run_growth != null and is_instance_valid(_run_growth) and _run_growth.has_method("get_dna_routing_label"):
 		route_line = "DNA harvest  |  %s" % String(_run_growth.call("get_dna_routing_label"))
 	blocks.append(route_line)
+	
+	var resonance: Dictionary = GameState.get_current_resonance_perk()
+	if resonance.get("id") != "unclaimed":
+		var res_line: String = "Resonance  |  %s: %s" % [String(resonance.get("perk_title")), String(resonance.get("perk_description"))]
+		blocks.append(res_line)
+
 	blocks.append(_compose_management_digest_block())
 
 	if GameState.has_method("get_reward_ecology_summary_lines"):
@@ -524,6 +610,29 @@ func _compose_run_prep_body() -> String:
 
 
 func _handle_management_input(key_event: InputEventKey) -> bool:
+	if _collar_menu_open:
+		match key_event.keycode:
+			KEY_C:
+				_collar_menu_open = false
+				_refresh_prep_body()
+				return true
+			KEY_A:
+				_cycle_collar_item(-1)
+				return true
+			KEY_D:
+				_cycle_collar_item(1)
+				return true
+			KEY_E:
+				_commit_collar_action("equip")
+				return true
+			KEY_U:
+				_commit_collar_action("unlock")
+				return true
+			KEY_TAB:
+				_collar_menu_open = false
+				_cycle_management_section(1)
+				return true
+		return false
 	match key_event.keycode:
 		KEY_TAB:
 			_cycle_management_section(1)
@@ -541,16 +650,20 @@ func _handle_management_input(key_event: InputEventKey) -> bool:
 			_commit_management_action("salvage")
 			return true
 		KEY_C:
-			_commit_management_action("collar")
+			_collar_menu_open = true
+			_collar_menu_index = clampi(_collar_menu_index, 0, max(_get_collar_menu_rows().size() - 1, 0))
+			_refresh_prep_body()
 			return true
 	return false
 
 
 func _compose_management_digest_block() -> String:
+	if _collar_menu_open:
+		return _compose_collar_menu_block()
 	if _management_sections.is_empty():
-		return "Management  |  no slotted loot/artifacts/rituals yet\n  Collar slot  |  hook ready (system pending)"
+		return "Management  |  no slotted loot/artifacts/rituals yet\n  Collar slot  |  C open collar inventory"
 	var lines: Array[String] = []
-	lines.append("Management  |  TAB slot  A/D item  E equip  X salvage  C collar hook")
+	lines.append("Management  |  TAB slot  A/D item  E equip  X salvage  C collars")
 	for i in range(_management_sections.size()):
 		var section: Dictionary = _management_sections[i]
 		var items: Array = section.get("items", [])
@@ -569,10 +682,96 @@ func _compose_management_digest_block() -> String:
 			item_idx + 1,
 			items.size()
 		])
-	lines.append("  Collar slot  |  placeholder-ready (equip/swap hook only)")
+	lines.append("  Collar slot  |  " + _equipped_collar_label())
 	if not _management_status_line.is_empty():
 		lines.append("  Last action  |  " + _management_status_line)
 	return "\n".join(PackedStringArray(lines))
+
+
+func _compose_collar_menu_block() -> String:
+	var rows: Array[Dictionary] = _get_collar_menu_rows()
+	var lines: Array[String] = []
+	lines.append("Collars  |  A/D choose  E equip unlocked  U unlock with species DNA  C close")
+	if rows.is_empty():
+		lines.append("  Inventory  |  none")
+	else:
+		_collar_menu_index = clampi(_collar_menu_index, 0, rows.size() - 1)
+		for i in range(rows.size()):
+			var row: Dictionary = rows[i]
+			var collar_id: String = String(row.get("id", ""))
+			var marker: String = ">" if i == _collar_menu_index else " "
+			var equipped: String = "  [equipped]" if GameState.equipped_collar_id == collar_id else ""
+			var lock_state: String = "unlocked" if bool(row.get("unlocked", false)) else _collar_cost_text(Dictionary(row.get("dna_unlock_cost", {})))
+			lines.append("%s %s  |  %s%s" % [marker, String(row.get("title", collar_id)), lock_state, equipped])
+			if i == _collar_menu_index:
+				lines.append("  " + String(row.get("description", "")))
+	if not _management_status_line.is_empty():
+		lines.append("  Last action  |  " + _management_status_line)
+	return "\n".join(PackedStringArray(lines))
+
+
+func _get_collar_menu_rows() -> Array[Dictionary]:
+	var rows: Array[Dictionary] = []
+	var all_collars: Array[Dictionary] = COLLAR_CONTENT.get_all_collars()
+	for collar in all_collars:
+		var row: Dictionary = collar.duplicate(true)
+		row["unlocked"] = GameState.collar_inventory.has(String(row.get("id", "")))
+		rows.append(row)
+	rows.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		if bool(a.get("unlocked", false)) != bool(b.get("unlocked", false)):
+			return bool(a.get("unlocked", false))
+		return String(a.get("title", "")) < String(b.get("title", ""))
+	)
+	return rows
+
+
+func _cycle_collar_item(step: int) -> void:
+	var rows: Array[Dictionary] = _get_collar_menu_rows()
+	if rows.size() <= 1:
+		return
+	_collar_menu_index = posmod(_collar_menu_index + step, rows.size())
+	_refresh_prep_body()
+
+
+func _commit_collar_action(action_id: String) -> void:
+	var rows: Array[Dictionary] = _get_collar_menu_rows()
+	if rows.is_empty():
+		_management_status_line = "No collar inventory"
+		_refresh_prep_body()
+		return
+	_collar_menu_index = clampi(_collar_menu_index, 0, rows.size() - 1)
+	var collar: Dictionary = rows[_collar_menu_index]
+	var collar_id: String = String(collar.get("id", ""))
+	var ok: bool = false
+	if action_id == "unlock" and GameState.has_method("unlock_collar"):
+		ok = bool(GameState.call("unlock_collar", collar_id))
+	elif action_id == "equip" and GameState.has_method("equip_collar"):
+		ok = bool(GameState.call("equip_collar", collar_id))
+	var status: String = "ok" if ok else "failed"
+	_management_status_line = "%s collar: %s" % [action_id.capitalize(), String(collar.get("title", collar_id))]
+	emit_signal("management_action_requested", "collar_" + action_id, {
+		"status": status,
+		"collar_id": collar_id
+	})
+	_refresh_prep_body()
+
+
+func _equipped_collar_label() -> String:
+	if GameState.equipped_collar_id.is_empty():
+		return "none equipped"
+	var collar: Dictionary = COLLAR_CONTENT.get_collar(GameState.equipped_collar_id)
+	if collar.is_empty():
+		return GameState.equipped_collar_id
+	return String(collar.get("title", GameState.equipped_collar_id))
+
+
+func _collar_cost_text(cost: Dictionary) -> String:
+	if cost.is_empty():
+		return "locked"
+	var chunks: Array[String] = []
+	for species_id in cost.keys():
+		chunks.append("%s %.0f" % [_creature_display_name(String(species_id)), float(cost[species_id])])
+	return "locked: " + ", ".join(PackedStringArray(chunks))
 
 
 func _reward_title_from_id(reward_id: String) -> String:
@@ -639,11 +838,6 @@ func _cycle_management_item(step: int) -> void:
 
 func _commit_management_action(action_id: String) -> void:
 	_rebuild_management_sections()
-	if action_id == "collar":
-		_management_status_line = "Collar slot hook pinged (no collar runtime wired yet)"
-		emit_signal("management_action_requested", action_id, {"status": "hook_ready"})
-		_refresh_prep_body()
-		return
 	if _management_sections.is_empty():
 		return
 	var section: Dictionary = _management_sections[_management_section_index]

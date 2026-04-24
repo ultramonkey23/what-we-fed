@@ -4,7 +4,7 @@ Choosing the "One Best Next Move" is critical to avoid drift and vanity cleanup.
 
 ## 1. Task Classification
 - **Level 1 — Blocker**: Immediate crash/hang. Route to **CRASH HUNTER** (Cyborg).
-- **Level 2 — Identity Leak**: Timing is floaty, lanes are cluttered, or "mushy" feel. Route to **HUD SURGEON** (Alfred) or **SURGEON** (Alfred).
+- **Level 2 — Identity / Readability Leak**: Timing is floaty, lanes are cluttered, visuals are unreadable, or combat feels mushy. Route visual diagnosis to **INSPECTOR** first when screenshot/capture evidence exists; route implementation to **HUD SURGEON**, **SHADER SURGEON**, or **SURGEON** under ALFRED.
 - **Level 3 — Feature/Growth**: Implementing requested mechanics. Route to **SURGEON** (Alfred).
 - **Level 4 — Content/Narrative**: Adding new creatures/songs/lore to data. Route to **LORE BRAIN** (Lobe).
 - **Level 5 — Robustness**: (Only if Level 1-3 are stable).
@@ -14,6 +14,7 @@ Choosing the "One Best Next Move" is critical to avoid drift and vanity cleanup.
 - **Reject "Just Because" Refactors.** If it works and is readable, leave it.
 - **Identify the "Weakest Link"**: If the game is stable, what is the *single* most confusing or generic element? That is your Level 2/3 target.
 - **Narrative Alignment**: If content/lore feels generic or lacks weight, call **LORE BRAIN** to strengthen the spine.
+- **Visual Alignment**: If screenshots/captures show clutter, weak support readability, projectile ambiguity, flat prototype presentation, or boss spectacle obscuring truth, call **INSPECTOR** to produce a receipt before patching.
 
 ## 3. The One Best Move Rule (Orchestration)
 1. Pick **exactly one** bottleneck.
@@ -25,6 +26,7 @@ Choosing the "One Best Next Move" is critical to avoid drift and vanity cleanup.
 - Does this move protect **Lane Truth**?
 - Does this move protect **Timing Truth**?
 - Does this move protect **Bond vs Eat**?
+- If visual: is the claim backed by screenshot/capture evidence and an Inspector receipt?
 
 ## Output Contract
 All routing proposals must follow the **BRAIN Output Contract (v2.1)**:

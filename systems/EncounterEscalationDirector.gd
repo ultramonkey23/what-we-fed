@@ -36,11 +36,14 @@ const MOMENTUM_RELIEF_CAP: float = 45.0
 const LOW_HP_RELIEF_RATIO: float = 0.35
 const RECENT_HIT_RELIEF_SECONDS: float = 2.2
 
+const BASE_POPULATION_CAP: int = 6
+const POPULATION_MOMENTUM_BONUS: int = 12
 const DEFAULT_PRESSURE_CAP: float = 2.2
 const PRESSURE_CAP_MOMENTUM_BONUS: float = 0.55
 const PRESSURE_CAP_RELIEF: float = 0.25
 const AUTHORITY_MOMENTUM_THRESHOLD: float = 0.62
 const AUTHORITY_MOMENTUM_BONUS: int = 1
+const MOMENTUM_PERFECT_KILL_BONUS: float = 8.0
 
 var _region_id: String = ""
 var _phases: Array = []
@@ -62,11 +65,16 @@ var _boss_escalation_fired: bool = false
 var _pending_spawn_timers: Array[SceneTreeTimer] = []
 var _difficulty_modifiers: Dictionary = DEFAULT_DIFFICULTY_MODIFIERS.duplicate(true)
 var _kill_momentum: float = 0.0
+var _perfect_kill_streak: int = 0
+var _last_hit_quality_by_enemy: Dictionary = {}
 var _recent_hit_timer: float = 0.0
 var _last_ecology_snapshot: Dictionary = {}
+var _last_synced_budget: int = -1
 
 func _ready():
 	set_process(true)
+	if not EventBus.timed_attack_resolved.is_connected(_on_timed_attack_resolved):
+		EventBus.timed_attack_resolved.connect(_on_timed_attack_resolved)
 	
 func _process(delta):
 	_prune_finished_timers()
@@ -76,6 +84,8 @@ func _process(delta):
 		_kill_momentum = maxf(_kill_momentum - MOMENTUM_DECAY_PER_SEC * delta, 0.0)
 	if _recent_hit_timer > 0.0:
 		_recent_hit_timer = maxf(_recent_hit_timer - delta, 0.0)
+		
+	_sync_budgets_to_lane_manager()
 	_emit_ecology_state_if_changed()
 
 func setup(region_id: String, phases: Array, rng: RandomNumberGenerator) -> void:
@@ -89,8 +99,11 @@ func setup(region_id: String, phases: Array, rng: RandomNumberGenerator) -> void
 	_running = false
 	_difficulty_modifiers = DEFAULT_DIFFICULTY_MODIFIERS.duplicate(true)
 	_kill_momentum = 0.0
+	_perfect_kill_streak = 0
+	_last_hit_quality_by_enemy.clear()
 	_recent_hit_timer = 0.0
 	_last_ecology_snapshot.clear()
+	_last_synced_budget = -1
 
 
 func set_difficulty_modifiers(mods: Dictionary) -> void:
@@ -215,21 +228,59 @@ func _seed_initial_phase_enemies(phase: Dictionary) -> void:
 		_request_spawn(int(ordered_lanes[i]))
 		filled += 1
 
-func notify_enemy_defeated(_enemy_id: int, lane: int, replaced_immediately: bool = false) -> void:
+func _sync_budgets_to_lane_manager() -> void:
+	if lane_manager == null or not is_instance_valid(lane_manager):
+		return
+	
+	var budget: int = _resolve_authority_budget(get_current_phase_data())
+	if budget != _last_synced_budget:
+		_last_synced_budget = budget
+		if lane_manager.has_method("set_attack_authority_budget"):
+			lane_manager.call("set_attack_authority_budget", budget)
+
+	# Frequency scaling (only if boss escalation hasn't taken over)
+	if not _boss_escalation_fired:
+		var momentum_ratio: float = _resolve_effective_momentum_ratio()
+		var interval: float = 2.2
+		interval -= momentum_ratio * 0.7
+		if _player_hp_ratio <= LOW_HP_RELIEF_RATIO or _recent_hit_timer > 0.0:
+			interval += 0.85 # Visible relief
+		
+		if lane_manager.has_method("set_cycle_interval"):
+			lane_manager.call("set_cycle_interval", clampf(interval, 1.2, 3.5))
+
+func notify_enemy_defeated(enemy_id: int, lane: int, replaced_immediately: bool = false) -> void:
 	if not _running or _current_phase_index < 0:
 		return
 	
-	_kill_momentum = minf(_kill_momentum + MOMENTUM_KILL_GAIN, MOMENTUM_MAX)
+	var gain: float = MOMENTUM_KILL_GAIN
+	var quality: String = String(_last_hit_quality_by_enemy.get(enemy_id, ""))
+	
+	if quality == "perfect":
+		gain += MOMENTUM_PERFECT_KILL_BONUS
+		_perfect_kill_streak += 1
+		if _perfect_kill_streak >= 3:
+			feedback_requested.emit("PERFECT STREAK: %d" % _perfect_kill_streak, Color(0.78, 0.94, 0.62, 1.0), 0.35)
+	else:
+		_perfect_kill_streak = 0
+	
+	_kill_momentum = minf(_kill_momentum + gain, MOMENTUM_MAX)
+	_last_hit_quality_by_enemy.erase(enemy_id)
+	
 	if replaced_immediately:
 		_emit_ecology_state_if_changed()
 		return
+		
 	var delay: float = float(_escalation_rules.get("respawn_delay", 0.40))
 	var lane_pressure_band: Dictionary = Dictionary(_difficulty_modifiers.get("lane_pressure", {}))
 	delay *= clampf(float(lane_pressure_band.get("respawn_delay_mult", 1.0)), 0.60, 1.45)
 	delay *= lerpf(1.12, 0.64, _resolve_effective_momentum_ratio())
+	
+	# Mercy relief on spawn frequency
 	if _player_hp_ratio <= LOW_HP_RELIEF_RATIO or _recent_hit_timer > 0.0:
-		delay *= 1.10
-	delay = clampf(delay, 0.08, 2.20)
+		delay *= 1.45 # Significant slow down
+	
+	delay = clampf(delay, 0.08, 2.80)
 	
 	var shaping: String = String(_escalation_rules.get("pressure_shaping", "default"))
 	
@@ -242,6 +293,8 @@ func notify_enemy_defeated(_enemy_id: int, lane: int, replaced_immediately: bool
 			_schedule_smart_respawn(lane, delay * 1.5, true)
 		_:
 			_schedule_smart_respawn(lane, delay, false)
+	
+	_sync_budgets_to_lane_manager()
 	_emit_ecology_state_if_changed()
 
 func _schedule_smart_respawn(origin_lane: int, delay: float, find_new_lane: bool) -> void:
@@ -297,16 +350,39 @@ func _request_spawn(lane: int) -> void:
 	spawn_requested.emit(lane, enemy)
 	_emit_ecology_state_if_changed()
 
+func _on_timed_attack_resolved(_lane: int, quality: String, _damage: float) -> void:
+	# Store the most recent quality for the enemy in this lane.
+	if lane_manager == null or not is_instance_valid(lane_manager):
+		return
+	var enemy: Dictionary = lane_manager.get_enemy(_lane)
+	if not enemy.is_empty():
+		var id: int = int(enemy.get("id", -1))
+		if id != -1:
+			_last_hit_quality_by_enemy[id] = quality
+
 func _can_schedule_spawn(phase: Dictionary, enemy: Dictionary) -> bool:
 	if lane_manager == null or not is_instance_valid(lane_manager):
 		return false
-	var authority_budget: int = _resolve_authority_budget(phase)
-	if lane_manager.alive_count() >= authority_budget:
+	
+	# POPULATION LIMIT: Scaled by momentum
+	var pop_cap: int = _resolve_population_cap()
+	if lane_manager.alive_count() >= pop_cap:
 		return false
+
 	var pressure_cap: float = _resolve_pressure_cap(phase)
 	var current_pressure: float = _resolve_current_pressure_points()
 	var incoming_pressure: float = _estimate_enemy_pressure_points(enemy) * 0.68
 	return (current_pressure + incoming_pressure) <= pressure_cap
+
+func _resolve_population_cap() -> int:
+	var momentum_ratio: float = _resolve_effective_momentum_ratio()
+	var cap: int = BASE_POPULATION_CAP + int(momentum_ratio * POPULATION_MOMENTUM_BONUS)
+	
+	# Mercy relief on population
+	if _player_hp_ratio <= LOW_HP_RELIEF_RATIO or _recent_hit_timer > 0.0:
+		cap = clampi(cap - 4, BASE_POPULATION_CAP - 2, BASE_POPULATION_CAP + 4)
+	
+	return clampi(cap, 2, 24)
 
 func _pick_pressure_aware_enemy(phase: Dictionary) -> Dictionary:
 	var pool: Array = phase.get("enemy_pool", [])

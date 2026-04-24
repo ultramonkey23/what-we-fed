@@ -78,3 +78,19 @@ At the completion of any task (Inspect, Spec, Patch, Validate, or Evolve), you M
 - Keep handoffs short, executable, and evidence-based.
 - Do not fragment reporting formats based on the AI tool used. The Universal Reporting Block is the single standard.
 - Always end with one recommended bounded next move.
+
+## Visual Handoff Addendum
+Use this only when visual evidence is part of the task.
+
+```md
+## Visual evidence packet
+- Evidence paths: <png/jpg/webp/mp4/frame sequence paths>
+- Metadata paths: <capture seed json paths, or unknown>
+- Moment ID: <moment being judged>
+- Scene / viewport / camera: <known values or unknown>
+- Lane / song / support context: <known values or unknown>
+- Expected visual contract: <HUD readability, support color, boss spectacle, premium menace, etc.>
+- Required output: Inspector Visual Audit Receipt from `docs/ai/VISUAL_TRUTH_LOOP.md`
+```
+
+Visual patching should flow: BRAIN route -> INSPECTOR receipt -> ALFRED/Shader Surgeon patch -> CYBORG re-capture validation.

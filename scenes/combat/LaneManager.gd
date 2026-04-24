@@ -2,7 +2,8 @@ extends Node
 
 const COMBAT_CONTENT = preload("res://data/CombatContent.gd")
 
-const LANE_COUNT: int = 3
+const THREAT_COUNT: int = 4
+const LANE_COUNT: int = 4 # Shim for backward compatibility during refactor
 # fire_stagger is the wait between firing successive lanes in a single cycle.
 # Wider = each lane projectile arrives as a distinct timed event.
 # Tighter = projectiles arrive in a cluster, reading the whole lane set at once.
@@ -10,13 +11,10 @@ const LANE_COUNT: int = 3
 # by the proximity check. Use set_fire_stagger() to change it at runtime.
 var fire_stagger: float = 0.45
 var cycle_interval: float = 2.2
-var attack_authority_budget: int = LANE_COUNT
+var attack_authority_budget: int = THREAT_COUNT
 
-const TOP_Y_RATIO: float = 0.24
-const BOTTOM_Y_RATIO: float = 0.74
-const PLAYER_X_RATIO: float = 0.16
-const ENEMY_X_RATIO: float = 0.80
-const HIT_ZONE_X_RATIO: float = 0.22
+const SPAWN_DISTANCE_RATIO: float = 0.42
+const HIT_ZONE_DISTANCE: float = 85.0
 
 const PROJECTILE_SCENE_PATH: String = "res://scenes/combat/Projectile.tscn"
 const MIN_IMPACT_SEPARATION: float = 0.40
@@ -44,18 +42,24 @@ const ENEMY_STATUS_FLAGS: Dictionary = {
 var combat_scene: Node = null
 
 var _viewport_size: Vector2 = Vector2.ZERO
-var _lane_ys: Array[float] = []
-var _player_x: float = 0.0
-var _enemy_x: float = 0.0
-var _hit_zone_x: float = 0.0
+var _center_pos: Vector2 = Vector2.ZERO
+var _threat_spawn_positions: Array[Vector2] = []
+var _threat_hit_zone_positions: Array[Vector2] = []
 
 var _projectile_scene: PackedScene = null
-var _projectile_slots: Array = [null, null, null]
-var _enemies: Array[Dictionary] = []
-var _lane_authority_debt: Array[float] = [0.0, 0.0, 0.0]
-var _lane_last_fired_cycle: Array[int] = [-999, -999, -999]
+var _projectile_slots: Array = [null, null, null, null]
+var _enemies: Dictionary = {} # enemy_id -> Dictionary (Population)
+var _lane_strikers: Array[int] = [-1, -1, -1, -1] # enemy_id per lane
+var _orbiting_enemy_ids: Array[int] = [] # Ordered for fair authority
+var _lane_authority_debt: Array[float] = [0.0, 0.0, 0.0, 0.0]
+var _lane_last_fired_cycle: Array[int] = [-999, -999, -999, -999]
 var _fire_cycle_index: int = 0
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
+
+var _orbit_angles: Dictionary = {} # enemy_id -> float
+var _orbit_radius_offsets: Dictionary = {} # enemy_id -> float
+var _orbit_speed: float = 0.35 # Rad/sec
+var _next_enemy_id: int = 5000 # For non-song mode or internal spawns
 
 var _combat_running: bool = false
 var _song_mode: bool = false
@@ -72,20 +76,26 @@ var _cycle_task_id: int = 0
 
 
 func setup_layout(viewport_size: Vector2) -> void:
-	# Computes the three combat lane positions and anchor X points.
+	# Computes the 4 cardinal threat positions centered on the screen.
 	_viewport_size = viewport_size
-	_player_x = viewport_size.x * PLAYER_X_RATIO
-	_enemy_x = viewport_size.x * ENEMY_X_RATIO
-	_hit_zone_x = viewport_size.x * HIT_ZONE_X_RATIO
-
-	_lane_ys.clear()
-
-	var top_y: float = viewport_size.y * TOP_Y_RATIO
-	var bottom_y: float = viewport_size.y * BOTTOM_Y_RATIO
-	var spacing: float = (bottom_y - top_y) / float(LANE_COUNT - 1)
-
-	for lane in range(LANE_COUNT):
-		_lane_ys.append(top_y + spacing * lane)
+	_center_pos = viewport_size * 0.5
+	
+	_threat_spawn_positions.clear()
+	_threat_hit_zone_positions.clear()
+	
+	var spawn_dist: float = viewport_size.y * SPAWN_DISTANCE_RATIO
+	
+	# Mapping: 0=N, 1=S, 2=E, 3=W
+	var directions = [
+		Vector2(0, -1), # North
+		Vector2(0, 1),  # South
+		Vector2(1, 0),  # East
+		Vector2(-1, 0)  # West
+	]
+	
+	for dir in directions:
+		_threat_spawn_positions.append(_center_pos + dir * spawn_dist)
+		_threat_hit_zone_positions.append(_center_pos + dir * HIT_ZONE_DISTANCE)
 
 
 func load_scene() -> bool:
@@ -116,11 +126,20 @@ func start_combat(enemy_data: Array) -> void:
 	stop()
 
 	_enemies.clear()
+	_lane_strikers = [-1, -1, -1, -1]
+	_orbiting_enemy_ids.clear()
+	_orbit_angles.clear()
+	_orbit_radius_offsets.clear()
+
 	for lane in range(LANE_COUNT):
 		if lane < enemy_data.size():
-			_enemies.append(enemy_data[lane].duplicate(true))
-		else:
-			_enemies.append({})
+			var enemy = enemy_data[lane].duplicate(true)
+			var id = int(enemy.get("id", _next_enemy_id))
+			if id == _next_enemy_id: _next_enemy_id += 1
+			enemy["id"] = id
+			enemy["lane"] = lane
+			_enemies[id] = enemy
+			_lane_strikers[lane] = id
 
 	_combat_running = true
 	_cycle_task_id += 1
@@ -138,25 +157,29 @@ func _on_song_beat_pulse(_beat_index: int, _intensity: float) -> void:
 		return
 	
 	var expired: Array = []
-	for lane in _enemy_statuses:
-		var status: Dictionary = _enemy_statuses[lane]
+	for id in _enemy_statuses:
+		var status: Dictionary = _enemy_statuses[id]
 		if status.get("id", "") == "venom":
 			var beats: int = int(status.get("beats_remaining", 0))
 			if beats > 0:
 				# Apply venom damage
-				var enemy: Dictionary = get_enemy(lane)
+				var enemy: Dictionary = _enemies.get(id, {})
 				if not enemy.is_empty() and enemy.has("max_hp"):
 					var damage: float = float(enemy["max_hp"]) * float(status.get("venom_damage", 0.10))
-					damage_enemy(lane, damage)
+					damage_enemy_by_id(id, damage)
 					EventBus.proc_feedback_requested.emit("VENOM", Color(0.48, 0.12, 0.64, 1.0))
 				
 				status["beats_remaining"] = beats - 1
 				if int(status["beats_remaining"]) <= 0:
-					expired.append(lane)
+					expired.append(id)
 	
-	for lane in expired:
-		_enemy_statuses.erase(lane)
-		EventBus.emit_signal("enemy_status_cleared", lane)
+	for id in expired:
+		_enemy_statuses.erase(id)
+		# For backward compatibility, we'll try to find if this enemy is in a lane
+		# but the new system uses enemy_id for status.
+		var lane: int = _find_lane_for_enemy(id)
+		if lane >= 0:
+			EventBus.emit_signal("enemy_status_cleared", lane)
 
 
 func get_projectile(lane: int):
@@ -175,28 +198,51 @@ func get_projectile(lane: int):
 
 
 func clear_slot(lane: int) -> void:
-	if lane < 0 or lane >= LANE_COUNT:
+	if lane < 0 or lane >= THREAT_COUNT:
 		return
 
 	_projectile_slots[lane] = null
 
 
 func get_lane_y(lane: int) -> float:
-	if lane < 0 or lane >= _lane_ys.size():
-		return 0.0
-	return _lane_ys[lane]
+	# Shim for horizontal logic: returns the Y of the threat position.
+	if lane < 0 or lane >= _threat_spawn_positions.size():
+		return _center_pos.y
+	return _threat_spawn_positions[lane].y
 
 
 func get_player_x() -> float:
-	return _player_x
+	return _center_pos.x
+
+
+func get_player_pos() -> Vector2:
+	return _center_pos
 
 
 func get_enemy_x() -> float:
-	return _enemy_x
+	# Shim: returns X of the Eastern threat (lane 2) or Center.
+	if _threat_spawn_positions.size() > 2:
+		return _threat_spawn_positions[2].x
+	return _center_pos.x
 
 
 func get_hit_zone_x() -> float:
-	return _hit_zone_x
+	# Shim: returns X of the Eastern hit zone or Center.
+	if _threat_hit_zone_positions.size() > 2:
+		return _threat_hit_zone_positions[2].x
+	return _center_pos.x
+
+
+func get_threat_spawn_pos(lane: int) -> Vector2:
+	if lane < 0 or lane >= _threat_spawn_positions.size():
+		return _center_pos
+	return _threat_spawn_positions[lane]
+
+
+func get_threat_hit_zone_pos(lane: int) -> Vector2:
+	if lane < 0 or lane >= _threat_hit_zone_positions.size():
+		return _center_pos
+	return _threat_hit_zone_positions[lane]
 
 
 func set_cycle_interval(interval: float) -> void:
@@ -246,11 +292,7 @@ func trigger_accent_burst() -> void:
 	_cycle_task_id += 1
 	_run_fire_cycle(_cycle_task_id)
 	
-	# Restore stagger (the cycle is already running with the tightened value 
-	# thanks to the local variable capturing fire_stagger in its loop).
-	# Wait, _run_fire_cycle uses the member variable 'fire_stagger'.
-	# We'll use a one-shot approach: _run_fire_cycle will use a local copy 
-	# if we want it to be perfectly safe, but let's just reset it.
+	# Restore stagger
 	get_tree().create_timer(cycle_interval * 0.5).timeout.connect(
 		func(): fire_stagger = original_stagger
 	)
@@ -265,14 +307,23 @@ func is_song_cycle_stalled() -> bool:
 
 
 func set_enemy(lane: int, enemy_data: Dictionary) -> void:
-	# Places a new enemy in a lane during song mode. Restarts the fire cycle
-	# if it stalled because all enemies were defeated.
-	if lane < 0 or lane >= LANE_COUNT:
-		return
-	# Lazy-init: _enemies is empty if start_combat() was never called (song mode entry).
-	while _enemies.size() < LANE_COUNT:
-		_enemies.append({})
-	_enemies[lane] = enemy_data.duplicate(true)
+	# Places a new enemy in the population.
+	# Restarts the fire cycle if it stalled because all enemies were defeated.
+	var enemy = enemy_data.duplicate(true)
+	var id = int(enemy.get("id", _next_enemy_id))
+	if id == _next_enemy_id: _next_enemy_id += 1
+	enemy["id"] = id
+	_enemies[id] = enemy
+	
+	# Decide if they join orbit or take an empty lane
+	if lane >= 0 and lane < LANE_COUNT and _lane_strikers[lane] == -1 and alive_striker_count() < attack_authority_budget:
+		_lane_strikers[lane] = id
+		enemy["lane"] = lane
+	else:
+		_orbiting_enemy_ids.append(id)
+		_orbit_angles[id] = _rng.randf_range(0.0, TAU)
+		_orbit_radius_offsets[id] = _rng.randf_range(-15.0, 15.0)
+		enemy["lane"] = -1
 	
 	if _song_mode:
 		if not _combat_running:
@@ -283,12 +334,20 @@ func set_enemy(lane: int, enemy_data: Dictionary) -> void:
 
 
 func damage_enemy(lane: int, amount: float) -> void:
-	# Applies damage to a lane's active enemy and handles defeat.
-	# Status multipliers (REND, EXPOSE) are applied before dealing damage.
-	if lane < 0 or lane >= _enemies.size():
+	# Applies damage to a lane's active enemy.
+	if lane < 0 or lane >= LANE_COUNT:
 		return
+	
+	var id = _lane_strikers[lane]
+	if id == -1:
+		return
+		
+	damage_enemy_by_id(id, amount)
 
-	var enemy: Dictionary = _enemies[lane]
+
+func damage_enemy_by_id(id: int, amount: float) -> void:
+	# Applies damage to an enemy by ID and handles defeat.
+	var enemy = _enemies.get(id, {})
 	if enemy.is_empty():
 		return
 	if not enemy.has("hp"):
@@ -296,62 +355,95 @@ func damage_enemy(lane: int, amount: float) -> void:
 	if float(enemy["hp"]) <= 0.0:
 		return
 
-	var modified_amount: float = maxf(amount * _get_status_damage_mult(lane), 0.0)
+	# Status multipliers (REND, EXPOSE) are applied using the enemy ID now.
+	var modified_amount: float = maxf(amount * _get_status_damage_mult_by_id(id), 0.0)
 	if modified_amount <= 0.0:
 		return
 	var defense: float = maxf(float(enemy.get("defense", 0.0)), 0.0)
 	var defense_reduction: float = minf(defense, modified_amount * ENEMY_DEFENSE_MAX_REDUCTION_RATIO)
 	var actual_amount: float = maxf(modified_amount - defense_reduction, ENEMY_DEFENSE_MIN_DAMAGE)
 	enemy["hp"] = max(float(enemy["hp"]) - actual_amount, 0.0)
-	_enemies[lane] = enemy
+	_enemies[id] = enemy
 
-	EventBus.emit_signal("enemy_damaged", int(enemy.get("id", lane)), actual_amount)
+	EventBus.emit_signal("enemy_damaged", id, actual_amount)
 
 	# Consume one REND charge per hit.
-	if _enemy_statuses.has(lane) and _enemy_statuses[lane].get("id", "") == "rend":
-		var rend: Dictionary = _enemy_statuses[lane]
+	if _enemy_statuses.has(id) and _enemy_statuses[id].get("id", "") == "rend":
+		var rend: Dictionary = _enemy_statuses[id]
 		rend["hits_remaining"] = rend.get("hits_remaining", 0) - 1
 		if rend["hits_remaining"] <= 0:
-			_enemy_statuses.erase(lane)
-			EventBus.emit_signal("enemy_status_cleared", lane)
+			_enemy_statuses.erase(id)
+			var lane = _find_lane_for_enemy(id)
+			if lane >= 0: EventBus.emit_signal("enemy_status_cleared", lane)
 
 	if float(enemy["hp"]) <= 0.0:
-		# GORGE-MARK: emit triggered event for bonus charge before clearing.
-		if _enemy_statuses.has(lane) and _enemy_statuses[lane].get("id", "") == "gorge_mark":
-			_enemy_statuses.erase(lane)
+		_handle_enemy_defeat(id)
+
+
+func _handle_enemy_defeat(id: int) -> void:
+	# GORGE-MARK: emit triggered event for bonus charge before clearing.
+	var lane = _find_lane_for_enemy(id)
+	
+	if _enemy_statuses.has(id) and _enemy_statuses[id].get("id", "") == "gorge_mark":
+		_enemy_statuses.erase(id)
+		if lane >= 0: 
 			EventBus.emit_signal("enemy_status_applied", lane, "gorge_mark_triggered", {})
 			EventBus.emit_signal("enemy_status_cleared", lane)
-		elif _enemy_statuses.has(lane):
-			_enemy_statuses.erase(lane)
-			EventBus.emit_signal("enemy_status_cleared", lane)
+	elif _enemy_statuses.has(id):
+		_enemy_statuses.erase(id)
+		if lane >= 0: EventBus.emit_signal("enemy_status_cleared", lane)
 
-		EventBus.emit_signal("enemy_defeated", int(enemy.get("id", lane)))
+	EventBus.emit_signal("enemy_defeated", id)
 
+	if lane >= 0:
 		var projectile = get_projectile(lane)
 		if projectile != null:
 			projectile.resolve("enemy_defeated")
 			clear_slot(lane)
+		_lane_strikers[lane] = -1
+	
+	_orbiting_enemy_ids.erase(id)
+	_orbit_angles.erase(id)
+	_orbit_radius_offsets.erase(id)
+	_enemies.erase(id)
 
-		if alive_count() <= 0:
-			if _song_mode:
-				pass  # Song continues; CombatScene will respawn enemies.
-			else:
-				_combat_running = false
-				EventBus.emit_signal("combat_ended", true)
+	if alive_count() <= 0:
+		if _song_mode:
+			pass  # Song continues
+		else:
+			_combat_running = false
+			EventBus.emit_signal("combat_ended", true)
 
 
 func get_enemy(lane: int) -> Dictionary:
-	if lane < 0 or lane >= _enemies.size():
+	if lane < 0 or lane >= LANE_COUNT:
 		return {}
-	return _enemies[lane]
+	var id = _lane_strikers[lane]
+	return _enemies.get(id, {})
 
 
 func alive_count() -> int:
 	var total: int = 0
-	for enemy in _enemies:
+	for id in _enemies:
+		var enemy = _enemies[id]
 		if enemy.has("hp") and float(enemy["hp"]) > 0.0:
 			total += 1
 	return total
+
+
+func alive_striker_count() -> int:
+	var total: int = 0
+	for id in _lane_strikers:
+		if id != -1:
+			total += 1
+	return total
+
+
+func _find_lane_for_enemy(id: int) -> int:
+	for i in range(LANE_COUNT):
+		if _lane_strikers[i] == id:
+			return i
+	return -1
 
 
 func stop() -> void:
@@ -361,6 +453,11 @@ func stop() -> void:
 	_cycle_stalled = false
 	_enemy_statuses.clear()
 	_reset_attack_authority_state()
+	_enemies.clear()
+	_lane_strikers = [-1, -1, -1, -1]
+	_orbiting_enemy_ids.clear()
+	_orbit_angles.clear()
+	_orbit_radius_offsets.clear()
 
 	for lane in range(LANE_COUNT):
 		var projectile = get_projectile(lane)
@@ -370,25 +467,37 @@ func stop() -> void:
 
 
 func _process(delta: float) -> void:
-	# Tick EXPOSE duration; clear when expired.
+	# 1. Update Orbit Positions
+	for id in _orbiting_enemy_ids:
+		_orbit_angles[id] = wrapf(_orbit_angles.get(id, 0.0) + _orbit_speed * delta, 0.0, TAU)
+		
+	# 2. Tick EXPOSE duration; clear when expired.
 	var expired: Array = []
-	for lane in _enemy_statuses:
-		var status: Dictionary = _enemy_statuses[lane]
+	for id in _enemy_statuses:
+		var status: Dictionary = _enemy_statuses[id]
 		if status.get("duration", -1.0) > 0.0:
 			status["duration"] -= delta
 			if status["duration"] <= 0.0:
-				expired.append(lane)
-	for lane in expired:
-		_enemy_statuses.erase(lane)
-		EventBus.emit_signal("enemy_status_cleared", lane)
+				expired.append(id)
+	for id in expired:
+		_enemy_statuses.erase(id)
+		var lane = _find_lane_for_enemy(id)
+		if lane >= 0:
+			EventBus.emit_signal("enemy_status_cleared", lane)
 
 
 func apply_status(lane: int, status_id: String, params: Dictionary = {}) -> void:
 	# Applies a combat status to the enemy in the given lane.
-	# One status per lane — new application always overwrites the previous one.
 	if lane < 0 or lane >= LANE_COUNT:
 		return
-	var enemy: Dictionary = get_enemy(lane)
+	var id = _lane_strikers[lane]
+	if id == -1:
+		return
+	apply_status_by_id(id, status_id, params)
+
+
+func apply_status_by_id(id: int, status_id: String, params: Dictionary = {}) -> void:
+	var enemy: Dictionary = _enemies.get(id, {})
 	if enemy.is_empty() or float(enemy.get("hp", 0.0)) <= 0.0:
 		return
 
@@ -403,7 +512,7 @@ func apply_status(lane: int, status_id: String, params: Dictionary = {}) -> void
 		"pale":
 			status["fire_pending"] = true
 		"gorge_mark":
-			pass  # Persists until the enemy is defeated; no other expiry.
+			pass
 		"expose":
 			var base_dur: float = float(params.get("duration", EXPOSE_BASE_DURATION))
 			var dur_mult: float = float(flags.get("expose_duration_mult", 1.0))
@@ -415,25 +524,26 @@ func apply_status(lane: int, status_id: String, params: Dictionary = {}) -> void
 		"slow":
 			status["duration"] = float(params.get("duration", 2.0))
 		_:
-			return  # Unknown status — do nothing.
+			return
 
-	_enemy_statuses[lane] = status
-	EventBus.emit_signal("enemy_status_applied", lane, status_id, params)
+	_enemy_statuses[id] = status
+	var lane = _find_lane_for_enemy(id)
+	if lane >= 0:
+		EventBus.emit_signal("enemy_status_applied", lane, status_id, params)
 
 
 func get_status_id(lane: int) -> String:
-	# Returns the active status id for the given lane, or "" if none.
-	if not _enemy_statuses.has(lane):
+	if lane < 0 or lane >= LANE_COUNT: return ""
+	var id = _lane_strikers[lane]
+	if id == -1 or not _enemy_statuses.has(id):
 		return ""
-	return String(_enemy_statuses[lane].get("id", ""))
+	return String(_enemy_statuses[id].get("id", ""))
 
 
-func _get_status_damage_mult(lane: int) -> float:
-	# Returns the incoming-damage multiplier for the current status on this lane.
-	# REND (+30%) and EXPOSE (+25%) amplify damage. Others have no effect.
-	if not _enemy_statuses.has(lane):
+func _get_status_damage_mult_by_id(id: int) -> float:
+	if not _enemy_statuses.has(id):
 		return 1.0
-	match _enemy_statuses[lane].get("id", ""):
+	match _enemy_statuses[id].get("id", ""):
 		"rend":
 			return REND_DAMAGE_MULT
 		"expose":
@@ -448,8 +558,6 @@ func _run_fire_cycle(task_id: int) -> void:
 	
 	_cycle_stalled = false
 
-	# Pause-aware firing: if the song is paused (e.g. reward screen), skip this cycle's 
-	# firing but keep the recursion alive.
 	var paused: bool = false
 	if _song_mode and combat_scene != null and combat_scene.has_method("is_song_paused"):
 		paused = combat_scene.is_song_paused()
@@ -472,9 +580,6 @@ func _run_fire_cycle(task_id: int) -> void:
 	if not _combat_running or task_id != _cycle_task_id:
 		return
 		
-	# Stalling only occurs if there are truly no enemies left to fire from.
-	# If paused, we keep the cycle alive (recursion) even if count is 0,
-	# so that it immediately starts firing once unpaused and enemies are added.
 	if alive_count() <= 0 and not paused:
 		if _song_mode:
 			_cycle_stalled = true
@@ -491,7 +596,11 @@ func _fire_lane(lane: int) -> bool:
 	if get_projectile(lane) != null:
 		return false
 
-	var enemy: Dictionary = get_enemy(lane)
+	var id = _lane_strikers[lane]
+	if id == -1:
+		return false
+		
+	var enemy: Dictionary = _enemies.get(id, {})
 	if enemy.is_empty():
 		return false
 
@@ -507,13 +616,11 @@ func _fire_lane(lane: int) -> bool:
 	var projectile_damage: float = float(enemy.get("damage", 8.0))
 	projectile_damage *= _punish_damage_mult
 
-	# PALE: halve the damage of the next fired projectile, then consume the status.
-	if _enemy_statuses.has(lane) and _enemy_statuses[lane].get("fire_pending", false):
+	# PALE
+	if _enemy_statuses.has(id) and _enemy_statuses[id].get("id", "") == "pale" and _enemy_statuses[id].get("fire_pending", false):
 		projectile_damage *= PALE_DAMAGE_MULT
-		_enemy_statuses.erase(lane)
+		_enemy_statuses.erase(id)
 		EventBus.emit_signal("enemy_status_cleared", lane)
-
-	var enemy_id: int = int(enemy.get("id", lane))
 
 	var telegraph_profile: Dictionary = COMBAT_CONTENT.get_enemy_telegraph_profile(enemy)
 	telegraph_profile["projectile_body_path"] = COMBAT_CONTENT.get_projectile_body_resource_path(enemy)
@@ -522,27 +629,28 @@ func _fire_lane(lane: int) -> bool:
 		section_id = String(combat_scene.get_current_song_section_id())
 	var section_mod: String = COMBAT_CONTENT.get_shot_modifier_for_section(section_id)
 	var species_mod: String = String(telegraph_profile.get("species_shot_modifier", "")).strip_edges()
-	# Species Signature Combat Pass v1: keep song timing, but let each authored enemy keep a
-	# stable shot silhouette (fang / needle / mass / veil / chorus / sovereign) instead of
-	# collapsing to the current song section preset.
+	
 	if not species_mod.is_empty():
 		telegraph_profile["shot_modifier"] = species_mod
 	else:
 		telegraph_profile["shot_modifier"] = section_mod
-	# Routing-only key; Projectile reads shot_modifier (species or section).
 	telegraph_profile.erase("species_shot_modifier")
+
+	var player_combat: Node2D = null
+	if combat_scene != null:
+		player_combat = combat_scene.get_node_or_null("PlayerCombat") as Node2D
 
 	combat_scene.add_child(projectile)
 	projectile.setup(
 		lane,
-		enemy_id,
+		id,
 		projectile_damage,
 		projectile_speed,
-		_enemy_x,
-		_hit_zone_x,
-		_player_x,
-		get_lane_y(lane),
-		telegraph_profile
+		get_threat_spawn_pos(lane),
+		get_threat_hit_zone_pos(lane),
+		get_player_pos(),
+		telegraph_profile,
+		player_combat
 	)
 
 	projectile.resolved.connect(_on_projectile_resolved.bind(lane))
@@ -550,7 +658,6 @@ func _fire_lane(lane: int) -> bool:
 	_projectile_slots[lane] = projectile
 
 	# ABSOLUTE SONG SYNC:
-	# Calculate when this projectile SHOULD hit the player in song-time.
 	if _song_mode and combat_scene != null and combat_scene.has_method("get_song_conductor"):
 		var conductor: Node = combat_scene.get_song_conductor()
 		if conductor != null and conductor.has_method("get_song_elapsed"):
@@ -559,24 +666,28 @@ func _fire_lane(lane: int) -> bool:
 			var hit_time: float = song_now + travel_time
 			projectile.call("set_song_sync", conductor, hit_time)
 
-	EventBus.emit_signal("projectile_fired", lane, enemy_id)
+	EventBus.emit_signal("projectile_fired", lane, id)
 	return true
 
 
 func _resolve_authorized_lanes_for_cycle() -> Array[int]:
 	_fire_cycle_index += 1
+	
+	# 1. Promote Orbiting to Strikers if budget allows
+	_promote_orbiting_to_strikers()
+	
 	var candidates: Array = []
 	for lane in range(LANE_COUNT):
-		var enemy: Dictionary = get_enemy(lane)
-		var alive: bool = enemy.has("hp") and float(enemy["hp"]) > 0.0
-		if alive:
-			_lane_authority_debt[lane] = minf(_lane_authority_debt[lane] + 1.0, 8.0)
-		else:
-			_lane_authority_debt[lane] = 0.0
-		if not alive:
-			continue
+		var id = _lane_strikers[lane]
+		if id == -1: continue
+		
+		var enemy: Dictionary = _enemies.get(id, {})
+		if enemy.is_empty(): continue
 		if get_projectile(lane) != null:
 			continue
+			
+		_lane_authority_debt[lane] = minf(_lane_authority_debt[lane] + 1.0, 8.0)
+		
 		var damage_score: float = clampf(float(enemy.get("damage", 8.0)) / 10.0, 0.60, 1.80)
 		var speed_score: float = clampf(_get_enemy_projectile_speed(enemy) / 320.0, 0.70, 1.70)
 		var cycles_since_last: int = _fire_cycle_index - _lane_last_fired_cycle[lane]
@@ -587,6 +698,7 @@ func _resolve_authorized_lanes_for_cycle() -> Array[int]:
 			"lane": lane,
 			"score": score
 		})
+		
 	if candidates.is_empty():
 		return []
 
@@ -598,16 +710,66 @@ func _resolve_authorized_lanes_for_cycle() -> Array[int]:
 	var selected_count: int = mini(budget, candidates.size())
 	var selected_lanes: Array[int] = []
 	for i in range(selected_count):
-		var lane: int = int(Dictionary(candidates[i]).get("lane", -1))
-		if lane < 0:
-			continue
-		selected_lanes.append(lane)
+		selected_lanes.append(int(candidates[i]["lane"]))
 	return selected_lanes
 
 
+func _promote_orbiting_to_strikers() -> void:
+	if _orbiting_enemy_ids.is_empty():
+		return
+		
+	var budget = clampi(attack_authority_budget, 1, LANE_COUNT)
+	var current_strikers = alive_striker_count()
+	
+	# Try to fill lanes from orbit
+	var orbit_index = 0
+	while current_strikers < budget and orbit_index < _orbiting_enemy_ids.size():
+		var id = _orbiting_enemy_ids[orbit_index]
+		var best_lane = _pick_best_lane_for_strike(id)
+		if best_lane != -1:
+			_lane_strikers[best_lane] = id
+			_enemies[id]["lane"] = best_lane
+			_orbiting_enemy_ids.remove_at(orbit_index)
+			_orbit_angles.erase(id)
+			_orbit_radius_offsets.erase(id)
+			current_strikers += 1
+			# Don't increment orbit_index as we just removed an element
+		else:
+			orbit_index += 1
+
+
+func _pick_best_lane_for_strike(_id: int) -> int:
+	var free_lanes = []
+	for i in range(LANE_COUNT):
+		if _lane_strikers[i] == -1:
+			free_lanes.append(i)
+	
+	if free_lanes.is_empty():
+		return -1
+		
+	return free_lanes[_rng.randi() % free_lanes.size()]
+
+
+func get_enemy_pos(id: int) -> Vector2:
+	if not _enemies.has(id):
+		return _center_pos
+		
+	var lane = _find_lane_for_enemy(id)
+	if lane >= 0:
+		return get_threat_spawn_pos(lane)
+		
+	# If orbiting
+	if _orbit_angles.has(id):
+		var angle = _orbit_angles[id]
+		var radius = (_viewport_size.y * SPAWN_DISTANCE_RATIO) + _orbit_radius_offsets.get(id, 0.0)
+		return _center_pos + Vector2(cos(angle), sin(angle)) * radius
+		
+	return _center_pos
+
+
 func _reset_attack_authority_state() -> void:
-	_lane_authority_debt = [0.0, 0.0, 0.0]
-	_lane_last_fired_cycle = [-999, -999, -999]
+	_lane_authority_debt = [0.0, 0.0, 0.0, 0.0]
+	_lane_last_fired_cycle = [-999, -999, -999, -999]
 	_fire_cycle_index = 0
 
 
@@ -615,7 +777,7 @@ func _can_schedule_projectile(new_speed: float) -> bool:
 	# Prevents incoming hit windows from stacking too closely.
 	var new_eta: float = _travel_time_to_hit_zone(new_speed)
 
-	for lane in range(LANE_COUNT):
+	for lane in range(THREAT_COUNT):
 		var projectile = get_projectile(lane)
 		if projectile == null:
 			continue
@@ -631,7 +793,7 @@ func _can_schedule_projectile(new_speed: float) -> bool:
 
 
 func _travel_time_to_hit_zone(projectile_speed: float) -> float:
-	var distance: float = _enemy_x - _hit_zone_x
+	var distance: float = SPAWN_DISTANCE_RATIO * _viewport_size.y - HIT_ZONE_DISTANCE
 	if projectile_speed <= 0.0:
 		return 9999.0
 	return distance / projectile_speed

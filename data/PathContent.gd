@@ -8,6 +8,9 @@ const NODE_PREY: Dictionary = {
 	"display_name": "Prey",
 	"tag": "BASELINE",
 	"summary": "Baseline hunt pressure. No extra modifiers.",
+	"entry_cost": {},
+	"risk_modifier": {},
+	"potential_reward_bias": "SAFE: low pressure, sparse reward",
 	"encounter_options": {},
 	"reward_context": {}
 }
@@ -17,6 +20,17 @@ const NODE_ELITE_HUNT: Dictionary = {
 	"display_name": "Elite Hunt",
 	"tag": "RISK",
 	"summary": "Harder pressure profile, stronger evolution pull.",
+	"entry_cost": {"type": "hp", "value": 15},
+	"risk_modifier": {
+		"id": "frenzied_spawns",
+		"display_name": "HAUNTED",
+		"summary": "Frenzied spawns press lanes sooner.",
+		"difficulty_modifiers": {
+			"threat_cadence": {"cycle_interval_mult": 0.94},
+			"lane_pressure": {"respawn_delay_mult": 0.86, "max_active_threats_bonus": 1}
+		}
+	},
+	"potential_reward_bias": "PREDATION: high Alpha sightings",
 	"encounter_options": {
 		"elite": true,
 		"enemy_hp_mult": 1.18,
@@ -34,6 +48,16 @@ const NODE_BOND_RITE: Dictionary = {
 	"display_name": "Bond Rite",
 	"tag": "BOND",
 	"summary": "Strengthen a kept bond and bias rewards toward support identity.",
+	"entry_cost": {"type": "dna", "species": "ashclaw", "value": 50},
+	"risk_modifier": {
+		"id": "fog_blinded_lanes",
+		"display_name": "FOG",
+		"summary": "Lane tells arrive under muted visibility.",
+		"difficulty_modifiers": {
+			"punish_severity": {"projectile_damage_mult": 1.06}
+		}
+	},
+	"potential_reward_bias": "BOND: support growth signal",
 	"encounter_options": {},
 	"reward_context": {
 		"bond_flavored": true
@@ -49,6 +73,16 @@ const NODE_PREDATION_POOL: Dictionary = {
 	"display_name": "Predation Pool",
 	"tag": "DNA",
 	"summary": "Route this level through DNA-authored predation offers.",
+	"entry_cost": {"type": "hp", "value": 10},
+	"risk_modifier": {
+		"id": "blood_scent",
+		"display_name": "SCENT",
+		"summary": "Richer creature traces draw tougher bodies.",
+		"difficulty_modifiers": {
+			"threat_quality": {"high_grade_weight_mult": 1.16}
+		}
+	},
+	"potential_reward_bias": "PREDATION: high DNA density",
 	"encounter_options": {},
 	"reward_context": {
 		"predation_pool": true
@@ -60,6 +94,9 @@ const NODE_BOSS: Dictionary = {
 	"display_name": "Boss",
 	"tag": "APEX",
 	"summary": "Terminal movement.",
+	"entry_cost": {},
+	"risk_modifier": {},
+	"potential_reward_bias": "APEX: terminal claim",
 	"encounter_options": {},
 	"reward_context": {}
 }
@@ -79,9 +116,9 @@ const DEFAULT_NODE_ID: String = "prey"
 # after L6 -> choose level index 6 (L7)
 # after L8 -> choose level index 8 (L9)
 const BRANCH_CANDIDATES_BY_LEVEL_INDEX: Dictionary = {
-	3: ["elite_hunt", "bond_rite"],
-	6: ["elite_hunt", "predation_pool"],
-	8: ["bond_rite", "predation_pool"]
+	3: ["prey", "elite_hunt", "bond_rite"],
+	6: ["prey", "elite_hunt", "predation_pool"],
+	8: ["prey", "bond_rite", "predation_pool"]
 }
 
 

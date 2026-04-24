@@ -3,7 +3,8 @@
 This document defines the "Agent OS" workflows that must be followed for every session and PR.
 
 ## 1. Session Initialization (Mandatory)
-Every session MUST begin by grounding in these three files:
+Every terminal AI session MUST begin by grounding in these files:
+0. `docs/ai/TERMINAL_AI_BOOTSTRAP.md` (Fast-load contract)
 1. `AGENTS.md` (Master Contract)
 2. `PROJECT_SETUP_AND_VALIDATION.md` (Environment/Tools)
 3. `docs/ai/NEXT_MOVE_ROUTER.md` (Strategic Priority)
@@ -30,6 +31,7 @@ Agents should explicitly announce their role when starting a sub-task:
 - "Invoking **HUD Surgeon** for Lane 0 visibility."
 - "Invoking **GDScript Surgeon** for EventBus signal typing."
 - "Invoking **Crash Hunter** for CombatScene null-pointer localization."
+- "Invoking **Inspector** for screenshot-backed lane/support readability."
 
 ## 6. Maintenance Checklist
 - Update `docs/ai/REGRESSION_CHECKLIST.md` after adding a new core system.

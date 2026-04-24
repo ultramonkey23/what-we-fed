@@ -25,6 +25,8 @@ The game already has:
 - readable support/build HUD shells
 - a 4-encounter run with a real boss climax
 - The Hollow Sovereign boss vertical slice
+- a first real creature-breadth pass with multiple species, eat effects, bond passives, support identities, encounter placement, and reward-pool presence
+- a first performance reward pack with score, kill, affinity, bond/eat, and tendency weighting
 
 ## What that means
 The project is no longer just a prototype concept.
@@ -70,7 +72,7 @@ This means the game can now deliver a beginning, middle, and climax instead of e
 # Milestone 2 — Creature Breadth Pass
 
 ## Status
-Next major prove-it patch.
+Completed as a first breadth pass; still needs tuning, clarity, and proof under repeated play.
 
 ## Best Claude option
 - **Opusplan** if the creature design is still uncertain
@@ -91,18 +93,31 @@ At minimum:
 Right now the game proves the bond/eat concept works.
 This patch must prove it can support meaningful run identity and not collapse into obvious best choices.
 
+## Result
+Yes, as a first implementation pass.
+
+The repo now has multiple creature species with distinct combat/reward hooks, support roles, affinity tags, encounter profiles, and run reward placement. Future work should not keep treating "add creature breadth" as the default next milestone.
+
+## Still needs proof
+- whether the expanded roster creates clearly different run identities for a new player
+- whether support reads cleanly under combat pressure across all species
+- whether bond/eat choices remain meaningfully hard after balance tuning
+- whether each species is visually distinct enough in combat and reward surfaces
+
 ## Done when
 - the player can build noticeably different runs
 - different creatures clearly imply different styles of power
 - support identity broadens beyond Ashclaw and Bond Remnant
 - bond vs eat choices become less obvious and more strategic
 
+Current repo truth: the breadth implementation exists, but the done-when list remains a balance/readability audit target.
+
 ---
 
 # Milestone 3 — Upgrade Depth + Bond-Level Scaling
 
 ## Status
-After Creature Breadth Pass.
+Active next prove-it patch.
 
 ## Best Claude option
 - **Sonnet**
@@ -116,6 +131,8 @@ After Creature Breadth Pass.
   - Cadence
   - Survival / Instinct
 - more obvious run-shaping decisions
+- clearer performance reward payoff from score, kills, clean play, support usage, and bond/eat history
+- stronger between-level reward comprehension without reintroducing pause-era reward flow during active combat
 
 ## What it proves
 **Can repeated runs create meaningfully different monsters, not just slightly different numbers?**
@@ -246,12 +263,12 @@ They are not the systems that prove the game right now.
 
 # Recommended Order From Here
 
-1. Creature Breadth Pass
-2. Upgrade Depth + Bond-Level Scaling
+1. Upgrade Depth + Bond-Level Scaling
+2. Performance reward clarity and balance pass
 3. Demo Shell
 4. Demo Polish / Capture Pass
 
-The boss vertical slice is already done and counts as the first cleared major prove-it milestone.
+The boss vertical slice and first creature-breadth pass are already done enough to move the next prove-it question forward.
 
 ---
 
@@ -267,8 +284,8 @@ If the patch does not prove something important, it is probably not the next bes
 
 # Current Best Next Patch
 
-## Creature Breadth Pass
+## Upgrade Depth + Performance Reward Clarity
 
 This is the next question the game must answer:
 
-**Can bond vs eat stay compelling once the creature roster has real breadth?**
+**Can the expanded creature roster and reward pack create distinct builds that feel earned by performance, not just accumulated?**

@@ -45,6 +45,7 @@ const ENCOUNTER_ESCALATION_DIRECTOR = preload("res://systems/EncounterEscalation
 const MUSIC_CONTROL_LAYER = preload("res://systems/MusicControlLayer.gd")
 const DIFFICULTY_MODIFIER_DIRECTOR = preload("res://systems/DifficultyModifierDirector.gd")
 const SUPPORT_EFFECT_RESOLVER = preload("res://systems/SupportEffectResolver.gd")
+const COLLAR_DIRECTOR = preload("res://systems/CollarDirector.gd")
 const PATH_RUN_PLAN = preload("res://systems/PathRunPlan.gd")
 const POTENTIAL_GATE = preload("res://systems/PotentialGate.gd")
 const DEBUG_TRACE = preload("res://systems/DebugTrace.gd")
@@ -85,7 +86,7 @@ const IMPACT_FX_RUNTIME_SCENE: PackedScene = preload("res://systems/presentation
 var _run_director: Node = null
 var _victory_reward_director: Node = null
 var _base_time_scale: float = 1.0
-var _ring_highlight_timers: Array[float] = [0.0, 0.0, 0.0]
+var _ring_highlight_timers: Array[float] = [0.0, 0.0, 0.0, 0.0]
 var _surge_window_tendency: String = ""
 var _surge_window_timer: float = 0.0
 var _tempo_state_family: StringName = COMBAT_FEEL_CONTENT.TEMPO_NONE
@@ -270,10 +271,6 @@ var _next_song_enemy_id: int = 100
 var _song_phases: Array = []
 var _song_conductor: Node = null
 var _song_enemy_lanes: Dictionary = {}
-var _song_reserve_by_lane: Dictionary = {}
-var _song_reserve_markers_by_id: Dictionary = {}
-var _next_song_reserve_id: int = 60000
-var _song_reserve_refresh_timer: float = 0.0
 var _song_timer_label: Label = null
 var _song_phase_label: Label = null
 var _song_rng: RandomNumberGenerator = RandomNumberGenerator.new()
@@ -281,6 +278,7 @@ var _escalation_director: Node = null
 var _latest_ecology_snapshot: Dictionary = {}
 var _active_attack_authority_budget: int = 3
 var _support_resolver: RefCounted = null
+var _collar_director: RefCounted = null
 var _song_phase_dna_award_index: int = 0
 var _song_section_spawn_mult: float = 1.0
 var _song_level_start_time: float = 0.0
@@ -463,6 +461,7 @@ func _setup_victory_reward_director() -> void:
 
 func _setup_support_resolver() -> void:
 	_support_resolver = SUPPORT_EFFECT_RESOLVER.new()
+	_collar_director = COLLAR_DIRECTOR.new()
 	_support_resolver.feedback_requested.connect(_show_feedback)
 	_support_resolver.flash_requested.connect(_flash_meter_shell)
 	_support_resolver.intervention_requested.connect(_spawn_support_intervention)
@@ -516,8 +515,8 @@ func _on_escalation_phase_changed(index: int, _phase_data: Dictionary) -> void:
 
 
 func _on_escalation_spawn_requested(lane: int, enemy_data: Dictionary) -> void:
-	_place_song_enemy_data(lane, enemy_data)
-	_refresh_song_reserve_population()
+	if lane_manager != null and is_instance_valid(lane_manager):
+		lane_manager.set_enemy(lane, enemy_data)
 
 
 func _on_escalation_feedback_requested(text: String, color: Color, duration: float) -> void:
@@ -1109,260 +1108,23 @@ func _blank_song_reserve_lane_map() -> Dictionary:
 	return {0: [], 1: [], 2: []}
 
 
-func _reset_song_reserve_state(clear_visuals: bool = true) -> void:
-	if clear_visuals:
-		_clear_song_reserve_markers()
-	_song_reserve_by_lane = _blank_song_reserve_lane_map()
-	_song_reserve_refresh_timer = 0.0
-	_next_song_reserve_id = 60000
-
-
-func _clear_song_reserve_markers() -> void:
-	for marker_data in _song_reserve_markers_by_id.values():
-		var marker_dict: Dictionary = Dictionary(marker_data)
-		var root = marker_dict.get("root")
-		if is_instance_valid(root):
-			root.queue_free()
-	_song_reserve_markers_by_id.clear()
+func _reset_song_reserve_state(_clear_visuals: bool = true) -> void:
+	# Legacy song_reserve is handled internally by LaneManager.gd's Strike Queue.
+	pass
 
 
 func _song_reserve_count() -> int:
-	var total: int = 0
-	for lane in range(3):
-		total += Array(_song_reserve_by_lane.get(lane, [])).size()
-	return total
+	if lane_manager != null and lane_manager.has_method("alive_count"):
+		# In the new model, 'reserve' count is basically (total alive - strikers).
+		var total = int(lane_manager.call("alive_count"))
+		var strikers = int(lane_manager.call("alive_striker_count"))
+		return max(0, total - strikers)
+	return 0
 
 
-func _resolve_song_empty_lane_near_player() -> int:
-	var target_lane: int = int(player_combat.get("current_lane")) if player_combat != null else 1
-	target_lane = clampi(target_lane, 0, 2)
-	for lane in range(3):
-		var probe_lane: int = (target_lane + lane) % 3
-		var lane_enemy: Dictionary = lane_manager.get_enemy(probe_lane)
-		if lane_enemy.is_empty() or float(lane_enemy.get("hp", 0.0)) <= 0.0:
-			target_lane = probe_lane
-			break
-	return target_lane
-
-
-func _resolve_song_reserve_target() -> int:
-	if _song_phase_index < 0 or _song_phase_index >= _song_phases.size():
-		return 0
-	var phase: Dictionary = _song_phases[_song_phase_index]
-	var authority_budget: int = int(phase.get("authority_target", phase.get("max_active_threats", 2)))
-	var momentum_ratio: float = 0.0
-	if _escalation_director != null and _escalation_director.has_method("get_ecology_snapshot"):
-		var snap: Dictionary = Dictionary(_escalation_director.call("get_ecology_snapshot"))
-		authority_budget = int(snap.get("authority_budget", authority_budget))
-		momentum_ratio = float(snap.get("kill_momentum_ratio", 0.0))
-	var base_population: int = int(phase.get("population_target", authority_budget + 2))
-	var population_bonus: int = int(floor(momentum_ratio * 2.0))
-	if GameState.get_hp_percent() <= 0.35:
-		population_bonus -= 1
-	var population_target: int = clampi(base_population + population_bonus, authority_budget, authority_budget + SONG_RESERVE_MAX)
-	return clampi(population_target - authority_budget, 0, SONG_RESERVE_MAX)
-
-
-func _refresh_song_reserve_population(force_reroll: bool = false) -> void:
-	if not _song_mode or _run_finished or _song_boss_triggered:
-		return
-	if lane_manager == null or not is_instance_valid(lane_manager):
-		return
-	if _song_phase_index < 0 or _song_phase_index >= _song_phases.size():
-		return
-	if force_reroll:
-		_clear_song_reserve_markers()
-		_song_reserve_by_lane = _blank_song_reserve_lane_map()
-	var target: int = _resolve_song_reserve_target()
-	var current: int = _song_reserve_count()
-	while current < target:
-		if not _enqueue_song_reserve_enemy():
-			break
-		current += 1
-	while current > target:
-		if not _drop_song_reserve_enemy():
-			break
-		current -= 1
-	_layout_song_reserve_markers()
-
-
-func _enqueue_song_reserve_enemy() -> bool:
-	if _song_phase_index < 0 or _song_phase_index >= _song_phases.size():
-		return false
-	var phase: Dictionary = _song_phases[_song_phase_index]
-	var pool: Array = phase.get("enemy_pool", [])
-	if pool.is_empty():
-		return false
-	var enemy: Dictionary = _roll_weighted_song_enemy(pool)
-	if enemy.is_empty():
-		return false
-	var lane: int = _pick_song_reserve_lane()
-	if lane < 0:
-		return false
-	var reserve_id: int = _next_song_reserve_id
-	_next_song_reserve_id += 1
-	var lane_queue: Array = Array(_song_reserve_by_lane.get(lane, []))
-	lane_queue.append({
-		"reserve_id": reserve_id,
-		"enemy": enemy.duplicate(true),
-		"lane": lane
-	})
-	_song_reserve_by_lane[lane] = lane_queue
-	_create_song_reserve_marker(reserve_id, lane, enemy)
-	return true
-
-
-func _drop_song_reserve_enemy() -> bool:
-	var best_lane: int = -1
-	var best_count: int = 0
-	for lane in range(3):
-		var lane_queue: Array = Array(_song_reserve_by_lane.get(lane, []))
-		if lane_queue.size() > best_count:
-			best_count = lane_queue.size()
-			best_lane = lane
-	if best_lane < 0 or best_count <= 0:
-		return false
-	var queue: Array = Array(_song_reserve_by_lane.get(best_lane, []))
-	var entry: Dictionary = Dictionary(queue.pop_back())
-	_song_reserve_by_lane[best_lane] = queue
-	_remove_song_reserve_marker(int(entry.get("reserve_id", -1)), false)
-	return true
-
-
-func _consume_song_reserve_entry(preferred_lane: int) -> Dictionary:
-	if preferred_lane >= 0 and preferred_lane <= 2:
-		var preferred_queue: Array = Array(_song_reserve_by_lane.get(preferred_lane, []))
-		if not preferred_queue.is_empty():
-			var preferred: Dictionary = Dictionary(preferred_queue.pop_front())
-			_song_reserve_by_lane[preferred_lane] = preferred_queue
-			return preferred
-	var best_lane: int = -1
-	var best_count: int = 0
-	for lane in range(3):
-		var lane_queue: Array = Array(_song_reserve_by_lane.get(lane, []))
-		if lane_queue.size() > best_count:
-			best_count = lane_queue.size()
-			best_lane = lane
-	if best_lane < 0 or best_count <= 0:
-		return {}
-	var queue: Array = Array(_song_reserve_by_lane.get(best_lane, []))
-	var entry: Dictionary = Dictionary(queue.pop_front())
-	_song_reserve_by_lane[best_lane] = queue
-	return entry
-
-
-func _promote_song_reserve_to_lane(target_lane: int) -> bool:
-	if lane_manager == null or not is_instance_valid(lane_manager):
-		return false
-	target_lane = clampi(target_lane, 0, 2)
-	var lane_enemy: Dictionary = lane_manager.get_enemy(target_lane)
-	if not lane_enemy.is_empty() and float(lane_enemy.get("hp", 0.0)) > 0.0:
-		return false
-	var entry: Dictionary = _consume_song_reserve_entry(target_lane)
-	if entry.is_empty():
-		return false
-	var reserve_id: int = int(entry.get("reserve_id", -1))
-	_remove_song_reserve_marker(reserve_id, true)
-	var enemy: Dictionary = Dictionary(entry.get("enemy", {})).duplicate(true)
-	if enemy.is_empty():
-		return false
-	_place_song_enemy_data(target_lane, enemy)
-	_refresh_song_reserve_population()
-	return true
-
-
-func _roll_weighted_song_enemy(pool: Array) -> Dictionary:
-	var total_weight: float = 0.0
-	for row in pool:
-		total_weight += maxf(float(Dictionary(row).get("weight", 1.0)), 0.0)
-	if total_weight <= 0.0:
-		return Dictionary(pool[_song_rng.randi_range(0, pool.size() - 1)]).duplicate(true)
-	var roll: float = _song_rng.randf_range(0.0, total_weight)
-	var cursor: float = 0.0
-	for row in pool:
-		var entry: Dictionary = Dictionary(row)
-		cursor += maxf(float(entry.get("weight", 1.0)), 0.0)
-		if roll <= cursor:
-			return entry.duplicate(true)
-	return Dictionary(pool.back()).duplicate(true)
-
-
-func _pick_song_reserve_lane() -> int:
-	var best_lanes: Array[int] = []
-	var best_score: int = 9999
-	for lane in range(3):
-		var lane_queue: Array = Array(_song_reserve_by_lane.get(lane, []))
-		var score: int = lane_queue.size()
-		var live_enemy: Dictionary = lane_manager.get_enemy(lane)
-		if not live_enemy.is_empty() and float(live_enemy.get("hp", 0.0)) > 0.0:
-			score += 1
-		if score < best_score:
-			best_score = score
-			best_lanes = [lane]
-		elif score == best_score:
-			best_lanes.append(lane)
-	if best_lanes.is_empty():
-		return -1
-	return int(best_lanes[_song_rng.randi_range(0, best_lanes.size() - 1)])
-
-
-func _create_song_reserve_marker(reserve_id: int, lane: int, enemy: Dictionary) -> void:
-	var biome: Dictionary = _active_encounter.get("biome", {})
-	var inactive_color: Color = biome.get("enemy_inactive_color", Color(0.38, 0.18, 0.18, 0.55))
-	var marker_data: Dictionary = _build_enemy_marker(reserve_id, lane, enemy, SONG_RESERVE_MARKER_SIZE, inactive_color.darkened(0.14))
-	_song_reserve_markers_by_id[reserve_id] = marker_data
-	if _enemy_marker_container != null and is_instance_valid(_enemy_marker_container):
-		_enemy_marker_container.add_child(marker_data.get("root"))
-	var root = marker_data.get("root")
-	if is_instance_valid(root):
-		root.z_index = -2
-		root.modulate.a = 0.44
-	var body = marker_data.get("body")
-	if is_instance_valid(body):
-		body.color = inactive_color.darkened(0.20)
-
-
-func _layout_song_reserve_markers() -> void:
-	if lane_manager == null or not is_instance_valid(lane_manager):
-		return
-	for lane in range(3):
-		var lane_queue: Array = Array(_song_reserve_by_lane.get(lane, []))
-		for i in range(lane_queue.size()):
-			var entry: Dictionary = Dictionary(lane_queue[i])
-			var reserve_id: int = int(entry.get("reserve_id", -1))
-			if not _song_reserve_markers_by_id.has(reserve_id):
-				continue
-			var marker_data: Dictionary = Dictionary(_song_reserve_markers_by_id[reserve_id])
-			var root = marker_data.get("root")
-			if not is_instance_valid(root):
-				continue
-			var x: float = lane_manager.get_enemy_x() + SONG_RESERVE_MARKER_X_OFFSET + SONG_RESERVE_MARKER_X_STEP * float(i)
-			var y: float = lane_manager.get_lane_y(lane) + (-8.0 + float(i % 3) * 8.0)
-			root.position = Vector2(x, y)
-			var alpha: float = clampf(0.52 - float(i) * 0.08, 0.22, 0.56)
-			root.modulate.a = alpha
-			var reserve_scale: float = clampf(0.78 - float(mini(i, 3)) * 0.06, 0.60, 0.78)
-			root.scale = Vector2.ONE * reserve_scale
-
-
-func _remove_song_reserve_marker(reserve_id: int, animate: bool = false) -> void:
-	if not _song_reserve_markers_by_id.has(reserve_id):
-		return
-	var marker_data: Dictionary = Dictionary(_song_reserve_markers_by_id[reserve_id])
-	var root = marker_data.get("root")
-	if is_instance_valid(root):
-		if animate:
-			var marker: Node2D = root
-			var tween := create_tween()
-			tween.tween_property(marker, "modulate:a", 0.0, 0.12)
-			tween.parallel().tween_property(marker, "scale", marker.scale * 0.75, 0.12)
-			tween.tween_callback(func() -> void:
-				if is_instance_valid(marker):
-					marker.queue_free()
-			)
-		else:
-			root.queue_free()
-	_song_reserve_markers_by_id.erase(reserve_id)
+func _refresh_song_reserve_population(_force_reroll: bool = false) -> void:
+	# Handled by LaneManager and EncounterEscalationDirector.
+	pass
 
 
 func _continue_after_non_song_reward_resolution() -> void:
@@ -1445,8 +1207,6 @@ func _update_presentation_layers() -> void:
 		_update_lane_visual_states()
 	if _enemy_marker_container != null:
 		_update_enemy_marker_threat_states()
-	if not _song_reserve_markers_by_id.is_empty():
-		_layout_song_reserve_markers()
 	if _bg_sprite != null:
 		_update_background_effects()
 
@@ -1488,10 +1248,6 @@ func _update_song_logic(delta: float) -> void:
 	_ensure_song_runtime_active()
 		
 	if not _song_paused:
-		_song_reserve_refresh_timer = maxf(_song_reserve_refresh_timer - delta, 0.0)
-		if _song_reserve_refresh_timer <= 0.0:
-			_refresh_song_reserve_population()
-			_song_reserve_refresh_timer = SONG_RESERVE_REFRESH_INTERVAL
 		if _song_conductor != null:
 			_song_elapsed = _song_conductor.get_song_time()
 			if _escalation_director != null:
@@ -3855,12 +3611,22 @@ func _on_run_spine_path_node_selected(node_id: String) -> void:
 	if _pending_path_choice_level_index < 0:
 		return
 	var valid_choice: bool = false
+	var chosen_node: Dictionary = {}
 	for node in _pending_path_choice_nodes:
 		if String(node.get("id", "")) == node_id:
 			valid_choice = true
+			chosen_node = Dictionary(node).duplicate(true)
 			break
 	if not valid_choice:
 		return
+	if not PATH_RUN_PLAN.validate_node_access(node_id, GameState):
+		_show_feedback(
+			"PATH LOCKED  •  cannot pay entry cost",
+			Color(0.95, 0.34, 0.20, 1.0),
+			0.65
+		)
+		return
+	PATH_RUN_PLAN.apply_node_effects(chosen_node, GameState, _run_growth, _performance_reward_director, true)
 	GameState.run_path_plan = PATH_RUN_PLAN.apply_branch_choice(GameState.run_path_plan, _pending_path_choice_level_index, node_id)
 	GameState.run_path_chosen_ids.append(node_id)
 	var chosen_name: String = node_id.replace("_", " ").to_upper()
@@ -3892,8 +3658,16 @@ func _on_run_spine_management_action_requested(action_id: String, payload: Dicti
 				_show_feedback("SALVAGED  •  SLOT OPENED", Color(0.84, 0.72, 0.48, 1.0), 0.30)
 			else:
 				_show_feedback("SALVAGE FAILED", Color(0.90, 0.52, 0.44, 1.0), 0.30)
-		"collar":
-			_show_feedback("COLLAR HOOK READY  •  SYSTEM PENDING", Color(0.72, 0.84, 0.96, 1.0), 0.34)
+		"collar_equip":
+			if status == "ok":
+				_show_feedback("COLLAR EQUIPPED", Color(0.72, 0.88, 1.0, 1.0), 0.32)
+			else:
+				_show_feedback("COLLAR EQUIP FAILED", Color(0.90, 0.52, 0.44, 1.0), 0.30)
+		"collar_unlock":
+			if status == "ok":
+				_show_feedback("COLLAR UNLOCKED", Color(0.72, 0.88, 1.0, 1.0), 0.32)
+			else:
+				_show_feedback("COLLAR NEEDS DNA", Color(0.90, 0.52, 0.44, 1.0), 0.30)
 	_refresh_run_build_readout()
 
 
@@ -3965,16 +3739,12 @@ func _enter_song_phase(new_idx: int) -> void:
 
 
 func _place_song_enemy_data(lane: int, enemy_data: Dictionary) -> void:
-	var enemy: Dictionary = enemy_data.duplicate(true)
-	enemy["id"] = _next_song_enemy_id
-	enemy["lane"] = lane
-	_song_enemy_lanes[_next_song_enemy_id] = lane
-	_next_song_enemy_id += 1
-	lane_manager.set_enemy(lane, enemy)
-
-	# Register the enemy in the lookup tables and create its visual marker.
-	# This mirrors _build_arena_visuals() per-enemy logic; skipping it would leave
-	# the enemy logically present but invisible (and break damage numbers / low-HP tint).
+	# LaneManager handles internal orbiting if the active attack budget is full.
+	# It also handles ID generation if needed.
+	lane_manager.set_enemy(lane, enemy_data)
+	
+	# Registration and visual markers for markers that may appear during orbit.
+	# We rely on lane_manager.get_enemies() to refresh visual state.
 	var enemy_id: int = int(enemy.get("id", 0))
 	_all_enemies_by_id[enemy_id] = enemy.duplicate(true)
 	_enemy_max_hp[enemy_id] = float(enemy.get("hp", 1.0))
@@ -5042,7 +4812,7 @@ func _trigger_boss_threshold_spectacle() -> void:
 		"boss_phase": "threshold_50"
 	})
 	_show_feedback(PRESENTATION_TEXT.boss_threshold_break_line(_region_id), Color(0.96, 0.46, 0.14, 1.0), 0.52)
-	for _thresh_lane in range(3):
+	for _thresh_lane in range(lane_manager.THREAT_COUNT):
 		_presentation_runtime.highlight_timing_ring(_thresh_lane, Color(0.94, 0.38, 0.08, 1.0), 7.2)
 
 	EventBus.emit_signal("screen_flash", Color(0.74, 0.28, 0.04, 0.34), 0.20)
@@ -5670,13 +5440,8 @@ func _on_enemy_defeated(enemy_id: int) -> void:
 				_maybe_show_dna_pickup_flavor(dna_species, dna_result)
 
 	if _song_mode and not _song_paused and not _song_boss_triggered:
-		var dead_lane: int = _song_enemy_lanes.get(enemy_id, -1)
-		if dead_lane >= 0:
-			_song_enemy_lanes.erase(enemy_id)
-			var promoted_from_reserve: bool = _promote_song_reserve_to_lane(dead_lane)
-			if _escalation_director != null:
-				_escalation_director.notify_enemy_defeated(enemy_id, dead_lane, promoted_from_reserve)
-			_refresh_song_reserve_population()
+		if _escalation_director != null:
+			_escalation_director.notify_enemy_defeated(enemy_id, -1, false)
 
 
 func _resolve_dna_pickup_state(species_id: String, dna_result: Dictionary) -> String:
@@ -6465,6 +6230,10 @@ func _on_bonded_support_triggered(species_id: String, lane: int, effect_id: Stri
 			"bond_mult": bond_mult,
 			"surge_mult": surge_mult,
 			"mastery_window": mastery,
+			"source_event": String(mastery_context.get("source_event", "")),
+			"source_lane": int(mastery_context.get("lane", lane)),
+			"action_quality": String(mastery_context.get("action_quality", "")),
+			"beat_quality": String(mastery_context.get("beat_quality", "off")),
 			"cadence_surge": cadence_surge,
 			"bond_surge": bond_surge,
 			"is_hollow_active": is_hollow_active,
@@ -6472,6 +6241,11 @@ func _on_bonded_support_triggered(species_id: String, lane: int, effect_id: Stri
 			"combat_meter": combat_meter,
 			"game_state": GameState
 		}
+		if _collar_director != null:
+			ctx = _collar_director.apply_to_support_context(ctx, GameState)
+			var collar_mod: Dictionary = Dictionary(ctx.get("collar_mod", {}))
+			if collar_mod.has("redirected_lane"):
+				support_enemy_id = _get_enemy_id_for_lane(int(ctx.get("lane", lane)))
 		_support_resolver.resolve(ctx)
 
 	_presentation_runtime.apply_impact_profile(support_profile, lane, support_enemy_id)

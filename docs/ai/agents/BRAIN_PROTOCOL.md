@@ -1,4 +1,4 @@
-# BRAIN — PROTOCOL & ADAPTER (v2.2)
+# BRAIN — PROTOCOL & ADAPTER (v2.3)
 
 ## Objective
 This file defines how to invoke, route, and interact with the BRAIN system. It serves as the adapter for project-native agents to synchronize their work with the orchestrator.
@@ -17,6 +17,7 @@ BRAIN routes tasks through the standard Taxonomy (refer to `AGENTS.md` for detai
 - **Spec (BRAIN)**: Plan a change + Blast Radius Analysis + Specialist Selection.
 - **Patch (ALFRED/SURGEON)**: Execute surgical code mutation.
 - **Audit (CYBORG/AUDITOR)**: Critique and verify against creator intent, repo truth, live-build evidence, and relevant identity guidance.
+- **Visual Audit (INSPECTOR/LENS)**: Inspect screenshots, captures, or frame sequences and produce patch-ready visual receipts.
 - **Evolve (BRAIN)**: High-mutation system upgrades or spine/source-doc promotion.
 
 ---
@@ -30,12 +31,16 @@ BRAIN routes work based on task nature:
 | **System Design / Spec** | Claude | Architect / Scout |
 | **Implementation / Fixes** | Codex / Surgeon | Auditor (Validation) |
 | **Repo Scans / Audits** | Gemini | Scout / Auditor |
+| **Visual Truth / Readability** | Inspector | Scout (context), Surgeon (patch), Auditor (re-capture validation) |
+| **Shader / VFX Patch** | Surgeon / Shader Surgeon | Inspector receipt, Auditor validation |
 | **Text / Naming Help** | Copilot | Lore Brain |
 
 ---
 
 ## 4. THE HANDOFF FORMAT
 Refer to `AGENTS.md` for the canonical handoff template.
+
+For visual work, include the Inspector Visual Truth Addendum from `AGENTS.md` and attach the capture seed from `docs/ai/VISUAL_TRUTH_LOOP.md`. Unknown metadata must stay `unknown`; do not invent scene, camera, lane, song, or support facts.
 
 ---
 

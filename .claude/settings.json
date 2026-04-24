@@ -1,6 +1,7 @@
 {
   "agentOperatingLayerVersion": "v1",
   "canonicalDocs": [
+    "docs/ai/TERMINAL_AI_BOOTSTRAP.md",
     "docs/ai/SYSTEM_KERNEL.md",
     "docs/ai/PROJECT_KERNEL.md",
     "AGENTS.md",

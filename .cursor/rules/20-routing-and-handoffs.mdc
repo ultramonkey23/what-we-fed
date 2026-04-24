@@ -20,7 +20,16 @@ alwaysApply: true
 - risks
 - one next bounded follow-up
 
+# Visual Handoff Addendum
+
+When the task involves screenshots, captures, HUD readability, combat clarity, VFX, support readability, boss spectacle, or prototype-to-premium visual drift:
+- Route visual judgment to INSPECTOR before implementation.
+- Include evidence paths and metadata from `docs/ai/VISUAL_TRUTH_LOOP.md`.
+- Use `unknown` for missing metadata instead of guessing.
+- Hand ALFRED a Visual Audit Receipt with target files and acceptance criteria.
+
 # Deep References
 
 - `docs/ai/HANDOFF_TEMPLATES.md`
 - `docs/ai/NEXT_MOVE_ROUTER.md`
+- `docs/ai/VISUAL_TRUTH_LOOP.md`

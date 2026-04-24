@@ -30,8 +30,12 @@ func resolve(ctx: Dictionary) -> void:
 	var lane_manager: Node = ctx.get("lane_manager")
 	var combat_meter: Node = ctx.get("combat_meter")
 	var game_state: Node = ctx.get("game_state")
+	var collar_mod: Dictionary = Dictionary(ctx.get("collar_mod", {}))
 	
 	if species_id.is_empty() or lane_manager == null:
+		return
+	if bool(collar_mod.get("suppress_support", false)):
+		_apply_collar_behavior(ctx, collar_mod)
 		return
 
 	var support_role: Dictionary = COMBAT_CONTENT.get_support_role(species_id)
@@ -102,7 +106,7 @@ func resolve(ctx: Dictionary) -> void:
 			var gorge_damage: float = float(support_role.get("effect_value", 10.0)) * combo_mult * bond_mult * surge_mult
 			if cadence_surge:
 				gorge_damage *= 1.18
-			for check_lane in range(3):
+			for check_lane in range(lane_manager.THREAT_COUNT):
 				lane_manager.damage_enemy(check_lane, gorge_damage)
 				var surviving: Dictionary = lane_manager.get_enemy(check_lane)
 				if surviving.has("hp") and float(surviving["hp"]) > 0.0:
@@ -114,7 +118,7 @@ func resolve(ctx: Dictionary) -> void:
 			else:
 				feedback_requested.emit(String(support_role.get("feedback_text", "GORGE")), Color(0.90, 0.52, 0.22, 1.0), 0.38)
 				
-			for check_lane in range(3):
+			for check_lane in range(lane_manager.THREAT_COUNT):
 				highlight_ring_requested.emit(check_lane, Color(0.88, 0.50, 0.20, 1.0), 6.0)
 				intervention_requested.emit(species_id, check_lane, Color(0.90, 0.52, 0.22, 0.55))
 			flash_requested.emit(Color(0.28, 0.14, 0.08, 0.92), 0.12)
@@ -128,12 +132,12 @@ func resolve(ctx: Dictionary) -> void:
 			var stamina_amount: float = 25.0
 			var phase_text: String = String(support_role.get("feedback_text", "PHASE"))
 			if cadence_surge:
-				for pale_lane in range(3):
+				for pale_lane in range(lane_manager.THREAT_COUNT):
 					lane_manager.apply_status(pale_lane, "pale", {})
 				stamina_amount = 40.0
 				phase_text = "VEIL CASCADE"
 			elif mastery == "flow_state":
-				for pale_lane in range(3):
+				for pale_lane in range(lane_manager.THREAT_COUNT):
 					lane_manager.apply_status(pale_lane, "pale", {})
 				stamina_amount = 35.0
 				phase_text = "FULL PHASE"
@@ -177,7 +181,7 @@ func resolve(ctx: Dictionary) -> void:
 			var ward_heal: float = float(support_role.get("effect_value", 8.0)) * bond_mult * surge_mult
 			var ward_stamina: float = 18.0
 			var ward_text: String = String(support_role.get("feedback_text", "WARD"))
-			for pale_lane in range(3):
+			for pale_lane in range(lane_manager.THREAT_COUNT):
 				lane_manager.apply_status(pale_lane, "pale", {})
 			if cadence_surge:
 				ward_heal *= 1.5
@@ -207,14 +211,14 @@ func resolve(ctx: Dictionary) -> void:
 			elif mastery == "flow_state":
 				maul_charges = 2
 				maul_text = "RIP MAUL"
-			for check_lane in range(3):
+			for check_lane in range(lane_manager.THREAT_COUNT):
 				lane_manager.damage_enemy(check_lane, maul_damage)
 				var maul_enemy: Dictionary = lane_manager.get_enemy(check_lane)
 				if maul_enemy.has("hp") and float(maul_enemy["hp"]) > 0.0:
 					lane_manager.apply_status(check_lane, "rend", {"charges": maul_charges})
 					
 			feedback_requested.emit(maul_text, Color(0.96, 0.44, 0.20, 1.0), 0.40)
-			for check_lane in range(3):
+			for check_lane in range(lane_manager.THREAT_COUNT):
 				highlight_ring_requested.emit(check_lane, Color(0.98, 0.48, 0.22, 1.0), 6.8)
 				intervention_requested.emit(species_id, check_lane, Color(0.96, 0.44, 0.20, 0.62))
 			flash_requested.emit(Color(0.30, 0.12, 0.08, 0.92), 0.12)
@@ -223,7 +227,7 @@ func resolve(ctx: Dictionary) -> void:
 			var lull_damage: float = float(support_role.get("effect_value", 7.0)) * combo_mult * bond_mult * surge_mult
 			var lull_text: String = String(support_role.get("feedback_text", "LULL"))
 			lane_manager.damage_enemy(lane, lull_damage)
-			for pale_lane in range(3):
+			for pale_lane in range(lane_manager.THREAT_COUNT):
 				lane_manager.apply_status(pale_lane, "pale", {})
 			if cadence_surge:
 				lane_manager.apply_status(lane, "expose", {"duration": 3.0})
@@ -320,3 +324,45 @@ func resolve(ctx: Dictionary) -> void:
 				highlight_ring_requested.emit(silt_ring, Color(0.36, 0.74, 0.58, 1.0), 5.2)
 				intervention_requested.emit(species_id, silt_ring, Color(0.36, 0.74, 0.58, 0.55))
 			flash_requested.emit(Color(0.06, 0.16, 0.14, 0.92), 0.10)
+
+	_apply_collar_behavior(ctx, collar_mod)
+
+
+func _apply_collar_behavior(ctx: Dictionary, collar_mod: Dictionary) -> void:
+	if collar_mod.is_empty():
+		return
+	var lane: int = int(ctx.get("lane", -1))
+	var lane_manager: Node = ctx.get("lane_manager")
+	var satisfied: bool = bool(collar_mod.get("satisfied", false))
+	var text: String = String(collar_mod.get("feedback_text", "COLLAR"))
+
+	if bool(collar_mod.get("suppress_support", false)) and not satisfied:
+		feedback_requested.emit("COLLAR REFUSES", Color(0.62, 0.72, 0.86, 1.0), 0.28)
+		return
+
+	if bool(collar_mod.get("echo_charge_only", false)) and satisfied:
+		support_charge_requested.emit(float(collar_mod.get("support_charge_on_success", 0.0)))
+		feedback_requested.emit(text, Color(0.72, 0.88, 1.0, 1.0), 0.32)
+		return
+
+	if not satisfied:
+		return
+
+	var heal_amount: float = float(collar_mod.get("heal_on_success", 0.0))
+	if heal_amount > 0.0:
+		heal_requested.emit(heal_amount)
+
+	var charge_amount: float = float(collar_mod.get("support_charge_on_success", 0.0))
+	if charge_amount > 0.0:
+		support_charge_requested.emit(charge_amount)
+
+	var status_id: String = String(collar_mod.get("status_on_success", ""))
+	if not status_id.is_empty() and lane_manager != null and lane >= 0:
+		lane_manager.apply_status(lane, status_id, {})
+
+	if collar_mod.has("redirected_lane") and lane_manager != null and lane >= 0:
+		for neighbor_lane in range(3):
+			if neighbor_lane != lane:
+				lane_manager.apply_status(neighbor_lane, "pale", {})
+
+	feedback_requested.emit(text, Color(0.72, 0.88, 1.0, 1.0), 0.32)

@@ -36,10 +36,16 @@ These are priority anchors for the evolving spine:
 - **Region Ecosystems**: Distinct pressure identities (Feeding Hollow, Pale Shelf, Drowned Cut).
 - **Support Specialization**: Deeper roles (cadence amplification, survival stabilization, predation payoff).
 - **Bosses as Battlefield Law**: Bosses aren't just big enemies; they rewrite the law of the arena.
-- **Performance Reward Pack v1**: Stronger score/kill payoffs into artifacts, weapons, and run depth.
-- **Unused DNA**: Routed into later metaprogression when run economy is stable.
-- **World-State Consequence**: Visible hooks for how the world reacts to the player's philosophy of power.
-- **Kaiju Ascension Line**: Long-term flagship direction (Hollow Egg).
+- **Performance Reward Pack v1**: Live first pass. Active direction is stronger score/kill/clean-play/support/bond-eat payoff into artifacts, weapons, and run depth.
+- **Upgrade Depth + Bond-Level Scaling**: Active next prove-it lane; make the expanded creature roster create distinct builds without collapsing Bond Rank into frequent stat drip.
+- **Unused DNA**: Routed into meta-progression via **Splicing** and **Ascension** costs.
+- **World-State Consequence**: LIVE. Dominant world fate now grants Lair Resonance perks and dictates Ascension alignment.
+- **Kaiju Ascension Line**: LIVE (Foundation). Creatures at Bond Level 5 can Ascend to Sovereign status, unlocking unique Mastery Traits.
+
+Current sync note:
+- World Resonance and Creature Ascension systems are implemented and mechanically wired.
+- Still unproven: long-term balance of DNA costs and the impact of specific Mastery Traits on the Collar system.
+- Active next direction: implementing the actual combat/support resolution for Mastery Traits and refining the Lair UI to better support the "Management-Rich" comprehension of these new layers.
 
 ---
 
@@ -61,8 +67,10 @@ These are priority anchors for the evolving spine:
 # 7. Progression Lane Contract (Live Canon)
 
 - **First Bond Unlock**: One-time species acquisition event. Permanent species unlock. Not Bond Rank.
-- **Bond Rank**: Rare post-unlock milestone lane. Owns meaningful evolution, major form shifts, identity breakthroughs, and signature expression.
-- **Creature Level**: Regular post-unlock practical lane. Owns performance growth, tuning, cooldown/stat/effect efficiency, and role specialization.
+- **Bond Rank**: Milestones (1-5). Owns meaningful evolution and identity breakthroughs. **Peak: Ascension.**
+- **Creature Level**: Regular operational growth and stat/cooldown efficiency.
+- **Lair Resonance**: Meta-layer passive bonuses granted by the current world's dominant fate.
+- **Ascension**: The ultimate bond breakthrough. Requires Bond Level 5, high DNA, and matching World Resonance. Unlocks **Mastery Traits**.
 
 Live guardrails:
 - Bond Rank must not degrade into frequent +stat drip.

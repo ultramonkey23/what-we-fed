@@ -20,11 +20,13 @@ Autoloads:
 Combat owners:
 - `scenes/combat/CombatScene.gd`: arena setup, encounter flow, song-mode orchestration, boss flow, reward shell
 - `scenes/combat/PlayerCombat.gd`: player input resolution, attack/parry/dodge damage, death path
-- `scenes/combat/LaneManager.gd`: lane enemy occupancy and spawn/respawn timing
+- `scenes/combat/LaneManager.gd`: cardinal 4-direction threat management, population stalking/orbiting, and strike queue authority
 - `systems/CombatMeter.gd`: combo, style, stamina, ultimate, tier state
 - `systems/CombatImpactFeedback.gd`: impact/readability helpers
 - `systems/CombatPresentationRuntime.gd`: presentation helper layer for combat
 - `systems/CombatTransitionState.gd`: small transition-state helper
+- `systems/SupportEffectResolver.gd`: creature-specific bonded support effects and support readability signals
+- `systems/CollarDirector.gd`: logic for how ritual collars modify support behavior
 
 Song / boss pressure:
 - `systems/SongConductor.gd`: beat and section timing, beat-quality checks
@@ -34,15 +36,18 @@ Song / boss pressure:
 
 Growth / reward:
 - `systems/RunGrowth.gd`: growth orchestrator; delegates to modular managers in `systems/growth/` (Progression, Tendency, Support)
-- `systems/PerformanceRewardDirector.gd`: performance reward offers and claims
+- `systems/PerformanceRewardDirector.gd`: performance reward offers, stored rewards, level-completion choices, score/kill/affinity/bond-eat/tendency weighting
 - `systems/PotentialGate.gd`: layered Potential ceiling resolver (creature/world/run)
 - `data/RunGrowthContent.gd`: growth tuning and effects
-- `data/PerformanceRewardContent.gd`: reward data
+- `data/PerformanceRewardContent.gd`: reward data, reward order, affinity-biased phase mixes
+- `data/LairResonanceContent.gd`: world-fate resonance perks, species affinity mapping, and creature ascension requirements/mastery traits
 
 Content / tuning:
 - `data/CombatContent.gd`: encounter and creature combat content
 - `data/RouteContent.gd`: route-region data
 - `data/AudioContent.gd`: audio paths and music references
+- `data/CollarContent.gd`: data definitions for ritual collars
+- `data/LairResonanceContent.gd`: world-fate resonance and kaiju ascension data
 - `data/SongLibraryContent.gd`: centralized song library and metadata
 - `data/EncounterIdentityContent.gd`: region encounter identity data
 

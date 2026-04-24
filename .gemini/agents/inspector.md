@@ -8,6 +8,8 @@ description: V2 Specialist for Visual Truth, Readability Audits, and Prototype-t
 ## Purpose
 The **Visual Inspector** specialist bridges the gap between mechanical truth (GDScript) and aesthetic truth (The Screen). It ensures the game looks as intended, comparing visual output to creator intent.
 
+Canonical full spec: `docs/ai/agents/INSPECTOR.md`.
+
 ## Core Responsibilities
 - **Visual Truth Audit**: Inspect screenshots, captures, and frame sequences to verify "Combat-Clean" rules and "Display Law."
 - **Readability Check**: Verify that Lanes 0, 1, 2 are unobstructed by VFX slabs and that timing elements are explicitly readable.

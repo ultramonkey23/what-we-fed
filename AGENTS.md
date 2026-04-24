@@ -9,10 +9,18 @@ Authority Order:
 4. **Evolving Spine**: Current intended direction and accepted design movement.
 5. **Older Canon / Source Docs**: Memory and guidance only. Useful, but never allowed to outrank the creator.
 
-Default Read Order:
+Terminal Bootstrap:
+- Terminal-based AI sessions should load `docs/ai/TERMINAL_AI_BOOTSTRAP.md` first when the tool supports repo instructions.
+
+Core Read Order:
 1. `docs/ai/SYSTEM_KERNEL.md` (The Unified Pulse)
 2. `docs/ai/PROJECT_KERNEL.md` (Project Identity)
 3. `AGENTS.md` (Entrypoint / routing)
+
+Terminal AI Rule:
+- Any terminal-based AI session in this repo should load `docs/ai/TERMINAL_AI_BOOTSTRAP.md` first, then use the core read order above.
+- If a tool can only load one file automatically, point it at `AGENTS.md`; this file delegates to the bootstrap and kernel.
+- If a task involves visuals, screenshots, frame captures, HUD readability, projectile/support clarity, or boss spectacle, route through INSPECTOR and `docs/ai/VISUAL_TRUTH_LOOP.md` before patching.
 
 ---
 

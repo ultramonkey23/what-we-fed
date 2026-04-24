@@ -4,6 +4,8 @@ extends Node
 const RITUAL_CONTENT = preload("res://data/RitualConsumableContent.gd")
 const COMBAT_CONTENT = preload("res://data/CombatContent.gd")
 const CREATURE_TRAITS = preload("res://data/CreatureTraitContent.gd")
+const COLLAR_CONTENT = preload("res://data/CollarContent.gd")
+const LAIR_RESONANCE = preload("res://data/LairResonanceContent.gd")
 
 # Sub-state Components
 var player := PlayerState.new()
@@ -11,6 +13,9 @@ var creatures := CreatureState.new()
 var rewards := RewardState.new()
 var world_fate := WorldFateState.new()
 var run := RunState.new()
+
+var collar_inventory: Array[String] = []
+var equipped_collar_id: String = ""
 
 # API Proxies for backward compatibility
 var run_number: int:
@@ -422,16 +427,23 @@ func absorb_creature_type(creature_data: Dictionary) -> Dictionary:
 	return entry
 
 
+func get_current_resonance_perk() -> Dictionary:
+	return LAIR_RESONANCE.get_resonance_perk(world_dominant_fate)
+
+
 func splice_trait_to_creature(species_id: String, trait_id: String) -> bool:
-	var cost: int = 250 # Standard splicing cost
-	if not has_dna_for(species_id, float(cost)): return false
+	var base_cost: float = 250.0 # Standard splicing cost
+	var perk: Dictionary = get_current_resonance_perk()
+	var cost: float = base_cost * float(perk.get("splicing_cost_mult", 1.0))
+	
+	if not has_dna_for(species_id, cost): return false
 	
 	for i in range(lair_roster.size()):
 		if String(lair_roster[i].get("species_id", "")) == species_id:
 			var spliced: Array = lair_roster[i].get("spliced_traits", [])
 			if spliced.has(trait_id): return false
 			
-			spend_dna(species_id, float(cost))
+			spend_dna(species_id, cost)
 			spliced.append(trait_id)
 			lair_roster[i]["spliced_traits"] = spliced
 			
@@ -444,9 +456,15 @@ func splice_trait_to_creature(species_id: String, trait_id: String) -> bool:
 	return false
 
 
-func ascend_lair_creature(species_id: String) -> bool:
-	var cost: int = 500 # Ascension cost
-	if not has_dna_for(species_id, float(cost)): return false
+func request_ascension(species_id: String) -> bool:
+	var cost: float = LAIR_RESONANCE.ASCENSION_DNA_COST
+	if not has_dna_for(species_id, cost): return false
+	
+	# World Fate Alignment Check
+	var affinity: String = LAIR_RESONANCE.get_species_affinity(species_id)
+	if world_dominant_fate != affinity:
+		# Cannot ascend if world resonance does not match affinity
+		return false
 	
 	for i in range(lair_roster.size()):
 		if String(lair_roster[i].get("species_id", "")) == species_id:
@@ -454,18 +472,25 @@ func ascend_lair_creature(species_id: String) -> bool:
 			if bond < 5: return false # Must be max bond to ascend
 			if bool(lair_roster[i].get("is_ascended", false)): return false
 			
-			spend_dna(species_id, float(cost))
+			spend_dna(species_id, cost)
 			lair_roster[i]["is_ascended"] = true
 			lair_roster[i]["is_exceptional"] = true # Ascended are always exceptional
 			lair_roster[i]["variant_id"] = "ascended_sovereign"
 			
-			# Update active roster
+			# Mastery Trait Integration
+			var mastery: Dictionary = LAIR_RESONANCE.get_mastery_trait(species_id)
+			lair_roster[i]["mastery_trait_id"] = String(mastery.get("id", ""))
+			
+			# If this is the active creature, update the active roster too
 			for j in range(roster.size()):
 				if String(roster[j].get("species_id", "")) == species_id:
 					roster[j]["is_ascended"] = true
 					roster[j]["is_exceptional"] = true
 					roster[j]["variant_id"] = "ascended_sovereign"
+					roster[j]["mastery_trait_id"] = String(mastery.get("id", ""))
 					break
+			
+			EventBus.emit_signal("creature_ascended", {"species_id": species_id, "fate_id": world_dominant_fate})
 			return true
 	return false
 
@@ -605,6 +630,49 @@ func spend_dna(species_id: String, amount: float) -> void:
 func has_dna_for(species_id: String, threshold: float) -> bool:
 	if threshold <= 0.0: return true
 	return get_dna(species_id) >= threshold
+
+
+func unlock_collar(collar_id: String) -> bool:
+	if collar_id.is_empty() or collar_inventory.has(collar_id):
+		return false
+	var collar_data: Dictionary = COLLAR_CONTENT.get_collar(collar_id)
+	if collar_data.is_empty():
+		return false
+	var cost: Dictionary = Dictionary(collar_data.get("dna_unlock_cost", {}))
+	for species_id in cost.keys():
+		if not has_dna_for(String(species_id), float(cost[species_id])):
+			return false
+	for species_id in cost.keys():
+		spend_dna(String(species_id), float(cost[species_id]))
+	collar_inventory.append(collar_id)
+	if equipped_collar_id.is_empty():
+		equipped_collar_id = collar_id
+	EventBus.emit_signal("proc_feedback_requested", "COLLAR UNLOCKED: " + String(collar_data.get("title", collar_id)).to_upper(), Color(0.72, 0.88, 1.0, 1.0))
+	return true
+
+
+func equip_collar(collar_id: String) -> bool:
+	if collar_id.is_empty() or not collar_inventory.has(collar_id):
+		return false
+	if COLLAR_CONTENT.get_collar(collar_id).is_empty():
+		return false
+	equipped_collar_id = collar_id
+	return true
+
+
+func get_equipped_collar() -> Dictionary:
+	if equipped_collar_id.is_empty():
+		return {}
+	return COLLAR_CONTENT.get_collar(equipped_collar_id)
+
+
+func get_collar_inventory() -> Array[Dictionary]:
+	var rows: Array[Dictionary] = []
+	for collar_id in collar_inventory:
+		var collar_data: Dictionary = COLLAR_CONTENT.get_collar(collar_id)
+		if not collar_data.is_empty():
+			rows.append(collar_data)
+	return rows
 
 
 func set_growth_choice_intersection_payload(payload: Dictionary) -> void:
@@ -774,22 +842,27 @@ func _apply_world_fate_deltas(deltas: Dictionary) -> void:
 
 
 func _resolve_world_fate_dominance() -> void:
+	var old_fate: String = world_dominant_fate
 	var ranked: Array[Dictionary] = _world_sorted_fates_by_score()
 	if ranked.is_empty():
 		world_dominant_fate = "unclaimed"
 		world_stain_fates = PackedStringArray()
-		return
-	var candidate_id: String = String(ranked[0].get("id", ""))
-	var candidate_score: float = float(ranked[0].get("score", 0.0))
-	if candidate_score < WORLD_FATE_PRIMARY_MIN:
-		world_dominant_fate = "unclaimed"
 	else:
-		if world_dominant_fate == "unclaimed" or not world_fate_channels.has(world_dominant_fate):
-			world_dominant_fate = candidate_id
+		var candidate_id: String = String(ranked[0].get("id", ""))
+		var candidate_score: float = float(ranked[0].get("score", 0.0))
+		if candidate_score < WORLD_FATE_PRIMARY_MIN:
+			world_dominant_fate = "unclaimed"
 		else:
-			var current_score: float = float(world_fate_channels.get(world_dominant_fate, 0.0))
-			if candidate_id == world_dominant_fate or candidate_score >= current_score + WORLD_FATE_SWITCH_MARGIN:
+			if world_dominant_fate == "unclaimed" or not world_fate_channels.has(world_dominant_fate):
 				world_dominant_fate = candidate_id
+			else:
+				var current_score: float = float(world_fate_channels.get(world_dominant_fate, 0.0))
+				if candidate_id == world_dominant_fate or candidate_score >= current_score + WORLD_FATE_SWITCH_MARGIN:
+					world_dominant_fate = candidate_id
+	
+	if old_fate != world_dominant_fate:
+		EventBus.emit_signal("world_fate_shifted", world_dominant_fate, old_fate)
+	
 	var next_stains: PackedStringArray = PackedStringArray()
 	for row in ranked:
 		var fate_id: String = String(row.get("id", ""))

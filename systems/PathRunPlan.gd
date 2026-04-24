@@ -7,9 +7,9 @@ const RUN_PACING_CONTENT = preload("res://data/RunPacingContent.gd")
 const BOND_NODE_IDS: Array[String] = ["bond_rite"]
 
 const BRANCH_TEMPLATE_SETS: Array[Array] = [
-	["elite_hunt", "bond_rite"],
-	["elite_hunt", "predation_pool"],
-	["bond_rite", "predation_pool"]
+	["prey", "elite_hunt", "bond_rite"],
+	["prey", "elite_hunt", "predation_pool"],
+	["prey", "bond_rite", "predation_pool"]
 ]
 
 
@@ -115,12 +115,29 @@ static func apply_branch_choice(plan: Array[Dictionary], level_index: int, node_
 	return updated
 
 
-static func apply_node_effects(node: Dictionary, state: Node, run_growth: Node, reward_director: Node) -> Dictionary:
+static func validate_node_access(node_id: String, game_state: Node) -> bool:
+	var node: Dictionary = PATH_CONTENT.get_node(node_id)
+	return _can_afford_entry_cost(Dictionary(node.get("entry_cost", {})), game_state)
+
+
+static func apply_node_effects(node: Dictionary, state: Node, run_growth: Node, reward_director: Node, apply_entry_effects: bool = true) -> Dictionary:
 	var node_id: String = String(node.get("id", PATH_CONTENT.DEFAULT_NODE_ID))
 	var encounter_options: Dictionary = Dictionary(node.get("encounter_options", {})).duplicate(true)
 	var reward_context: Dictionary = Dictionary(node.get("reward_context", {})).duplicate(true)
+	var entry_cost: Dictionary = Dictionary(node.get("entry_cost", {})).duplicate(true)
+	var risk_modifier: Dictionary = Dictionary(node.get("risk_modifier", {})).duplicate(true)
+	var potential_reward_bias: String = String(node.get("potential_reward_bias", ""))
 
-	if BOND_NODE_IDS.has(node_id):
+	if not risk_modifier.is_empty():
+		encounter_options["risk_modifier"] = risk_modifier.duplicate(true)
+		reward_context["risk_modifier_id"] = String(risk_modifier.get("id", ""))
+	if not potential_reward_bias.is_empty():
+		reward_context["potential_reward_bias"] = potential_reward_bias
+
+	if apply_entry_effects:
+		_apply_entry_cost(entry_cost, state)
+
+	if apply_entry_effects and BOND_NODE_IDS.has(node_id):
 		_apply_bond_rite_entry(state, run_growth, node)
 
 	if reward_director != null and is_instance_valid(reward_director):
@@ -130,9 +147,47 @@ static func apply_node_effects(node: Dictionary, state: Node, run_growth: Node, 
 	return {
 		"node_id": node_id,
 		"display_name": String(node.get("display_name", "Prey")),
+		"entry_cost": entry_cost,
+		"risk_modifier": risk_modifier,
+		"potential_reward_bias": potential_reward_bias,
 		"encounter_options": encounter_options,
 		"reward_context": reward_context
 	}
+
+
+static func _can_afford_entry_cost(cost: Dictionary, game_state: Node) -> bool:
+	if cost.is_empty():
+		return true
+	if game_state == null or not is_instance_valid(game_state):
+		return false
+	var cost_type: String = String(cost.get("type", ""))
+	var value: float = maxf(float(cost.get("value", 0.0)), 0.0)
+	match cost_type:
+		"hp":
+			return float(game_state.get("player_hp")) >= value
+		"dna":
+			var species_id: String = String(cost.get("species", ""))
+			if species_id.is_empty() or not game_state.has_method("get_dna"):
+				return false
+			return float(game_state.call("get_dna", species_id)) >= value
+		_:
+			return true
+
+
+static func _apply_entry_cost(cost: Dictionary, game_state: Node) -> void:
+	if cost.is_empty():
+		return
+	if not _can_afford_entry_cost(cost, game_state):
+		return
+	var cost_type: String = String(cost.get("type", ""))
+	var value: float = maxf(float(cost.get("value", 0.0)), 0.0)
+	match cost_type:
+		"hp":
+			game_state.set("player_hp", maxf(float(game_state.get("player_hp")) - value, 0.0))
+		"dna":
+			var species_id: String = String(cost.get("species", ""))
+			if not species_id.is_empty() and game_state.has_method("spend_dna"):
+				game_state.call("spend_dna", species_id, value)
 
 
 static func _apply_bond_rite_entry(state: Node, run_growth: Node, node: Dictionary) -> void:

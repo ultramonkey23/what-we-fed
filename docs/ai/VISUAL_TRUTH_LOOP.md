@@ -6,9 +6,11 @@ Agents lack "eyes" by default. To bridge the gap between mechanical truth (code)
 ## The Loop
 1. **Capture**: The user, `tools/capture_audit_frame.gd`, or an automated test script captures screenshot(s) or short video frame sequences of the specific gameplay moment in question.
    - *Convention*: Save visual evidence to `what-we-fed/docs/ai/visual_audits/pending/`.
+   - *Reviewed Convention*: Move completed receipt/evidence packets to `what-we-fed/docs/ai/visual_audits/reviewed/` only after BRAIN has accepted the result or ALFRED has completed the patch.
    - *Hybrid Automation*: In dev builds, attach `tools/capture_audit_frame.gd` to the active scene or autoload it. Press `F12` for a manual capture. The tool can also auto-capture on high-value EventBus moments such as `player_took_damage`, `timed_attack_resolved`, `player_parried`, `player_dodged`, `bonded_support_triggered`, and `ultimate_fired`.
    - *Metadata Requirement*: Every capture must have a sibling `.json` receipt seed with scene, viewport, camera, combat tier, song/resonance, lane, support, and active mutation context when available. Unknown values must be written as `unknown`, not invented.
 2. **Summon INSPECTOR**: The BRAIN routes a task to the **Inspector** agent, providing the file paths to the captured visual evidence and metadata packet.
+   - *Canonical Specialist*: `docs/ai/agents/INSPECTOR.md`.
 3. **Audit**: The Inspector analyzes the visual evidence against:
    - `HUD_READABILITY_DOCTRINE.md` (Are lanes 0, 1, 2 obscured? Are timing elements readable?)
    - `PROTOTYPE_VISUAL_REPLACEMENT_PROMPTS_V1.md` (Do the visuals match the "Premium Menace" target, or are they flat and prototype-y?)

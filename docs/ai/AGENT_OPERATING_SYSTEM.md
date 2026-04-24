@@ -1,4 +1,4 @@
-# AGENT OPERATING SYSTEM (v2.2 "The Unified Pulse")
+# AGENT OPERATING SYSTEM (v2.3 "The Unified Pulse")
 
 This is the canonical operating layer for repo-native agents in WHAT WE FED, governed by the **BRAIN** orchestrator.
 
@@ -10,6 +10,7 @@ This is the canonical operating layer for repo-native agents in WHAT WE FED, gov
 5. **Older Canon / Source Docs**
 
 ## Default Doc Load Order
+0. `docs/ai/TERMINAL_AI_BOOTSTRAP.md` (Terminal fast-load)
 1. `docs/ai/SYSTEM_KERNEL.md` (Rules)
 2. `docs/ai/PROJECT_KERNEL.md` (Identity)
 3. `AGENTS.md` (Routing)
@@ -32,4 +33,4 @@ Before any tool use (other than basic discovery), every agent MUST execute a **S
 
 ## Handoff & Routing
 Refer to `AGENTS.md` for handoff formats and `SYSTEM_KERNEL.md` for the Auditor's Report.
-Ensure every agent lane (Lore, GDScript, HUD, Growth) follows the **Auditor's Report (v2.2)**.
+Ensure every agent lane (Lore, GDScript, HUD, Growth, Inspector) follows the **Auditor's Report (v2.2)**.

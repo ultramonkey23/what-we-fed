@@ -76,6 +76,7 @@ func start_level(level_idx: int, _reset_hp: bool = false) -> Dictionary:
 		return {"is_boss_trigger": true}
 
 	regular_level_index = level_idx
+	prepare_path_context_for_level(regular_level_index)
 	active_song_data = _get_song_for_level(regular_level_index)
 	active_song_profile = SONG_COMBAT_PROFILE_CONTENT.get_profile(String(active_song_data.get("id", "")))
 	active_song_map = AUDIO_CONTENT.get_song_map(active_song_data)
@@ -189,4 +190,4 @@ func _build_level_windows_for_song(song_data: Dictionary) -> Array:
 func prepare_path_context_for_level(level_idx: int) -> void:
 	var node: Dictionary = PATH_RUN_PLAN.get_level_node(GameState.run_path_plan, level_idx)
 	# Mock objects for director compatibility if needed, but PathRunPlan mostly needs references.
-	active_path_context = PATH_RUN_PLAN.apply_node_effects(node, self, null, null)
+	active_path_context = PATH_RUN_PLAN.apply_node_effects(node, self, null, null, false)

@@ -367,6 +367,7 @@ static func build_level_difficulty_modifiers(region_id: String, level_idx: int, 
 		reward_band["level_choice_delta"] = int(reward_band.get("level_choice_delta", 0)) - 1
 		mods["reward_pressure"] = reward_band
 
+	_apply_risk_modifier_law(mods, Dictionary(encounter_options.get("risk_modifier", {})))
 	_apply_profile_reward_law(mods, song_profile)
 	return mods
 
@@ -427,6 +428,25 @@ static func _apply_profile_reward_law(mods: Dictionary, song_profile: Dictionary
 	reward_band["offer_decay_mult"] = float(reward_band.get("offer_decay_mult", 1.0)) * float(reward_law.get("offer_decay_mult", 1.0))
 	reward_band["level_choice_delta"] = int(reward_band.get("level_choice_delta", 0)) + int(reward_law.get("level_choice_delta", 0))
 	mods["reward_pressure"] = reward_band
+
+
+static func _apply_risk_modifier_law(mods: Dictionary, risk_modifier: Dictionary) -> void:
+	if risk_modifier.is_empty():
+		return
+	var modifier_bands: Dictionary = Dictionary(risk_modifier.get("difficulty_modifiers", {}))
+	for band_key in modifier_bands.keys():
+		var current_band: Dictionary = Dictionary(mods.get(band_key, {})).duplicate(true)
+		var risk_band: Dictionary = Dictionary(modifier_bands.get(band_key, {}))
+		for value_key in risk_band.keys():
+			var risk_value: Variant = risk_band[value_key]
+			if risk_value is int or risk_value is float:
+				if String(value_key).ends_with("_bonus"):
+					current_band[value_key] = int(current_band.get(value_key, 0)) + int(risk_value)
+				else:
+					current_band[value_key] = float(current_band.get(value_key, 1.0)) * float(risk_value)
+			else:
+				current_band[value_key] = risk_value
+		mods[band_key] = current_band
 
 
 static func _merge_dict(base: Dictionary, overlay: Dictionary) -> void:

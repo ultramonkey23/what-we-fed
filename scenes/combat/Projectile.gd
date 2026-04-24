@@ -58,9 +58,9 @@ var enemy_id: int = -1
 var damage: float = 10.0
 var speed: float = 265.0
 
-var enemy_x: float = 0.0
-var hit_zone_x: float = 0.0
-var player_x: float = 0.0
+var enemy_pos: Vector2 = Vector2.ZERO
+var hit_zone_pos: Vector2 = Vector2.ZERO
+var player_pos: Vector2 = Vector2.ZERO
 
 var progress: float = 0.0
 var target_beat_time: float = -1.0
@@ -71,6 +71,15 @@ var is_reflected: bool = false
 var reflected_damage: float = 0.0
 var telegraph_profile: Dictionary = {}
 
+# Projectile Doctrine: Soft Tracking
+var max_turn_rate: float = 1.5
+var commit_threshold: float = 0.75
+var player_ref: Node2D = null
+var _is_committed: bool = false
+var _current_radial_vector: Vector2 = Vector2.ZERO
+var _initial_distance_to_center: float = 0.0
+var _hit_zone_distance_to_center: float = 0.0
+
 var _reported_hit_zone: bool = false
 var _reported_player_contact: bool = false
 var _reported_enemy_contact: bool = false
@@ -79,6 +88,9 @@ var _modifier: Sprite2D
 var _core: ColorRect
 var _trail: Line2D
 var _glow: Polygon2D
+
+var _direction_vector: Vector2 = Vector2.ZERO
+var _total_distance: float = 0.0
 
 
 func _ready() -> void:
@@ -170,29 +182,48 @@ func setup(
 	projectile_enemy_id: int,
 	projectile_damage: float,
 	projectile_speed: float,
-	start_x: float,
-	target_hit_zone_x: float,
-	target_player_x: float,
-	lane_y: float,
-	projectile_telegraph_profile: Dictionary = {}
+	start_pos: Vector2,
+	target_hit_zone_pos: Vector2,
+	target_player_pos: Vector2,
+	projectile_telegraph_profile: Dictionary = {},
+	target_player_ref: Node2D = null
 ) -> void:
 	lane = projectile_lane
 	enemy_id = projectile_enemy_id
 	damage = projectile_damage
 	speed = projectile_speed
-	enemy_x = start_x
-	hit_zone_x = target_hit_zone_x
-	player_x = target_player_x
-	position = Vector2(enemy_x, lane_y)
+	enemy_pos = start_pos
+	hit_zone_pos = target_hit_zone_pos
+	player_pos = target_player_pos
+	player_ref = target_player_ref
+	position = enemy_pos
+	
+	_direction_vector = (hit_zone_pos - enemy_pos).normalized()
+	_total_distance = enemy_pos.distance_to(hit_zone_pos)
+	
+	# Radial Tracking Initialization
+	var center = player_pos # In LaneManager, player_pos passed here is _center_pos
+	_initial_distance_to_center = enemy_pos.distance_to(center)
+	_hit_zone_distance_to_center = hit_zone_pos.distance_to(center)
+	_current_radial_vector = (enemy_pos - center).normalized()
+	
+	# Rotate to face player
+	rotation = (player_pos - enemy_pos).angle()
 
 	progress = 0.0
 	is_resolved = false
 	is_reflected = false
+	_is_committed = false
 	reflected_damage = 0.0
 	_reported_hit_zone = false
 	_reported_player_contact = false
 	_reported_enemy_contact = false
 	telegraph_profile = _build_telegraph_profile(projectile_telegraph_profile)
+	
+	# Load profile overrides
+	max_turn_rate = float(telegraph_profile.get("max_turn_rate", 1.5))
+	commit_threshold = float(telegraph_profile.get("commit_threshold", 0.75))
+	
 	_refresh_body_sprite()
 	_refresh_modifier_overlay()
 	_configure_telegraph_shape()
@@ -253,7 +284,7 @@ func time_until_hit_zone() -> float:
 	if is_resolved or is_reflected or speed <= 0.0:
 		return -1.0
 
-	var remaining_distance: float = position.x - hit_zone_x
+	var remaining_distance: float = position.distance_to(hit_zone_pos)
 	return max(remaining_distance / speed, 0.0)
 
 
@@ -261,7 +292,7 @@ func time_until_player_contact() -> float:
 	if is_resolved or is_reflected or speed <= 0.0:
 		return -1.0
 
-	var remaining_distance: float = position.x - player_x
+	var remaining_distance: float = position.distance_to(player_pos)
 	return max(remaining_distance / speed, 0.0)
 
 
@@ -277,9 +308,6 @@ func resolve(result: String) -> void:
 
 
 func _process_incoming_song_synced(delta: float) -> void:
-	if enemy_x <= player_x:
-		return
-
 	if conductor_ref != null and target_beat_time > 0.0:
 		# ABSOLUTE SONG SYNC: 
 		# Move the projectile based on the current song position vs its fire/target time.
@@ -289,22 +317,47 @@ func _process_incoming_song_synced(delta: float) -> void:
 			progress = (song_now - fire_song_time) / total_flight_duration
 		else:
 			progress = 1.0
-		
-		# Map progress to physical position
-		var intercept_distance: float = enemy_x - hit_zone_x
-		position.x = enemy_x - (intercept_distance * progress)
 	else:
 		# Fallback to speed-based delta movement if not in song mode or missing conductor.
-		position.x -= speed * delta
-		var intercept_distance: float = enemy_x - hit_zone_x
-		if intercept_distance > 0.0:
-			progress = (enemy_x - position.x) / intercept_distance
+		if _total_distance > 0.0:
+			progress += (speed * delta) / _total_distance
+		else:
+			progress = 1.0
 
-	if not _reported_hit_zone and position.x <= hit_zone_x:
+	# Projectile Doctrine: Soft Tracking logic
+	if not _is_committed:
+		if progress >= commit_threshold:
+			_is_committed = true
+		elif player_ref != null:
+			var center: Vector2 = player_pos # Global center point
+			var player_actual: Vector2 = player_ref.global_position
+			var desired_radial_vector: Vector2 = (player_actual - center).normalized()
+			
+			# We want to rotate _current_radial_vector towards desired_radial_vector
+			# But wait, _current_radial_vector points FROM center TO projectile.
+			# So we rotate it towards (projectile - center) direction? No.
+			# The radial vector defines the angle of approach.
+			# Player is at some angle. We want to approach that angle.
+			var current_angle: float = _current_radial_vector.angle()
+			var target_angle: float = (player_actual - center).angle()
+			var angle_diff: float = angle_difference(current_angle, target_angle)
+			
+			var turn_step: float = clamp(angle_diff, -max_turn_rate * delta, max_turn_rate * delta)
+			_current_radial_vector = _current_radial_vector.rotated(turn_step)
+			
+			# Face the center (direction of travel)
+			rotation = _current_radial_vector.angle() + PI
+
+	# Map progress to physical position using radial model
+	var center_pt: Vector2 = player_pos
+	var current_dist: float = lerp(_initial_distance_to_center, _hit_zone_distance_to_center, progress)
+	position = center_pt + _current_radial_vector * current_dist
+
+	if not _reported_hit_zone and progress >= 1.0:
 		_reported_hit_zone = true
 		reached_hit_zone.emit(self)
 
-	if not _reported_player_contact and position.x <= player_x:
+	if not _reported_player_contact and progress >= 1.15: # Progress 1.15 is roughly player contact
 		_reported_player_contact = true
 		player_contact.emit(self)
 
@@ -329,12 +382,18 @@ func set_song_sync(conductor: Node, hit_time: float) -> void:
 
 
 func _process_reflected(delta: float) -> void:
-	position.x += speed * REFLECT_SPEED_MULT * delta
+	# Reflected projectiles travel from player_pos back to enemy_pos
+	var reflect_dir: Vector2 = (enemy_pos - player_pos).normalized()
+	position += reflect_dir * speed * REFLECT_SPEED_MULT * delta
 	_update_visual_state(true)
 
-	if not _reported_enemy_contact and position.x >= enemy_x:
-		_reported_enemy_contact = true
-		enemy_contact.emit(self)
+	if not _reported_enemy_contact:
+		var dist_to_origin: float = position.distance_to(enemy_pos)
+		# If we've passed the enemy origin or are very close, resolve.
+		# Check if the dot product of motion vs direction to origin flipped.
+		if dist_to_origin < 25.0:
+			_reported_enemy_contact = true
+			enemy_contact.emit(self)
 
 
 func _apply_projectile_palette(body_color: Color, reflected: bool) -> void:
@@ -449,7 +508,9 @@ func _build_telegraph_profile(source: Dictionary) -> Dictionary:
 		"core_size": Vector2(10.0, 6.0),
 		"core_pressure_scale": Vector2(0.20, 0.10),
 		"pressure_start": 0.72,
-		"pressure_gain": 1.0
+		"pressure_gain": 1.0,
+		"max_turn_rate": 1.5,
+		"commit_threshold": 0.75
 	}
 	var mod_key: String = String(source.get("shot_modifier", source.get("family", "fang")))
 	match mod_key:
@@ -466,6 +527,8 @@ func _build_telegraph_profile(source: Dictionary) -> Dictionary:
 			profile["core_size"] = Vector2(12.0, 8.0)
 			profile["pressure_start"] = 0.68
 			profile["pressure_gain"] = 0.92
+			profile["max_turn_rate"] = 2.2
+			profile["commit_threshold"] = 0.82
 		"needle":
 			profile["trail_width"] = 4.0
 			profile["trail_pressure_width"] = 1.6
@@ -480,6 +543,8 @@ func _build_telegraph_profile(source: Dictionary) -> Dictionary:
 			profile["core_size"] = Vector2(8.0, 5.0)
 			profile["pressure_start"] = 0.76
 			profile["pressure_gain"] = 1.14
+			profile["max_turn_rate"] = 0.8
+			profile["commit_threshold"] = 0.70
 		"veil":
 			profile["trail_width"] = 5.6
 			profile["trail_back"] = 30.0

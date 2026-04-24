@@ -1,6 +1,7 @@
 # WHAT WE FED — CONTEXT EXPANSION MAP
 
 Default-load only:
+- `docs/ai/TERMINAL_AI_BOOTSTRAP.md`
 - `docs/ai/PROJECT_KERNEL.md`
 - one tool entrypoint (`AGENTS.md` / `CLAUDE.md` / `GEMINI.md` / `.github/copilot-instructions.md`)
 
@@ -18,6 +19,17 @@ Open deeper files only when task needs them.
   - `docs/ai/VALIDATION_STANDARD.md`
   - `docs/ai/PROCEDURAL_MOTION_V1_EXECUTION_PLAN.md`
 - Use when: timing honesty, lane clarity, combat flow, procedural motion, or support telegraphs are touched.
+
+### Visual truth / screenshots / capture review
+- Open:
+  - `docs/ai/VISUAL_TRUTH_LOOP.md`
+  - `docs/ai/agents/INSPECTOR.md`
+  - `docs/ai/HUD_READABILITY_DOCTRINE.md`
+  - `docs/VISUAL_STYLE_GUIDE.md`
+  - `tools/capture_audit_frame.gd`
+  - evidence under `docs/ai/visual_audits/pending/`
+- Use when: inspecting screenshots, short captures, HUD readability, projectile readability, support readability, boss spectacle clarity, or prototype-flat visual drift.
+- Rule: visual judgment needs evidence paths plus metadata; code/doctrine context alone is not a visual audit.
 
 ### Runtime safety / validation evidence
 - Open:

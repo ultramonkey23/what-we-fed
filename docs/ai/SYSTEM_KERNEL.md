@@ -19,7 +19,7 @@ The project operates through a five-lobe functional stack. Do not collapse these
 2. **Current Repo Truth (Layer 2)**: Defines what currently exists in implementation. Used to ground decisions in current reality. Overrules older documentation if they conflict.
 3. **Current Live-Build Truth**: Defines what is currently live and working in the build.
 4. **Evolving Spine (Layer 3)**: Defines the currently accepted direction of evolution, design specs, and modular systems.
-5. **Older Canon / Source Docs (Layer 1)**: Identity anchors (Timing Truth, DNA Economy, Bond vs Eat). Useful memory and guidance; may be softened, restructured, retired, or replaced when stale.
+5. **Older Canon / Source Docs (Layer 1)**: Identity anchors (Timing Truth, DNA Economy, Bond vs Eat). Useful memory and guidance; may be softened, restructured, retired, or replaced when stale. Note: The 3-lane horizontal combat system is now considered Older Canon; the Evolving Spine (Layer 3) is centered, 4-direction timing combat (`COMBAT_REDESIGN_V1.md`).
 
 **Authority Order**: User Intent > Repo Truth > Live-Build Truth > Evolving Spine > Older Canon / Source Docs.
 
@@ -44,6 +44,7 @@ Every substantial task must conclude with this report block:
 ### Validation Evidence Types
 - **Runtime-Verified**: Exercised by `validate_project.bat`, `smoke_project.bat`, or manual Godot run. (Required for implementation).
 - **Static-Only**: Based on `grep_search`, syntax checking, and code structure. (Explain WHY runtime was skipped).
+- **Visual-Evidence**: Based on screenshot, capture, frame sequence, and metadata inspected through `docs/ai/VISUAL_TRUTH_LOOP.md`.
 - **Speculative**: Educated guess based on documentation or old truth. (Must be explicitly marked).
 
 ### The Report Template
@@ -68,6 +69,9 @@ Every substantial task must conclude with this report block:
 
 ## 5. VISUAL TRUTH CONTRACT
 INSPECTOR audits are only valid when grounded in visual evidence plus capture metadata. Screenshots without scene/camera/combat context are treated as weak evidence.
+
+Canonical specialist file: `docs/ai/agents/INSPECTOR.md`.
+Capture/audit workflow: `docs/ai/VISUAL_TRUTH_LOOP.md`.
 
 ### Required Visual Audit Inputs
 - Screenshot or frame sequence path.

@@ -1,4 +1,4 @@
-# BRAIN — THE PULSE KERNEL (v2.2)
+# BRAIN — THE PULSE KERNEL (v2.3)
 
 This is the project's pulse. Use this as the compact context nucleus for the BRAIN orchestrator.
 
@@ -15,9 +15,10 @@ This is the project's pulse. Use this as the compact context nucleus for the BRA
 
 ## The BRAIN Stack
 - **BRAIN (Director)**: Soul Guardian, Best-Next-Move selector.
-- **CYBORG (Auditor)**: Shadow Pair critique, Verification.
-- **SYMBIOTE (Scout)**: Context compression, Truth sync.
-- **ALFRED (Surgeon)**: Task router, Decomposition, Handoffs.
+- **SYMBIOTE (Scout)**: Interconnectivity, context compression, repo-truth sync.
+- **CYBORG (Auditor)**: Shadow Pair critique, verification, self-upgrade extraction.
+- **ALFRED (Surgeon)**: Ease-of-use, task routing, decomposition, implementation handoffs.
+- **INSPECTOR (Lens)**: Visual truth, screenshot/capture audits, readability receipts.
 
 ## Validation Contract
 Every substantial move MUST include the **Auditor's Report (v2.2)**.
@@ -29,3 +30,4 @@ Every substantial move MUST include the **Auditor's Report (v2.2)**.
 - **Assumption-Busting / Read / Confirmed / Inference / Unknown**
 - **Ceiling / Evolution / Bottleneck / Next Move**
 - **Routing / Handoff / Auditor's Report (v2.2)**
+- For visual work: include evidence paths, capture metadata, Inspector receipt, and re-capture plan.

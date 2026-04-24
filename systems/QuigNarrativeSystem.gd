@@ -26,6 +26,17 @@ func _connect_signals() -> void:
 	EventBus.sovereign_threshold_reached.connect(_on_sovereign_threshold_reached)
 	EventBus.enemy_damaged.connect(_on_enemy_damaged)
 	EventBus.combat_ended.connect(_on_combat_ended)
+	EventBus.world_fate_shifted.connect(_on_world_fate_shifted)
+	EventBus.creature_ascended.connect(_on_creature_ascended)
+
+
+func _on_world_fate_shifted(new_fate_id: String, _old_fate_id: String) -> void:
+	if new_fate_id != "unclaimed":
+		_trigger_line("world_fate", new_fate_id, 0.0)
+
+
+func _on_creature_ascended(_data: Dictionary) -> void:
+	_trigger_line("ascension", "success", 0.0)
 
 
 func _on_tempo_state_entered(state_id: String) -> void:

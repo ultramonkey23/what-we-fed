@@ -9,7 +9,7 @@ This is the project's pulse. Use this as the default context nucleus for all V2 
     - **Origin**: A real-world person who chose "Entry" before death.
     - **Rebirth**: The player becomes a diegetic "System" (The Gamer/Slime style) that extracts traits and reshapes flesh.
 - **Genre**: Surreal, System-Horror RPG Roguelite with Rhythm-Action Combat.
-- **Signature Expression**: Three-lane timing combat; a stylish volley of intercepted pressure (Chainsaw Man kineticism).
+- **Signature Expression**: Transitioning from a three-lane timing combat to a centered, 4-direction timing ring; a stylish volley of intercepted pressure (Chainsaw Man kineticism mixed with centered survivor pressure).
 - **Shorthand**: **Combat-Clean, Management-Rich** (The Honed Edge and The Grafted Growth).
 - **Aesthetic**: **Kinetic Surrealism** (Ito spirals + Chainsaw violence + Kaiju scale).
 
@@ -23,7 +23,15 @@ To maintain "Timing Honesty" while scaling "Management-Rich" power:
 
 ---
 
-## 2. THE AUTHORITY HIERARCHY (The Unified Pulse)
+## 2. Meta-Loop Truth (The World Resonance)
+The world is not just a backdrop; it is a reactive biomechanical response to the player's philosophy of power.
+- **World Fate**: Every choice (Bond/Eat) and performance milestone shifts the **Dominant Fate** (Predatory, Mythic, Technocratic, Haunted).
+- **Lair Resonance**: The current Dominant Fate grants passive perks in the Lair (e.g., DNA discounts, starting support charge), shaping the player's capacity to prepare.
+- **Creature Ascension**: The peak of bonding. A Level 5 bond can "Ascend" to Sovereign status only when the world resonates with its specific affinity, unlocking permanent **Mastery Traits**.
+
+---
+
+## 3. THE AUTHORITY HIERARCHY (The Unified Pulse)
 1. **User / Creator Intent**: Highest authority. Determines what the project should become.
 2. **Current Repo Truth (Layer 2)**: Defines what currently exists in implementation (The Body).
 3. **Current Live Build (Runtime Evidence)**: Defines what is currently live and working.

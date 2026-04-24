@@ -207,6 +207,31 @@ const QUIG_REACTIVE_LINES := {
 			"It bleeds like anything else. Close the wake.",
 			"The law is breaking. Claim it."
 		]
+	},
+	"world_fate": {
+		"predatory_brutal": [
+			"The world resonates with PREDATION. The Hollow answers force with force.",
+			"The scent of blood has become the law. Brutality is rewarded."
+		],
+		"mythic_hopeful": [
+			"The world resonates with MYTH. The echo of the bond rises.",
+			"A shared memory thins the veil. The allies remember you."
+		],
+		"sterile_technocratic": [
+			"The world resonates with LOGIC. Structural integrity prioritized.",
+			"Cold air, cold patterns. Efficiency is the only metric now."
+		],
+		"haunted_ritual": [
+			"The world resonates with SHADOW. Rituals gain persistence.",
+			"The failure of others lingers here. It wants to be repeated."
+		]
+	},
+	"ascension": {
+		"success": [
+			"The pattern is rewritten. Ascension confirmed.",
+			"They have reached sovereign status. The Lair accepts the new law.",
+			"A hybrid sovereign is born. The world notices."
+		]
 	}
 }
 

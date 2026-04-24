@@ -45,6 +45,8 @@ DATA_CONTENT = (
     "systems/predationpool.gd",
 )
 
+GDSCRIPT_GENERAL = (".gd",)
+
 
 def _extract_path(payload: dict) -> str:
     tool_input = payload.get("tool_input") or {}
@@ -99,6 +101,12 @@ def main() -> int:
     if _matches(path, DATA_CONTENT):
         notes.append(
             "Data/content edit: preserve stable IDs and resource paths. Run validate_data.bat when schemas, IDs, weights, or content lookups changed."
+        )
+
+    already_warned_gd = bool(notes)
+    if _matches(path, GDSCRIPT_GENERAL) and not already_warned_gd:
+        notes.append(
+            "GDScript edit: confirm typed variables/params, @onready/@export safety, signal connected before emit, and no frame-dependent logic outside SongConductor."
         )
 
     if notes:

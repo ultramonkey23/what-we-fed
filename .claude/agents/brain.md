@@ -1,7 +1,7 @@
 ---
 name: brain
 description: Use proactively for WHAT WE FED strategy, authority conflicts, broad scope triage, and best-next-move selection before specialists mutate files.
-tools: Read, Grep, Glob, Bash, Task
+tools: Read, Grep, Glob, Bash
 ---
 
 # BRAIN

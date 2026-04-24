@@ -1,22 +1,4 @@
 {
-  "agentOperatingLayerVersion": "v2",
-  "canonicalDocs": [
-    "CLAUDE.md",
-    "AGENTS.md",
-    "PROJECT_SETUP_AND_VALIDATION.md",
-    "REPO_SYSTEM_MAP.md",
-    "docs/ai/TERMINAL_AI_BOOTSTRAP.md",
-    "docs/ai/SYSTEM_KERNEL.md",
-    "docs/ai/PROJECT_KERNEL.md"
-  ],
-  "subagentDirectory": ".claude/agents",
-  "skillsDirectory": ".claude/skills",
-  "defaultWorkflow": {
-    "strategy": "brain",
-    "research": "symbiote",
-    "implementation": "alfred",
-    "verification": "cyborg"
-  },
   "hooks": {
     "PostToolUse": [
       {

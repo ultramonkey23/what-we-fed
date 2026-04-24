@@ -1133,15 +1133,6 @@ func _resolve_song_empty_lane_near_player() -> int:
 	return player_lane # Fallback to player lane if everything is full (will be handled by queue/stall logic)
 
 
-func _blank_song_reserve_lane_map() -> Dictionary:
-	return {0: [], 1: [], 2: [], 3: []}
-
-
-func _reset_song_reserve_state(_clear_visuals: bool = true) -> void:
-	# Legacy song_reserve is handled internally by LaneManager.gd's Strike Queue.
-	pass
-
-
 func _song_reserve_count() -> int:
 	if lane_manager != null and lane_manager.has_method("alive_count"):
 		# In the new model, 'reserve' count is basically (total alive - strikers).
@@ -1149,11 +1140,6 @@ func _song_reserve_count() -> int:
 		var strikers = int(lane_manager.call("alive_striker_count"))
 		return max(0, total - strikers)
 	return 0
-
-
-func _refresh_song_reserve_population(_force_reroll: bool = false) -> void:
-	# Handled by LaneManager and EncounterEscalationDirector.
-	pass
 
 
 func _continue_after_non_song_reward_resolution() -> void:
@@ -2821,15 +2807,6 @@ func _reflow_reward_scroll_labels() -> void:
 	)
 
 
-func _reflow_scroll_label_pair(scroll: ScrollContainer, label: Label) -> void:
-	if scroll == null or label == null:
-		return
-	var inner_w: float = maxf(1.0, scroll.size.x - 10.0)
-	label.custom_minimum_size.x = inner_w
-	var content_h: float = label.get_minimum_size().y
-	label.custom_minimum_size.y = maxf(scroll.size.y, content_h)
-
-
 func _create_upgrade_overlay() -> void:
 	_upgrade_overlay = ColorRect.new()
 	_upgrade_overlay.name = "UpgradeOverlay"
@@ -2927,63 +2904,13 @@ func _create_live_reward_shell() -> void:
 	_live_reward_hint_label = nodes.get("live_reward_hint_label")
 
 
-#region agent log
-func _agent_debug_log(run_id: String, hypothesis_id: String, location: String, message: String, data: Dictionary) -> void:
-	DEBUG_TRACE.append_agent_event(run_id, hypothesis_id, location, message, data)
-#endregion
-
-
 func _create_hud_presenter() -> void:
 	_hud_presenter = COMBAT_HUD_PRESENTER.new(COMBAT_CONTENT, PRESENTATION_TEXT, UI_STYLE)
 	var nodes: Dictionary = _build_hud_contract_nodes()
-	#region agent log
-	_agent_debug_log(
-		"pre-fix",
-		"H_CREATE_BIND",
-		"CombatScene.gd:_create_hud_presenter",
-		"Creating HUD presenter and binding nodes",
-		{
-			"nodes_size": nodes.size(),
-			"has_scouter_shell": nodes.has("scouter_shell"),
-			"scouter_type": (nodes.get("scouter_shell").get_class() if nodes.get("scouter_shell") is Object else "null_or_non_object")
-		}
-	)
-	#endregion
 	_hud_presenter.bind_nodes(nodes)
 
 
 func _build_hud_contract_nodes() -> Dictionary:
-	#region agent log
-	var scouter_shell_name: String = "null"
-	var scouter_shell_type: String = "null"
-	var support_shell_name: String = "null"
-	var support_shell_type: String = "null"
-	var dna_shell_name: String = "null"
-	var dna_shell_type: String = "null"
-	if _scouter_shell != null:
-		scouter_shell_name = str(_scouter_shell.name)
-		scouter_shell_type = _scouter_shell.get_class()
-	if _support_shell != null:
-		support_shell_name = str(_support_shell.name)
-		support_shell_type = _support_shell.get_class()
-	if _dna_shell != null:
-		dna_shell_name = str(_dna_shell.name)
-		dna_shell_type = _dna_shell.get_class()
-	_agent_debug_log(
-		"pre-fix",
-		"H_CONTRACT_TYPES",
-		"CombatScene.gd:_build_hud_contract_nodes",
-		"Building HUD contract nodes",
-		{
-			"scouter_shell_name": scouter_shell_name,
-			"scouter_shell_type": scouter_shell_type,
-			"support_shell_name": support_shell_name,
-			"support_shell_type": support_shell_type,
-			"dna_shell_name": dna_shell_name,
-			"dna_shell_type": dna_shell_type
-		}
-	)
-	#endregion
 	# Centralized node contract to keep CombatScene and CombatHUDPresenter synchronized.
 	return {
 		"combo_label": combo_label,
@@ -3222,7 +3149,6 @@ func _start_song_run() -> void:
 	_active_reward_runtime = REWARD_RUNTIME_NONE
 	_between_level_growth_stored_this_level = false
 	_song_enemy_lanes.clear()
-	_reset_song_reserve_state(true)
 	_latest_ecology_snapshot.clear()
 	_song_rng.randomize()
 	_song_section_spawn_mult = 1.0
@@ -3282,7 +3208,6 @@ func _start_regular_level(level_index: int, reset_hp: bool) -> void:
 	_active_reward_runtime = REWARD_RUNTIME_NONE
 	_between_level_growth_stored_this_level = false
 	_song_enemy_lanes.clear()
-	_reset_song_reserve_state(true)
 	_latest_ecology_snapshot.clear()
 	_status_marker_overrides.clear()
 	if lane_manager != null and lane_manager.has_method("stop"):
@@ -3754,7 +3679,6 @@ func _enter_song_phase(new_idx: int) -> void:
 
 	_apply_song_phase_cadence(new_phase, _song_section_spawn_mult)
 	_apply_attack_authority_budget(_latest_ecology_snapshot, new_phase)
-	_refresh_song_reserve_population(true)
 
 	if _song_phase_label != null:
 		_song_phase_label.text = ENCOUNTER_IDENTITY_RUNTIME.get_phase_display_label(_region_id, new_phase)
@@ -3829,7 +3753,6 @@ func _resume_song_after_reward() -> void:
 func _trigger_boss_final_movement() -> void:
 	_song_reward_pending = false
 	_reset_pending_reward_state(true)
-	_reset_song_reserve_state(true)
 	_exit_tempo_state(_tempo_state_family, true)
 	_hide_live_reward_shell()
 	_song_boss_triggered = true
@@ -4472,14 +4395,6 @@ func _build_enemy_marker(enemy_id: int, lane: int, enemy: Dictionary, marker_siz
 		_texture_cache
 	)
 
-func _configure_enemy_marker_shape(accent: ColorRect, sigil: ColorRect, marker_size: float, family: String) -> void:
-	_presentation_controller._configure_enemy_marker_shape(accent, sigil, marker_size, family)
-
-
-func _tune_enemy_silhouette_color(requested: Color, body_color: Color) -> Color:
-	return _presentation_controller._tune_enemy_silhouette_color(requested, body_color)
-
-
 func _update_enemy_marker_threat_states() -> void:
 	_presentation_controller.update_enemy_marker_threat_states(
 		_enemy_markers_by_id,
@@ -4496,14 +4411,6 @@ func _draw_timing_circles() -> void:
 		lane_manager,
 		player_combat
 	)
-
-
-func _make_ring_line(radius: float, color: Color, width: float) -> Line2D:
-	return _presentation_controller._make_ring_line(radius, color, width)
-
-
-func _make_disc_polygon(radius: float, color: Color) -> Polygon2D:
-	return _presentation_controller._make_disc_polygon(radius, color)
 
 
 func _prepare_for_encounter(reset_hp: bool) -> void:

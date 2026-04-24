@@ -50,10 +50,10 @@ const HURT_IMAGE_DURATION: float = 0.30
 # All action tweens return to this lane's Y position via _play_world_motion.
 # Do not remove the return-to-center snap without updating every action state function.
 const NEUTRAL_LANE: int = 1
-const ATTACK_WORLD_X_OFFSET: float = 28.0
-const PARRY_WORLD_X_OFFSET: float = -12.0
-const DODGE_WORLD_X_OFFSET: float = -22.0
-const HIT_WORLD_X_OFFSET: float = -18.0
+const ATTACK_WORLD_X_OFFSET: float = 58.0
+const PARRY_WORLD_X_OFFSET: float = -22.0
+const DODGE_WORLD_X_OFFSET: float = -44.0
+const HIT_WORLD_X_OFFSET: float = -36.0
 
 # Sprite-local pose offsets.
 const NEUTRAL_SPRITE_POSITION := Vector2(-42.0, -82.0)
@@ -509,16 +509,19 @@ func _try_dodge(target_dir: int) -> void:
 
 
 func _play_dodge_state_radial(target_dir: int, target_pos: Vector2) -> void:
+	_apply_sprite_facing(target_dir)
 	_spawn_dodge_afterimage()
 	_play_sprite_pose(DODGE_SPRITE_POSITION, DODGE_SPRITE_SCALE, 0.10)
-	
+
 	# Motion toward the threat hit-zone, then return to neutral center.
 	if _world_motion_tween != null:
 		_world_motion_tween.kill()
 
 	_world_motion_tween = create_tween()
-	_world_motion_tween.tween_property(self, "position", target_pos, 0.05)
-	_world_motion_tween.tween_property(self, "position", _neutral_world_position(), 0.16)
+	_world_motion_tween.tween_property(self, "position", target_pos, 0.05) \
+		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CIRC)
+	_world_motion_tween.tween_property(self, "position", _neutral_world_position(), 0.16) \
+		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
 	_world_motion_tween.tween_callback(func() -> void:
 		current_lane = NEUTRAL_LANE
 	)
@@ -890,6 +893,7 @@ func _setup_player_sprite() -> void:
 	_player_sprite.flip_h = false
 	_player_sprite.position = NEUTRAL_SPRITE_POSITION
 	_player_sprite.scale = NEUTRAL_SPRITE_SCALE * PLAYER_SPRITE_SCALE_BASE
+	_setup_ground_shadow()
 	add_child(_player_sprite)
 
 
@@ -923,6 +927,30 @@ func _show_parry_image(quality: String = "good") -> void:
 
 func _show_hurt_image() -> void:
 	_show_player_image(_hurt_tex, HURT_IMAGE_DURATION)
+
+
+func _apply_sprite_facing(direction: int) -> void:
+	if _player_sprite == null:
+		return
+	match direction:
+		2: _player_sprite.flip_h = false  # East — face right
+		3: _player_sprite.flip_h = true   # West — face left
+
+
+func _setup_ground_shadow() -> void:
+	var shadow := Polygon2D.new()
+	shadow.name = "GroundShadow"
+	shadow.z_index = -1
+	var pts := PackedVector2Array()
+	var rx := 26.0
+	var ry := 7.0
+	for i in range(24):
+		var a := (i / 24.0) * TAU
+		pts.append(Vector2(cos(a) * rx, sin(a) * ry))
+	shadow.polygon = pts
+	shadow.color = Color(0.0, 0.0, 0.0, 0.28)
+	shadow.position = Vector2(-6.0, 6.0)
+	add_child(shadow)
 
 
 func _setup_energy_aura() -> void:
@@ -1015,6 +1043,7 @@ func _return_to_neutral_state(immediate: bool = false) -> void:
 
 
 func _play_attack_state(target_lane: int) -> void:
+	_apply_sprite_facing(target_lane)
 	_show_attack_image()
 	_play_sprite_pose(ATTACK_SPRITE_POSITION, ATTACK_SPRITE_SCALE, 0.08)
 	_play_world_motion(
@@ -1026,6 +1055,7 @@ func _play_attack_state(target_lane: int) -> void:
 
 
 func _play_parry_state(target_lane: int) -> void:
+	_apply_sprite_facing(target_lane)
 	_play_sprite_pose(PARRY_SPRITE_POSITION, PARRY_SPRITE_SCALE, 0.10)
 	_play_world_motion(
 		_action_world_position(target_lane, PARRY_WORLD_X_OFFSET),
@@ -1047,6 +1077,7 @@ func _play_dodge_state(target_lane: int) -> void:
 
 
 func _play_hit_state(target_lane: int) -> void:
+	_apply_sprite_facing(target_lane)
 	_play_sprite_pose(HIT_SPRITE_POSITION, HIT_SPRITE_SCALE, 0.12)
 	_play_world_motion(
 		_action_world_position(target_lane, HIT_WORLD_X_OFFSET),
@@ -1067,10 +1098,14 @@ func _play_sprite_pose(target_position: Vector2, target_scale: Vector2, return_t
 	var neutral_s: Vector2 = NEUTRAL_SPRITE_SCALE * (PLAYER_SPRITE_SCALE_BASE if _player_sprite != null else 1.0)
 
 	_sprite_pose_tween = create_tween()
-	_sprite_pose_tween.tween_property(vis_node, "position", target_position, 0.03)
-	_sprite_pose_tween.parallel().tween_property(vis_node, "scale", action_s, 0.03)
-	_sprite_pose_tween.tween_property(vis_node, "position", NEUTRAL_SPRITE_POSITION, return_time)
-	_sprite_pose_tween.parallel().tween_property(vis_node, "scale", neutral_s, return_time)
+	_sprite_pose_tween.tween_property(vis_node, "position", target_position, 0.03) \
+		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_EXPO)
+	_sprite_pose_tween.parallel().tween_property(vis_node, "scale", action_s, 0.03) \
+		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_EXPO)
+	_sprite_pose_tween.tween_property(vis_node, "position", NEUTRAL_SPRITE_POSITION, return_time) \
+		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+	_sprite_pose_tween.parallel().tween_property(vis_node, "scale", neutral_s, return_time) \
+		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
 
 
 func _play_world_motion(action_position: Vector2, return_position: Vector2, push_time: float, return_time: float) -> void:
@@ -1084,11 +1119,13 @@ func _play_world_motion(action_position: Vector2, return_position: Vector2, push
 
 	_world_motion_tween = create_tween()
 	if push_time > 0.0:
-		_world_motion_tween.tween_property(self, "position", action_position, push_time)
+		_world_motion_tween.tween_property(self, "position", action_position, push_time) \
+			.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CIRC)
 	else:
 		position = action_position
 
-	_world_motion_tween.tween_property(self, "position", return_position, return_time)
+	_world_motion_tween.tween_property(self, "position", return_position, return_time) \
+		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
 	_world_motion_tween.tween_callback(func() -> void:
 		if current_lane != acting_lane:
 			return

@@ -1,16 +1,34 @@
 {
-  "agentOperatingLayerVersion": "v1",
+  "agentOperatingLayerVersion": "v2",
   "canonicalDocs": [
+    "CLAUDE.md",
+    "AGENTS.md",
+    "PROJECT_SETUP_AND_VALIDATION.md",
+    "REPO_SYSTEM_MAP.md",
     "docs/ai/TERMINAL_AI_BOOTSTRAP.md",
     "docs/ai/SYSTEM_KERNEL.md",
-    "docs/ai/PROJECT_KERNEL.md",
-    "AGENTS.md",
-    "docs/ai/HANDOFF_TEMPLATES.md"
+    "docs/ai/PROJECT_KERNEL.md"
   ],
   "subagentDirectory": ".claude/agents",
+  "skillsDirectory": ".claude/skills",
   "defaultWorkflow": {
-    "routing": "alfred",
+    "strategy": "brain",
     "research": "symbiote",
+    "implementation": "alfred",
     "verification": "cyborg"
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|MultiEdit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR/Python/bin/python.exe\" \"$CLAUDE_PROJECT_DIR/.claude/hooks/claude_workflow_guard.py\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
   }
 }

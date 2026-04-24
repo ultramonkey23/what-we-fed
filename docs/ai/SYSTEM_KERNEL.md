@@ -1,15 +1,16 @@
-# WHAT WE FED — SYSTEM KERNEL (v2.2 "The Unified Pulse")
+# WHAT WE FED — SYSTEM KERNEL (v2.3 "The Unified Pulse")
 
 This is the repository's single source of truth for AI orchestration, governance, and validation. Load this as the primary context for all agents.
 
 ---
 
 ## 1. THE BRAIN STACK (Orchestration)
-The project operates through a four-lobe functional stack. Do not collapse these roles.
-- **BRAIN (Director)**: Strategic lead, Soul Guardian, Best-Next-Move selector.
-- **CYBORG (Auditor)**: Verification kernel, Shadow Pair critique, Regression/Sludge hunter.
-- **SYMBIOTE (Scout)**: Deep research, Context compression, Repo Truth (Layer 2) sync.
-- **ALFRED (Surgeon)**: Task decomposition, Handoff generation, surgical code mutation.
+The project operates through a five-lobe functional stack. Do not collapse these roles.
+- **BRAIN (Architect)**: Strategic lead, Soul Guardian, Best-Next-Move selector.
+- **CYBORG (Auditor)**: Self-upgrading specialist, agent-extraction, verification, Shadow Pair critique.
+- **SYMBIOTE (Scout)**: Interconnectivity specialist, Context compression, Repo Truth (Layer 2) sync.
+- **ALFRED (Surgeon)**: Ease-of-use/user-enablement specialist, task decomposition, surgical code mutation.
+- **INSPECTOR (Lens)**: Visual Truth specialist, readability audits, Prototype-to-Premium visual alignment.
 
 ---
 
@@ -65,7 +66,24 @@ Every substantial task must conclude with this report block:
 
 ---
 
-## 5. ANTI-DRIFT & REGRESSION RULES
+## 5. VISUAL TRUTH CONTRACT
+INSPECTOR audits are only valid when grounded in visual evidence plus capture metadata. Screenshots without scene/camera/combat context are treated as weak evidence.
+
+### Required Visual Audit Inputs
+- Screenshot or frame sequence path.
+- Moment ID: the gameplay event being judged.
+- Scene, viewport size, camera zoom, and camera offset.
+- Combat tier and song/resonance context when in combat.
+- Lane context: active lane, source/threat lane, and lane y positions when available.
+- Support context when bonded support/VFX are visible.
+- Expected visual contract from `HUD_READABILITY_DOCTRINE.md`.
+
+### Visual Audit Receipt Rule
+The Inspector must emit a machine-readable receipt before ALFRED mutates visuals. ALFRED should not infer fixes from prose when a receipt omits target file, violation type, severity, or acceptance criteria.
+
+---
+
+## 6. ANTI-DRIFT & REGRESSION RULES
 - **No Vague Benefits**: Never justify changes with "better architecture" without a specific functional gain.
 - **No Hallucinations**: If a test wasn't run, report it as "Static-Only" or "Speculative."
 - **No Flattening**: Do not replace unique project traits with generic roguelite/RPG tropes.

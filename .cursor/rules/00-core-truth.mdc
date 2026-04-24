@@ -6,6 +6,7 @@ alwaysApply: true
 # Core Truth (Default Kernel Mirror)
 
 - Creator direction overrides startup defaults.
+- Shared cross-tool coordination lives in `docs/ai/MULTI_AI_OPERATING_LAYER.md`.
 - Load `docs/ai/SYSTEM_KERNEL.md` first, then `docs/ai/PROJECT_KERNEL.md`.
 - Preserve: timing truth, lane/support readability, DNA meaning, Bond/Eat tension, active-combat no-pause identity.
 - Live build truth outranks stale speculative wording.
@@ -21,5 +22,6 @@ alwaysApply: true
 
 # Deep References
 
+- `docs/ai/MULTI_AI_OPERATING_LAYER.md`
 - `docs/ai/CONTEXT_EXPANSION_MAP.md`
 - `docs/ai/AGENT_OPERATING_SYSTEM.md`

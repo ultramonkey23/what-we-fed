@@ -11,11 +11,13 @@ Authority Order:
 
 Terminal Bootstrap:
 - Terminal-based AI sessions should load `docs/ai/TERMINAL_AI_BOOTSTRAP.md` first when the tool supports repo instructions.
+- Multi-AI coordination lives in `docs/ai/MULTI_AI_OPERATING_LAYER.md`. Use it to align Claude, Codex, Gemini, Cursor, Copilot, Cline, and future agents without copying long doctrine into every adapter.
 
 Core Read Order:
-1. `docs/ai/SYSTEM_KERNEL.md` (The Unified Pulse)
-2. `docs/ai/PROJECT_KERNEL.md` (Project Identity)
-3. `AGENTS.md` (Entrypoint / routing)
+1. `docs/ai/MULTI_AI_OPERATING_LAYER.md` (Shared compact contract)
+2. `docs/ai/SYSTEM_KERNEL.md` (The Unified Pulse)
+3. `docs/ai/PROJECT_KERNEL.md` (Project Identity)
+4. `AGENTS.md` (Entrypoint / routing)
 
 Terminal AI Rule:
 - Any terminal-based AI session in this repo should load `docs/ai/TERMINAL_AI_BOOTSTRAP.md` first, then use the core read order above.
@@ -39,6 +41,8 @@ BRAIN is the orchestrator; specialist agents are the tools in its lanes.
 - **Claude Adapter**: `CLAUDE.md`
 - **Gemini Adapter**: `GEMINI.md`
 - **Copilot Instructions**: `.github/copilot-instructions.md`
+- **Codex Hints**: `.codex/config.toml`
+- **Shared Multi-AI Layer**: `docs/ai/MULTI_AI_OPERATING_LAYER.md`
 - **Remote Commands**: `docs/ai/REMOTE_COMMAND_SYSTEM.md`
 
 ---

@@ -6,6 +6,7 @@ alwaysApply: true
 # Routing and Handoffs
 
 - Pick one bounded next move before implementation.
+- Use current lane names from `docs/ai/MULTI_AI_OPERATING_LAYER.md`: BRAIN decides, SYMBIOTE connects, CYBORG upgrades, ALFRED simplifies, INSPECTOR sees.
 - Classify mutation budget: low / medium / high.
 - Low mutation: single practical path.
 - Medium/high mutation: safe path + mutation path + recommended path.
@@ -30,6 +31,7 @@ When the task involves screenshots, captures, HUD readability, combat clarity, V
 
 # Deep References
 
+- `docs/ai/MULTI_AI_OPERATING_LAYER.md`
 - `docs/ai/HANDOFF_TEMPLATES.md`
 - `docs/ai/NEXT_MOVE_ROUTER.md`
 - `docs/ai/VISUAL_TRUTH_LOOP.md`

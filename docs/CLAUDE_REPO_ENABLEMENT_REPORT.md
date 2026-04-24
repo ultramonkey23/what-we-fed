@@ -22,3 +22,8 @@ Installed April 24, 2026 as a Claude-native collaboration layer for WHAT WE FED.
 - Confirm the hook command works in the preferred Claude Code shell on this Windows setup.
 - Tune hook sensitivity if reminders become noisy.
 - Add more scoped rules only after repeated friction proves they are needed.
+
+## Follow-Up Multi-AI Upgrade
+- Added `docs/ai/MULTI_AI_OPERATING_LAYER.md` as the shared contract for all AI tools.
+- Linked Claude, Codex, Gemini, Cursor, Copilot, Cline, `AGENTS.md`, and terminal bootstrap into that shared layer.
+- Added `docs/ai/AI_SYSTEM_UPGRADE_REVIEW.md` with critique and upgrade notes.

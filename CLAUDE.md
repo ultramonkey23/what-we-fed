@@ -39,6 +39,7 @@ Run from repo root:
 Do not claim gameplay feel validation from smoke/validate alone. State exactly what was and was not run.
 
 ## Load-On-Demand Context
+- Shared multi-AI contract: `docs/ai/MULTI_AI_OPERATING_LAYER.md`
 - Workflow and validation details: `PROJECT_SETUP_AND_VALIDATION.md`
 - System ownership map: `REPO_SYSTEM_MAP.md`
 - Current spine: `docs/GAME_SPINE.md`, `docs/NEXT_PHASE_PLAN.md`

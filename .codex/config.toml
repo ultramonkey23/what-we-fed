@@ -2,6 +2,7 @@
 
 [project]
 terminal_ai_bootstrap_doc = "docs/ai/TERMINAL_AI_BOOTSTRAP.md"
+multi_ai_operating_layer_doc = "docs/ai/MULTI_AI_OPERATING_LAYER.md"
 kernel_doc = "docs/ai/SYSTEM_KERNEL.md"
 project_kernel_doc = "docs/ai/PROJECT_KERNEL.md"
 agents_entrypoint_doc = "AGENTS.md"

@@ -62,7 +62,8 @@ Repo-local Godot wrappers:
 - `run_project.bat`: launch the game
 - `debug_harness.bat`: launch the dev-only combat harness
 - `smoke_project.bat`: fast headless boot check
-- `validate_project.bat`: import pass plus headless smoke
+- `validate_data.bat`: headless data content audit
+- `validate_project.bat`: import pass plus headless smoke and data audit
 - `editor_project.bat`: open Godot editor
 - `resolve_godot.bat`: print resolved Godot executable
 - `tools/godot.ps1`: shared wrapper behind all repo-local commands

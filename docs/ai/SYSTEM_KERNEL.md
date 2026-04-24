@@ -5,12 +5,12 @@ This is the repository's single source of truth for AI orchestration, governance
 ---
 
 ## 1. THE BRAIN STACK (Orchestration)
-The project operates through a five-lobe functional stack. Do not collapse these roles.
-- **BRAIN (Architect)**: Strategic lead, Soul Guardian, Best-Next-Move selector.
-- **CYBORG (Auditor)**: Self-upgrading specialist, agent-extraction, verification, Shadow Pair critique.
-- **SYMBIOTE (Scout)**: Interconnectivity specialist, Context compression, Repo Truth (Layer 2) sync.
-- **ALFRED (Surgeon)**: Ease-of-use/user-enablement specialist, task decomposition, surgical code mutation.
-- **INSPECTOR (Lens)**: Visual Truth specialist, readability audits, Prototype-to-Premium visual alignment.
+The project operates through a five-lobe functional stack. Every lobe has a formal mandate file in `docs/ai/agents/`.
+- **BRAIN (Director)**: Strategic lead, Soul Guardian, Best-Next-Move selector. (`BRAIN.md`)
+- **CYBORG (Auditor)**: Self-upgrading specialist, agent-extraction, verification. (`CYBORG.md`)
+- **SYMBIOTE (Scout)**: Interconnectivity specialist, context compression, Repo Truth sync. (`SYMBIOTE.md`)
+- **ALFRED (Surgeon)**: User-enablement, surgical code mutation. (`GDSCRIPT_SURGEON.md`, etc.)
+- **INSPECTOR (Lens)**: Visual Truth lead, readability audits, aesthetic alignment. (`INSPECTOR.md`)
 
 ---
 
@@ -42,7 +42,8 @@ The project operates through a five-lobe functional stack. Do not collapse these
 Every substantial task must conclude with this report block:
 
 ### Validation Evidence Types
-- **Runtime-Verified**: Exercised by `validate_project.bat`, `smoke_project.bat`, or manual Godot run. (Required for implementation).
+- **Runtime-Verified**: Exercised by `validate_project.bat`, `smoke_project.bat`, `validate_data.bat`, or manual Godot run. (Required for implementation).
+- **Data-Validated**: Verified by the headless Data Content Validator (`tools/validate_data_content.gd`).
 - **Static-Only**: Based on `grep_search`, syntax checking, and code structure. (Explain WHY runtime was skipped).
 - **Visual-Evidence**: Based on screenshot, capture, frame sequence, and metadata inspected through `docs/ai/VISUAL_TRUTH_LOOP.md`.
 - **Speculative**: Educated guess based on documentation or old truth. (Must be explicitly marked).

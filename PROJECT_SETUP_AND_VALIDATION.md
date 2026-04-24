@@ -75,6 +75,7 @@ Godot resolution order:
 - parse errors in scripts
 - autoload and early startup failures
 - obvious runtime boot crashes
+- **Data Integrity**: Unique IDs and valid resource paths in `data/CombatContent.gd`, `data/RouteContent.gd`, and song maps.
 
 It does not verify:
 - live gameplay feel

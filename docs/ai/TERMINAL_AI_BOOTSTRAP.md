@@ -24,5 +24,6 @@ Before patching, you MUST:
 
 ## 4. REPORTING LAW
 Every task must conclude with the **Auditor's Report (v2.2)** as defined in `docs/ai/SYSTEM_KERNEL.md`.
+Use `validate_data.bat` when modifying files in `data/`.
 
 *Status: Ready for work. What is the one best next move?*

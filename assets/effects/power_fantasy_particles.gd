@@ -1,7 +1,8 @@
 extends GPUParticles2D
 class_name PowerFantasyParticles
 
-# Spectacular particle effects for power fantasy combat
+# SIGNAL: Manga-Ink Bloom + Black Signal Soul
+# This replaces generic "power fantasy" with high-contrast predatory impact.
 enum EffectType {
 	LIGHT_ATTACK,
 	HEAVY_ATTACK,
@@ -13,7 +14,7 @@ enum EffectType {
 }
 
 @export var effect_type: EffectType = EffectType.LIGHT_ATTACK
-@export var screen_coverage: float = 0.3 # Percentage of screen to cover
+@export var screen_coverage: float = 0.3
 
 func _ready():
 	setup_effect_type()
@@ -21,180 +22,120 @@ func _ready():
 func setup_effect_type():
 	match effect_type:
 		EffectType.LIGHT_ATTACK:
-			setup_light_attack()
+			setup_ink_slash(Color(0.8, 0.8, 0.9, 1.0), 0.4) # Cold Silver
 		EffectType.HEAVY_ATTACK:
-			setup_heavy_attack()
+			setup_ink_bloom(Color(0.9, 0.2, 0.1, 1.0), 0.7) # Blood Ember
 		EffectType.PERFECT_ATTACK:
-			setup_perfect_attack()
+			setup_ink_bloom(Color(1.0, 0.9, 0.3, 1.0), 1.0) # Alert Gold
 		EffectType.PARRY:
-			setup_parry()
+			setup_ink_slash(Color(0.2, 0.6, 1.0, 1.0), 0.5) # Signal Blue
 		EffectType.PERFECT_PARRY:
-			setup_perfect_parry()
+			setup_ink_shatter(Color(0.1, 0.05, 0.2, 1.0), 1.2) # Void Ink
 		EffectType.ULTIMATE_DOMINION:
-			setup_ultimate_dominion()
+			setup_ink_shatter(Color(0.6, 0.1, 0.8, 1.0), 2.0) # Mutation Magenta
 		EffectType.ULTIMATE_ASCENSION:
-			setup_ultimate_ascension()
+			setup_ink_bloom(Color(1.0, 1.0, 1.0, 1.0), 2.5) # Pure Signal
 
-func setup_light_attack():
-	# Sharp, clean, cyan-white energy particles
-	amount = 60
-	lifetime = 0.8
-	explosiveness = 0.2
+func setup_ink_slash(ink_color: Color, power: float):
+	# Sharp, directional "Manga-Ink" slash. High contrast, fast decay.
+	amount = int(40 * power)
+	lifetime = 0.3
+	explosiveness = 0.95
 	
-	var particles_material = ParticleProcessMaterial.new()
-	particles_material.direction = Vector3(0, 1, 0)
-	particles_material.spread = 45.0
-	particles_material.initial_velocity_min = 200.0
-	particles_material.initial_velocity_max = 400.0
-	particles_material.gravity = Vector3(0, -98, 0)
-	particles_material.scale_min = 0.5
-	particles_material.scale_max = 1.5
-	particles_material.color = Color.CYAN
-	particles_material.emission = Color.WHITE
+	var mat = ParticleProcessMaterial.new()
+	mat.direction = Vector3(1, 0, 0)
+	mat.spread = 15.0
+	mat.initial_velocity_min = 600.0 * power
+	mat.initial_velocity_max = 900.0 * power
+	mat.damping_min = 2000.0
+	mat.damping_max = 3000.0
+	mat.scale_min = 2.0
+	mat.scale_max = 5.0
 	
-	self.process_material = particles_material
+	# Ink "Teeth" (Jagged Scaling)
+	var scale_curve = CurveTexture.new()
+	var curve = Curve.new()
+	curve.add_point(Vector2(0, 1), 0, 0, Curve.TANGENT_FREE, Curve.TANGENT_FREE)
+	curve.add_point(Vector2(0.2, 1.5), 0, 0, Curve.TANGENT_FREE, Curve.TANGENT_FREE)
+	curve.add_point(Vector2(1, 0), -5.0, 0, Curve.TANGENT_FREE, Curve.TANGENT_FREE)
+	scale_curve.curve = curve
+	mat.scale_curve = scale_curve
+	
+	mat.color = ink_color
+	# Inject Black Ink Seams
+	mat.color_ramp = _make_ink_ramp(ink_color)
+	
+	self.process_material = mat
 
-func setup_heavy_attack():
-	# Explosive, orange-red particles with screen dominance
-	amount = 150
-	lifetime = 1.2
-	explosiveness = 0.4
-	
-	var particles_material = ParticleProcessMaterial.new()
-	particles_material.direction = Vector3(0, 1, 0)
-	particles_material.spread = 90.0
-	particles_material.initial_velocity_min = 300.0
-	particles_material.initial_velocity_max = 600.0
-	particles_material.gravity = Vector3(0, -196, 0)
-	particles_material.scale_min = 1.0
-	particles_material.scale_max = 3.0
-	particles_material.color = Color.ORANGE_RED
-	particles_material.emission = Color.YELLOW
-	
-	self.process_material = particles_material
-
-func setup_perfect_attack():
-	# Spectacular rainbow energy with screen dominance
-	amount = 300
-	lifetime = 1.5
-	explosiveness = 0.6
-	
-	var particles_material = ParticleProcessMaterial.new()
-	particles_material.direction = Vector3(0, 1, 0)
-	particles_material.spread = 120.0
-	particles_material.initial_velocity_min = 400.0
-	particles_material.initial_velocity_max = 800.0
-	particles_material.gravity = Vector3(0, -98, 0)
-	particles_material.scale_min = 1.5
-	particles_material.scale_max = 4.0
-	particles_material.color = Color.GOLD
-	particles_material.emission = Color.MAGENTA
-	
-	self.process_material = particles_material
-
-func setup_parry():
-	# Blue-white time control particles
-	amount = 80
-	lifetime = 1.0
-	explosiveness = 0.3
-	
-	var particles_material = ParticleProcessMaterial.new()
-	particles_material.direction = Vector3(0, 1, 0)
-	particles_material.spread = 60.0
-	particles_material.initial_velocity_min = 250.0
-	particles_material.initial_velocity_max = 500.0
-	particles_material.gravity = Vector3(0, -49, 0)
-	particles_material.scale_min = 0.8
-	particles_material.scale_max = 2.0
-	particles_material.color = Color.DODGER_BLUE
-	particles_material.emission = Color.WHITE
-	
-	self.process_material = particles_material
-
-func setup_perfect_parry():
-	# Reality-bending purple particles
-	amount = 120
-	lifetime = 1.8
-	explosiveness = 0.5
-	
-	var particles_material = ParticleProcessMaterial.new()
-	particles_material.direction = Vector3(0, 1, 0)
-	particles_material.spread = 180.0
-	particles_material.initial_velocity_min = 350.0
-	particles_material.initial_velocity_max = 700.0
-	particles_material.gravity = Vector3(0, 0, 0) # No gravity for time freeze effect
-	particles_material.scale_min = 1.0
-	particles_material.scale_max = 3.5
-	particles_material.color = Color.PURPLE
-	particles_material.emission = Color.CYAN
-	
-	self.process_material = particles_material
-
-func setup_ultimate_dominion():
-	# World-breaking black-purple particles
-	amount = 500
-	lifetime = 2.5
-	explosiveness = 0.8
-	
-	var particles_material = ParticleProcessMaterial.new()
-	particles_material.direction = Vector3(0, 1, 0)
-	particles_material.spread = 360.0 # Full sphere
-	particles_material.initial_velocity_min = 500.0
-	particles_material.initial_velocity_max = 1000.0
-	particles_material.gravity = Vector3(0, 0, 0)
-	particles_material.scale_min = 2.0
-	particles_material.scale_max = 6.0
-	particles_material.color = Color.PURPLE
-	particles_material.emission = Color.BLACK
-	
-	self.process_material = particles_material
-
-func setup_ultimate_ascension():
-	# Transformation DNA particles with screen filling
-	amount = 800
-	lifetime = 3.0
+func setup_ink_bloom(ink_color: Color, power: float):
+	# Visceral ink explosion. Manga-style "Impact Lines."
+	amount = int(100 * power)
+	lifetime = 0.5
 	explosiveness = 1.0
 	
-	var particles_material = ParticleProcessMaterial.new()
-	particles_material.direction = Vector3(0, 1, 0)
-	particles_material.spread = 360.0
-	particles_material.initial_velocity_min = 600.0
-	particles_material.initial_velocity_max = 1200.0
-	particles_material.gravity = Vector3(0, 0, 0)
-	particles_material.scale_min = 3.0
-	particles_material.scale_max = 8.0
-	particles_material.color = Color.MAGENTA
-	particles_material.emission = Color.GOLD
+	var mat = ParticleProcessMaterial.new()
+	mat.spread = 180.0
+	mat.gravity = Vector3(0, 0, 0)
+	mat.initial_velocity_min = 400.0 * power
+	mat.initial_velocity_max = 800.0 * power
+	mat.damping_min = 1500.0
+	mat.damping_max = 2000.0
+	mat.scale_min = 3.0
+	mat.scale_max = 8.0
 	
-	self.process_material = particles_material
+	# Bloom scaling: snap-to-size then fade
+	var scale_curve = CurveTexture.new()
+	var curve = Curve.new()
+	curve.add_point(Vector2(0, 0))
+	curve.add_point(Vector2(0.1, 2.0))
+	curve.add_point(Vector2(1, 0))
+	scale_curve.curve = curve
+	mat.scale_curve = scale_curve
+	
+	mat.color_ramp = _make_ink_ramp(ink_color)
+	self.process_material = mat
+
+func setup_ink_shatter(ink_color: Color, power: float):
+	# Reality-breaking Void Shatter. Jagged fragments of ink.
+	amount = int(150 * power)
+	lifetime = 0.8
+	explosiveness = 0.8
+	
+	var mat = ParticleProcessMaterial.new()
+	mat.spread = 180.0
+	mat.gravity = Vector3(0, 500, 0) # Ink "dripping" down
+	mat.initial_velocity_min = 200.0 * power
+	mat.initial_velocity_max = 600.0 * power
+	mat.scale_min = 4.0
+	mat.scale_max = 12.0
+	
+	# Erratic shatter rotation
+	mat.angle_min = -180.0
+	mat.angle_max = 180.0
+	mat.angular_velocity_min = 720.0
+	mat.angular_velocity_max = 1440.0
+	
+	mat.color_ramp = _make_ink_ramp(ink_color, true)
+	self.process_material = mat
+
+func _make_ink_ramp(base: Color, is_void: bool = false) -> GradientTexture1D:
+	var ramp = GradientTexture1D.new()
+	var grad = Gradient.new()
+	# Ink Truth: Start with pure Black/Void, then flash to color, then fade to Black
+	var void_color = Color(0.01, 0.01, 0.02, 1.0) if not is_void else Color(0.0, 0.0, 0.0, 1.0)
+	grad.offsets = [0.0, 0.1, 0.8, 1.0]
+	grad.colors = [
+		void_color,
+		base,
+		base.lerp(void_color, 0.5),
+		Color(void_color.r, void_color.g, void_color.b, 0.0)
+	]
+	ramp.gradient = grad
+	return ramp
 
 func trigger_effect(effect_position: Vector2, intensity: float = 1.0):
 	global_position = effect_position
-	
-	# Scale particle count based on intensity
-	amount = int(amount * intensity)
-	
-	# Adjust emission based on screen coverage
-	var base_amount = amount
-	amount = int(base_amount * (screen_coverage / 0.3)) # Scale from 30% base
-	
+	# SIGNAL: Avoid sludgy Clarification. Just act.
 	emitting = true
-	
-	# Auto-stop after lifetime
 	await get_tree().create_timer(lifetime).timeout
 	emitting = false
-
-func trigger_screen_filling_effect():
-	# Special method for ultimate abilities
-	amount = int(amount * 2.0) # Double particles for screen filling
-	emitting = true
-	
-	# Create screen shake effect
-	var screen_shake = get_tree().get_first_node_in_group("screen_shake")
-	if screen_shake:
-		screen_shake.add_trauma(0.8)
-	
-	# Create time freeze effect
-	var time_freeze = get_tree().get_first_node_in_group("time_freeze")
-	if time_freeze:
-		time_freeze.activate(0.5)

@@ -390,7 +390,12 @@ func update_background_parallax(bg_sprite: Control, focus_pos: Vector2) -> void:
 				# React to beat by intensifying the noise via shader
 				var mat: ShaderMaterial = drift.material as ShaderMaterial
 				mat.set_shader_parameter("noise_intensity", 0.08 + (beat_pulse * 0.5))
-		
+	
+	# SIGNAL: Pulse the Living Restraint HUD panels on beat
+	# This syncs the biological HUD to the project's Timing Truth pulse.
+	_sync_hud_vein_pulses(bg_sprite.get_parent(), beat_pulse * 15.0)
+	
+	for child in bg_sprite.get_children():
 		if child is TextureRect:
 			var layer_id = child.name
 			var layer_data = {}
@@ -900,6 +905,28 @@ func build_arena_visuals(
 		# Combine gradient with noise for "material seams"
 		lane_strip.texture = ribbon_tex
 		
+		# SIGNAL: Lane Recoil Shudder logic
+		# We're making the lane itself a living participant in Timing Truth.
+		var shudder_mat := ShaderMaterial.new()
+		var shudder_sh := Shader.new()
+		shudder_sh.code = """
+shader_type canvas_item;
+uniform float shudder_intensity : hint_range(0.0, 1.0) = 0.0;
+uniform float time_offset = 0.0;
+
+void fragment() {
+	vec2 uv = UV;
+	float drift = sin((uv.y * 10.0) + (TIME + time_offset) * 20.0) * shudder_intensity * 0.05;
+	uv.x += drift;
+	vec4 color = texture(TEXTURE, uv);
+	color.rgb = mix(color.rgb, vec3(1.0), shudder_intensity * 0.4); // Flash on impact
+	COLOR = color;
+}
+"""
+		shudder_mat.shader = shudder_sh
+		shudder_mat.set_shader_parameter("time_offset", randf() * 10.0)
+		lane_strip.material = shudder_mat
+
 		# PREMIUM: Procedural material rhythm to ground the lane substrate
 		# Using shared noise texture to prevent redundant allocations
 		var substrate_rhythm := TextureRect.new()
@@ -1753,3 +1780,13 @@ func _build_strip_sprite(
 
 func _hud_attach_combat_panel_art(panel: Control, texture_path: String, region: Rect2) -> void:
 	HUD_PANEL_ART.apply_panel_art(panel, texture_path, region, "Art", "Backing", Color(0.0, 0.0, 0.0, 0.0))
+
+
+func _sync_hud_vein_pulses(host: Node, pulse_intensity: float) -> void:
+	if host == null: return
+	# Broad recursive search for any panel with the Vibe Forge backing
+	for child in host.get_children():
+		if child is Control:
+			HUD_PANEL_ART.set_vein_pulse(child, pulse_intensity)
+		if child.get_child_count() > 0:
+			_sync_hud_vein_pulses(child, pulse_intensity)

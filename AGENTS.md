@@ -1,38 +1,51 @@
-# AGENTS — WHAT WE FED REPO ENTRYPOINT (v2.3 "The Pulse")
+# AGENTS — WHAT WE FED REPO ENTRYPOINT (v2.4 "The Vibe Forge")
 
 This is the canonical entrypoint for all AI Agents, governed by **Creator Authority**.
 
-Authority Order:
-1. **User / Creator Intent**: Highest authority.
-2. **Current Repo Truth**: Implementation reality (Layer 2).
-3. **Current Live-Build Truth**: What is actually working now.
-4. **Evolving Spine**: Current intended direction and accepted design movement.
-5. **Older Canon / Source Docs**: Memory and guidance only. Useful, but never allowed to outrank the creator.
+## Project Identity: BLACK SIGNAL
+WHAT WE FED is a dark, stylish, predatory rhythm-combat experience. It is **authored**, not generic.
+- **Tone**: Premium Menace, Manga Monstrosity, Black Signal.
+- **Mechanics**: Timing Truth, Cardinal Lanes, Species-Specific DNA Economy, Bond vs Eat tension.
+- **Philosophy**: Start Weak, Become Feared. Comprehension in management, Urgency in combat.
 
-Terminal Bootstrap:
-- Terminal-based AI sessions should load `docs/ai/TERMINAL_AI_BOOTSTRAP.md` first when the tool supports repo instructions.
-- Multi-AI coordination lives in `docs/ai/MULTI_AI_OPERATING_LAYER.md`. Use it to align Claude, Codex, Gemini, Cursor, Copilot, Cline, and future agents without copying long doctrine into every adapter.
+## Authority Order
+1. **Locked Core (Creator Intent)**: The highest authority. Never drift from core gameplay truth.
+2. **Current Repo Truth**: The active implementation (Layer 2).
+3. **Current Live-Build Truth**: Runtime evidence from the latest working build.
+4. **Task Constraints**: Specific requirements for the current mission.
+5. **Later Scope**: Planned features not yet implemented.
+6. **Old Assumptions (Older Canon)**: Guidance and memory only; never let this block the creator.
 
-Core Read Order:
-1. `docs/ai/MULTI_AI_OPERATING_LAYER.md` (Shared compact contract)
-2. `docs/ai/SYSTEM_KERNEL.md` (The Unified Pulse)
-3. `docs/ai/PROJECT_KERNEL.md` (Project Identity)
-4. `AGENTS.md` (Entrypoint / routing)
+## Anti-Drift Law
+Reject any movement toward:
+- Generic survivor clones or roguelite soup.
+- Spreadsheet/menu sludge that breaks flow.
+- "Pretty" abstraction that obscures mechanical truth.
+- Over-designed "just-in-case" systems that flatten the authored experience.
 
-Terminal AI Rule:
-- Any terminal-based AI session in this repo should load `docs/ai/TERMINAL_AI_BOOTSTRAP.md` first, then use the core read order above.
-- If a tool can only load one file automatically, point it at `AGENTS.md`; this file delegates to the bootstrap and kernel.
-- If a task involves visuals, screenshots, frame captures, HUD readability, projectile/support clarity, or boss spectacle, route through INSPECTOR and `docs/ai/VISUAL_TRUTH_LOOP.md` before patching.
+## Vibe-Coding (Short Commands)
+Interpret short, stylish commands as high-signal intent:
+- **push**: Expand the vibe/depth of a concept without bloating it.
+- **cut**: Remove sludgy, generic, or redundant logic/content.
+- **mutate**: Evolve a system while keeping its core soul.
+- **lock**: Solidify a working pattern as "locked truth."
+- **route**: Hand off to the best specialist (Codex, Gemini, Claude).
+- **teeth**: Add more bite, danger, or visual menace.
+- **soul**: Inject identity into a flat or mechanical area.
+- **clean**: Sharpen logic or UI for maximum comprehension/clarity.
+- **real**: Ground a speculative idea in repo/runtime reality.
 
 ---
 
-## The Specialist Squad
-BRAIN is the orchestrator; specialist agents are the tools in its lanes.
-- **Architect (BRAIN)**: System design, strategy, and Best-Next-Move selector.
-- **Auditor (CYBORG)**: Verification, self-upgrading, and agent-extraction specialist. (See `docs/ai/agents/CYBORG.md`)
-- **Scout (SYMBIOTE)**: Interconnectivity, deep repo mapping, and context compression. (See `docs/ai/agents/SYMBIOTE.md`)
-- **Surgeon (ALFRED)**: Usability, smooth handoffs, and surgical GDScript mutation. (Represented by `docs/ai/agents/GDSCRIPT_SURGEON.md`, etc.)
-- **Inspector (Visuals)**: Visual truth, readability audits, and aesthetic alignment. (See `docs/ai/agents/INSPECTOR.md`)
+## The Specialist Squad (The Vibe Forge)
+Specialists are high-leverage tools in the BRAIN's lanes.
+- **Vibe Coder (SIGNAL)**: The lockstep co-creator. Identity guardian. Extracts signal from vibe, rejects generic drift, and sharpens the project's predatory soul.
+- **Architect (BRAIN)**: The orchestrator. System design, sequence authority, and Handoff Compiler lead. Ensures structural integrity and "Start Weak, Become Feared" progression.
+- **Auditor (CYBORG)**: The critic. Verification, self-upgrading, and Build Doctor lead. Brutally audits logic, types, and performance against Timing Truth.
+- **Scout (SYMBIOTE)**: The mapper. Interconnectivity, deep repo scanning, and Snapshot Generator lead. Finds the truth hidden in the files.
+- **Surgeon (ALFRED)**: The hand. Surgical GDScript mutation, usability, and smooth handoffs. Mutates the repo with precision and zero waste.
+- **Inspector (VISUALS)**: The eye. Visual truth, aesthetic alignment, and HUD readability. Ensures "Manga Monstrosity" and "Premium Menace" compliance.
+- **Crash Hunter (VOID)**: The ghost. Specialized in hunting race conditions, memory leaks, and runtime anomalies that threaten Combat Honesty.
 
 ---
 

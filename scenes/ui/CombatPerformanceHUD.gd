@@ -270,13 +270,22 @@ func _on_song_beat_pulse(_beat_index: int, intensity: float) -> void:
 		var t = create_tween().set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_EXPO)
 		t.tween_property(_panel, "scale", Vector2(pulse_scale, pulse_scale), 0.05)
 		t.tween_property(_panel, "scale", Vector2.ONE, 0.15)
-	
+
+		# SIGNAL: Pulse the Living Restraint veins
+		const HUD_PANEL_ART = preload("res://systems/HUDPanelArt.gd")
+		HUD_PANEL_ART.set_vein_pulse(_panel, intensity * 0.8)
+
 	if _ultimate_shell and _ultimate_shell.visible:
 		# Ultimate bar pulses more aggressively
 		var pulse_h: float = 1.0 + (intensity * 0.08)
-		var t = create_tween().set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_EXPO)
-		t.tween_property(_ultimate_shell, "scale:y", pulse_h, 0.05)
-		t.tween_property(_ultimate_shell, "scale:y", 1.0, 0.15)
+		var t2 = create_tween().set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_EXPO)
+		t2.tween_property(_ultimate_shell, "scale", Vector2(1.0, pulse_h), 0.05)
+		t2.tween_property(_ultimate_shell, "scale", Vector2.ONE, 0.15)
+
+		# SIGNAL: Pulse the Living Restraint veins on the Ultimate bar
+		const HUD_PANEL_ART = preload("res://systems/HUDPanelArt.gd")
+		HUD_PANEL_ART.set_vein_pulse(_ultimate_shell, intensity)
+
 
 
 func _pulse_hud_element(element: Control) -> void:

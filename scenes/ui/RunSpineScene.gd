@@ -296,10 +296,10 @@ func _build_ui() -> void:
 
 func _build_choice_cards() -> void:
 	_choice_cards.clear()
-	var card_w: float = 340.0
-	var card_h: float = 218.0
-	var gap: float = 24.0
-	var start_x: float = 32.0
+	var card_w: float = 254.0
+	var card_h: float = 224.0
+	var gap: float = 18.0
+	var start_x: float = 20.0
 
 	for i in range(4):
 		var card: ColorRect = ColorRect.new()
@@ -312,66 +312,68 @@ func _build_choice_cards() -> void:
 
 		var index_label: Label = Label.new()
 		index_label.text = str(i + 1)
-		index_label.position = Vector2(14.0, 14.0)
+		index_label.position = Vector2(12.0, 10.0)
 		index_label.size = Vector2(24.0, 24.0)
 		UI_STYLE.apply_label(index_label, "mm_caption")
 		card.add_child(index_label)
 
 		var cat_label: Label = Label.new()
 		cat_label.name = "Category"
-		cat_label.position = Vector2(14.0, 42.0)
-		cat_label.size = Vector2(card_w - 28.0, 18.0)
+		cat_label.position = Vector2(12.0, 38.0)
+		cat_label.size = Vector2(card_w - 24.0, 18.0)
 		UI_STYLE.apply_label(cat_label, "mm_choice_consume")
-		cat_label.add_theme_font_size_override("font_size", 14)
+		cat_label.add_theme_font_size_override("font_size", 13)
 		card.add_child(cat_label)
 
 		var title_label: Label = Label.new()
 		title_label.name = "Title"
-		title_label.position = Vector2(14.0, 64.0)
-		title_label.size = Vector2(card_w - 28.0, 54.0)
+		title_label.position = Vector2(12.0, 58.0)
+		title_label.size = Vector2(card_w - 24.0, 58.0)
 		title_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		UI_STYLE.apply_label(title_label, "hud_metric_value")
+		title_label.add_theme_font_size_override("font_size", 18)
 		card.add_child(title_label)
 
 		var separator: ColorRect = ColorRect.new()
-		separator.position = Vector2(14.0, 124.0)
-		separator.size = Vector2(card_w - 28.0, 1.0)
+		separator.position = Vector2(12.0, 120.0)
+		separator.size = Vector2(card_w - 24.0, 1.0)
 		separator.color = UI_STYLE.get_manga_color("mutation_magenta")
 		separator.color.a = 0.48
 		card.add_child(separator)
 
 		var body_label: Label = Label.new()
 		body_label.name = "Body"
-		body_label.position = Vector2(14.0, 136.0)
-		body_label.size = Vector2(card_w - 28.0, 34.0)
+		body_label.position = Vector2(12.0, 130.0)
+		body_label.size = Vector2(card_w - 24.0, 44.0)
 		body_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		UI_STYLE.apply_label(body_label, "overlay_body")
+		body_label.add_theme_font_size_override("font_size", 13)
 		card.add_child(body_label)
 
 		var cost_label: Label = Label.new()
 		cost_label.name = "Cost"
-		cost_label.position = Vector2(14.0, 172.0)
-		cost_label.size = Vector2(card_w - 28.0, 16.0)
+		cost_label.position = Vector2(12.0, 178.0)
+		cost_label.size = Vector2(card_w - 24.0, 15.0)
 		UI_STYLE.apply_label(cost_label, "mm_caption")
 		cost_label.add_theme_color_override("font_color", UI_STYLE.get_manga_color("blood_ember"))
-		cost_label.add_theme_font_size_override("font_size", 13)
+		cost_label.add_theme_font_size_override("font_size", 12)
 		card.add_child(cost_label)
 
 		var risk_label: Label = Label.new()
 		risk_label.name = "Risk"
-		risk_label.position = Vector2(14.0, 188.0)
-		risk_label.size = Vector2(card_w - 28.0, 16.0)
+		risk_label.position = Vector2(12.0, 193.0)
+		risk_label.size = Vector2(card_w - 24.0, 15.0)
 		UI_STYLE.apply_label(risk_label, "mm_caption")
-		risk_label.add_theme_font_size_override("font_size", 12)
+		risk_label.add_theme_font_size_override("font_size", 11)
 		card.add_child(risk_label)
 
 		var reward_label: Label = Label.new()
 		reward_label.name = "Reward"
-		reward_label.position = Vector2(14.0, 204.0)
-		reward_label.size = Vector2(card_w - 28.0, 16.0)
+		reward_label.position = Vector2(12.0, 208.0)
+		reward_label.size = Vector2(card_w - 24.0, 15.0)
 		UI_STYLE.apply_label(reward_label, "mm_caption")
 		reward_label.add_theme_color_override("font_color", UI_STYLE.get_manga_color("alert_gold"))
-		reward_label.add_theme_font_size_override("font_size", 12)
+		reward_label.add_theme_font_size_override("font_size", 11)
 		card.add_child(reward_label)
 
 

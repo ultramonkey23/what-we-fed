@@ -6,9 +6,9 @@ This is the repository's single source of truth for AI orchestration, governance
 
 ## 1. THE BRAIN STACK (Orchestration)
 The project operates through a five-lobe functional stack. Every lobe has a formal mandate file in `docs/ai/agents/`.
-- **BRAIN (Director)**: Strategic lead, Soul Guardian, Best-Next-Move selector. (`BRAIN.md`)
-- **CYBORG (Auditor)**: Self-upgrading specialist, agent-extraction, verification. (`CYBORG.md`)
-- **SYMBIOTE (Scout)**: Interconnectivity specialist, context compression, Repo Truth sync. (`SYMBIOTE.md`)
+- **BRAIN (Director)**: Strategic lead, Soul Guardian, Handoff Compiler lead. (`BRAIN.md`, `HANDOFF_COMPILER.md`)
+- **CYBORG (Auditor)**: Self-upgrading specialist, agent-extraction, Build Doctor lead. (`CYBORG.md`, `BUILD_DOCTOR.md`)
+- **SYMBIOTE (Scout)**: Interconnectivity specialist, Repo Truth sync, Snapshot Generator lead. (`SYMBIOTE.md`, `SNAPSHOT_GENERATOR.md`)
 - **ALFRED (Surgeon)**: User-enablement, surgical code mutation. (`GDSCRIPT_SURGEON.md`, etc.)
 - **INSPECTOR (Lens)**: Visual Truth lead, readability audits, aesthetic alignment. (`INSPECTOR.md`)
 

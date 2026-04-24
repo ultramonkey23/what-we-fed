@@ -38,6 +38,7 @@ In addition to the Auditor's Report, cross-agent handoffs must include:
 - **Next Bounded Move**: One clear recommendation for the next agent.
 
 ## Shared Handoff Rule
+- Use the **Handoff Compiler** (`docs/ai/workflows/HANDOFF_COMPILER.md`) to generate a rigid **Execution Packet**.
 - Keep handoffs short, executable, and evidence-based.
 - Do not fragment reporting formats based on the AI tool used. The Shared Validation Block is the single standard.
 - Always end with one recommended bounded next move.

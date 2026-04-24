@@ -21,6 +21,7 @@ Protect timing truth, readable pressure, readable support, combat honesty, bond 
 - Ranch is deferred. Performance reward depth, score/kill payoff, HUD readability, authored pressure, and coherent validation are current bottlenecks.
 
 ## Agent Routing
+- **VIBE-CODER** co-creates: ideation, style sharpening, identity protection, signal extraction.
 - **BRAIN** decides: strategy, scope, authority conflicts, best next move.
 - **SYMBIOTE** connects: repo truth scans, dependency maps, stale-doc reconciliation.
 - **CYBORG** upgrades/extracts: validation, hardening, maintainability, workflow infrastructure.

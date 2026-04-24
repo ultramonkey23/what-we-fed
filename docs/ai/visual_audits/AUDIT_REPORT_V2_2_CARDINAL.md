@@ -41,3 +41,11 @@ The 4-direction Cardinal Spine is **LOCKED**. Architectural integrity is verifie
 *   **Documentation Alignment**: Performed a full Repo Truth Sync Pass across `SYSTEM_KERNEL.md`, `HUD_READABILITY_DOCTRINE.md`, `REGRESSION_CHECKLIST.md`, and `GAME_SPINE.md`.
 *   **Retired Canon**: Standardized on "Cardinal Timing Combat" terminology and retired legacy "3-lane horizontal" references to prevent future agent drift.
 *   **Input Map Update**: Updated `REGRESSION_CHECKLIST.md` to reflect cardinal W/A/S/D inputs.
+
+## 8. REPO TRUTH SYNC — CONTROL/PRESENTATION CLEANUP
+*   **Accepted Current Truth**: Combat is no longer "transitioning" toward cardinal timing; repo implementation treats centered four-cardinal intercept combat as the current active spine.
+*   **Lane API Truth**: `LaneManager.gd` exposes cardinal position APIs (`get_player_pos`, `get_threat_spawn_pos`, `get_threat_hit_zone_pos`) as the valid presentation contract. Legacy horizontal compatibility accessors (`get_lane_y`, `get_enemy_x`, `get_hit_zone_x`, `get_player_x`) have been removed.
+*   **Control Truth**: Directional input focuses North/South/East/West. Attack, parry, dodge, and ultimate resolve around the focused lane plus timing truth instead of old lane-switch movement.
+*   **Presentation Truth**: Combat lane strips, focal markers, enemy markers, timing proximity reads, impact FX, bonded creature placement, and audit metadata now use cardinal spawn/hit-zone positions rather than lane Y coordinates.
+*   **Spawn Truth**: Dynamic kill-spawn escalation caches spawned enemies in `CombatScene.gd`, reports defeated lane context to `EncounterEscalationDirector.gd`, and schedules kill-driven spawn debt against song BPM.
+*   **Validation Truth**: `smoke_project.bat` passes. `validate_project.bat` remains blocked on the local Windows WASAPI import error before useful project validation.

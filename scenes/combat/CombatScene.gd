@@ -520,6 +520,12 @@ func _on_escalation_phase_changed(index: int, _phase_data: Dictionary) -> void:
 func _on_escalation_spawn_requested(lane: int, enemy_data: Dictionary) -> void:
 	if lane_manager != null and is_instance_valid(lane_manager):
 		lane_manager.set_enemy(lane, enemy_data)
+		var live_enemy: Dictionary = lane_manager.call("get_enemy", lane)
+		if not live_enemy.is_empty():
+			var enemy_id: int = int(live_enemy.get("id", -1))
+			if enemy_id >= 0:
+				_all_enemies_by_id[enemy_id] = live_enemy.duplicate(true)
+				_enemy_max_hp[enemy_id] = float(live_enemy.get("max_hp", live_enemy.get("hp", 1.0)))
 
 
 func _on_escalation_feedback_requested(text: String, color: Color, duration: float) -> void:
@@ -1417,15 +1423,14 @@ func _update_lane_visual_states() -> void:
 	var active_color: Color = biome.get("ring_active_color", ring_palette.get("active", Color(1.0, 0.95, 0.55, 1.0)))
 	var inactive_color: Color = biome.get("ring_inactive_color", ring_palette.get("inactive", Color(0.7, 0.7, 0.8, 0.45)))
 	var time: float = Time.get_ticks_msec() / 1000.0
-	var intercept_dist: float = lane_manager.get_enemy_x() - lane_manager.get_hit_zone_x()
-
-	if intercept_dist <= 0.0:
-		return
-
-	var outer_entry: float = 1.0 - COMBAT_FEEL_CONTENT.RING_OUTER_RADIUS / intercept_dist
-	var outer_exit: float = 1.0 + COMBAT_FEEL_CONTENT.RING_OUTER_RADIUS / intercept_dist
 
 	for lane in range(lane_manager.THREAT_COUNT if lane_manager else 4):
+		var intercept_dist: float = _lane_intercept_distance(lane)
+		if intercept_dist <= 0.0:
+			continue
+
+		var outer_entry: float = 1.0 - COMBAT_FEEL_CONTENT.RING_OUTER_RADIUS / intercept_dist
+		var outer_exit: float = 1.0 + COMBAT_FEEL_CONTENT.RING_OUTER_RADIUS / intercept_dist
 		var strip: TextureRect = _lane_strips.get(lane, null)
 		var focus: Node2D = _lane_hit_focus.get(lane, null)
 		if strip == null or focus == null or not is_instance_valid(strip) or not is_instance_valid(focus):
@@ -1438,8 +1443,10 @@ func _update_lane_visual_states() -> void:
 		var focus_color: Color = inactive_color
 
 		if lane == _get_player_focus_lane():
-			state_alpha += 0.02
-			focus_alpha = COMBAT_FEEL_CONTENT.FOCAL_MARKER_ACTIVE_ALPHA * 0.45
+			state_alpha = maxf(state_alpha, COMBAT_FEEL_CONTENT.LANE_THREAT_FOCUS_ALPHA)
+			focus_color = active_color
+			focus_alpha = COMBAT_FEEL_CONTENT.FOCAL_MARKER_ACTIVE_ALPHA
+			focus_scale = 1.08
 
 		var proj = lane_manager.get_projectile(lane)
 		if proj != null and not proj.is_resolved and not proj.is_reflected:
@@ -3257,6 +3264,8 @@ func _start_regular_level(level_index: int, reset_hp: bool) -> void:
 
 	if _escalation_director != null:
 		_escalation_director.setup(_region_id, _song_phases, _song_rng)
+		if "BPM" in _active_song_map and _escalation_director.has_method("set_song_bpm"):
+			_escalation_director.call("set_song_bpm", float(_active_song_map.BPM))
 		_escalation_director.start(_song_level_start_time)
 	_rebuild_music_driven_difficulty()
 
@@ -5515,6 +5524,7 @@ func _on_ultimate_power_granted(amount: float) -> void:
 
 
 func _on_enemy_defeated(enemy_id: int) -> void:
+	var defeated_enemy_context: Dictionary = _resolve_enemy_context(enemy_id)
 	var kill_heal_effect: Dictionary = _get_growth_effect("heal_on_kill")
 	if not kill_heal_effect.is_empty():
 		var healed: float = GameState.heal_player(float(kill_heal_effect.get("value", 0.0)))
@@ -5538,7 +5548,7 @@ func _on_enemy_defeated(enemy_id: int) -> void:
 	# DNA economy: creature encounters now pay out the species you actually killed.
 	# Fallback to the phase reward pool only if a legacy enemy payload has no species id.
 	if _song_mode and not _song_boss_triggered and _song_phase_index >= 0 and _song_phase_index < _song_phases.size():
-		var defeated_enemy: Dictionary = _all_enemies_by_id.get(enemy_id, {})
+		var defeated_enemy: Dictionary = defeated_enemy_context
 		var dna_species: String = String(defeated_enemy.get("reward_species_id", defeated_enemy.get("species_id", "")))
 		var dna_amount: float = float(defeated_enemy.get("dna_reward", DNA_PER_KILL))
 		if dna_species.is_empty():
@@ -5574,7 +5584,16 @@ func _on_enemy_defeated(enemy_id: int) -> void:
 
 	if _song_mode and not _song_paused and not _song_boss_triggered:
 		if _escalation_director != null:
-			_escalation_director.notify_enemy_defeated(enemy_id, -1, false)
+			var defeated_lane: int = int(defeated_enemy_context.get("lane", -1))
+			_escalation_director.notify_enemy_defeated(enemy_id, defeated_lane, false)
+
+
+func _resolve_enemy_context(enemy_id: int) -> Dictionary:
+	if lane_manager != null and is_instance_valid(lane_manager) and lane_manager.has_method("get_all_enemies"):
+		var live_enemies: Dictionary = Dictionary(lane_manager.call("get_all_enemies"))
+		if live_enemies.has(enemy_id):
+			return Dictionary(live_enemies[enemy_id]).duplicate(true)
+	return Dictionary(_all_enemies_by_id.get(enemy_id, {})).duplicate(true)
 
 
 func _resolve_dna_pickup_state(species_id: String, dna_result: Dictionary) -> String:
@@ -5631,15 +5650,8 @@ func _on_slow_motion(requested_scale: float, duration: float) -> void:
 func _impact_lane_forward(lane: int) -> Vector2:
 	if lane_manager == null or player_combat == null:
 		return Vector2.RIGHT
-	if lane_manager.has_method("get_threat_hit_zone_pos") and lane_manager.has_method("get_player_pos"):
-		var radial_delta: Vector2 = lane_manager.get_threat_hit_zone_pos(lane) - lane_manager.get_player_pos()
-		if radial_delta.length_squared() >= 1.0:
-			return radial_delta.normalized()
-	var start_point: Vector2 = player_combat.position + Vector2(10.0, -6.0)
-	var end_point: Vector2 = Vector2(
-		lane_manager.get_hit_zone_x() + 8.0,
-		lane_manager.get_lane_y(lane)
-	)
+	var start_point: Vector2 = _lane_player_pos()
+	var end_point: Vector2 = _lane_hit_zone_pos(lane)
 	var delta: Vector2 = end_point - start_point
 	if delta.length_squared() < 1.0:
 		return Vector2.RIGHT
@@ -5649,12 +5661,45 @@ func _impact_lane_forward(lane: int) -> Vector2:
 func _impact_pos_lane(lane: int, t: float = 0.52) -> Vector2:
 	if lane_manager == null or player_combat == null:
 		return Vector2.ZERO
-	if lane_manager.has_method("get_threat_hit_zone_pos") and lane_manager.has_method("get_player_pos"):
-		return lane_manager.get_player_pos().lerp(lane_manager.get_threat_hit_zone_pos(lane), t)
-	var lane_y: float = lane_manager.get_lane_y(lane)
-	var hz: float = lane_manager.get_hit_zone_x() + 8.0
-	var px: float = player_combat.position.x + 10.0
-	return Vector2(lerpf(px, hz, t), lane_y - 6.0)
+	return _lane_player_pos().lerp(_lane_hit_zone_pos(lane), t)
+
+
+func _lane_player_pos() -> Vector2:
+	if lane_manager != null and lane_manager.has_method("get_player_pos"):
+		return lane_manager.call("get_player_pos")
+	if player_combat != null:
+		return player_combat.position
+	return Vector2.ZERO
+
+
+func _lane_hit_zone_pos(lane: int) -> Vector2:
+	if lane_manager != null and lane_manager.has_method("get_threat_hit_zone_pos"):
+		return lane_manager.call("get_threat_hit_zone_pos", lane)
+	return _lane_player_pos() + _lane_direction_fallback(lane) * 110.0
+
+
+func _lane_spawn_pos(lane: int) -> Vector2:
+	if lane_manager != null and lane_manager.has_method("get_threat_spawn_pos"):
+		return lane_manager.call("get_threat_spawn_pos", lane)
+	return _lane_player_pos() + _lane_direction_fallback(lane) * 260.0
+
+
+func _lane_intercept_distance(lane: int) -> float:
+	return maxf(_lane_spawn_pos(lane).distance_to(_lane_hit_zone_pos(lane)), 1.0)
+
+
+func _lane_direction_fallback(lane: int) -> Vector2:
+	match lane:
+		0:
+			return Vector2.UP
+		1:
+			return Vector2.DOWN
+		2:
+			return Vector2.RIGHT
+		3:
+			return Vector2.LEFT
+		_:
+			return Vector2.RIGHT
 
 
 func _impact_world_pos_for_enemy(enemy_id: int) -> Vector2:
@@ -6039,7 +6084,7 @@ func _refresh_bonded_creature_render(active_species_id: String = "") -> void:
 		# Auto-detect hframes for animation strips (assuming square frames)
 		var h_frames: int = clampi(int(float(render_tex.get_width()) / render_tex.get_height()), 1, 64)
 		_bonded_creature_sprite.hframes = h_frames
-		_bonded_creature_sprite.vframes = 1 # We use horizontal strips now
+		_bonded_creature_sprite.vframes = 1 # Most creature sprites use one-row animation strips.
 		
 		# Legacy handling for old bond_remnant grid if path still matches
 		if species_id == "bond_remnant" and growth_stage == "baby" and sprite_path.ends_with("bond_remnant_idle.png") and h_frames < 6:
@@ -6054,10 +6099,7 @@ func _refresh_bonded_creature_render(active_species_id: String = "") -> void:
 	var render_scale: float = float(render_config.get("scale", 0.052))
 	var render_modulate: Color = render_config.get("modulate", Color(0.90, 0.89, 0.86, 0.86))
 	var render_z: int = int(render_config.get("z_index", 5))
-	_bonded_creature_sprite.position = Vector2(
-		lane_manager.get_player_x() + world_offset.x,
-		lane_manager.get_lane_y(1) + world_offset.y
-	)
+	_bonded_creature_sprite.position = _lane_player_pos() + world_offset
 	_bonded_creature_sprite.scale = Vector2.ONE * render_scale
 	_bonded_creature_sprite.modulate = render_modulate
 	_bonded_creature_sprite.z_index = render_z

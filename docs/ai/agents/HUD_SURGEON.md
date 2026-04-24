@@ -5,7 +5,7 @@ Specialist Lobe of BRAIN (ALFRED). Responsible for improving game readability an
 
 ## Workflow (Governed by BRAIN)
 1. **Doctrine Check**: Use `docs/ai/HUD_READABILITY_DOCTRINE.md`.
-2. **Lane Integrity**: Ensure lanes 0, 1, 2 are 100% visible and readable under stress.
+2. **Lane Integrity**: Ensure cardinal lanes N, S, E, W are 100% visible and readable under stress.
 3. **Shell Logic**: Use compact, translucency-first UI elements.
 4. **Feedback Loop**: Ensure visual feedback is tied directly to the `SongConductor`'s rhythm.
 

@@ -72,7 +72,7 @@ When handing off to INSPECTOR, include this block. If a value is unavailable, wr
 - **Combat Tier**: [stirring | hunting | rampage | apex | sovereign | unknown]
 - **Resonance Tier**: [song profile tier/id or unknown]
 - **Song Context**: [song_id, section_id, beat_index, beat_quality, intensity]
-- **Lane Context**: [active lane, source/threat lane, lane y positions if known]
+- **Lane Context**: [active/focused cardinal lane, source/threat lane, cardinal spawn/hit-zone positions if known]
 - **Support Context**: [active bonded species, support charge, support effect id if relevant]
 - **Active Buffs/Mutations**: [ids or count]
 - **Expected Visual Contract**: [specific doctrine check: lane floor visible, support blue/teal, enemy hot, shell not slab]

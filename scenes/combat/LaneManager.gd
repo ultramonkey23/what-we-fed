@@ -211,28 +211,8 @@ func clear_slot(lane: int) -> void:
 	_projectile_slots[lane] = null
 
 
-func get_lane_y(lane: int) -> float:
-	# RADIAL: Used by legacy visual systems. Returns Y of the cardinal spawn.
-	return get_threat_spawn_pos(lane).y
-
-
-func get_player_x() -> float:
-	# RADIAL: Player is centered.
-	return _center_pos.x
-
-
 func get_player_pos() -> Vector2:
 	return _center_pos
-
-
-func get_enemy_x() -> float:
-	# RADIAL: Representative 'enemy' X for legacy UI, uses East (2).
-	return get_threat_spawn_pos(2).x
-
-
-func get_hit_zone_x() -> float:
-	# RADIAL: Representative 'hit zone' X for legacy UI, uses East (2).
-	return get_threat_hit_zone_pos(2).x
 
 
 func get_threat_spawn_pos(lane: int) -> Vector2:

@@ -79,7 +79,7 @@ Capture/audit workflow: `docs/ai/VISUAL_TRUTH_LOOP.md`.
 - Moment ID: the gameplay event being judged.
 - Scene, viewport size, camera zoom, and camera offset.
 - Combat tier and song/resonance context when in combat.
-- Lane context: active lane, source/threat lane, and lane y positions when available.
+- Lane context: active/focused cardinal lane, source/threat lane, and cardinal spawn/hit-zone positions when available.
 - Support context when bonded support/VFX are visible.
 - Expected visual contract from `HUD_READABILITY_DOCTRINE.md`.
 

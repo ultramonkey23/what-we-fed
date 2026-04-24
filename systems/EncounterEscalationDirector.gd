@@ -35,6 +35,10 @@ const MOMENTUM_DECAY_PER_SEC: float = 4.0
 const MOMENTUM_RELIEF_CAP: float = 45.0
 const LOW_HP_RELIEF_RATIO: float = 0.35
 const RECENT_HIT_RELIEF_SECONDS: float = 2.2
+const KILL_SPAWN_DEBT_GAIN: float = 1.5
+const MAX_SPAWNS_SCHEDULED_PER_KILL: int = 3
+const BPM_RESPAWN_BEATS: float = 2.0
+const DEFAULT_BPM: float = 120.0
 
 const BASE_POPULATION_CAP: int = 6
 const POPULATION_MOMENTUM_BONUS: int = 12
@@ -70,6 +74,8 @@ var _last_hit_quality_by_enemy: Dictionary = {}
 var _recent_hit_timer: float = 0.0
 var _last_ecology_snapshot: Dictionary = {}
 var _last_synced_budget: int = -1
+var _spawn_debt: float = 0.0
+var _song_bpm: float = DEFAULT_BPM
 
 func _ready():
 	set_process(true)
@@ -104,6 +110,8 @@ func setup(region_id: String, phases: Array, rng: RandomNumberGenerator) -> void
 	_recent_hit_timer = 0.0
 	_last_ecology_snapshot.clear()
 	_last_synced_budget = -1
+	_spawn_debt = 0.0
+	_song_bpm = DEFAULT_BPM
 
 
 func set_difficulty_modifiers(mods: Dictionary) -> void:
@@ -120,6 +128,10 @@ func set_difficulty_modifiers(mods: Dictionary) -> void:
 		for key in incoming_band.keys():
 			target_band[key] = incoming_band[key]
 		_difficulty_modifiers[band_key] = target_band
+
+
+func set_song_bpm(bpm: float) -> void:
+	_song_bpm = maxf(bpm, 1.0)
 
 func start(initial_time: float = 0.0) -> void:
 	_clear_spawn_timers()
@@ -213,6 +225,8 @@ func _seed_initial_phase_enemies(phase: Dictionary) -> void:
 			empty_lanes.append(lane)
 
 	var player_lane: int = player_combat.current_lane if player_combat != null else 1
+	if player_combat != null and player_combat.has_method("get_active_focus_lane"):
+		player_lane = int(player_combat.call("get_active_focus_lane"))
 	var ordered_lanes: Array = ENCOUNTER_IDENTITY_RUNTIME.order_empty_lanes(
 		_region_id,
 		phase,
@@ -265,6 +279,7 @@ func notify_enemy_defeated(enemy_id: int, lane: int, replaced_immediately: bool 
 		_perfect_kill_streak = 0
 	
 	_kill_momentum = minf(_kill_momentum + gain, MOMENTUM_MAX)
+	_spawn_debt = minf(_spawn_debt + KILL_SPAWN_DEBT_GAIN, float(_resolve_population_cap()))
 	_last_hit_quality_by_enemy.erase(enemy_id)
 	
 	if replaced_immediately:
@@ -284,18 +299,37 @@ func notify_enemy_defeated(enemy_id: int, lane: int, replaced_immediately: bool 
 	
 	var shaping: String = String(_escalation_rules.get("pressure_shaping", "default"))
 	
+	var find_new_lane: bool = false
 	match shaping:
 		"aggressive":
-			_schedule_smart_respawn(lane, delay, true)
+			find_new_lane = true
 		"resonant":
-			_schedule_smart_respawn(lane, delay * 0.5, false)
+			delay *= 0.5
 		"attritional":
-			_schedule_smart_respawn(lane, delay * 1.5, true)
+			delay *= 1.5
+			find_new_lane = true
 		_:
-			_schedule_smart_respawn(lane, delay, false)
+			pass
+
+	_schedule_spawn_debt(lane, delay, find_new_lane)
 	
 	_sync_budgets_to_lane_manager()
 	_emit_ecology_state_if_changed()
+
+
+func _schedule_spawn_debt(origin_lane: int, base_delay: float, find_new_lane: bool) -> void:
+	var scheduled: int = 0
+	while _spawn_debt >= 1.0 and scheduled < MAX_SPAWNS_SCHEDULED_PER_KILL:
+		var beat_delay: float = _resolve_bpm_respawn_delay() * float(scheduled + 1)
+		var spawn_delay: float = clampf(base_delay + beat_delay, 0.10, 3.20)
+		_spawn_debt -= 1.0
+		_schedule_smart_respawn(origin_lane, spawn_delay, find_new_lane or origin_lane < 0)
+		scheduled += 1
+
+
+func _resolve_bpm_respawn_delay() -> float:
+	var beat_duration: float = 60.0 / maxf(_song_bpm, 1.0)
+	return clampf(beat_duration * BPM_RESPAWN_BEATS, 0.34, 1.65)
 
 func _schedule_smart_respawn(origin_lane: int, delay: float, find_new_lane: bool) -> void:
 	var timer = get_tree().create_timer(delay)
@@ -311,9 +345,15 @@ func _schedule_smart_respawn(origin_lane: int, delay: float, find_new_lane: bool
 			if find_new_lane:
 				target_lane = _pick_best_empty_lane(origin_lane)
 			
-			_request_spawn(target_lane)
+			if not _request_spawn(target_lane):
+				_refund_blocked_spawn_debt()
+				_schedule_smart_respawn(target_lane, _resolve_bpm_respawn_delay(), true)
 	, CONNECT_ONE_SHOT)
 	_pending_spawn_timers.append(timer)
+
+
+func _refund_blocked_spawn_debt() -> void:
+	_spawn_debt = minf(_spawn_debt + 1.0, float(_resolve_population_cap()))
 
 func _pick_best_empty_lane(exclude_lane: int) -> int:
 	if lane_manager == null or not is_instance_valid(lane_manager):
@@ -335,20 +375,21 @@ func _pick_best_empty_lane(exclude_lane: int) -> int:
 		
 	return -1
 
-func _request_spawn(lane: int) -> void:
+func _request_spawn(lane: int) -> bool:
 	if lane < 0 or _current_phase_index < 0:
-		return
+		return false
 	var phase: Dictionary = _phases[_current_phase_index]
 	
 	var enemy: Dictionary = _pick_pressure_aware_enemy(phase)
 	
 	if enemy.is_empty():
-		return
+		return false
 	if not _can_schedule_spawn(phase, enemy):
-		return
+		return false
 	
 	spawn_requested.emit(lane, enemy)
 	_emit_ecology_state_if_changed()
+	return true
 
 func _on_timed_attack_resolved(_lane: int, quality: String, _damage: float) -> void:
 	# Store the most recent quality for the enemy in this lane.
@@ -518,7 +559,9 @@ func get_ecology_snapshot() -> Dictionary:
 		"kill_momentum": _kill_momentum,
 		"kill_momentum_ratio": _resolve_effective_momentum_ratio(),
 		"player_hp_ratio": _player_hp_ratio,
-		"recent_hit_timer": _recent_hit_timer
+		"recent_hit_timer": _recent_hit_timer,
+		"spawn_debt": _spawn_debt,
+		"song_bpm": _song_bpm
 	}
 
 func _resolve_authority_budget(phase: Dictionary) -> int:

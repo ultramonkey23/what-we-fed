@@ -62,7 +62,7 @@ _Note:_ Elsewhere in this spec, **Early / Mid / Late** game describes **narrativ
 
 ### Floor/substrate rules
 - The **base substrate** must feel like a **real battlefield surface**.
-- It should visually support **three lane bands / rails** through shallow perspective, markings, seams, cracks, channel lines, or material rhythm.
+- It should visually support the **four-cardinal center-intercept battlefield** through shallow perspective, markings, seams, cracks, channel lines, or material rhythm that point pressure toward the center.
 - The floor should **help explain where combat belongs**.
 - Avoid **noisy ground detail** directly behind the **core target/shot zones**.
 

@@ -225,17 +225,23 @@ func _song_metadata(song_conductor: Node, game_state: Node, scene: Node) -> Dict
 
 
 func _lane_metadata(lane_manager: Node, player_combat: Node, context: Dictionary) -> Dictionary:
-	var y_positions: Array[float] = []
-	if lane_manager != null and lane_manager.has_method("get_lane_y"):
+	var cardinal_positions: Array[Dictionary] = []
+	if lane_manager != null and lane_manager.has_method("get_threat_spawn_pos") and lane_manager.has_method("get_threat_hit_zone_pos"):
 		for lane in range(4):
-			y_positions.append(float(lane_manager.call("get_lane_y", lane)))
+			var spawn_pos: Vector2 = lane_manager.call("get_threat_spawn_pos", lane)
+			var hit_pos: Vector2 = lane_manager.call("get_threat_hit_zone_pos", lane)
+			cardinal_positions.append({
+				"lane": lane,
+				"spawn": spawn_pos,
+				"hit_zone": hit_pos
+			})
 	var active_lane: int = -1
 	active_lane = int(_get_object_property(player_combat, "current_lane", -1))
 	return {
 		"active": active_lane,
 		"source": int(context.get("source_lane", context.get("lane", _last_damage_lane))),
 		"support": int(context.get("lane", _last_support_lane)),
-		"y_positions": y_positions
+		"cardinal_positions": cardinal_positions
 	}
 
 

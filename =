@@ -1,0 +1,177 @@
+data\CombatFeelContent.gd:53:const TEMPO_NONE: StringName = &"none"
+data\CombatFeelContent.gd:54:const TEMPO_PUNCTURE: StringName = &"puncture" # Micro-time combat violence
+data\CombatFeelContent.gd:55:const TEMPO_STRETCH: StringName = &"stretch"   # Relative time dilation (part of Suspension)
+data\CombatFeelContent.gd:56:const TEMPO_VOID: StringName = &"void"         # Complete tactical pause (Suspension: slowed choice/reward)
+data\CombatFeelContent.gd:57:const TEMPO_DECREE: StringName = &"decree"     # Boss/world law shift
+data\CombatFeelContent.gd:80:const _HUD_TOP_LEFT_PANEL_PATHS: Array[String] = [
+data\CombatFeelContent.gd:85:const _HUD_TOP_RIGHT_PANEL_PATHS: Array[String] = [
+data\CombatFeelContent.gd:90:const _HUD_REWARD_PANEL_PATHS: Array[String] = [
+data\CombatFeelContent.gd:95:const _HUD_BOTTOM_PANEL_PATHS: Array[String] = [
+data\CombatFeelContent.gd:119:const _HUD_BAR_TRACK_PATHS: Array[String] = [
+data\CombatFeelContent.gd:129:static func _first_existing_texture_path(paths: Array[String]) -> String:
+data\CombatFeelContent.gd:133:		var abs_path: String = ProjectSettings.globalize_path(p)
+data\CombatFeelContent.gd:139:static func resolved_hud_top_left_panel_path() -> String:
+data\CombatFeelContent.gd:143:static func resolved_hud_top_right_panel_path() -> String:
+data\CombatFeelContent.gd:147:static func resolved_hud_reward_panel_path() -> String:
+data\CombatFeelContent.gd:151:static func resolved_bar_track_path() -> String:
+data\CombatFeelContent.gd:155:static func resolved_hud_bottom_panel_path() -> String:
+data\CombatFeelContent.gd:176:	var p: String = resolved_bar_track_path()
+data\CombatFeelContent.gd:180:static func _texture_region_or_full(texture_path: String, atlas_region: Rect2) -> Rect2:
+data\CombatFeelContent.gd:265:const QUIG_SPRITE_PATH: String = "res://assets/sprites/quig.png"
+data\CombatFeelContent.gd:270:const DNA_SPRITE_PATH: String = "res://assets/sprites/dna.png"
+data\CombatFeelContent.gd:276:const COMBAT_BG_PATHS: Array[String] = [
+data\CombatFeelContent.gd:284:static func get_slowmo_preset(context_id: String, fallback: Dictionary = {}) -> Dictionary:
+scenes\combat\Projectile.gd:5:signal player_contact(projectile)
+scenes\combat\Projectile.gd:7:signal resolved(projectile, result: String)
+scenes\combat\Projectile.gd:9:# Set to true to show live progress and zone labels on each projectile while testing.
+scenes\combat\Projectile.gd:13:# Timing is based on projectile progress: a float from 0.0 (just fired at enemy_x)
+scenes\combat\Projectile.gd:15:# toward the player. All timing windows are thresholds against this progress value.
+scenes\combat\Projectile.gd:20:# - outer ring = success boundary (0.96..1.04)
+scenes\combat\Projectile.gd:21:# - inner ring = perfect boundary (0.98..1.02)
+scenes\combat\Projectile.gd:22:# - beat mark at progress 1.0 = center of perfect truth
+scenes\combat\Projectile.gd:23:# There is no hidden late grace zone outside the visible ring truth.
+scenes\combat\Projectile.gd:29:# Parry timing bands: ring-exact. Good = inside the outer ring. Perfect = inner ring only.
+scenes\combat\Projectile.gd:30:# Outside all rings = failed parry. No hidden timing beyond what the circles show.
+scenes\combat\Projectile.gd:41:const DEFAULT_PROJECTILE_BODY_PATH: String = "res://assets/sprites/projectile_bodies/dreg.png"
+scenes\combat\Projectile.gd:50:const DEFAULT_SHOT_MODIFIER_PATH: String = "res://assets/sprites/shot1.png"
+scenes\combat\Projectile.gd:65:var progress: float = 0.0
+scenes\combat\Projectile.gd:84:var _reported_player_contact: bool = false
+scenes\combat\Projectile.gd:213:	progress = 0.0
+scenes\combat\Projectile.gd:219:	_reported_player_contact = false
+scenes\combat\Projectile.gd:243:	_reported_player_contact = true
+scenes\combat\Projectile.gd:251:func evaluate_attack_timing() -> String:
+scenes\combat\Projectile.gd:255:	if progress < ATTACK_GOOD_MIN:
+scenes\combat\Projectile.gd:257:	elif progress < ATTACK_PERFECT_MIN:
+scenes\combat\Projectile.gd:259:	elif progress <= ATTACK_PERFECT_MAX:
+scenes\combat\Projectile.gd:261:	elif progress <= ATTACK_GOOD_MAX:
+scenes\combat\Projectile.gd:267:func evaluate_parry_timing() -> String:
+scenes\combat\Projectile.gd:271:	if progress < PARRY_GOOD_MIN:
+scenes\combat\Projectile.gd:273:	elif progress < PARRY_PERFECT_MIN:
+scenes\combat\Projectile.gd:275:	elif progress <= PARRY_PERFECT_MAX:
+scenes\combat\Projectile.gd:277:	elif progress <= PARRY_GOOD_MAX:
+scenes\combat\Projectile.gd:291:func time_until_player_contact() -> float:
+scenes\combat\Projectile.gd:299:func resolve(result: String) -> void:
+scenes\combat\Projectile.gd:317:			progress = (song_now - fire_song_time) / total_flight_duration
+scenes\combat\Projectile.gd:319:			progress = 1.0
+scenes\combat\Projectile.gd:323:			progress += (speed * delta) / _total_distance
+scenes\combat\Projectile.gd:325:			progress = 1.0
+scenes\combat\Projectile.gd:329:		if progress >= commit_threshold:
+scenes\combat\Projectile.gd:348:	# Map progress to physical position using radial model
+scenes\combat\Projectile.gd:350:	var current_dist: float = lerp(_initial_distance_to_center, _hit_zone_distance_to_center, progress)
+scenes\combat\Projectile.gd:353:	if not _reported_hit_zone and progress >= 1.0:
+scenes\combat\Projectile.gd:357:	if not _reported_player_contact and progress >= 1.15: # Progress 1.15 is roughly player contact
+scenes\combat\Projectile.gd:358:		_reported_player_contact = true
+scenes\combat\Projectile.gd:359:		player_contact.emit(self)
+scenes\combat\Projectile.gd:367:				progress,
+scenes\combat\Projectile.gd:370:				progress - 1.0
+scenes\combat\Projectile.gd:426:	var pressure: float = 0.85 if reflected else clamp(((progress - pressure_start) / (1.0 - pressure_start)) * pressure_gain, 0.0, 1.0)
+scenes\combat\Projectile.gd:427:	var imminent: float = 0.0 if reflected else clamp((progress - 0.96) / 0.08, 0.0, 1.0)
+scenes\combat\Projectile.gd:512:	var mod_key: String = String(source.get("shot_modifier", source.get("family", "fang")))
+scenes\combat\Projectile.gd:595:	var mod_key: String = String(telegraph_profile.get("shot_modifier", telegraph_profile.get("family", "fang")))
+scenes\combat\Projectile.gd:662:	var mod_id: String = String(telegraph_profile.get("shot_modifier", "fang"))
+scenes\combat\Projectile.gd:663:	var mod_path: String = String(SHOT_MODIFIER_TEXTURES.get(mod_id, DEFAULT_SHOT_MODIFIER_PATH))
+scenes\combat\Projectile.gd:672:	var path: String = String(telegraph_profile.get("sprite_path", ""))
+scenes\combat\Projectile.gd:674:		path = String(telegraph_profile.get("projectile_body_path", ""))
+systems\CombatPresentationRuntime.gd:15:var _ring_highlight_timers: Array[float]
+systems\CombatPresentationRuntime.gd:32:	ring_highlight_timers: Array[float],
+systems\CombatPresentationRuntime.gd:43:	_ring_highlight_timers = ring_highlight_timers
+systems\CombatPresentationRuntime.gd:59:		var layer_name: String = child.name.to_lower()
+systems\CombatPresentationRuntime.gd:326:func on_timing_ring_pressed(lane: int) -> void:
+systems\CombatPresentationRuntime.gd:327:	animate_timing_ring_press(lane)
+systems\CombatPresentationRuntime.gd:331:func on_beat_pulse(quality: String, strength: float) -> void:
+systems\CombatPresentationRuntime.gd:358:func highlight_timing_ring(lane: int, color: Color, width: float = 4.0) -> void:
+systems\CombatPresentationRuntime.gd:363:	_ring_highlight_timers[lane] = 0.20
+systems\CombatPresentationRuntime.gd:367:			var ring := child as Line2D
+systems\CombatPresentationRuntime.gd:368:			if ring.name == "BeatMark":
+systems\CombatPresentationRuntime.gd:370:			ring.default_color = color
+systems\CombatPresentationRuntime.gd:371:			ring.width = width if ring.name == "Perfect" else max(width - 1.2, 1.8)
+systems\CombatPresentationRuntime.gd:373:			# Brief fill flash — conveys impact through the timing ring interior.
+systems\CombatPresentationRuntime.gd:382:func animate_timing_ring_press(lane: int) -> void:
+systems\CombatPresentationRuntime.gd:453:	texture_path: String,
+systems\CombatPresentationRuntime.gd:523:		var ring_width: float = float(profile.get("ring_width", 0.0))
+systems\CombatPresentationRuntime.gd:524:		if ring_width > 0.0:
+systems\CombatPresentationRuntime.gd:526:			highlight_timing_ring(lane, burst_color, ring_width)
+systems\CombatPresentationRuntime.gd:548:	play_combat_sfx(String(profile.get("sfx_cue", "")))
+systems\CombatPresentationRuntime.gd:551:func play_combat_sfx(cue_id: String) -> void:
+scenes\combat\LaneManager.gd:6:# fire_stagger is the wait between firing successive directions in a single cycle.
+scenes\combat\LaneManager.gd:15:const SPAWN_DISTANCE_RATIO: float = 0.42
+scenes\combat\LaneManager.gd:16:const HIT_ZONE_DISTANCE: float = 110.0
+scenes\combat\LaneManager.gd:18:const PROJECTILE_SCENE_PATH: String = "res://scenes/combat/Projectile.tscn"
+scenes\combat\LaneManager.gd:69:# Structure: { "id": String, "hits_remaining": int, "duration": float, "fire_pending": bool }
+scenes\combat\LaneManager.gd:86:	var spawn_dist: float = viewport_size.y * SPAWN_DISTANCE_RATIO
+scenes\combat\LaneManager.gd:98:		_threat_hit_zone_positions.append(_center_pos + dir * HIT_ZONE_DISTANCE)
+scenes\combat\LaneManager.gd:283:	# Forces an immediate cycle start if combat is running and not currently firing.
+scenes\combat\LaneManager.gd:386:	# GORGE-MARK: emit triggered event for bonus charge before clearing.
+scenes\combat\LaneManager.gd:503:func apply_status(lane: int, status_id: String, params: Dictionary = {}) -> void:
+scenes\combat\LaneManager.gd:513:func apply_status_by_id(id: int, status_id: String, params: Dictionary = {}) -> void:
+scenes\combat\LaneManager.gd:549:func get_status_id(lane: int) -> String:
+scenes\combat\LaneManager.gd:554:	return String(_enemy_statuses[id].get("id", ""))
+scenes\combat\LaneManager.gd:641:	var section_id: String = ""
+scenes\combat\LaneManager.gd:643:		section_id = String(combat_scene.get_current_song_section_id())
+scenes\combat\LaneManager.gd:644:	var section_mod: String = COMBAT_CONTENT.get_shot_modifier_for_section(section_id)
+scenes\combat\LaneManager.gd:645:	var species_mod: String = String(telegraph_profile.get("species_shot_modifier", "")).strip_edges()
+scenes\combat\LaneManager.gd:778:		var radius: float = (_viewport_size.y * SPAWN_DISTANCE_RATIO) + float(_orbit_radius_offsets.get(id, 0.0))
+scenes\combat\LaneManager.gd:810:	var distance: float = SPAWN_DISTANCE_RATIO * _viewport_size.y - HIT_ZONE_DISTANCE
+scenes\combat\LaneManager.gd:816:func _on_projectile_resolved(projectile, result: String, lane: int) -> void:
+scenes\combat\LaneManager.gd:837:	var enemy_type: String = String(enemy.get("type", "dreg"))
+scenes\combat\LaneManager.gd:853:		var enemy_type: String = String(enemy.get("type", "dreg"))
+systems\CombatPresentationController.gd:41:func _apply_text_role(label: Label, role: String, align: int = -1) -> void:
+systems\CombatPresentationController.gd:231:	override_env_id: String = ""
+systems\CombatPresentationController.gd:417:func update_background_tendency_reaction(bg_sprite: Control, leading_tendency: String) -> void:
+systems\CombatPresentationController.gd:448:func on_combat_event(bg_sprite: Control, event_type: String) -> void:
+systems\CombatPresentationController.gd:472:func create_timing_circle_container(host: Node2D) -> Node2D:
+systems\CombatPresentationController.gd:490:	timing_rings_cache: Array[Dictionary],
+systems\CombatPresentationController.gd:497:	timing_rings_cache.clear()
+systems\CombatPresentationController.gd:500:	var active_color: Color = biome.get("ring_active_color", Color(1.0, 0.95, 0.55, 1.0))
+systems\CombatPresentationController.gd:501:	var inactive_color: Color = biome.get("ring_inactive_color", Color(0.7, 0.7, 0.8, 0.45))
+systems\CombatPresentationController.gd:521:	var edge_ring := _make_anomaly_sigil_ring(
+systems\CombatPresentationController.gd:527:	edge_ring.name = "Edge"
+systems\CombatPresentationController.gd:529:	var outer_ring := _make_anomaly_sigil_ring(
+systems\CombatPresentationController.gd:535:	outer_ring.name = "Outer"
+systems\CombatPresentationController.gd:537:	var perfect_ring := _make_anomaly_sigil_ring(
+systems\CombatPresentationController.gd:543:	perfect_ring.name = "Perfect"
+systems\CombatPresentationController.gd:569:	sigil_group.add_child(edge_ring)
+systems\CombatPresentationController.gd:572:	sigil_group.add_child(outer_ring)
+systems\CombatPresentationController.gd:573:	sigil_group.add_child(perfect_ring)
+systems\CombatPresentationController.gd:577:	timing_rings_cache.append({
+systems\CombatPresentationController.gd:579:		"outer": outer_ring,
+systems\CombatPresentationController.gd:580:		"perfect": perfect_ring,
+systems\CombatPresentationController.gd:583:		"edge": edge_ring,
+systems\CombatPresentationController.gd:588:func _make_anomaly_sigil_ring(radius: float, color: Color, width: float, jitter: float) -> Line2D:
+systems\CombatPresentationController.gd:641:func _make_ring_line(radius: float, color: Color, width: float) -> Line2D:
+systems\CombatPresentationController.gd:668:func update_timing_ring_proximity(
+systems\CombatPresentationController.gd:673:	timing_rings_cache: Array[Dictionary],
+systems\CombatPresentationController.gd:674:	ring_highlight_timers: Array[float],
+systems\CombatPresentationController.gd:676:	surge_window_tendency: String
+systems\CombatPresentationController.gd:679:	var ring_palette: Dictionary = UI_STYLE.get_combat_ring_palette()
+systems\CombatPresentationController.gd:680:	var active_color: Color = biome.get("ring_active_color", ring_palette.get("active", Color(1.0, 0.95, 0.55, 1.0)))
+systems\CombatPresentationController.gd:681:	var inactive_color: Color = biome.get("ring_inactive_color", ring_palette.get("inactive", Color(0.7, 0.7, 0.8, 0.45)))
+systems\CombatPresentationController.gd:713:	if timing_rings_cache.is_empty():
+systems\CombatPresentationController.gd:716:	var cache: Dictionary = timing_rings_cache[0]
+systems\CombatPresentationController.gd:718:	var outer_ring: Line2D = cache["outer"]
+systems\CombatPresentationController.gd:719:	var perfect_ring: Line2D = cache["perfect"]
+systems\CombatPresentationController.gd:722:	var edge_ring: Line2D = cache["edge"]
+systems\CombatPresentationController.gd:727:	for timer in ring_highlight_timers:
+systems\CombatPresentationController.gd:748:		var p: float = proj.progress
+systems\CombatPresentationController.gd:765:		var ring_t_base: float = float(telegraph_profile.get("ring_thickness_base", 1.0))
+systems\CombatPresentationController.gd:766:		outer_width = 2.8 * ring_t_base
+systems\CombatPresentationController.gd:767:		perfect_width = 4.6 * ring_t_base
+systems\CombatPresentationController.gd:825:	edge_ring.default_color = Color(fill_color.r, fill_color.g, fill_color.b, edge_alpha)
+systems\CombatPresentationController.gd:828:	outer_ring.default_color = outer_color
+systems\CombatPresentationController.gd:829:	outer_ring.width = outer_width
+systems\CombatPresentationController.gd:830:	perfect_ring.default_color = perfect_color
+systems\CombatPresentationController.gd:831:	perfect_ring.width = perfect_width
+systems\CombatPresentationController.gd:1053:	var grade_id: String = String(enemy.get("grade", "mature"))
+systems\CombatPresentationController.gd:1054:	var grade_label_text: String = String(enemy.get("grade_label", grade_id.to_upper()))
+systems\CombatPresentationController.gd:1055:	var enemy_type: String = String(enemy.get("type", ""))
+systems\CombatPresentationController.gd:1102:	_configure_enemy_marker_shape(accent, sigil, marker_size, String(telegraph_profile.get("family", "fang")))
+systems\CombatPresentationController.gd:1106:	var species_id: String = String(enemy.get("species_id", ""))
+systems\CombatPresentationController.gd:1108:		var sprite_path: String = COMBAT_CONTENT.get_creature_art_path(species_id, "battlefield")
+systems\CombatPresentationController.gd:1192:func _configure_enemy_marker_shape(accent: ColorRect, sigil: ColorRect, marker_size: float, family: String) -> void:
+systems\CombatPresentationController.gd:1287:				pressure = clamp(((projectile.progress - 0.70) / 0.30) * warning_bias, 0.0, 1.0)
+systems\CombatPresentationController.gd:1288:				imminent = clamp((projectile.progress - 0.96) / 0.08, 0.0, 1.0)
+systems\CombatPresentationController.gd:1314:	var reward_tex: String = COMBAT_FEEL_CONTENT.resolved_hud_reward_panel_path()
+systems\CombatPresentationController.gd:1544:	var reward_tex: String = COMBAT_FEEL_CONTENT.resolved_hud_reward_panel_path()
+systems\CombatPresentationController.gd:1658:	sprite_name: String,
+systems\CombatPresentationController.gd:1659:	texture_path: String,
+systems\CombatPresentationController.gd:1694:func _hud_attach_combat_panel_art(panel: Control, texture_path: String, region: Rect2) -> void:

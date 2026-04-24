@@ -12,7 +12,7 @@ Agents lack "eyes" by default. To bridge the gap between mechanical truth (code)
 2. **Summon INSPECTOR**: The BRAIN routes a task to the **Inspector** agent, providing the file paths to the captured visual evidence and metadata packet.
    - *Canonical Specialist*: `docs/ai/agents/INSPECTOR.md`.
 3. **Audit**: The Inspector analyzes the visual evidence against:
-   - `HUD_READABILITY_DOCTRINE.md` (Are lanes 0, 1, 2 obscured? Are timing elements readable?)
+   - `HUD_READABILITY_DOCTRINE.md` (Are cardinal lanes N, S, E, W obscured? Are timing elements readable?)
    - `PROTOTYPE_VISUAL_REPLACEMENT_PROMPTS_V1.md` (Do the visuals match the "Premium Menace" target, or are they flat and prototype-y?)
 4. **Receipt**: The Inspector generates a **Visual Audit Receipt** using the schema below. Prose is allowed after the schema, but ALFRED consumes the schema as source of truth.
 5. **Mutation**: The BRAIN hands the receipt to ALFRED (Surgeon) to implement the specific GDScript or Shader changes necessary to correct the visual drift.
@@ -43,7 +43,7 @@ The capture tool writes this beside each screenshot.
   "camera": {"zoom": {"x": 1.0, "y": 1.0}, "offset": {"x": 0.0, "y": 0.0}, "global_position": {"x": 0.0, "y": 0.0}},
   "combat": {"tier": "rampage", "combo_count": 12, "style_score": 640.0, "active_lane": 1},
   "song": {"id": "tricky", "section_id": "verse", "beat_index": 32, "beat_quality": "good", "intensity": 0.65, "resonance_tier": "drive"},
-  "lane": {"active": 1, "source": 2, "support": -1, "y_positions": [260.0, 360.0, 460.0]},
+  "lane": {"active": 1, "source": 2, "support": -1, "cardinal_positions": [{"lane": 0, "spawn": "Vector2(...)", "hit_zone": "Vector2(...)"}, {"lane": 1, "spawn": "Vector2(...)", "hit_zone": "Vector2(...)"}, {"lane": 2, "spawn": "Vector2(...)", "hit_zone": "Vector2(...)"}, {"lane": 3, "spawn": "Vector2(...)", "hit_zone": "Vector2(...)" }]},
   "support": {"species_id": "ashclaw", "charge": 75.0, "effect_id": "unknown"},
   "game_state": {"available": true, "run_number": 1, "in_combat": true, "active_mutations": []}
 }
@@ -69,7 +69,7 @@ The Inspector transforms capture seed(s) plus screenshot evidence into this patc
     "combat_tier": "rampage",
     "resonance_tier": "unknown",
     "song": {"id": "unknown", "section_id": "unknown", "beat_index": -1, "beat_quality": "unknown", "intensity": -1.0},
-    "lane": {"active": -1, "source": 1, "y_positions": []},
+    "lane": {"active": -1, "source": 1, "cardinal_positions": []},
     "support": {"species_id": "unknown", "charge": -1.0, "effect_id": "unknown"},
     "active_mutations": []
   },

@@ -9,7 +9,7 @@ This is the project's pulse. Use this as the default context nucleus for all V2 
     - **Origin**: A real-world person who chose "Entry" before death.
     - **Rebirth**: The player becomes a diegetic "System" (The Gamer/Slime style) that extracts traits and reshapes flesh.
 - **Genre**: Surreal, System-Horror RPG Roguelite with Rhythm-Action Combat.
-- **Signature Expression**: Transitioning from a three-lane timing combat to a centered, 4-direction timing ring; a stylish volley of intercepted pressure (Chainsaw Man kineticism mixed with centered survivor pressure).
+- **Signature Expression**: Centered, four-cardinal timing combat; enemies and projectiles pressure North/South/East/West lanes toward the player, and the player focuses a direction before answering with attack/parry/dodge/ultimate.
 - **Shorthand**: **Combat-Clean, Management-Rich** (The Honed Edge and The Grafted Growth).
 - **Aesthetic**: **Kinetic Surrealism** (Ito spirals + Chainsaw violence + Kaiju scale).
 
@@ -39,4 +39,3 @@ The world is not just a backdrop; it is a reactive biomechanical response to the
 5. **Older Canon / Source Docs (Layer 1)**: The Soul. Identity anchors, timing truth, DNA economy. Useful memory and guidance; may be softened, restructured, retired, or replaced when stale.
 
 **Authority Order**: User Intent > Repo Truth > Live Build Truth > Evolving Spine > Older Canon / Source Docs.
-

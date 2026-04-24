@@ -14,7 +14,7 @@
 
 ## Confirmed Core Priorities
 - **Timing Truth**: Frame-perfect combat remains the priority; no reward noise can disrupt the beat.
-- **Lane Integrity**: Combat lanes (0, 1, 2) must remain readable and free of non-essential UI.
+- **Lane Integrity**: Cardinal combat lanes (N, S, E, W) must remain readable and free of non-essential UI.
 - **Creature Meaning**: Creature-fate decisions must feel directly tied to the specific entities encountered and defeated.
 - **Reward Ecology**: Rewards must strictly occupy their defined lanes (Loot, Artifacts, DNA, Bond/Eat, Collars, Tendencies).
 

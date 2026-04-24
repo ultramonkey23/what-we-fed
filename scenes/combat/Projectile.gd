@@ -35,6 +35,7 @@ const PARRY_GOOD_MAX: float = 1.04
 
 # Reflected projectiles travel back a little faster to feel punchy.
 const REFLECT_SPEED_MULT: float = 1.25
+const PLAYER_CONTACT_RADIUS: float = 34.0
 
 # Body: per-enemy art under res://assets/sprites/projectile_bodies/<species_id or type>.png (see generator).
 # Modifier: song-section preset — grayscale overlay (shot1–6) + trail/glow tuning (shot_modifier).
@@ -354,7 +355,7 @@ func _process_incoming_song_synced(delta: float) -> void:
 		_reported_hit_zone = true
 		reached_hit_zone.emit(self)
 
-	if not _reported_player_contact and progress >= 1.15: # Progress 1.15 is roughly player contact
+	if not _reported_player_contact and _reported_hit_zone and position.distance_to(player_pos) <= PLAYER_CONTACT_RADIUS:
 		_reported_player_contact = true
 		player_contact.emit(self)
 

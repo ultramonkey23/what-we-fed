@@ -149,4 +149,12 @@ python tools/ai/score_agent_report.py docs/agent_reports/example_report.txt
 cat report.txt | python tools/ai/score_agent_report.py
 ```
 
-The script exits 0 (PASS), 1 (WARN), or 2 (FAIL) — usable in CI or shell pipelines.
+The script process exits 0 (PASS), 1 (WARN), or 2 (FAIL) — usable in CI or shell pipelines.
+
+Fixture expectations:
+
+```bash
+python tools/ai/score_agent_report.py docs/ai/examples/_sample_report_pass.txt  # PASS, exit 0
+python tools/ai/score_agent_report.py docs/ai/examples/_sample_report_warn.txt  # WARN, exit 1
+python tools/ai/score_agent_report.py docs/ai/examples/_sample_report_fail.txt  # FAIL, exit 2
+```

@@ -1,0 +1,19 @@
+WHAT WE FED AGENT REPORT
+Agent: Claude
+Date: 2026-04-24
+Task type: AI report scorer validation
+Files inspected:
+  - tools/ai/score_agent_report.py
+Files changed:
+  - docs/ai/examples/_sample_report_warn.txt
+Validation run: python tools/ai/score_agent_report.py --help
+Validation level: 2
+Validation result: scorer help printed successfully
+Confirmed repo truth:
+  - tools/ai/score_agent_report.py documents PASS, WARN, and FAIL process exit codes
+Unverified assumptions:
+  - Shells and CI wrappers should preserve Python's process exit code directly
+Recommended next step:
+  - Run the scorer fixtures in CI
+Risks:
+  - The scorer remains heuristic and may need tuning against future real reports

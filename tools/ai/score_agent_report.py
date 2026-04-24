@@ -20,7 +20,7 @@ Usage:
   python tools/ai/score_agent_report.py path/to/report.txt
   cat report.txt | python tools/ai/score_agent_report.py
 
-Exit codes:
+Process exit codes:
   0 — PASS
   1 — WARN
   2 — FAIL

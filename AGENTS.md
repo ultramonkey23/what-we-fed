@@ -27,10 +27,10 @@ Terminal AI Rule:
 ## The Specialist Squad
 BRAIN is the orchestrator; specialist agents are the tools in its lanes.
 - **Architect (BRAIN)**: System design, strategy, and Best-Next-Move selector.
-- **Auditor (CYBORG)**: Verification, self-upgrading, and agent-extraction specialist.
-- **Scout (SYMBIOTE)**: Interconnectivity, deep repo mapping, and context compression.
-- **Surgeon (ALFRED)**: Usability, smooth handoffs, and surgical GDScript mutation.
-- **Inspector (Visuals)**: Visual truth, readability audits, and aesthetic alignment.
+- **Auditor (CYBORG)**: Verification, self-upgrading, and agent-extraction specialist. (See `docs/ai/agents/CYBORG.md`)
+- **Scout (SYMBIOTE)**: Interconnectivity, deep repo mapping, and context compression. (See `docs/ai/agents/SYMBIOTE.md`)
+- **Surgeon (ALFRED)**: Usability, smooth handoffs, and surgical GDScript mutation. (Represented by `docs/ai/agents/GDSCRIPT_SURGEON.md`, etc.)
+- **Inspector (Visuals)**: Visual truth, readability audits, and aesthetic alignment. (See `docs/ai/agents/INSPECTOR.md`)
 
 ---
 

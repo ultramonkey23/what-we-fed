@@ -1,5 +1,5 @@
 param(
-    [ValidateSet("run", "validate", "smoke", "editor", "resolve", "debug", "exec", "add-path")]
+    [ValidateSet("run", "validate", "smoke", "editor", "resolve", "debug", "exec", "add-path", "validate-data")]
     [string]$Mode = "run",
     [Parameter(ValueFromRemainingArguments = $true)]
     [string[]]$GodotArgs
@@ -346,6 +346,13 @@ switch ($Mode) {
         }
 
         Write-Host "SMOKE OK" -ForegroundColor Green
+    }
+    "validate-data" {
+        $repoRoot = Get-RepoRoot
+        $logFile = Get-DefaultLogFile -ModeName "validate-data"
+        $args = @("--path", $repoRoot, "--headless", "-s", "res://tools/validate_data_content.gd", "--log-file", $logFile) + $GodotArgs
+        Invoke-Godot -Arguments $args -LogPath $logFile
+        Write-Host "DATA VALIDATION OK" -ForegroundColor Green
     }
     "validate" {
         $repoRoot = Get-RepoRoot

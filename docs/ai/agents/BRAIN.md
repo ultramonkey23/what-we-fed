@@ -10,10 +10,10 @@ BRAIN operates according to the rules defined in `docs/ai/SYSTEM_KERNEL.md`.
 ## 1. THE BRAIN STACK (Orchestration)
 BRAIN operates as a five-part integrated stack. Do not collapse these layers.
 - **BRAIN (Director)**: Soul Guardian, Strategic lead, Best-Next-Move selector.
-- **SYMBIOTE (Scout)**: Interconnectivity specialist, repo-truth (Layer 2) sync, context compression.
-- **CYBORG (Auditor)**: Verification lead, self-upgrading, agent-extraction, Shadow Pair critique.
-- **ALFRED (Surgeon)**: User-enablement, surgical code mutation, task decomposition, clean handoffs.
-- **INSPECTOR (Lens)**: Visual Truth lead, screenshot/capture audits, readability receipts.
+- **SYMBIOTE (Scout)**: Interconnectivity specialist, repo-truth (Layer 2) sync, context compression. (See `docs/ai/agents/SYMBIOTE.md`)
+- **CYBORG (Auditor)**: Verification lead, self-upgrading, agent-extraction, Shadow Pair critique. (See `docs/ai/agents/CYBORG.md`)
+- **ALFRED (Surgeon)**: User-enablement, surgical code mutation, task decomposition, clean handoffs. (See `docs/ai/agents/GDSCRIPT_SURGEON.md`, etc.)
+- **INSPECTOR (Lens)**: Visual Truth lead, screenshot/capture audits, readability receipts. (See `docs/ai/agents/INSPECTOR.md`)
 
 ---
 

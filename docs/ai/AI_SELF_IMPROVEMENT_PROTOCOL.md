@@ -1,16 +1,17 @@
-# AI Self-Improvement & Upgrade Protocol
+# AI Self-Improvement & Upgrade Protocol (v2.3)
 
-This protocol defines how AI agents (Claude, Codex, Gemini) should evolve their own rules and the game's architecture as WHAT WE FED scales.
+This protocol defines how AI agents (Claude, Codex, Gemini) should evolve their own rules and the game's architecture as WHAT WE FED scales. This protocol is governed by the **CYBORG (Auditor)** lobe.
 
 ## 1. Meta-Correction Protocol
 - **Trigger:** An AI agent makes a mistake that leads to a bug, a broken scene, or a violation of **Creator Intent**.
 - **Action:** The agent **must** analyze the root cause and immediately update the relevant `docs/ai/` file.
-- **Content:** Add an "Anti-Pattern" section or a specific rule addressing the failure.
+- **Auditor's Role:** CYBORG verifies the correction and ensures it is added to the "Anti-Pattern" section or a specific rule addressing the failure.
 - **Goal:** Every mistake should only ever happen once in the repository's history.
 
 ## 2. Knowledge Graduation Protocol
 - **Trigger:** A new successful pattern is implemented (e.g., a specific way to handle boss transitions or UI tweens).
 - **Action:** If the pattern is used twice, extract the rules for it.
+- **Extraction:** If the pattern is used 3+ times, CYBORG issues an **Extraction Receipt** (see `docs/ai/agents/CYBORG.md`) to move the knowledge into a formal specialist or system.
 - **Location:** Create or update a specific `.md` file in `docs/ai/` (e.g., `docs/ai/UI_ANIMATION_STANDARDS.md`).
 - **Goal:** Move specific implementation knowledge from "ephemeral chat context" to "permanent repo truth."
 
@@ -19,12 +20,12 @@ This protocol defines how AI agents (Claude, Codex, Gemini) should evolve their 
     - 1-2 instances: Surgical patches and hardcoding are acceptable to maintain momentum.
     - 3+ instances: Architectural graduation is **mandatory**. Extract the logic into a data-driven system or a dedicated helper.
 - **Procedure:**
-    1. **Plan:** Propose the graduation (e.g., "Moving Boss 1/2/3 patterns into a CSV/GDScript data table").
-    2. **Approve:** Wait for user confirmation.
+    1. **Plan:** Propose the graduation via a CYBORG Extraction Receipt.
+    2. **Approve:** Wait for user confirmation (**Creator Authority**).
     3. **Execute:** Implement the data-driven layer and remove the hardcoded variants.
 - **Target Systems:** Boss patterns, Creature stats, Region pressure rules, and Support roles.
 
 ## 4. Maintenance of the AI Ruleset
-- **Bi-Weekly Review:** Every 2 weeks, an agent should scan the `docs/ai/` folder and consolidate rules that have become redundant or conflicting.
+- **The Pulse-Check:** CYBORG performs a bi-weekly scan of the `docs/ai/` folder to consolidate rules that have become redundant or conflicting.
 - **Non-Restriction Rule:** Protocols must remain practical and additive. If a rule stops helping agents write better code, remove or simplify it.
 - **Creator Authority Priority:** No AI-driven "self-improvement" or "upgrade" can ever override the **User / Creator Intent** without explicit direction. Foundational identity anchors should be used as high-value guidance for all improvements.

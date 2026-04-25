@@ -99,6 +99,7 @@ func record_attack() -> void:
 func record_timed_attack() -> void:
 	combo_count += 2
 	style_score += 14.0
+	_gain_stamina(STAMINA_ATTACK_GAIN)
 	_emit_meter_state()
 
 

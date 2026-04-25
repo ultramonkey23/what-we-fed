@@ -530,7 +530,7 @@ func _grant_chain_bypass() -> void:
 
 
 func _lock_action(duration: float, state: String) -> void:
-	var nerve_mult: float = 1.0 / max(GameState.stat_swiftness, 0.1)
+	var nerve_mult: float = clampf(1.0 / maxf(GameState.stat_swiftness, 0.1), 0.40, 2.0)
 	action_lock_timer = max(duration * nerve_mult, 0.0)
 	current_action_state = state
 
@@ -743,7 +743,7 @@ func _try_ultimate() -> void:
 	elif beat == "good":
 		beat_mult = 1.10
 
-	var total_damage: float = GameState.get_attack_damage() * multiplier * beat_mult * GameState.stat_intelligence
+	var total_damage: float = GameState.get_attack_damage() * multiplier * beat_mult * GameState.stat_adaptability
 	total_damage += _get_creature_bonus()
 
 	for lane in range(lane_manager.THREAT_COUNT if lane_manager else 4):

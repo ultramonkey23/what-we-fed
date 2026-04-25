@@ -124,6 +124,30 @@ const ENEMY_TEMPLATES := {
 		"spawn_weight": 0.45,
 		"difficulty_tier": 2,
 		"behaviour_tags": ["melee", "approach"]
+	},
+	"pale_shelf_precision_stalker": {
+		"base_hp": 30.0,
+		"base_damage": 10.0,
+		"base_defense": 1.0,
+		"projectile_speed": 430.0,
+		"attack_pattern": "precision_shot",
+		"telegraph_duration": 0.5,
+		"expose_duration": 0.9,
+		"spawn_weight": 0.5,
+		"difficulty_tier": 2,
+		"behaviour_tags": ["precision", "fast", "pale_shelf"]
+	},
+	"pale_shelf_shardshroud_sentinel": {
+		"base_hp": 38.0,
+		"base_damage": 10.0,
+		"base_defense": 2.0,
+		"projectile_speed": 286.0,
+		"attack_pattern": "sentinel_shot",
+		"telegraph_duration": 1.4,
+		"expose_duration": 0.7,
+		"spawn_weight": 0.4,
+		"difficulty_tier": 2,
+		"behaviour_tags": ["anchor", "deliberate", "pale_shelf"]
 	}
 }
 
@@ -148,13 +172,13 @@ const ENCOUNTER_POOLS := {
 			{"template": "dreg", "weight": 1.0, "lane_preference": "edges"}
 		],
 		"medium": [
-			{"template": "dreg", "weight": 0.6, "lane_preference": "edges"},
-			{"template": "bond_reaper", "weight": 0.4, "lane_preference": "any"}
+			{"template": "pale_shelf_precision_stalker", "weight": 0.6, "lane_preference": "any"},
+			{"template": "pale_shelf_shardshroud_sentinel", "weight": 0.4, "lane_preference": "center"}
 		],
 		"hard": [
-			{"template": "dreg", "weight": 0.3, "lane_preference": "edges"},
-			{"template": "bond_reaper", "weight": 0.5, "lane_preference": "any"},
-			{"template": "sovereign", "weight": 0.2, "lane_preference": "center"}
+			{"template": "pale_shelf_precision_stalker", "weight": 0.45, "lane_preference": "any"},
+			{"template": "pale_shelf_shardshroud_sentinel", "weight": 0.30, "lane_preference": "center"},
+			{"template": "bond_reaper", "weight": 0.25, "lane_preference": "any"}
 		]
 	},
 	"drowned_cut": {

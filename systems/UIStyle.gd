@@ -275,16 +275,22 @@ static func stylebox_texture_from_path(
 	)
 
 
+## Helper to load a texture from a path with fallback to globalized path.
 static func _load_texture(texture_path: String) -> Texture2D:
 	if texture_path.is_empty():
 		return null
+	
 	if ResourceLoader.exists(texture_path):
-		var loaded: Texture2D = load(texture_path) as Texture2D
-		if loaded != null:
+		var loaded: Resource = load(texture_path)
+		if loaded is Texture2D:
 			return loaded
+			
 	var abs_path: String = ProjectSettings.globalize_path(texture_path)
 	if FileAccess.file_exists(abs_path):
-		return ResourceLoader.load(texture_path, "", ResourceLoader.CACHE_MODE_REUSE) as Texture2D
+		var loaded: Resource = ResourceLoader.load(texture_path, "", ResourceLoader.CACHE_MODE_REUSE)
+		if loaded is Texture2D:
+			return loaded
+			
 	return null
 
 
@@ -993,10 +999,11 @@ static func get_tier_color(tier_id: String) -> Color:
 		_: return Color.WHITE
 
 
+## Returns the evocative display label for a combat tier.
 static func get_tier_label(tier_id: String) -> String:
 	match tier_id:
-		"stirring": return "STIRRING"
-		"hunting": return "HUNTING"
+		"stirring": return "THE STIRRING"
+		"hunting": return "THE HUNT"
 		"rampage": return "RAMPAGE"
 		"apex": return "APEX"
 		"sovereign": return "SOVEREIGN"

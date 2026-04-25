@@ -120,6 +120,18 @@ const CAMERA_ZOOM := {
 }
 
 # === VISUAL EFFECTS ===
+const AFFINITY_COLORS := {
+	"flesh": Color(0.92, 0.28, 0.18, 0.52),    # Aggressive Red-Orange
+	"hollow": Color(0.58, 0.88, 1.0, 0.44),    # Cold Ethereal Blue
+	"gorge": Color(0.96, 0.52, 0.12, 0.48),    # Warm Predatory Orange
+	"reflex": Color(0.24, 0.78, 1.0, 0.46),    # Sharp Signal Blue
+	"cadence": Color(1.0, 0.88, 0.26, 0.50),   # Alert Pulse Gold
+	"guard": Color(0.42, 0.72, 0.96, 0.46),    # Stable Shield Azure
+	"hush": Color(0.64, 0.62, 0.84, 0.42),     # Dampened Violet
+	"steel": Color(0.88, 0.92, 0.96, 0.48),    # Hard Metallic Grey
+	"void": Color(0.12, 0.08, 0.16, 0.60)      # Deep Ink Black
+}
+
 const SCREEN_FLASH := {
 	"light_damage": {
 		"color": Color(1.0, 0.2, 0.2, 0.3),
@@ -335,6 +347,9 @@ static func get_camera_shake_params(shake_type: String) -> Dictionary:
 
 static func get_screen_flash_params(flash_type: String) -> Dictionary:
 	return SCREEN_FLASH.get(flash_type, {"color": Color.WHITE, "duration": 0.1})
+
+static func get_affinity_color(affinity: String) -> Color:
+	return AFFINITY_COLORS.get(affinity, Color(1.0, 1.0, 1.0, 0.4))
 
 static func get_timing_window_ms(window_type: String) -> float:
 	return TIMING_WINDOWS.get(window_type, 100.0)

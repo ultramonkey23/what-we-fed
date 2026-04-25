@@ -70,6 +70,7 @@ const CREATURES := {
 	   "base_damage": 10.0,
 	   "base_defense": 2.0,
 	   "description": "It learned to cut before it learned the cost of stopping.",
+	   "signal_flavor": "The air near its claws smells of ozone and old, dry blood.",
 	   "dna_threshold": 8.0,
 	   "sprite_path": "res://assets/creatures/ashclaw/forms/ashclaw_baby.png",
 	   "reward_portrait_path": "res://assets/creatures/ashclaw/forms/ashclaw_baby.png",
@@ -115,6 +116,7 @@ const CREATURES := {
 		   "base_damage": 7.0,
 		   "base_defense": 3.0,
 		   "description": "It holds the shape of something that stayed after its body did not.",
+		   "signal_flavor": "A low hum follows it, like a chord that refuses to resolve.",
 		   "dna_threshold": 8.0,
 		   "sprite_path": "res://assets/creatures/bond_remnant/forms/bond_remnant_idle.png",
 		   "reward_portrait_path": "res://assets/creatures/bond_remnant/forms/bond_remnant_idle.png",
@@ -156,6 +158,7 @@ const CREATURES := {
 		"capture_threshold": 0.30,
 		"bond_level": 1,
 		"description": "It keeps eating until the hunger belongs to whoever is left nearby.",
+		"signal_flavor": "The air around it is warm and wet, like standing inside a closing mouth.",
 		"dna_threshold": 10.0,
 		"eat_effect": {"type": "hp_restore", "value": 18.0},
 		"mutation": {
@@ -186,6 +189,7 @@ const CREATURES := {
 		"capture_threshold": 0.20,
 		"bond_level": 1,
 		"description": "It waits for one clean reason to move. The reason never survives it.",
+		"signal_flavor": "Nothing moves near it. Even the air decides to wait.",
 		"dna_threshold": 10.0,
 		"eat_effect": {"type": "damage_flat", "value": 1.0},
 		"mutation": {
@@ -216,6 +220,7 @@ const CREATURES := {
 		"capture_threshold": 0.35,
 		"bond_level": 1,
 		"description": "Every wound it opens stays interested in widening.",
+		"signal_flavor": "The ground near it is wet. The source is not always an enemy.",
 		"dna_threshold": 12.0,
 		"eat_effect": {"type": "damage_flat", "value": 3.0},
 		"mutation": {
@@ -246,6 +251,7 @@ const CREATURES := {
 		"capture_threshold": 0.22,
 		"bond_level": 1,
 		"description": "Its ribs ring when your timing is true. The note cuts after the sound is done.",
+		"signal_flavor": "When it breathes, its ribs ring like a question you can't unhear.",
 		"dna_threshold": 6.0,
 		"eat_effect": {"type": "support_charge", "value": 35.0},
 		"mutation": {
@@ -276,6 +282,7 @@ const CREATURES := {
 		"capture_threshold": 0.28,
 		"bond_level": 1,
 		"description": "It protects what it keeps only so the feeding can last longer.",
+		"signal_flavor": "Standing near it feels like the walls have leaned in to listen.",
 		"dna_threshold": 8.0,
 		"eat_effect": {"type": "max_hp_flat", "value": 12.0},
 		"mutation": {
@@ -306,6 +313,7 @@ const CREATURES := {
 		"capture_threshold": 0.33,
 		"bond_level": 1,
 		"description": "It lives in the instant after the wound opens and before the body agrees.",
+		"signal_flavor": "The smell of iron precedes it. The silence that follows is worse.",
 		"dna_threshold": 10.0,
 		"eat_effect": {"type": "damage_flat", "value": 3.0},
 		"mutation": {
@@ -336,6 +344,7 @@ const CREATURES := {
 		"capture_threshold": 0.24,
 		"bond_level": 1,
 		"description": "When it tightens, the field goes quiet enough to hear what is still hunting.",
+		"signal_flavor": "The field around it goes quiet enough to hear your own pulse slow.",
 		"dna_threshold": 9.0,
 		"eat_effect": {"type": "hp_restore", "value": 12.0},
 		"mutation": {
@@ -366,6 +375,7 @@ const CREATURES := {
 		"capture_threshold": 0.23,
 		"bond_level": 1,
 		"description": "It holds still through your opening. The stillness moves after.",
+		"signal_flavor": "The cold doesn't radiate from it. It collects around you.",
 		"dna_threshold": 9.0,
 		"eat_effect": {"type": "max_hp_flat", "value": 14.0},
 		"mutation": {
@@ -394,6 +404,7 @@ const CREATURES := {
 		"base_defense": 1.0,
 		"dna_threshold": 9.0,
 		"description": "It counts the silence between your pulses. When the gap widens, it stops being a shadow.",
+		"signal_flavor": "It counts your breaths. When they skip, it moves.",
 		"sprite_path": "res://assets/creatures/pale_shelf/enemies/pale_shelf_precision_stalker.png",
 		"battlefield_sprite_path": "res://assets/creatures/pale_shelf/enemies/pale_shelf_precision_stalker.png",
 		"combat_render": {
@@ -413,6 +424,7 @@ const CREATURES := {
 		"base_defense": 2.0,
 		"dna_threshold": 8.0,
 		"description": "A plated weight that expects you to panic. It closes the lane with the cold patience of a glacier.",
+		"signal_flavor": "Its plates click once before it fires. The click is the only warning.",
 		"sprite_path": "res://assets/creatures/pale_shelf/enemies/pale_shelf_shardshroud_sentinel.png",
 		"battlefield_sprite_path": "res://assets/creatures/pale_shelf/enemies/pale_shelf_shardshroud_sentinel.png",
 		"combat_render": {
@@ -435,6 +447,7 @@ const CREATURES := {
 		"bond_level": 1,
 		"potential_max_grade": "brood",
 		"description": "It waits below where the kills land. Something in the current marks the spot.",
+		"signal_flavor": "The current marks where it waits. Nothing marks where it moves.",
 		"dna_threshold": 11.0,
 		"eat_effect": {"type": "damage_flat", "value": 2.5},
 		"mutation": {

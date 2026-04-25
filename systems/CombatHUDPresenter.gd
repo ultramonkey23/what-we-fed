@@ -20,6 +20,16 @@ var _exp_value_label: Label
 var _power_scouter_label: Label
 var _scouter_shell: Panel
 
+# Scouter flavor state
+var _scouter_target_species: String = ""
+var _scouter_target_name: String = ""
+var _scouter_target_flavor: String = ""
+var _scouter_is_cycling: bool = false
+var _scouter_cycle_timer: float = 0.0
+var _last_power_level: float = 0.0
+var _current_enemy_data: Array = []
+
+
 # Support readout cluster
 var _support_shell: ColorRect
 var _support_bar: ProgressBar
@@ -133,6 +143,13 @@ func bind_nodes(nodes: Dictionary) -> void:
 	_song_timer_label = nodes.get("song_timer_label")
 	_song_phase_label = nodes.get("song_phase_label")
 
+	if not EventBus.combat_started.is_connected(_on_combat_started):
+		EventBus.combat_started.connect(_on_combat_started)
+	if not EventBus.player_teleported.is_connected(_on_player_teleported):
+		EventBus.player_teleported.connect(_on_player_teleported)
+	if not EventBus.player_attacked.is_connected(_on_player_attacked):
+		EventBus.player_attacked.connect(_on_player_attacked)
+
 
 # ── Resource HUD ──────────────────────────────────────────────────────────────
 
@@ -151,17 +168,20 @@ func refresh_stamina(current: float, maximum: float) -> void:
 
 
 func refresh_power_level(power_level: float) -> void:
+	_last_power_level = power_level
 	if _power_scouter_label == null:
 		return
 	
 	var displayed_power: int = int(power_level)
-	var current_text: String = _power_scouter_label.text.replace("POWER LEVEL: ", "").replace("!!! ", "").replace(" !!!", "")
-	var current_val: int = int(current_text)
+	var scouter_text: String = _power_scouter_label.text
+	var current_power_text: String = scouter_text.replace("POWER LEVEL: ", "").replace("!!! ", "").replace(" !!!", "")
+	var current_val: int = int(current_power_text) if current_power_text.is_valid_int() else 0
 	
-	_power_scouter_label.text = "POWER LEVEL: %d" % displayed_power
+	if not _scouter_is_cycling:
+		_power_scouter_label.text = "POWER LEVEL: %d" % displayed_power
 	
 	# Power Level HUD Update (Digital Scouter Feel)
-	if displayed_power != current_val:
+	if displayed_power != current_val and not _scouter_is_cycling:
 		var scouter_color: Color = Color(1.0, 0.85, 0.20, 1.0) # High-contrast Amber
 		
 		if displayed_power > current_val:
@@ -183,14 +203,6 @@ func refresh_power_level(power_level: float) -> void:
 			_power_scouter_label.modulate = Color(1.0, 0.2, 0.2, 1.0)
 			_power_scouter_label.text = "!!! POWER LEVEL: %d !!!" % displayed_power
 			EventBus.emit_signal("ui_shake", 1.5, 0.2)
-			if _scouter_shell != null:
-				_ui_style.apply_shell_style(
-					_scouter_shell,
-					"hud_accent",
-					"",
-					Color(0.20, 0.02, 0.02, 0.70),
-					Color(1.0, 0.22, 0.18, 0.92)
-				)
 	
 	# Digital Noise / Jitter (Always active but subtle)
 	if randf() < 0.05:
@@ -198,6 +210,81 @@ func refresh_power_level(power_level: float) -> void:
 		_power_scouter_label.position.y += randf_range(-0.5, 0.5)
 	else:
 		_power_scouter_label.position = Vector2(8.0, 2.0)
+
+
+func _on_combat_started(enemy_data: Array) -> void:
+	_current_enemy_data = enemy_data
+
+
+func _on_player_teleported(_from: int, to: int) -> void:
+	_update_scouter_focus(to)
+
+
+func _on_player_attacked(lane: int, _damage: float, _was_timed: bool) -> void:
+	_update_scouter_focus(lane)
+
+
+func _update_scouter_focus(lane: int) -> void:
+	if lane < 0 or lane >= _current_enemy_data.size():
+		return
+	
+	var enemy: Dictionary = _current_enemy_data[lane]
+	if enemy.is_empty():
+		return
+		
+	var species_id: String = enemy.get("species_id", "")
+	var display_name: String = enemy.get("display_name", "")
+	var flavor: String = enemy.get("signal_flavor", "")
+	
+	if species_id != "":
+		# Shared identity link for hit feedback
+		var feedback_script = load("res://systems/CombatImpactFeedback.gd")
+		if feedback_script and feedback_script.has_method("set_scanned_species"):
+			feedback_script.set_scanned_species(species_id)
+			
+		refresh_scouter_target(species_id, display_name, flavor)
+
+
+func refresh_scouter_target(species_id: String, display_name: String, flavor: String) -> void:
+	if _scouter_target_species == species_id:
+		return
+		
+	_scouter_target_species = species_id
+	_scouter_target_name = display_name
+	_scouter_target_flavor = flavor
+	
+	if _power_scouter_label == null:
+		return
+		
+	# Trigger a scan cycle
+	_scouter_is_cycling = true
+	var t := _power_scouter_label.create_tween()
+	
+	# Step 1: Glitch out current text
+	t.tween_callback(func(): _power_scouter_label.text = "SCANNING...")
+	t.tween_property(_power_scouter_label, "modulate", Color(0.2, 1.0, 0.8, 1.0), 0.1)
+	t.tween_interval(0.2)
+	
+	# Step 2: Show name
+	t.tween_callback(func(): _power_scouter_label.text = "TARGET: %s" % _scouter_target_name.to_upper())
+	t.tween_property(_power_scouter_label, "modulate", Color(1.0, 1.0, 1.0, 1.0), 0.1)
+	t.tween_interval(1.5)
+	
+	# Step 3: Show flavor (abbreviated if too long)
+	var short_flavor: String = _scouter_target_flavor
+	if short_flavor.length() > 32:
+		short_flavor = short_flavor.left(29) + "..."
+	
+	t.tween_callback(func(): _power_scouter_label.text = short_flavor.to_upper())
+	t.tween_property(_power_scouter_label, "modulate", Color(0.8, 0.9, 1.0, 0.9), 0.1)
+	t.tween_interval(2.5)
+	
+	# Step 4: Return to power
+	t.tween_callback(func(): 
+		_scouter_is_cycling = false
+		refresh_power_level(_last_power_level)
+	)
+	t.tween_property(_power_scouter_label, "modulate", Color(1.0, 0.85, 0.20, 1.0), 0.2)
 
 
 func refresh_combo(count: int, tier: String = "") -> void:

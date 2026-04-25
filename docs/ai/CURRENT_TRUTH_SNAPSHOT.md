@@ -34,3 +34,8 @@
 - [x] Lane Readability Intact
 - [x] DNA Economy Intact
 - [x] Cardinal Combat Spine LOCKED
+
+## 5. RECENT ARCHITECTURE & IDENTITY CHANGES (v2.2)
+- **Unified Pulse**: `docs/ai/ARCHITECTURE_INTEGRITY.md` defines the cross-system authority hierarchy.
+- **Evocative Tiers**: Combat tiers updated to "THE STIRRING", "THE HUNT", etc. in `UIStyle.gd`.
+- **Black Signal**: `signal_flavor` field added to `CREATURES` in `CombatContent.gd` for enhanced creature identity.

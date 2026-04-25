@@ -4,6 +4,13 @@ extends RefCounted
 # Now uses centralized CombatFeelConstants for consistent feel across all systems.
 
 const COMBAT_FEEL_CONSTANTS = preload("res://data/CombatFeelConstants.gd")
+const COMBAT_CONTENT = preload("res://data/CombatContent.gd")
+
+static var _last_scanned_species: String = ""
+
+
+static func set_scanned_species(species_id: String) -> void:
+	_last_scanned_species = species_id
 
 
 static func build_timed_attack_profile(quality: String, _beat_quality: String) -> Dictionary:
@@ -119,7 +126,11 @@ static func build_dodge_profile(beat_quality: String) -> Dictionary:
 	return profile
 
 
-static func build_enemy_hit_profile(damage: float, is_boss_target: bool) -> Dictionary:
+static func build_enemy_hit_profile(damage: float, is_boss_target: bool, species_id: String = "") -> Dictionary:
+	var target_species: String = species_id
+	if target_species == "":
+		target_species = _last_scanned_species
+		
 	var heavy: bool = damage >= 18.0
 	var profile: Dictionary = {
 		"flash_color": Color(1.0, 0.44, 0.28, 0.058),
@@ -133,8 +144,21 @@ static func build_enemy_hit_profile(damage: float, is_boss_target: bool) -> Dict
 		"sfx_cue": "enemy_hit"
 	}
 
+	# Apply species-specific affinity tints if available
+	if target_species != "" and "CREATURES" in COMBAT_CONTENT:
+		var creatures: Dictionary = COMBAT_CONTENT.CREATURES
+		if target_species in creatures:
+			var creature: Dictionary = creatures[target_species]
+			var affinity: String = creature.get("affinity", "")
+			if affinity != "":
+				var affinity_color: Color = COMBAT_FEEL_CONSTANTS.get_affinity_color(affinity)
+				profile["flash_color"] = affinity_color
+				profile["burst_color"] = affinity_color
+				profile["flash_color"].a = 0.065 # Keep it subtle
+				profile["burst_color"].a = 0.45
+
 	if heavy:
-		profile["flash_color"] = Color(1.0, 0.42, 0.20, 0.075)
+		profile["flash_color"] = Color(1.0, 0.42, 0.20, 0.075) if target_species == "" else profile["flash_color"]
 		profile["flash_duration"] = 0.05
 		profile["shake_intensity"] = 0.72
 		profile["shake_duration"] = 0.06

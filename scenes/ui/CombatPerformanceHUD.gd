@@ -272,7 +272,7 @@ func _proc_feedback_is_urgent(text: String) -> bool:
 		or u.find("HUNT SURGES") >= 0
 
 
-func _on_song_beat_pulse(_beat_index: int, intensity: float) -> void:
+func _on_song_beat_pulse(_beat_index: int, intensity: float, _quality: String) -> void:
 	# Dramatic HUD pulse on beat, scaled by song intensity
 	var beat_intensity: float = intensity
 	if _proc_chip_timer > 0.35:

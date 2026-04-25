@@ -32,13 +32,13 @@ func _get_shared_noise_tex() -> NoiseTexture2D:
 	return _shared_noise_tex
 
 
-func _set_shell_treatment(shell: ColorRect, color: Color, border_color: Color) -> void:
+func set_shell_treatment(shell: ColorRect, color: Color, border_color: Color) -> void:
 	if shell == null:
 		return
 	UI_STYLE.apply_shell_style(shell, "", "", color, border_color)
 
 
-func _apply_text_role(label: Label, role: String, align: int = -1) -> void:
+func apply_text_role(label: Label, role: String, align: int = -1) -> void:
 	UI_STYLE.apply_label(label, role, align)
 
 
@@ -1306,7 +1306,7 @@ func _build_enemy_marker(
 	hp_label.size = Vector2(readout_width, 16.0)
 	hp_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hp_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_apply_text_role(hp_label, "hud_meta", HORIZONTAL_ALIGNMENT_CENTER)
+	apply_text_role(hp_label, "hud_meta", HORIZONTAL_ALIGNMENT_CENTER)
 	hp_label.add_theme_font_size_override("font_size", 11 if is_boss_marker else 9)
 	hp_label.add_theme_constant_override("outline_size", 2)
 	marker_root.add_child(hp_label)
@@ -1318,7 +1318,7 @@ func _build_enemy_marker(
 	threat_label.size = Vector2(readout_width, 17.0)
 	threat_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	threat_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_apply_text_role(threat_label, "hud_metric_title", HORIZONTAL_ALIGNMENT_CENTER)
+	apply_text_role(threat_label, "hud_metric_title", HORIZONTAL_ALIGNMENT_CENTER)
 	threat_label.add_theme_font_size_override("font_size", 13 if is_boss_marker else 10)
 	threat_label.add_theme_constant_override("outline_size", 2)
 	if is_elite_marker:
@@ -1579,7 +1579,7 @@ func create_reward_overlay(ui_layer: CanvasLayer) -> Dictionary:
 
 	var reward_panel := ColorRect.new()
 	reward_panel.name = "RewardPanel"
-	_set_shell_treatment(reward_panel, Color(0.09, 0.07, 0.08, 0.86), Color(0.26, 0.20, 0.18, 0.42))
+	set_shell_treatment(reward_panel, Color(0.09, 0.07, 0.08, 0.86), Color(0.26, 0.20, 0.18, 0.42))
 	reward_panel.set_anchors_preset(Control.PRESET_FULL_RECT)
 	reward_safe_body.add_child(reward_panel)
 
@@ -1596,14 +1596,14 @@ func create_reward_overlay(ui_layer: CanvasLayer) -> Dictionary:
 	reward_creature_tag_label.name = "RewardTag"
 	reward_creature_tag_label.position = Vector2(204.0, 18.0)
 	reward_creature_tag_label.size = Vector2(250.0, 18.0)
-	_apply_text_role(reward_creature_tag_label, "caption_strong")
+	apply_text_role(reward_creature_tag_label, "caption_strong")
 	reward_panel.add_child(reward_creature_tag_label)
 
 	var reward_title_label := Label.new()
 	reward_title_label.name = "RewardTitle"
 	reward_title_label.position = Vector2(204.0, 40.0)
 	reward_title_label.size = Vector2(250.0, 56.0)
-	_apply_text_role(reward_title_label, "heading")
+	apply_text_role(reward_title_label, "heading")
 	reward_panel.add_child(reward_title_label)
 
 	var reward_body_scroll := ScrollContainer.new()
@@ -1620,14 +1620,14 @@ func create_reward_overlay(ui_layer: CanvasLayer) -> Dictionary:
 	reward_body_label.position = Vector2.ZERO
 	reward_body_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	reward_body_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_apply_text_role(reward_body_label, "body")
+	apply_text_role(reward_body_label, "body")
 	reward_body_scroll.add_child(reward_body_label)
 
 	var reward_bond_card := ColorRect.new()
 	reward_bond_card.name = "RewardBondCard"
 	reward_bond_card.position = Vector2(468.0, 54.0)
 	reward_bond_card.size = Vector2(206.0, 244.0)
-	_set_shell_treatment(reward_bond_card, Color(0.09, 0.10, 0.09, 0.96), Color(0.24, 0.31, 0.25, 0.88))
+	set_shell_treatment(reward_bond_card, Color(0.09, 0.10, 0.09, 0.96), Color(0.24, 0.31, 0.25, 0.88))
 	reward_panel.add_child(reward_bond_card)
 
 	var bond_accent := ColorRect.new()
@@ -1641,14 +1641,14 @@ func create_reward_overlay(ui_layer: CanvasLayer) -> Dictionary:
 	reward_bond_label.name = "RewardBondLabel"
 	reward_bond_label.position = Vector2(18.0, 18.0)
 	reward_bond_label.size = Vector2(168.0, 26.0)
-	_apply_text_role(reward_bond_label, "bond_heading")
+	apply_text_role(reward_bond_label, "bond_heading")
 	reward_bond_card.add_child(reward_bond_label)
 
 	var reward_dna_label := Label.new()
 	reward_dna_label.name = "RewardDNALabel"
 	reward_dna_label.position = Vector2(18.0, 42.0)
 	reward_dna_label.size = Vector2(168.0, 18.0)
-	_apply_text_role(reward_dna_label, "hud_meta")
+	apply_text_role(reward_dna_label, "hud_meta")
 	reward_bond_card.add_child(reward_dna_label)
 
 	var reward_bond_effect_scroll := ScrollContainer.new()
@@ -1665,14 +1665,14 @@ func create_reward_overlay(ui_layer: CanvasLayer) -> Dictionary:
 	reward_bond_effect_label.position = Vector2.ZERO
 	reward_bond_effect_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	reward_bond_effect_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_apply_text_role(reward_bond_effect_label, "body")
+	apply_text_role(reward_bond_effect_label, "body")
 	reward_bond_effect_scroll.add_child(reward_bond_effect_label)
 
 	var reward_eat_card := ColorRect.new()
 	reward_eat_card.name = "RewardEatCard"
 	reward_eat_card.position = Vector2(694.0, 54.0)
 	reward_eat_card.size = Vector2(206.0, 244.0)
-	_set_shell_treatment(reward_eat_card, Color(0.11, 0.08, 0.07, 0.96), Color(0.36, 0.24, 0.20, 0.92))
+	set_shell_treatment(reward_eat_card, Color(0.11, 0.08, 0.07, 0.96), Color(0.36, 0.24, 0.20, 0.92))
 	reward_panel.add_child(reward_eat_card)
 
 	var eat_accent := ColorRect.new()
@@ -1686,7 +1686,7 @@ func create_reward_overlay(ui_layer: CanvasLayer) -> Dictionary:
 	reward_eat_label.name = "RewardEatLabel"
 	reward_eat_label.position = Vector2(18.0, 18.0)
 	reward_eat_label.size = Vector2(168.0, 26.0)
-	_apply_text_role(reward_eat_label, "eat_heading")
+	apply_text_role(reward_eat_label, "eat_heading")
 	reward_eat_card.add_child(reward_eat_label)
 
 	var reward_eat_effect_scroll := ScrollContainer.new()
@@ -1703,14 +1703,14 @@ func create_reward_overlay(ui_layer: CanvasLayer) -> Dictionary:
 	reward_eat_effect_label.position = Vector2.ZERO
 	reward_eat_effect_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	reward_eat_effect_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_apply_text_role(reward_eat_effect_label, "body")
+	apply_text_role(reward_eat_effect_label, "body")
 	reward_eat_effect_scroll.add_child(reward_eat_effect_label)
 
 	var reward_quig_label := Label.new()
 	reward_quig_label.name = "RewardQuig"
 	reward_quig_label.position = Vector2(84.0, 316.0)
 	reward_quig_label.size = Vector2(818.0, 32.0)
-	_apply_text_role(reward_quig_label, "hint")
+	apply_text_role(reward_quig_label, "hint")
 	reward_panel.add_child(reward_quig_label)
 
 	var reward_quig_sprite: TextureRect = _build_strip_sprite(
@@ -1729,7 +1729,7 @@ func create_reward_overlay(ui_layer: CanvasLayer) -> Dictionary:
 	reward_hint_label.name = "RewardHint"
 	reward_hint_label.position = Vector2(42.0, 382.0)
 	reward_hint_label.size = Vector2(860.0, 26.0)
-	_apply_text_role(reward_hint_label, "hint")
+	apply_text_role(reward_hint_label, "hint")
 	reward_panel.add_child(reward_hint_label)
 
 	return {
@@ -1825,7 +1825,7 @@ func create_live_reward_shell(ui_layer: CanvasLayer) -> Dictionary:
 	var live_reward_title_label := Label.new()
 	live_reward_title_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	live_reward_title_label.custom_minimum_size = Vector2(0.0, 22.0)
-	_apply_text_role(live_reward_title_label, "subheading")
+	apply_text_role(live_reward_title_label, "subheading")
 	live_reward_title_label.add_theme_font_size_override("font_size", 16)
 	reward_body.add_child(live_reward_title_label)
 
@@ -1833,21 +1833,21 @@ func create_live_reward_shell(ui_layer: CanvasLayer) -> Dictionary:
 	live_reward_body_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	live_reward_body_label.custom_minimum_size = Vector2(0.0, 22.0)
 	live_reward_body_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_apply_text_role(live_reward_body_label, "body")
+	apply_text_role(live_reward_body_label, "body")
 	live_reward_body_label.add_theme_font_size_override("font_size", 13)
 	reward_body.add_child(live_reward_body_label)
 
 	var live_reward_dna_label := Label.new()
 	live_reward_dna_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	live_reward_dna_label.custom_minimum_size = Vector2(0.0, 18.0)
-	_apply_text_role(live_reward_dna_label, "hud_meta")
+	apply_text_role(live_reward_dna_label, "hud_meta")
 	live_reward_dna_label.add_theme_font_size_override("font_size", 12)
 	reward_body.add_child(live_reward_dna_label)
 
 	var live_reward_hint_label := Label.new()
 	live_reward_hint_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	live_reward_hint_label.custom_minimum_size = Vector2(0.0, 18.0)
-	_apply_text_role(live_reward_hint_label, "hint")
+	apply_text_role(live_reward_hint_label, "hint")
 	live_reward_hint_label.add_theme_font_size_override("font_size", 12)
 	reward_body.add_child(live_reward_hint_label)
 

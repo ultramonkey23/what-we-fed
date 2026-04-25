@@ -885,7 +885,7 @@ func _initialize_ui() -> void:
 func _create_feedback_shell() -> void:
 	if _feedback_shell != null:
 		return
-	_feedback_shell = COMBAT_FEEDBACK_SHELL.new(UI_STYLE, COMBAT_FEEL_CONTENT, self, Callable(self, "_apply_text_role"))
+	_feedback_shell = COMBAT_FEEDBACK_SHELL.new(UI_STYLE, COMBAT_FEEL_CONTENT, self, Callable(_presentation_controller, "apply_text_role"))
 
 
 func _setup_presentation_controller() -> void:
@@ -1412,9 +1412,7 @@ func _on_conductor_beat_pulse(beat_index: int, quality: String, intensity: float
 	if GameState.has_method("set_last_beat_quality"):
 		GameState.call("set_last_beat_quality", quality)
 	var beat_intensity: float = intensity * _readability_pulse_mult
-	EventBus.emit_signal("song_beat_pulse", beat_index, beat_intensity)
-	if _presentation_runtime != null:
-		_presentation_runtime.on_beat_pulse(quality, _readability_pulse_mult)
+	EventBus.emit_signal("song_beat_pulse", beat_index, beat_intensity, quality)
 
 
 func _should_hold_song_runtime_paused() -> bool:
@@ -1694,16 +1692,6 @@ func _unhandled_input(event: InputEvent) -> void:
 			return
 
 
-func _apply_text_role(label: Label, role: String, align: int = -1) -> void:
-	UI_STYLE.apply_label(label, role, align)
-
-
-func _set_shell_treatment(shell: ColorRect, color: Color, border_color: Color) -> void:
-	if shell == null:
-		return
-	UI_STYLE.apply_shell_style(shell, "", "", color, border_color)
-
-
 func _setup_visuals() -> void:
 	var refs: Dictionary = _presentation_controller.setup_visuals(
 		self,
@@ -1774,14 +1762,14 @@ func _setup_ui() -> void:
 	combo_label.text = "0"
 	combo_label.visible = false # Hidden in favor of performance HUD
 	combo_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_apply_text_role(combo_label, "hud_metric_value", HORIZONTAL_ALIGNMENT_RIGHT)
+	_presentation_controller.apply_text_role(combo_label, "hud_metric_value", HORIZONTAL_ALIGNMENT_RIGHT)
 	combo_label.add_theme_font_size_override("font_size", 26)
 
 	style_label.reparent(_hud_top_right_container)
 	style_label.text = "Stirring"
 	style_label.visible = false # Hidden in favor of performance HUD
 	style_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_apply_text_role(style_label, "hud_meta", HORIZONTAL_ALIGNMENT_RIGHT)
+	_presentation_controller.apply_text_role(style_label, "hud_meta", HORIZONTAL_ALIGNMENT_RIGHT)
 	style_label.add_theme_font_size_override("font_size", 15)
 
 	var hp_row := HBoxContainer.new()
@@ -1793,13 +1781,13 @@ func _setup_ui() -> void:
 	var hp_caption := Label.new()
 	hp_caption.text = "Health"
 	hp_caption.custom_minimum_size = Vector2(64.0, 0.0)
-	_apply_text_role(hp_caption, "hud_metric_title")
+	_presentation_controller.apply_text_role(hp_caption, "hud_metric_title")
 	hp_caption.add_theme_font_size_override("font_size", 14)
 	hp_row.add_child(hp_caption)
 
 	_hp_value_label = Label.new()
 	_hp_value_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_apply_text_role(_hp_value_label, "hud_metric_value", HORIZONTAL_ALIGNMENT_RIGHT)
+	_presentation_controller.apply_text_role(_hp_value_label, "hud_metric_value", HORIZONTAL_ALIGNMENT_RIGHT)
 	_hp_value_label.add_theme_font_size_override("font_size", 22)
 	hp_row.add_child(_hp_value_label)
 
@@ -1825,7 +1813,7 @@ func _setup_ui() -> void:
 	var stamina_caption := Label.new()
 	stamina_caption.text = "Stamina"
 	stamina_caption.custom_minimum_size = Vector2(64.0, 0.0)
-	_apply_text_role(stamina_caption, "hud_metric_title")
+	_presentation_controller.apply_text_role(stamina_caption, "hud_metric_title")
 	stamina_caption.add_theme_font_size_override("font_size", 14)
 	stamina_row.add_child(stamina_caption)
 
@@ -1855,7 +1843,7 @@ func _setup_ui() -> void:
 	_power_scouter_label.name = "PowerScouterLabel"
 	_power_scouter_label.custom_minimum_size = Vector2(194.0, 24.0)
 	_power_scouter_label.position = Vector2(8.0, 2.0)
-	_apply_text_role(_power_scouter_label, "scouter", HORIZONTAL_ALIGNMENT_LEFT)
+	_presentation_controller.apply_text_role(_power_scouter_label, "scouter", HORIZONTAL_ALIGNMENT_LEFT)
 	_power_scouter_label.text = "POWER LEVEL: 0"
 	_scouter_shell.add_child(_power_scouter_label)
 
@@ -1863,7 +1851,7 @@ func _setup_ui() -> void:
 	ultimate_label.text = "0%"
 	ultimate_label.visible = false # Hidden in favor of performance HUD
 	ultimate_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_apply_text_role(ultimate_label, "hud_meta", HORIZONTAL_ALIGNMENT_RIGHT)
+	_presentation_controller.apply_text_role(ultimate_label, "hud_meta", HORIZONTAL_ALIGNMENT_RIGHT)
 	ultimate_label.add_theme_font_size_override("font_size", 16)	
 	result_label.visible = false
 	result_label.text = ""
@@ -1873,7 +1861,7 @@ func _setup_ui() -> void:
 
 	controls_label.visible = false # Hidden in favor of performance HUD framing
 	result_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_apply_text_role(result_label, "screen_title")
+	_presentation_controller.apply_text_role(result_label, "screen_title")
 
 	_end_stats_label = Label.new()
 	_end_stats_label.name = "EndStatsLabel"
@@ -1883,14 +1871,14 @@ func _setup_ui() -> void:
 	_end_stats_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_end_stats_label.autowrap_mode = TextServer.AUTOWRAP_OFF
 	_end_stats_label.visible = false
-	_apply_text_role(_end_stats_label, "secondary_value")
+	_presentation_controller.apply_text_role(_end_stats_label, "secondary_value")
 	_end_stats_label.add_theme_font_size_override("font_size", 16)
 	ui_layer.add_child(_end_stats_label)
 
 	controls_label.reparent(_hud_bottom_container)
 	controls_label.text = PRESENTATION_TEXT.COMBAT_CONTROLS
 	controls_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_apply_text_role(controls_label, "hint", HORIZONTAL_ALIGNMENT_CENTER)
+	_presentation_controller.apply_text_role(controls_label, "hint", HORIZONTAL_ALIGNMENT_CENTER)
 	controls_label.add_theme_font_size_override("font_size", 16)
 
 	_style_progress_bar(hp_bar, Color(0.18, 0.06, 0.08, 0.88), Color(0.73, 0.24, 0.26, 1.0), 6)
@@ -2191,7 +2179,7 @@ func _build_meter_shell() -> void:
 	_support_name_label.autowrap_mode = TextServer.AUTOWRAP_OFF
 	_support_name_label.clip_text = true
 	_support_name_label.text = PRESENTATION_TEXT.SUPPORT_EMPTY_NAME
-	_apply_text_role(_support_name_label, "secondary_value")
+	_presentation_controller.apply_text_role(_support_name_label, "secondary_value")
 	_support_name_label.add_theme_font_size_override("font_size", 15)
 	support_header.add_child(_support_name_label)
 
@@ -2199,7 +2187,7 @@ func _build_meter_shell() -> void:
 	_support_value_label.custom_minimum_size = Vector2(COMBAT_FEEL_CONTENT.RIGHT_HUD_ROW_WIDTH + 12.0, 22.0)
 	_support_value_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_support_value_label.text = "--"
-	_apply_text_role(_support_value_label, "alert_value", HORIZONTAL_ALIGNMENT_RIGHT)
+	_presentation_controller.apply_text_role(_support_value_label, "alert_value", HORIZONTAL_ALIGNMENT_RIGHT)
 	_support_value_label.add_theme_font_size_override("font_size", 16)
 	support_header.add_child(_support_value_label)
 
@@ -2220,7 +2208,7 @@ func _build_meter_shell() -> void:
 	_support_trigger_label.autowrap_mode = TextServer.AUTOWRAP_OFF
 	_support_trigger_label.clip_text = true
 	_support_trigger_label.text = ""
-	_apply_text_role(_support_trigger_label, "status_line")
+	_presentation_controller.apply_text_role(_support_trigger_label, "status_line")
 	_support_trigger_label.add_theme_font_size_override("font_size", 13)
 	support_vbox.add_child(_support_trigger_label)
 
@@ -2256,7 +2244,7 @@ func _build_meter_shell() -> void:
 	var eaten_caption := Label.new()
 	eaten_caption.custom_minimum_size = Vector2(34.0, 16.0)
 	eaten_caption.text = PRESENTATION_TEXT.RUN_BUILD_EATEN_CAPTION
-	_apply_text_role(eaten_caption, "caption_strong")
+	_presentation_controller.apply_text_role(eaten_caption, "caption_strong")
 	eaten_caption.visible = false
 	eaten_row.add_child(eaten_caption)
 
@@ -2265,7 +2253,7 @@ func _build_meter_shell() -> void:
 	_eaten_value_label.custom_minimum_size = Vector2(0.0, 16.0)
 	_eaten_value_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_eaten_value_label.text = "--"
-	_apply_text_role(_eaten_value_label, "status_line")
+	_presentation_controller.apply_text_role(_eaten_value_label, "status_line")
 	_eaten_value_label.add_theme_font_size_override("font_size", 16)
 	_eaten_value_label.visible = false
 	eaten_row.add_child(_eaten_value_label)
@@ -2279,7 +2267,7 @@ func _build_meter_shell() -> void:
 	var upgrade_caption := Label.new()
 	upgrade_caption.custom_minimum_size = Vector2(34.0, 16.0)
 	upgrade_caption.text = PRESENTATION_TEXT.RUN_BUILD_TENDENCY_CAPTION
-	_apply_text_role(upgrade_caption, "caption_strong")
+	_presentation_controller.apply_text_role(upgrade_caption, "caption_strong")
 	upgrade_caption.visible = false
 	upgrade_row.add_child(upgrade_caption)
 
@@ -2288,7 +2276,7 @@ func _build_meter_shell() -> void:
 	_upgrade_value_label.custom_minimum_size = Vector2(0.0, 16.0)
 	_upgrade_value_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_upgrade_value_label.text = "--"
-	_apply_text_role(_upgrade_value_label, "alert_value")
+	_presentation_controller.apply_text_role(_upgrade_value_label, "alert_value")
 	_upgrade_value_label.add_theme_font_size_override("font_size", 16)
 	_upgrade_value_label.visible = false
 	upgrade_row.add_child(_upgrade_value_label)
@@ -2302,7 +2290,7 @@ func _build_meter_shell() -> void:
 	var bond_caption := Label.new()
 	bond_caption.custom_minimum_size = Vector2(34.0, 16.0)
 	bond_caption.text = PRESENTATION_TEXT.RUN_BUILD_BOND_CAPTION
-	_apply_text_role(bond_caption, "caption_strong")
+	_presentation_controller.apply_text_role(bond_caption, "caption_strong")
 	bond_caption.visible = false
 	bond_row.add_child(bond_caption)
 
@@ -2311,7 +2299,7 @@ func _build_meter_shell() -> void:
 	_bond_value_label.custom_minimum_size = Vector2(0.0, 16.0)
 	_bond_value_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_bond_value_label.text = "--"
-	_apply_text_role(_bond_value_label, "cool_value")
+	_presentation_controller.apply_text_role(_bond_value_label, "cool_value")
 	_bond_value_label.add_theme_font_size_override("font_size", 16)
 	_bond_value_label.visible = false
 	bond_row.add_child(_bond_value_label)
@@ -2332,37 +2320,37 @@ func _build_meter_shell() -> void:
 
 	var exp_caption := Label.new()
 	exp_caption.text = "EXP"
-	_apply_text_role(exp_caption, "caption")
+	_presentation_controller.apply_text_role(exp_caption, "caption")
 	exp_caption.add_theme_font_size_override("font_size", 14)
 	stats_row.add_child(exp_caption)
 
 	_exp_value_label = Label.new()
 	_exp_value_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_apply_text_role(_exp_value_label, "secondary_value", HORIZONTAL_ALIGNMENT_LEFT)
+	_presentation_controller.apply_text_role(_exp_value_label, "secondary_value", HORIZONTAL_ALIGNMENT_LEFT)
 	_exp_value_label.add_theme_font_size_override("font_size", 14)
 	stats_row.add_child(_exp_value_label)
 
 	var def_caption := Label.new()
 	def_caption.text = "Def"
-	_apply_text_role(def_caption, "caption")
+	_presentation_controller.apply_text_role(def_caption, "caption")
 	def_caption.add_theme_font_size_override("font_size", 14)
 	stats_row.add_child(def_caption)
 
 	_def_value_label = Label.new()
 	_def_value_label.custom_minimum_size = Vector2(26.0, 0.0)
-	_apply_text_role(_def_value_label, "secondary_value", HORIZONTAL_ALIGNMENT_RIGHT)
+	_presentation_controller.apply_text_role(_def_value_label, "secondary_value", HORIZONTAL_ALIGNMENT_RIGHT)
 	_def_value_label.add_theme_font_size_override("font_size", 14)
 	stats_row.add_child(_def_value_label)
 
 	var atk_caption := Label.new()
 	atk_caption.text = "Atk"
-	_apply_text_role(atk_caption, "caption")
+	_presentation_controller.apply_text_role(atk_caption, "caption")
 	atk_caption.add_theme_font_size_override("font_size", 14)
 	stats_row.add_child(atk_caption)
 
 	_atk_value_label = Label.new()
 	_atk_value_label.custom_minimum_size = Vector2(26.0, 0.0)
-	_apply_text_role(_atk_value_label, "secondary_value", HORIZONTAL_ALIGNMENT_RIGHT)
+	_presentation_controller.apply_text_role(_atk_value_label, "secondary_value", HORIZONTAL_ALIGNMENT_RIGHT)
 	_atk_value_label.add_theme_font_size_override("font_size", 14)
 	stats_row.add_child(_atk_value_label)
 
@@ -2376,7 +2364,7 @@ func _build_meter_shell() -> void:
 	var ultimate_caption := Label.new()
 	ultimate_caption.text = "ULT"
 	ultimate_caption.custom_minimum_size = Vector2(26.0, 0.0)
-	_apply_text_role(ultimate_caption, "caption_strong")
+	_presentation_controller.apply_text_role(ultimate_caption, "caption_strong")
 	ultimate_caption.add_theme_font_size_override("font_size", 14)
 	ult_row.add_child(ultimate_caption)
 	ultimate_label.reparent(ult_row)
@@ -2392,7 +2380,7 @@ func _build_meter_shell() -> void:
 	var score_caption := Label.new()
 	score_caption.text = "CMB"
 	score_caption.custom_minimum_size = Vector2(26.0, 0.0)
-	_apply_text_role(score_caption, "caption_strong")
+	_presentation_controller.apply_text_role(score_caption, "caption_strong")
 	score_caption.add_theme_font_size_override("font_size", 14)
 	score_row.add_child(score_caption)
 	combo_label.reparent(score_row)
@@ -2408,7 +2396,7 @@ func _build_meter_shell() -> void:
 	var style_caption := Label.new()
 	style_caption.text = "STY"
 	style_caption.custom_minimum_size = Vector2(24.0, 0.0)
-	_apply_text_role(style_caption, "caption_strong")
+	_presentation_controller.apply_text_role(style_caption, "caption_strong")
 	style_caption.add_theme_font_size_override("font_size", 14)
 	style_row.add_child(style_caption)
 	style_label.reparent(style_row)
@@ -2442,7 +2430,7 @@ func _build_meter_shell() -> void:
 	_dna_route_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_dna_route_label.custom_minimum_size = Vector2(0.0, 22.0)
 	_dna_route_label.text = PRESENTATION_TEXT.DNA_ROUTE_BOND_LABEL
-	_apply_text_role(_dna_route_label, "status_line", HORIZONTAL_ALIGNMENT_CENTER)
+	_presentation_controller.apply_text_role(_dna_route_label, "status_line", HORIZONTAL_ALIGNMENT_CENTER)
 	_dna_route_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_dna_route_label.add_theme_font_size_override("font_size", 15)
 	dna_route_vbox.add_child(_dna_route_label)
@@ -2452,7 +2440,7 @@ func _build_meter_shell() -> void:
 	_mutation_value_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_mutation_value_label.custom_minimum_size = Vector2(0.0, 18.0)
 	_mutation_value_label.text = ""
-	_apply_text_role(_mutation_value_label, "status_line", HORIZONTAL_ALIGNMENT_CENTER)
+	_presentation_controller.apply_text_role(_mutation_value_label, "status_line", HORIZONTAL_ALIGNMENT_CENTER)
 	_mutation_value_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_mutation_value_label.add_theme_font_size_override("font_size", 15)
 	_mutation_value_label.visible = false
@@ -2467,14 +2455,14 @@ func _build_meter_shell() -> void:
 	var run_score_caption := Label.new()
 	run_score_caption.text = "Run"
 	run_score_caption.custom_minimum_size = Vector2(44.0, 0.0)
-	_apply_text_role(run_score_caption, "caption_strong")
+	_presentation_controller.apply_text_role(run_score_caption, "caption_strong")
 	run_score_caption.add_theme_font_size_override("font_size", 14)
 	run_score_row.add_child(run_score_caption)
 
 	_run_score_label = Label.new()
 	_run_score_label.name = "RunScoreLabel"
 	_run_score_label.text = "0"
-	_apply_text_role(_run_score_label, "secondary_value", HORIZONTAL_ALIGNMENT_RIGHT)
+	_presentation_controller.apply_text_role(_run_score_label, "secondary_value", HORIZONTAL_ALIGNMENT_RIGHT)
 	_run_score_label.add_theme_font_size_override("font_size", 13)
 	_run_score_label.custom_minimum_size = Vector2(80.0, 0.0)
 	run_score_row.add_child(_run_score_label)
@@ -2523,7 +2511,7 @@ func _build_meter_shell() -> void:
 	_boss_name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_boss_name_label.custom_minimum_size = Vector2(0.0, 22.0)
 	_boss_name_label.text = ""
-	_apply_text_role(_boss_name_label, "boss", HORIZONTAL_ALIGNMENT_CENTER)
+	_presentation_controller.apply_text_role(_boss_name_label, "boss", HORIZONTAL_ALIGNMENT_CENTER)
 	_boss_name_label.add_theme_font_size_override("font_size", 26)
 	_boss_name_label.visible = false
 	boss_vbox.add_child(_boss_name_label)
@@ -2533,7 +2521,7 @@ func _build_meter_shell() -> void:
 	_boss_state_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_boss_state_label.custom_minimum_size = Vector2(0.0, 14.0)
 	_boss_state_label.text = ""
-	_apply_text_role(_boss_state_label, "body", HORIZONTAL_ALIGNMENT_CENTER)
+	_presentation_controller.apply_text_role(_boss_state_label, "body", HORIZONTAL_ALIGNMENT_CENTER)
 	_boss_state_label.add_theme_font_size_override("font_size", 14)
 	_boss_state_label.add_theme_color_override("font_color", UI_STYLE.get_manga_color("alert_gold"))
 	_boss_state_label.visible = false
@@ -2682,7 +2670,7 @@ func _build_song_hud() -> void:
 	_song_phase_label = Label.new()
 	_song_phase_label.name = "SongPhaseLabel"
 	_song_phase_label.text = ""
-	_apply_text_role(_song_phase_label, "dim", HORIZONTAL_ALIGNMENT_CENTER)
+	_presentation_controller.apply_text_role(_song_phase_label, "dim", HORIZONTAL_ALIGNMENT_CENTER)
 	_song_phase_label.size = Vector2(300.0, 18.0)
 	_song_phase_label.position = Vector2((COMBAT_FEEL_CONTENT.HUD_VIEWPORT_WIDTH - 300.0) * 0.5, hud_ty + 4.0)
 	_song_phase_label.z_index = 45
@@ -2696,7 +2684,7 @@ func _build_song_hud() -> void:
 	_song_timer_label = Label.new()
 	_song_timer_label.name = "SongTimerLabel"
 	_song_timer_label.text = ""
-	_apply_text_role(_song_timer_label, "secondary_value", HORIZONTAL_ALIGNMENT_RIGHT)
+	_presentation_controller.apply_text_role(_song_timer_label, "secondary_value", HORIZONTAL_ALIGNMENT_RIGHT)
 	_song_timer_label.size = Vector2(52.0, 18.0)
 	_song_timer_label.position = Vector2(COMBAT_FEEL_CONTENT.HUD_VIEWPORT_WIDTH - hud_m - 56.0, hud_ty + 26.0)
 	_song_timer_label.z_index = 45
@@ -2714,7 +2702,7 @@ func _build_song_hud() -> void:
 	_beat_feedback_label.text = ""
 	_beat_feedback_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_beat_feedback_label.custom_minimum_size = Vector2(0.0, 20.0)
-	_apply_text_role(_beat_feedback_label, "alert_value", HORIZONTAL_ALIGNMENT_RIGHT)
+	_presentation_controller.apply_text_role(_beat_feedback_label, "alert_value", HORIZONTAL_ALIGNMENT_RIGHT)
 	_beat_feedback_label.add_theme_font_size_override("font_size", 16)
 	_beat_feedback_label.visible = false
 	_hud_top_left_container.add_child(_beat_feedback_label)
@@ -2756,7 +2744,7 @@ func _build_quig_anchor() -> void:
 	_quig_anchor_label.position = Vector2(28.0, 0.0)
 	_quig_anchor_label.size = Vector2(COMBAT_FEEL_CONTENT.RIGHT_HUD_STACK_WIDTH - 28.0, 28.0)
 	_quig_anchor_label.text = ""
-	_apply_text_role(_quig_anchor_label, "dim")
+	_presentation_controller.apply_text_role(_quig_anchor_label, "dim")
 	_quig_anchor_label.add_theme_font_size_override("font_size", 13)
 	quig_shell.add_child(_quig_anchor_label)
 
@@ -2794,7 +2782,7 @@ func _build_dna_shell() -> void:
 	var dna_caption := Label.new()
 	dna_caption.custom_minimum_size = Vector2(42.0, 16.0)
 	dna_caption.text = "DNA"
-	_apply_text_role(dna_caption, "caption_strong")
+	_presentation_controller.apply_text_role(dna_caption, "caption_strong")
 	dna_caption.add_theme_font_size_override("font_size", 16)
 	dna_header.add_child(dna_caption)
 
@@ -2820,7 +2808,7 @@ func _build_dna_shell() -> void:
 		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		label.custom_minimum_size = Vector2(0.0, 14.0)
 		label.text = "--"
-		_apply_text_role(label, "secondary_value")
+		_presentation_controller.apply_text_role(label, "secondary_value")
 		label.add_theme_font_size_override("font_size", 14)
 		dna_vbox.add_child(label)
 		_dna_slot_labels.append(label)
@@ -2939,7 +2927,7 @@ func _create_upgrade_overlay() -> void:
 
 	_upgrade_panel = ColorRect.new()
 	_upgrade_panel.name = "UpgradePanel"
-	_set_shell_treatment(_upgrade_panel, Color(0.08, 0.06, 0.07, 0.98), Color(0.24, 0.18, 0.16, 0.94))
+	_presentation_controller.set_shell_treatment(_upgrade_panel, Color(0.08, 0.06, 0.07, 0.98), Color(0.24, 0.18, 0.16, 0.94))
 	_upgrade_panel.position = Vector2(120.0, 140.0)
 	_upgrade_panel.size = Vector2(1040.0, 440.0)
 	_upgrade_overlay.add_child(_upgrade_panel)
@@ -2948,14 +2936,14 @@ func _create_upgrade_overlay() -> void:
 	header.text = "CHOOSE YOUR GROWTH"
 	header.position = Vector2(0.0, 24.0)
 	header.size = Vector2(1040.0, 40.0)
-	_apply_text_role(header, "heading", HORIZONTAL_ALIGNMENT_CENTER)
+	_presentation_controller.apply_text_role(header, "heading", HORIZONTAL_ALIGNMENT_CENTER)
 	_upgrade_panel.add_child(header)
 
 	var sub := Label.new()
 	sub.text = "Select one evolution to anchor before the next leg"
 	sub.position = Vector2(0.0, 68.0)
 	sub.size = Vector2(1040.0, 24.0)
-	_apply_text_role(sub, "screen_subtitle", HORIZONTAL_ALIGNMENT_CENTER)
+	_presentation_controller.apply_text_role(sub, "screen_subtitle", HORIZONTAL_ALIGNMENT_CENTER)
 	_upgrade_panel.add_child(sub)
 
 	var card_w: float = 300.0
@@ -2968,7 +2956,7 @@ func _create_upgrade_overlay() -> void:
 		card.name = "UpgradeCard_%d" % i
 		card.position = Vector2(start_x + i * (card_w + gap), 110.0)
 		card.size = Vector2(card_w, card_h)
-		_set_shell_treatment(card, Color(0.12, 0.09, 0.10, 0.96), Color(0.30, 0.22, 0.20, 0.88))
+		_presentation_controller.set_shell_treatment(card, Color(0.12, 0.09, 0.10, 0.96), Color(0.30, 0.22, 0.20, 0.88))
 		_upgrade_panel.add_child(card)
 		_upgrade_card_nodes.append(card)
 
@@ -2976,14 +2964,14 @@ func _create_upgrade_overlay() -> void:
 		index_label.text = str(i + 1)
 		index_label.position = Vector2(14.0, 14.0)
 		index_label.size = Vector2(24.0, 24.0)
-		_apply_text_role(index_label, "card_index")
+		_presentation_controller.apply_text_role(index_label, "card_index")
 		card.add_child(index_label)
 
 		var cat_label := Label.new()
 		cat_label.name = "Category"
 		cat_label.position = Vector2(14.0, 42.0)
 		cat_label.size = Vector2(card_w - 28.0, 18.0)
-		_apply_text_role(cat_label, "caption_strong")
+		_presentation_controller.apply_text_role(cat_label, "caption_strong")
 		card.add_child(cat_label)
 
 		var title_label := Label.new()
@@ -2991,7 +2979,7 @@ func _create_upgrade_overlay() -> void:
 		title_label.position = Vector2(14.0, 64.0)
 		title_label.size = Vector2(card_w - 28.0, 48.0)
 		title_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		_apply_text_role(title_label, "card_title")
+		_presentation_controller.apply_text_role(title_label, "card_title")
 		card.add_child(title_label)
 
 		var sep := ColorRect.new()
@@ -3005,14 +2993,14 @@ func _create_upgrade_overlay() -> void:
 		body_label.position = Vector2(14.0, 134.0)
 		body_label.size = Vector2(card_w - 28.0, 120.0)
 		body_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		_apply_text_role(body_label, "body")
+		_presentation_controller.apply_text_role(body_label, "body")
 		card.add_child(body_label)
 
 	var hint := Label.new()
 	hint.text = "1 / 2 / 3 - Select Upgrade"
 	hint.position = Vector2(0.0, 400.0)
 	hint.size = Vector2(1040.0, 24.0)
-	_apply_text_role(hint, "hint", HORIZONTAL_ALIGNMENT_CENTER)
+	_presentation_controller.apply_text_role(hint, "hint", HORIZONTAL_ALIGNMENT_CENTER)
 	_upgrade_panel.add_child(hint)
 
 

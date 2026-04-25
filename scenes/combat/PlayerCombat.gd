@@ -1184,7 +1184,7 @@ func _update_aura_by_tier(tier: String) -> void:
 	tween.tween_property(mat, "color", tier_color, 0.5)
 
 
-func _on_song_beat_pulse(beat_index: int, intensity: float) -> void:
+func _on_song_beat_pulse(beat_index: int, intensity: float, _quality: String) -> void:
 	if _energy_aura == null: return
 	
 	var mat = _energy_aura.process_material as ParticleProcessMaterial

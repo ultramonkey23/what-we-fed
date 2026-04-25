@@ -119,8 +119,6 @@ signal world_fate_changed(snapshot: Dictionary)
 # Tempo / Combat Feel
 @warning_ignore("unused_signal")
 signal tempo_state_entered(state_id: String)
-@warning_ignore("unused_signal")
-signal tempo_state_exited(state_id: String)
 
 # Presentation
 @warning_ignore("unused_signal")
@@ -132,7 +130,7 @@ signal screen_flash(color: Color, duration: float)
 @warning_ignore("unused_signal")
 signal slow_motion(scale: float, duration: float)
 @warning_ignore("unused_signal")
-signal song_beat_pulse(beat_index: int, intensity: float)
+signal song_beat_pulse(beat_index: int, intensity: float, quality: String)
 @warning_ignore("unused_signal")
 signal timing_ring_pressed(lane: int)
 @warning_ignore("unused_signal")

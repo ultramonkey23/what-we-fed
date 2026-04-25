@@ -166,7 +166,7 @@ func start_combat(enemy_data: Array) -> void:
 	_run_fire_cycle(_cycle_task_id)
 
 
-func _on_song_beat_pulse(_beat_index: int, _intensity: float) -> void:
+func _on_song_beat_pulse(_beat_index: int, _intensity: float, _quality: String) -> void:
 	if not _combat_running:
 		return
 	

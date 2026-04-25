@@ -108,8 +108,9 @@ func _get_enemy_marker_center(marker: Node2D) -> Vector2:
 	return marker.position + body.position + body.size * 0.5
 
 
-func on_song_beat_pulse(_beat_index: int, intensity: float) -> void:
+func on_song_beat_pulse(_beat_index: int, intensity: float, quality: String) -> void:
 	_pulse_active_enemy_markers(intensity)
+	on_beat_pulse(quality, intensity)
 
 
 func _pulse_active_enemy_markers(_intensity: float) -> void:

@@ -364,6 +364,9 @@ func refresh_support(current: float, maximum: float, active_species_id: String, 
 	if _support_name_label != null:
 		if run_growth != null and is_instance_valid(run_growth) and run_growth.has_method("get_active_display_name"):
 			var display_name: String = String(run_growth.call("get_active_display_name"))
+			var bonded: Dictionary = GameState.get_active_bonded_creature()
+			var bond_level: int = int(bonded.get("bond_level", 1))
+			var identity_tag: String = _bond_identity_tag(String(Dictionary(bonded.get("bond_passive", {})).get("type", "")))
 			
 			# Synergy check for HUD readout
 			var synergy_active: bool = false
@@ -378,16 +381,18 @@ func refresh_support(current: float, maximum: float, active_species_id: String, 
 
 			if current >= maximum - 0.05 and not active_species_id.is_empty():
 				_support_name_label.text = _presentation_text.support_ready_label(display_name)
+				if not identity_tag.is_empty():
+					_support_name_label.text = compact_hud_copy("%s %s" % [_support_name_label.text, identity_tag], 16)
 				if synergy_active:
 					_support_name_label.text += " (SYN)"
 			else:
-				var bonded: Dictionary = GameState.get_active_bonded_creature()
-				var bond_level: int = int(bonded.get("bond_level", 1))
 				var short_name: String = display_name.left(5).strip_edges()
 				if bond_level > 1:
 					_support_name_label.text = "%s L%d" % [short_name, bond_level]
 				else:
 					_support_name_label.text = compact_hud_copy(display_name, 7)
+				if not identity_tag.is_empty():
+					_support_name_label.text = compact_hud_copy("%s %s" % [_support_name_label.text, identity_tag], 13)
 				
 				if synergy_active:
 					_support_name_label.text += " +"
@@ -422,7 +427,13 @@ func refresh_support(current: float, maximum: float, active_species_id: String, 
 			var trigger_hint: String = String(support_role.get("hud_trigger_hint", "")).strip_edges()
 			if trigger_hint.is_empty():
 				trigger_hint = _presentation_text.trigger_hint(String(support_role.get("effect_id", "")))
-			_support_trigger_label.text = compact_hud_copy(trigger_hint, 18)
+			var cue_name: String = String(support_role.get("feedback_text", "")).strip_edges()
+			if cue_name.is_empty():
+				cue_name = String(support_role.get("readout_name", "")).strip_edges().to_upper()
+			var trigger_line: String = trigger_hint
+			if not cue_name.is_empty():
+				trigger_line = "%s | %s" % [cue_name, trigger_hint]
+			_support_trigger_label.text = compact_hud_copy(trigger_line, 18)
 		else:
 			var tendency_summary: String = compact_hud_copy(_format_upgrade_summary(run_growth), 18)
 			if tendency_summary.is_empty() or tendency_summary == "--":
@@ -704,3 +715,19 @@ func _format_upgrade_summary(run_growth: Node) -> String:
 	if run_growth != null and is_instance_valid(run_growth) and run_growth.has_method("get_tendency_summary"):
 		return String(run_growth.call("get_tendency_summary"))
 	return "--"
+
+
+func _bond_identity_tag(passive_type: String) -> String:
+	match passive_type:
+		"damage_on_ultimate":
+			return "[APEX]"
+		"damage_reduction_pct":
+			return "[GUARD]"
+		"hp_on_kill":
+			return "[HUNT]"
+		"parry_reflect_mult":
+			return "[PARRY]"
+		"timed_damage_flat":
+			return "[RHYTHM]"
+		_:
+			return ""

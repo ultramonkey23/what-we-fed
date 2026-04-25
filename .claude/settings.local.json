@@ -2,30 +2,47 @@
   "permissions": {
     "allow": [
       "Bash(git:*)",
-      "Bash(ls -la *.ps1 *.bat *.sh)",
-      "Bash(ls tools/)",
-      "Bash(powershell:*)",
-      "Bash(echo \"EXIT: $?\")",
-      "Bash(powershell.exe -ExecutionPolicy Bypass -File tools/godot.ps1 validate)",
+
+      "Bash(python:*)",
       "Bash(python3:*)",
+      "Bash(py:*)",
+
+      "Bash(pwsh:*)",
+      "Bash(pwsh.exe:*)",
+      "Bash(powershell:*)",
       "Bash(powershell.exe:*)",
-      "Bash(awk ':*)",
-      "Bash(mv /tmp/combat_fixed.gd scenes/combat/CombatScene.gd)",
-      "Bash(cmd.exe /c smoke_project.bat)",
-      "Bash(cmd.exe /c validate_project.bat)",
+
+      "Bash(cmd /c *)",
+      "Bash(cmd.exe /c *)",
+
+      "Bash(./smoke_project.bat)",
+      "Bash(./validate_data.bat)",
+      "Bash(./validate_project.bat)",
+      "Bash(./debug_harness.bat)",
+      "Bash(./run_project.bat)",
+      "Bash(./editor_project.bat)",
       "Bash(smoke_project.bat)",
-      "Bash(cmd /c smoke_project.bat)",
-      "Bash(cmd /c validate_project.bat)",
-      "Bash(python3 -c ':*)",
-      "Bash(python -c ':*)",
-      "Bash(cmd.exe /c \"smoke_project.bat\")",
-      "Bash(cmd.exe /c \"validate_project.bat\")",
-      "Bash(identify \"assets/ui/combat/panels/combat_panel_top_left.png.png\")",
-      "Bash(python3 -c \"from PIL import Image; img=Image.open\\('assets/ui/combat/panels/combat_panel_top_left.png.png'\\); print\\(img.size\\)\")",
-      "Bash(echo \"EXIT:$?\")",
-      "Bash(cmd /c debug_harness.bat)",
-      "Bash(repo_root=$(git rev-parse --show-toplevel 2>/dev/null) && [ -n \"$repo_root\" ] && ls \"$repo_root\"/*.bat 2>/dev/null || true)",
-      "Bash(repo_root=$(git rev-parse --show-toplevel 2>/dev/null) && [ -n \"$repo_root\" ] && [ -f \"$repo_root/.godot/uid_cache.bin\" ] && xxd \"$repo_root/.godot/uid_cache.bin\" || true)"
+      "Bash(validate_data.bat)",
+      "Bash(validate_project.bat)",
+      "Bash(debug_harness.bat)",
+      "Bash(run_project.bat)",
+      "Bash(editor_project.bat)",
+
+      "Bash(ls:*)",
+      "Bash(echo:*)",
+      "Bash(awk:*)",
+      "Bash(xargs:*)",
+      "Bash(grep:*)",
+      "Bash(identify:*)",
+      "Bash(find:*)",
+      "Bash(jq:*)",
+
+      "Bash(repo_root=*)",
+
+      "Bash(mv /tmp/* *)",
+      "Bash(cp /tmp/* *)",
+
+      "PowerShell"
     ]
   }
 }

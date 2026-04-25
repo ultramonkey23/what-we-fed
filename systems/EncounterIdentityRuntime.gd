@@ -112,40 +112,51 @@ static func _preferred_lane_order(spawn_mode: String, player_lane: int, rng: Ran
 		"track_player":
 			match player_lane:
 				0:
-					return [0, 1, 2]
+					return [0, 1, 2, 3]
+				1:
+					return [1, 0, 2, 3]
 				2:
-					return [2, 1, 0]
+					return [2, 1, 0, 3]
+				3:
+					return [3, 1, 0, 2]
 				_:
-					return [1, 0, 2]
+					return [1, 0, 2, 3]
 		"center_bias":
-			return [1, 0, 2]
+			return [1, 0, 2, 3]
 		"edge_bias":
 			if rng.randi() % 2 == 0:
-				return [0, 2, 1]
-			return [2, 0, 1]
+				return [0, 2, 3, 1]
+			return [2, 3, 0, 1]
 		"flank_player":
 			match player_lane:
 				0:
-					return [2, 1, 0]
+					return [2, 3, 1, 0]
+				1:
+					if rng.randi() % 2 == 0:
+						return [0, 2, 3, 1]
+					return [2, 3, 0, 1]
 				2:
-					return [0, 1, 2]
+					return [0, 3, 1, 2]
+				3:
+					return [2, 0, 1, 3]
 				_:
 					if rng.randi() % 2 == 0:
-						return [0, 2, 1]
-					return [2, 0, 1]
+						return [0, 2, 3, 1]
+					return [2, 3, 0, 1]
 		"collapse":
 			var order: Array = []
 			order.append(player_lane)
 			order.append(1)
 			order.append(0)
 			order.append(2)
+			order.append(3)
 			return _unique_lane_order(order)
 		"spread":
 			if rng.randi() % 2 == 0:
-				return [0, 2, 1]
-			return [2, 0, 1]
+				return [0, 2, 3, 1]
+			return [2, 3, 0, 1]
 		_:
-			return [0, 1, 2]
+			return [0, 1, 2, 3]
 
 
 static func _unique_lane_order(order: Array) -> Array:

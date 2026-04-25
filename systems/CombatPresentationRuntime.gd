@@ -1,6 +1,7 @@
 extends RefCounted
 
 const MOTION_JUICE = preload("res://systems/MotionJuice.gd")
+const HUD_PANEL_ART = preload("res://systems/HUDPanelArt.gd")
 const BLACK_SIGNAL_SHADER = preload("res://art/vfx/black_signal_combat.gdshader")
 const ENEMY_BEAT_PULSE_INTENSITY: float = 0.03
 
@@ -18,6 +19,8 @@ var _bg_pulse_targets: Array[CanvasItem] = []
 var _flash_tween: Tween = null
 var _enemy_shader_material_by_id: Dictionary = {}
 var _enemy_flash_tweens_by_id: Dictionary = {}
+## 0..1 from CombatScene critical threat; dampens low-authority screen flashes only.
+var _readability_stress: float = 0.0
 
 
 func _init(
@@ -45,6 +48,10 @@ func _init(
 	
 	_cache_bg_pulse_targets()
 	_bind_enemy_visual_materials()
+
+
+func set_readability_stress(stress: float) -> void:
+	_readability_stress = clampf(stress, 0.0, 1.0)
 
 
 func _cache_bg_pulse_targets() -> void:
@@ -244,11 +251,17 @@ func on_screen_flash(color: Color, duration: float) -> void:
 	if _flash_tween != null:
 		_flash_tween.kill()
 	
-	_flash_overlay.color = color
+	var flash_color: Color = color
+	# Under imminent threat, soften small tap flashes so defense/damage reads stay dominant.
+	if _readability_stress > 0.62 and flash_color.a > 0.0 and flash_color.a < 0.22:
+		var damp: float = lerpf(1.0, 0.58, clampf((_readability_stress - 0.62) / 0.38, 0.0, 1.0))
+		flash_color.a *= damp
+	
+	_flash_overlay.color = flash_color
 	_flash_tween = _flash_overlay.create_tween()
 	
 	# Manga Inversion: 0.99 alpha is our signal for a sharp white-to-black inversion.
-	var is_manga_inversion: bool = color.a > 0.985
+	var is_manga_inversion: bool = flash_color.a > 0.985
 	if is_manga_inversion:
 		_flash_overlay.color = Color.WHITE
 		_flash_overlay.color.a = 1.0
@@ -258,16 +271,33 @@ func on_screen_flash(color: Color, duration: float) -> void:
 		_flash_tween.tween_interval(duration)
 		_flash_tween.tween_property(_flash_overlay, "color:a", 0.0, 0.15)
 	else:
-		_flash_tween.tween_property(_flash_overlay, "color:a", color.a, 0.03)
+		_flash_tween.tween_property(_flash_overlay, "color:a", flash_color.a, 0.03)
 		_flash_tween.tween_interval(duration)
 		_flash_tween.tween_property(_flash_overlay, "color:a", 0.0, 0.12)
 	
 	# Simulated chromatic shift jitter for high-authority hits.
-	if color.a > 0.10:
+	if flash_color.a > 0.10:
 		var jitter_offset := Vector2(randf_range(-4.0, 4.0), randf_range(-2.0, 2.0))
 		var original_cam_offset: Vector2 = _camera_2d.offset
 		_camera_2d.offset += jitter_offset
 		_flash_tween.parallel().tween_property(_camera_2d, "offset", original_cam_offset, 0.10).set_delay(0.02)
+
+
+func on_dna_resonated(color: Color, intensity: float) -> void:
+	if _ui_layer == null:
+		return
+	
+	# Apply recursive pulse/color shift to all HUD panels
+	HUD_PANEL_ART.pulse_recursive(_ui_layer, intensity, color)
+	
+	# Fade back to default predatory red over time
+	var tween := _ui_layer.create_tween()
+	tween.tween_interval(0.12)
+	tween.tween_method(func(val: float) -> void:
+		var current_color: Color = color.lerp(Color(0.8, 0.1, 0.15), val)
+		var current_pulse: float = lerpf(intensity, 0.0, val)
+		HUD_PANEL_ART.pulse_recursive(_ui_layer, current_pulse, current_color)
+	, 0.0, 1.0, 0.45)
 
 
 func on_screen_shake(intensity: float, duration: float) -> void:
@@ -335,6 +365,9 @@ func on_beat_pulse(quality: String, strength: float) -> void:
 		if _bg_pulse_targets.is_empty():
 			return
 
+	var stress_damp: float = lerpf(1.0, 0.72, clampf((_readability_stress - 0.55) / 0.45, 0.0, 1.0))
+	var eff_strength: float = strength * stress_damp
+
 	for child in _bg_pulse_targets:
 		if not is_instance_valid(child):
 			continue
@@ -344,11 +377,11 @@ func on_beat_pulse(quality: String, strength: float) -> void:
 		
 		match quality:
 			"accent":
-				pulse_color = original_modulate.lightened(0.18 * strength)
+				pulse_color = original_modulate.lightened(0.18 * eff_strength)
 			"perfect":
-				pulse_color = original_modulate.lightened(0.12 * strength)
+				pulse_color = original_modulate.lightened(0.12 * eff_strength)
 			"good":
-				pulse_color = original_modulate.lightened(0.06 * strength)
+				pulse_color = original_modulate.lightened(0.06 * eff_strength)
 		
 		var tween := child.create_tween()
 		tween.tween_property(child, "modulate", pulse_color, 0.05)

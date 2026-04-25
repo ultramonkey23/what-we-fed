@@ -14,6 +14,8 @@ var attack_authority_budget: int = THREAT_COUNT
 
 const SPAWN_DISTANCE_RATIO: float = 0.42
 const HIT_ZONE_DISTANCE: float = 110.0
+const STRIKER_VISUAL_TANGENT_SPREAD: float = 32.0
+const STRIKER_VISUAL_RADIAL_SPREAD: float = 18.0
 
 const PROJECTILE_SCENE_PATH: String = "res://scenes/combat/Projectile.tscn"
 const MELEE_APPROACH_SCRIPT_PATH: String = "res://scenes/combat/MeleeApproach.gd"
@@ -60,6 +62,7 @@ var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 var _orbit_angles: Dictionary = {} # enemy_id -> float
 var _orbit_radius_offsets: Dictionary = {} # enemy_id -> float
 var _orbit_drift_accum: Dictionary = {} # enemy_id -> float
+var _enemy_visual_offsets: Dictionary = {} # enemy_id -> Vector2, presentation only
 var _orbit_speed: float = 0.35 # Rad/sec
 var _next_enemy_id: int = 5000 # For non-song mode or internal spawns
 
@@ -139,6 +142,7 @@ func start_combat(enemy_data: Array) -> void:
 	_orbit_angles.clear()
 	_orbit_radius_offsets.clear()
 	_orbit_drift_accum.clear()
+	_enemy_visual_offsets.clear()
 
 	for lane in range(THREAT_COUNT):
 		if lane < enemy_data.size():
@@ -149,6 +153,7 @@ func start_combat(enemy_data: Array) -> void:
 			enemy["lane"] = lane
 			_enemies[id] = enemy
 			_strikers[lane] = id
+			_assign_striker_visual_offset(id, lane)
 
 	_combat_running = true
 	_cycle_task_id += 1
@@ -316,10 +321,11 @@ func set_enemy(lane: int, enemy_data: Dictionary) -> void:
 	if lane >= 0 and lane < THREAT_COUNT and _strikers[lane] == -1 and alive_striker_count() < attack_authority_budget:
 		_strikers[lane] = id
 		enemy["lane"] = lane
+		_assign_striker_visual_offset(id, lane)
 	else:
 		_orbiting_enemy_ids.append(id)
 		_orbit_angles[id] = _rng.randf_range(0.0, TAU)
-		_orbit_radius_offsets[id] = _rng.randf_range(-15.0, 15.0)
+		_orbit_radius_offsets[id] = _rng.randf_range(-28.0, 28.0)
 		enemy["lane"] = -1
 	
 	if _song_mode:
@@ -402,6 +408,7 @@ func _handle_enemy_defeat(id: int) -> void:
 	_orbiting_enemy_ids.erase(id)
 	_orbit_angles.erase(id)
 	_orbit_radius_offsets.erase(id)
+	_enemy_visual_offsets.erase(id)
 	_enemies.erase(id)
 
 	if alive_count() <= 0:
@@ -460,6 +467,7 @@ func stop() -> void:
 	_orbit_angles.clear()
 	_orbit_radius_offsets.clear()
 	_orbit_drift_accum.clear()
+	_enemy_visual_offsets.clear()
 
 	for lane in range(THREAT_COUNT):
 		var projectile = get_projectile(lane)
@@ -782,6 +790,7 @@ func _promote_orbiting_to_strikers() -> void:
 		if best_lane != -1:
 			_strikers[best_lane] = id
 			_enemies[id]["lane"] = best_lane
+			_assign_striker_visual_offset(id, best_lane)
 			_orbiting_enemy_ids.remove_at(orbit_index)
 			_orbit_angles.erase(id)
 			_orbit_radius_offsets.erase(id)
@@ -809,7 +818,8 @@ func get_enemy_pos(id: int) -> Vector2:
 		
 	var lane = _find_lane_for_enemy(id)
 	if lane >= 0:
-		return get_threat_spawn_pos(lane)
+		var visual_offset: Vector2 = _enemy_visual_offsets.get(id, Vector2.ZERO)
+		return get_threat_spawn_pos(lane) + visual_offset
 		
 	# If orbiting
 	if _orbit_angles.has(id):
@@ -818,6 +828,18 @@ func get_enemy_pos(id: int) -> Vector2:
 		return _center_pos + Vector2(cos(angle), sin(angle)) * radius
 		
 	return _center_pos
+
+
+func _assign_striker_visual_offset(id: int, lane: int) -> void:
+	if lane < 0 or lane >= THREAT_COUNT:
+		return
+	var radial: Vector2 = (get_threat_spawn_pos(lane) - _center_pos).normalized()
+	if radial.length_squared() < 0.1:
+		radial = Vector2.RIGHT
+	var tangent := Vector2(-radial.y, radial.x)
+	var tangent_offset: float = _rng.randf_range(-STRIKER_VISUAL_TANGENT_SPREAD, STRIKER_VISUAL_TANGENT_SPREAD)
+	var radial_offset: float = _rng.randf_range(-STRIKER_VISUAL_RADIAL_SPREAD, STRIKER_VISUAL_RADIAL_SPREAD)
+	_enemy_visual_offsets[id] = tangent * tangent_offset + radial * radial_offset
 
 
 func _reset_attack_authority_state() -> void:

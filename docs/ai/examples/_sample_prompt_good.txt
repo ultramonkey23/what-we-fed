@@ -1,0 +1,16 @@
+Route: Codex
+
+Repo truth source: docs/ai/CURRENT_TRUTH_SNAPSHOT.md
+
+Allowed files:
+- docs/ai/**
+- tools/ai/**
+
+Forbidden files:
+- scenes/**
+- project.godot
+- input_map
+- combat/**
+
+Task:
+Review AI tooling docs for consistency and propose one bounded next step.

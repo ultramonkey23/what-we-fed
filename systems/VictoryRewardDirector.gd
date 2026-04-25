@@ -56,10 +56,12 @@ func resolve_choice(choice_id: String) -> bool:
 		return false
 
 	var species_id: String = String(_pending_creature.get("species_id", ""))
-	var threshold: float = GameState.get_effective_dna_threshold(species_id)
 	
-	if not GameState.has_dna_for(species_id, threshold):
-		return false
+	if choice_id == "bond":
+		var threshold: float = GameState.get_effective_dna_threshold(species_id)
+		if not GameState.has_dna_for(species_id, threshold):
+			EventBus.emit_signal("dna_lock_denied", species_id, GameState.get_dna(species_id), threshold)
+			return false
 
 	_choice_made = true
 	_is_awaiting_choice = false

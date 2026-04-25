@@ -6,6 +6,8 @@ const UI_STYLE = preload("res://systems/UIStyle.gd")
 var _director: Node = null
 var _proc_chip_timer: float = 0.0
 var _proc_tween: Tween = null
+var _proc_chip_last_shown_ms: int = 0
+const PROC_CHIP_LOW_PRIORITY_MIN_MS: int = 400
 var _pulse_tween: Tween = null
 var _message_lane_blocked: bool = false
 var _lean_mode: bool = false
@@ -263,28 +265,38 @@ func _stop_ultimate_pulse() -> void:
 	if _ultimate_shell: _ultimate_shell.scale = Vector2.ONE
 
 
+func _proc_feedback_is_urgent(text: String) -> bool:
+	var u: String = text.to_upper()
+	return u.find("LEVEL") >= 0 or u.find("EVOLUTION") >= 0 or u.find("DEBT PAID") >= 0 \
+		or u.find("TEMPO ") >= 0 or u.find("DECREE") >= 0 or u.find("SLOTS SEALED") >= 0 \
+		or u.find("HUNT SURGES") >= 0
+
+
 func _on_song_beat_pulse(_beat_index: int, intensity: float) -> void:
 	# Dramatic HUD pulse on beat, scaled by song intensity
+	var beat_intensity: float = intensity
+	if _proc_chip_timer > 0.35:
+		beat_intensity *= 0.72
 	if _panel and _panel.visible:
-		var pulse_scale: float = 1.0 + (intensity * 0.04)
+		var pulse_scale: float = 1.0 + (beat_intensity * 0.04)
 		var t = create_tween().set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_EXPO)
 		t.tween_property(_panel, "scale", Vector2(pulse_scale, pulse_scale), 0.05)
 		t.tween_property(_panel, "scale", Vector2.ONE, 0.15)
 
 		# SIGNAL: Pulse the Living Restraint veins
 		const HUD_PANEL_ART = preload("res://systems/HUDPanelArt.gd")
-		HUD_PANEL_ART.set_vein_pulse(_panel, intensity * 0.8)
+		HUD_PANEL_ART.set_vein_pulse(_panel, beat_intensity * 0.8)
 
 	if _ultimate_shell and _ultimate_shell.visible:
 		# Ultimate bar pulses more aggressively
-		var pulse_h: float = 1.0 + (intensity * 0.08)
+		var pulse_h: float = 1.0 + (beat_intensity * 0.08)
 		var t2 = create_tween().set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_EXPO)
 		t2.tween_property(_ultimate_shell, "scale", Vector2(1.0, pulse_h), 0.05)
 		t2.tween_property(_ultimate_shell, "scale", Vector2.ONE, 0.15)
 
 		# SIGNAL: Pulse the Living Restraint veins on the Ultimate bar
 		const HUD_PANEL_ART = preload("res://systems/HUDPanelArt.gd")
-		HUD_PANEL_ART.set_vein_pulse(_ultimate_shell, intensity)
+		HUD_PANEL_ART.set_vein_pulse(_ultimate_shell, beat_intensity)
 
 
 
@@ -366,6 +378,11 @@ func set_message_lane_blocked(blocked: bool) -> void:
 func _on_proc_feedback(text: String, color: Color) -> void:
 	if _proc_chip_label == null: return
 	
+	var now_ms: int = Time.get_ticks_msec()
+	if not _proc_feedback_is_urgent(text):
+		if now_ms - _proc_chip_last_shown_ms < PROC_CHIP_LOW_PRIORITY_MIN_MS:
+			return
+	
 	if _proc_tween != null:
 		_proc_tween.kill()
 	
@@ -373,6 +390,7 @@ func _on_proc_feedback(text: String, color: Color) -> void:
 	_proc_chip_label.modulate = color
 	_proc_chip_label.modulate.a = 1.0
 	_proc_chip_label.visible = true
+	_proc_chip_last_shown_ms = now_ms
 	_proc_chip_timer = 1.8
 	
 	_proc_chip_label.scale = Vector2(1.5, 1.5)

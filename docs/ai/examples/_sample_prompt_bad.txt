@@ -1,0 +1,7 @@
+Implement and refactor the whole repo.
+
+Edit combat systems and project.godot directly.
+
+Lockbox is confirmed repo truth.
+
+This is already runtime validated and manually tested.

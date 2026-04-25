@@ -50,6 +50,7 @@ const COLLAR_DIRECTOR = preload("res://systems/CollarDirector.gd")
 const PATH_RUN_PLAN = preload("res://systems/PathRunPlan.gd")
 const POTENTIAL_GATE = preload("res://systems/PotentialGate.gd")
 const DEBUG_TRACE = preload("res://systems/DebugTrace.gd")
+const VESSEL_MODIFIER_DIRECTOR = preload("res://systems/VesselModifierDirector.gd")
 
 # ─── CONSTANTS ───────────────────────────────────────────────────────────────
 const RUN_GROWTH_SCRIPT_PATH: String = "res://systems/RunGrowth.gd"
@@ -83,6 +84,7 @@ const VICTORY_REWARD_DIRECTOR = preload("res://systems/VictoryRewardDirector.gd"
 const COMBAT_RUN_DIRECTOR = preload("res://systems/CombatRunDirector.gd")
 const ENCOUNTER_GENERATOR_SCRIPT_PATH: String = "res://examples/demo_encounter_stack/EncounterGenerator.gd"
 const COMBAT_HUD_PRESENTER = preload("res://systems/CombatHUDPresenter.gd")
+const COMBAT_FEEDBACK_SHELL = preload("res://scenes/ui/CombatFeedbackShell.gd")
 const IMPACT_FX_RUNTIME_SCENE: PackedScene = preload("res://systems/presentation/ImpactFxRuntime.tscn")
 
 # ─── STATE VARIABLES ─────────────────────────────────────────────────────────
@@ -120,8 +122,6 @@ var _hud_decor_layer: Control = null
 var _hud_primary_layer: Control = null
 var _hud_secondary_layer: Control = null
 var _hud_overlay_layer: Control = null
-var _feedback_label: Label = null
-var _feedback_backing: ColorRect = null
 var _title_card: Label = null
 var _subtitle_card: Label = null
 var _timing_circle_container: Node2D = null
@@ -187,6 +187,7 @@ var _reward_hint_label: Label = null
 var _reward_bond_card: ColorRect = null
 var _reward_eat_card: ColorRect = null
 var _reward_bond_label: Label = null
+var _reward_dna_label: Label = null
 var _reward_eat_label: Label = null
 var _reward_bond_effect_label: Label = null
 var _reward_eat_effect_label: Label = null
@@ -216,6 +217,7 @@ var _growth_choice_context: Dictionary = {}
 var _live_reward_shell: PanelContainer = null
 var _live_reward_title_label: Label = null
 var _live_reward_body_label: Label = null
+var _live_reward_dna_label: Label = null
 var _live_reward_hint_label: Label = null
 var _song_reward_stall_guard: float = 0.0
 var _between_level_growth_queue: Array[Dictionary] = []
@@ -320,23 +322,15 @@ var _active_song_data: Dictionary = {}
 var _active_song_profile: Dictionary = SONG_COMBAT_PROFILE_CONTENT.get_profile("")
 var _boss_song_profile: Dictionary = SONG_COMBAT_PROFILE_CONTENT.get_profile("boss_1")
 var _last_applied_hunt_pressure_step: int = -1
-var _feedback_tween: Tween = null
 var _beat_feedback_tween: Tween = null
-var _feedback_active_priority: int = 0
-var _feedback_active_until_ms: int = 0
-var _feedback_last_low_ms: int = 0
-var _feedback_block_low_until_ms: int = 0
 var _beat_feedback_last_ms: int = 0
 var _critical_threat_pressure: float = 0.0
+var _critical_threat_lane: int = -1
 var _readability_pulse_mult: float = 1.0
 var _critical_warning_cooldown_until_ms: int = 0
+var _feedback_shell: RefCounted = null
 
-const FEEDBACK_PRIORITY_LOW: int = 0
-const FEEDBACK_PRIORITY_MEDIUM: int = 1
-const FEEDBACK_PRIORITY_HIGH: int = 2
-const LOW_FEEDBACK_MIN_INTERVAL_MS: int = 260
 const BEAT_FEEDBACK_MIN_INTERVAL_MS: int = 260
-const URGENT_FEEDBACK_HOLD_MS: int = 320
 const CRITICAL_WARNING_COOLDOWN_MS: int = 900
 
 
@@ -386,6 +380,8 @@ func _exit_tree() -> void:
 		EventBus.enemy_damaged.disconnect(_on_enemy_damaged)
 	if EventBus.enemy_defeated.is_connected(_on_enemy_defeated):
 		EventBus.enemy_defeated.disconnect(_on_enemy_defeated)
+	if EventBus.dna_lock_denied.is_connected(_on_dna_lock_denied):
+		EventBus.dna_lock_denied.disconnect(_on_dna_lock_denied)
 	
 	if _presentation_runtime != null:
 		if EventBus.screen_flash.is_connected(_presentation_runtime.on_screen_flash):
@@ -396,6 +392,11 @@ func _exit_tree() -> void:
 			EventBus.timing_ring_pressed.disconnect(_presentation_runtime.on_timing_ring_pressed)
 		if EventBus.song_beat_pulse.is_connected(_presentation_runtime.on_song_beat_pulse):
 			EventBus.song_beat_pulse.disconnect(_presentation_runtime.on_song_beat_pulse)
+		if EventBus.ui_shake.is_connected(_presentation_runtime.on_ui_shake):
+			EventBus.ui_shake.disconnect(_presentation_runtime.on_ui_shake)
+		if EventBus.dna_resonated.is_connected(_presentation_runtime.on_dna_resonated):
+			EventBus.dna_resonated.disconnect(_presentation_runtime.on_dna_resonated)
+		_presentation_runtime.set_readability_stress(0.0)
 
 	if EventBus.slow_motion.is_connected(_on_slow_motion):
 		EventBus.slow_motion.disconnect(_on_slow_motion)
@@ -666,16 +667,21 @@ func _refresh_reward_overlay_content() -> void:
 
 	# DNA gate: check whether the player has accumulated enough DNA for this species.
 	var _offer_species_id: String = str(_pending_reward_creature.get("species_id", ""))
-	var _offer_dna_threshold: float = float(_pending_reward_creature.get("dna_threshold", 0.0))
+	var _offer_dna_threshold: float = GameState.get_effective_dna_threshold(_offer_species_id)
 	var _player_dna: float = GameState.get_dna(_offer_species_id)
 
 	_reward_creature_tag_label.text = PRESENTATION_TEXT.REWARD_TAG_CREATURE
 	_reward_title_label.text = PRESENTATION_TEXT.live_reward_title(_offer_creature_name)
+	
 	var body: String = _offer_description
 	if not _encounter_context.is_empty():
 		body += "\n\nEncounter Context: %s" % _encounter_context
-	body += "\n\nDNA Collected: %.0f / %.0f" % [_player_dna, _offer_dna_threshold]
 	_reward_body_label.text = body
+	
+	if _reward_dna_label != null:
+		_reward_dna_label.text = PRESENTATION_TEXT.dna_status_line(_offer_species_id)
+		_reward_dna_label.modulate = Color(0.4, 0.9, 0.8) if _player_dna >= _offer_dna_threshold else Color(1.0, 0.4, 0.4)
+
 	_reward_bond_label.text = "B Bond"
 	_reward_eat_label.text = "E Eat"
 
@@ -852,6 +858,7 @@ func _initialize_ui() -> void:
 	_setup_presentation_controller()
 	_setup_visuals()
 	_ensure_hud_root()
+	_create_feedback_shell()
 	if not get_viewport().size_changed.is_connected(_sync_fullscreen_underlay_controls):
 		get_viewport().size_changed.connect(_sync_fullscreen_underlay_controls)
 	_setup_ui()
@@ -873,6 +880,12 @@ func _initialize_ui() -> void:
 		get_viewport().size_changed.connect(_sync_compact_transient_hud_layout)
 	call_deferred("_sync_compact_transient_hud_layout")
 	_refresh_hud_snapshot(0, 0.0, "stirring")
+
+
+func _create_feedback_shell() -> void:
+	if _feedback_shell != null:
+		return
+	_feedback_shell = COMBAT_FEEDBACK_SHELL.new(UI_STYLE, COMBAT_FEEL_CONTENT, self, Callable(self, "_apply_text_role"))
 
 
 func _setup_presentation_controller() -> void:
@@ -1232,6 +1245,21 @@ func _get_player_focus_lane() -> int:
 	return int(player_combat.get("current_lane"))
 
 
+func _lane_cardinal_token(lane: int) -> String:
+	# Matches PlayerCombat cardinal lanes: N / S / E / W.
+	match clampi(lane, 0, 3):
+		0:
+			return "N"
+		1:
+			return "S"
+		2:
+			return "E"
+		3:
+			return "W"
+		_:
+			return "?"
+
+
 func _song_reserve_count() -> int:
 	if lane_manager != null and lane_manager.has_method("alive_count"):
 		# In the new model, 'reserve' count is basically (total alive - strikers).
@@ -1531,6 +1559,7 @@ func _update_lane_visual_states() -> void:
 	var inactive_color: Color = biome.get("ring_inactive_color", ring_palette.get("inactive", Color(0.7, 0.7, 0.8, 0.45)))
 	var time: float = Time.get_ticks_msec() / 1000.0
 	var critical_peak: float = 0.0
+	_critical_threat_lane = -1
 
 	for lane in range(lane_manager.THREAT_COUNT if lane_manager else 4):
 		var intercept_dist: float = _lane_intercept_distance(lane)
@@ -1581,7 +1610,11 @@ func _update_lane_visual_states() -> void:
 				focus_alpha = lerp(focus_alpha, 1.0, 0.70 + critical_t * 0.30)
 				focus_scale = lerp(focus_scale, 1.18, 0.70 + critical_t * 0.30)
 				focus_color = accent_color.lightened(0.12)
-				critical_peak = maxf(critical_peak, critical_t)
+				if critical_t > critical_peak:
+					critical_peak = critical_t
+					_critical_threat_lane = lane
+				else:
+					critical_peak = maxf(critical_peak, critical_t)
 		else:
 			strip.scale.y = 1.0
 
@@ -1592,9 +1625,14 @@ func _update_lane_visual_states() -> void:
 	_critical_threat_pressure = lerpf(_critical_threat_pressure, critical_peak, 0.35)
 	var target_pulse_mult: float = lerpf(1.0, 0.58, clampf(_critical_threat_pressure, 0.0, 1.0))
 	_readability_pulse_mult = lerpf(_readability_pulse_mult, target_pulse_mult, 0.25)
+	if _presentation_runtime != null:
+		_presentation_runtime.set_readability_stress(_critical_threat_pressure)
 	var now_ms: int = Time.get_ticks_msec()
 	if _critical_threat_pressure >= 0.86 and now_ms >= _critical_warning_cooldown_until_ms:
-		_show_feedback("THREAT CLOSE", Color(1.0, 0.56, 0.38, 1.0), 0.20)
+		var threat_msg: String = "THREAT"
+		if _critical_threat_lane >= 0:
+			threat_msg = "THREAT %s" % _lane_cardinal_token(_critical_threat_lane)
+		_show_feedback(threat_msg, Color(1.0, 0.56, 0.38, 1.0), 0.22)
 		_critical_warning_cooldown_until_ms = now_ms + CRITICAL_WARNING_COOLDOWN_MS
 
 
@@ -2801,69 +2839,17 @@ func _refresh_hud_snapshot(score_value: int, exp_value: float, style_tier: Strin
 
 
 func _create_feedback_label() -> void:
-	var half_w: float = COMBAT_FEEL_CONTENT.HUD_COMBAT_FEEDBACK_HALF_WIDTH
-	var fy: float = COMBAT_FEEL_CONTENT.HUD_COMBAT_FEEDBACK_Y
-	var fh: float = COMBAT_FEEL_CONTENT.HUD_COMBAT_FEEDBACK_HEIGHT
-
-	_feedback_backing = ColorRect.new()
-	_feedback_backing.name = "FeedbackBacking"
-	_feedback_backing.visible = false
-	_feedback_backing.z_index = 89
-	_feedback_backing.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_feedback_backing.anchor_left = 0.5
-	_feedback_backing.anchor_top = 0.0
-	_feedback_backing.anchor_right = 0.5
-	_feedback_backing.anchor_bottom = 0.0
-	_feedback_backing.offset_left = -half_w
-	_feedback_backing.offset_top = fy
-	_feedback_backing.offset_right = half_w
-	_feedback_backing.offset_bottom = fy + fh
-	UI_STYLE.apply_shell_style(_feedback_backing, "feedback_backing")
-	if _hud_overlay_layer != null:
-		_hud_overlay_layer.add_child(_feedback_backing)
-	else:
-		ui_layer.add_child(_feedback_backing)
-
-	_feedback_label = Label.new()
-	_feedback_label.name = "FeedbackLabel"
-	_feedback_label.visible = false
-	_feedback_label.z_index = 90
-	_feedback_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_feedback_label.anchor_left = 0.5
-	_feedback_label.anchor_top = 0.0
-	_feedback_label.anchor_right = 0.5
-	_feedback_label.anchor_bottom = 0.0
-	_feedback_label.offset_left = -half_w + 8.0
-	_feedback_label.offset_top = fy + 2.0
-	_feedback_label.offset_right = half_w - 8.0
-	_feedback_label.offset_bottom = fy + fh - 2.0
-	_feedback_label.pivot_offset = Vector2(half_w - 8.0, (fh - 4.0) * 0.5)
-	_apply_text_role(_feedback_label, "feedback", HORIZONTAL_ALIGNMENT_CENTER)
-	_feedback_label.add_theme_font_size_override("font_size", COMBAT_FEEL_CONTENT.HUD_COMBAT_FEEDBACK_FONT_SIZE)
-	if _hud_overlay_layer != null:
-		_hud_overlay_layer.add_child(_feedback_label)
-	else:
-		ui_layer.add_child(_feedback_label)
+	if _feedback_shell == null:
+		return
+	_feedback_shell.create_feedback_nodes(_hud_overlay_layer, ui_layer)
 
 
 func _create_title_cards() -> void:
-	_title_card = Label.new()
-	_title_card.name = "BiomeTitleCard"
-	_title_card.visible = false
-	_title_card.z_index = 95
-	_title_card.position = Vector2(420.0, 110.0)
-	_title_card.size = Vector2(480.0, 34.0)
-	_apply_text_role(_title_card, "heading", HORIZONTAL_ALIGNMENT_CENTER)
-	add_child(_title_card)
-
-	_subtitle_card = Label.new()
-	_subtitle_card.name = "BiomeSubtitleCard"
-	_subtitle_card.visible = false
-	_subtitle_card.z_index = 95
-	_subtitle_card.position = Vector2(420.0, 140.0)
-	_subtitle_card.size = Vector2(480.0, 26.0)
-	_apply_text_role(_subtitle_card, "hint", HORIZONTAL_ALIGNMENT_CENTER)
-	add_child(_subtitle_card)
+	if _feedback_shell == null:
+		return
+	_feedback_shell.create_title_cards(self)
+	_title_card = _feedback_shell.get_title_card()
+	_subtitle_card = _feedback_shell.get_subtitle_card()
 
 
 func _create_timing_circle_container() -> void:
@@ -2915,6 +2901,7 @@ func _create_reward_overlay() -> void:
 	_reward_bond_card = nodes.get("reward_bond_card")
 	_reward_eat_card = nodes.get("reward_eat_card")
 	_reward_bond_label = nodes.get("reward_bond_label")
+	_reward_dna_label = nodes.get("reward_dna_label")
 	_reward_eat_label = nodes.get("reward_eat_label")
 	_reward_bond_effect_label = nodes.get("reward_bond_effect_label")
 	_reward_eat_effect_label = nodes.get("reward_eat_effect_label")
@@ -3034,6 +3021,7 @@ func _create_live_reward_shell() -> void:
 	_live_reward_shell = nodes.get("live_reward_shell")
 	_live_reward_title_label = nodes.get("live_reward_title_label")
 	_live_reward_body_label = nodes.get("live_reward_body_label")
+	_live_reward_dna_label = nodes.get("live_reward_dna_label")
 	_live_reward_hint_label = nodes.get("live_reward_hint_label")
 
 
@@ -3218,12 +3206,14 @@ func _connect_eventbus() -> void:
 	EventBus.combat_ended.connect(_on_combat_ended)
 	EventBus.enemy_damaged.connect(_on_enemy_damaged)
 	EventBus.enemy_defeated.connect(_on_enemy_defeated)
+	EventBus.dna_lock_denied.connect(_on_dna_lock_denied)
 	EventBus.proc_feedback_requested.connect(_on_proc_feedback_requested)
 	EventBus.ultimate_power_granted.connect(_on_ultimate_power_granted)
 	EventBus.enemy_status_applied_requested.connect(lane_manager.apply_status)
 	EventBus.screen_flash.connect(_presentation_runtime.on_screen_flash)
 	EventBus.screen_shake.connect(_presentation_runtime.on_screen_shake)
 	EventBus.ui_shake.connect(_presentation_runtime.on_ui_shake)
+	EventBus.dna_resonated.connect(_presentation_runtime.on_dna_resonated)
 	EventBus.slow_motion.connect(_on_slow_motion)
 	EventBus.player_attacked.connect(_on_player_attacked)
 	EventBus.timed_attack_resolved.connect(_on_timed_attack_resolved)
@@ -3344,6 +3334,8 @@ func _start_regular_level(level_index: int, reset_hp: bool) -> void:
 	_song_enemy_lanes.clear()
 	_latest_ecology_snapshot.clear()
 	_status_marker_overrides.clear()
+	if _song_mode and not _is_boss_encounter:
+		_clear_song_enemy_tracking()
 	if lane_manager != null and lane_manager.has_method("stop"):
 		lane_manager.stop()
 	lane_manager.set_song_mode_enabled(true)
@@ -3911,21 +3903,21 @@ func _enter_song_phase(new_idx: int) -> void:
 func _place_song_enemy_data(lane: int, enemy_data: Dictionary) -> void:
 	if enemy_data.is_empty():
 		return
-		
+
+	var seeded_enemy: Dictionary = enemy_data.duplicate(true)
+	if int(seeded_enemy.get("id", -1)) < 0:
+		seeded_enemy["id"] = _next_song_enemy_id
+		_next_song_enemy_id += 1
+
 	# LaneManager handles internal orbiting if the active attack budget is full.
 	# It also handles ID generation if needed.
-	lane_manager.set_enemy(lane, enemy_data)
-	
-	# We need the ID to register markers. Since set_enemy might generate one,
-	# we search for the enemy we just added in the population.
-	var enemy_id: int = -1
+	lane_manager.set_enemy(lane, seeded_enemy)
+
 	var enemies: Dictionary = lane_manager.call("get_all_enemies")
-	for id in enemies:
-		var e: Dictionary = enemies[id]
-		if e.get("hp") == enemy_data.get("hp") and e.get("type") == enemy_data.get("type"):
-			enemy_id = id
-			break
-			
+	var enemy_id: int = int(seeded_enemy.get("id", -1))
+	if not enemies.has(enemy_id):
+		enemy_id = _resolve_newest_untracked_enemy_id(enemies)
+
 	if enemy_id == -1: return
 
 	var enemy_final: Dictionary = enemies[enemy_id]
@@ -5131,74 +5123,15 @@ func _trigger_boss_threshold_spectacle() -> void:
 
 
 func _show_title_card(title_text: String, subtitle_text: String) -> void:
-	_title_card.text = title_text
-	_title_card.modulate = Color(1.0, 1.0, 1.0, 1.0)
-	_title_card.visible = true
-
-	_subtitle_card.text = subtitle_text
-	_subtitle_card.modulate = Color(0.85, 0.85, 0.85, 1.0)
-	_subtitle_card.visible = true
-
-	var tween := create_tween()
-	tween.tween_interval(0.65)
-	tween.tween_property(_title_card, "modulate:a", 0.0, 0.40)
-	tween.parallel().tween_property(_subtitle_card, "modulate:a", 0.0, 0.40)
-	tween.tween_callback(func() -> void:
-		_title_card.visible = false
-		_subtitle_card.visible = false
-		_title_card.modulate.a = 1.0
-		_subtitle_card.modulate.a = 1.0
-	)
+	if _feedback_shell == null:
+		return
+	_feedback_shell.show_title_card(title_text, subtitle_text)
 
 
 func _show_feedback(text: String, color: Color, lifetime: float = COMBAT_FEEL_CONTENT.COMBAT_FEEDBACK_MIN_LIFETIME) -> void:
-	if _feedback_label == null:
+	if _feedback_shell == null:
 		return
-	var now_ms: int = Time.get_ticks_msec()
-	var priority: int = _feedback_priority_for_text(text)
-	if priority == FEEDBACK_PRIORITY_LOW:
-		if now_ms < _feedback_block_low_until_ms:
-			return
-		if now_ms - _feedback_last_low_ms < LOW_FEEDBACK_MIN_INTERVAL_MS:
-			return
-		_feedback_last_low_ms = now_ms
-	if priority < _feedback_active_priority and now_ms < _feedback_active_until_ms:
-		return
-	if _feedback_tween != null and is_instance_valid(_feedback_tween):
-		_feedback_tween.kill()
-
-	if priority >= FEEDBACK_PRIORITY_HIGH:
-		_feedback_block_low_until_ms = now_ms + URGENT_FEEDBACK_HOLD_MS
-	_feedback_active_priority = priority
-	_feedback_active_until_ms = now_ms + URGENT_FEEDBACK_HOLD_MS
-
-	var punch: float = COMBAT_FEEL_CONTENT.HUD_COMBAT_FEEDBACK_PUNCH_SCALE
-	_feedback_label.text = text
-	_feedback_label.modulate = color
-	_feedback_label.visible = true
-	if _feedback_backing != null:
-		_feedback_backing.visible = true
-		_feedback_backing.modulate = Color(1.0, 1.0, 1.0, 1.0)
-		_feedback_backing.scale = Vector2(punch, punch)
-	_feedback_label.scale = Vector2(punch, punch)
-
-	_feedback_tween = create_tween()
-	_feedback_tween.tween_property(_feedback_label, "scale", Vector2.ONE, 0.10).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
-	if _feedback_backing != null:
-		_feedback_tween.parallel().tween_property(_feedback_backing, "scale", Vector2.ONE, 0.10).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
-	_feedback_tween.tween_interval(max(lifetime, COMBAT_FEEL_CONTENT.COMBAT_FEEDBACK_MIN_LIFETIME))
-	_feedback_tween.tween_property(_feedback_label, "modulate:a", 0.0, COMBAT_FEEL_CONTENT.COMBAT_FEEDBACK_FADE_TIME)
-	if _feedback_backing != null:
-		_feedback_tween.parallel().tween_property(_feedback_backing, "modulate:a", 0.0, COMBAT_FEEL_CONTENT.COMBAT_FEEDBACK_FADE_TIME)
-	_feedback_tween.tween_callback(func() -> void:
-		_feedback_label.visible = false
-		_feedback_label.modulate.a = 1.0
-		_feedback_label.scale = Vector2.ONE
-		if _feedback_backing != null:
-			_feedback_backing.visible = false
-			_feedback_backing.modulate.a = 1.0
-			_feedback_backing.scale = Vector2.ONE
-	)
+	_feedback_shell.show_feedback(text, color, lifetime, _critical_threat_pressure)
 
 
 func _get_beat_quality_for_action() -> String:
@@ -5215,7 +5148,7 @@ func _show_beat_feedback(text: String, color: Color) -> void:
 	if _beat_feedback_label == null:
 		return
 	var now_ms: int = Time.get_ticks_msec()
-	if _critical_threat_pressure > 0.72 and now_ms - _beat_feedback_last_ms < BEAT_FEEDBACK_MIN_INTERVAL_MS:
+	if _critical_threat_pressure > 0.58 and now_ms - _beat_feedback_last_ms < BEAT_FEEDBACK_MIN_INTERVAL_MS:
 		return
 	_beat_feedback_last_ms = now_ms
 	if _beat_feedback_tween != null and is_instance_valid(_beat_feedback_tween):
@@ -5230,19 +5163,6 @@ func _show_beat_feedback(text: String, color: Color) -> void:
 		_beat_feedback_label.visible = false
 		_beat_feedback_label.modulate.a = 1.0
 	)
-
-
-func _feedback_priority_for_text(text: String) -> int:
-	var token: String = text.to_upper().strip_edges()
-	if token.find("NO STAMINA") >= 0 or token.find("NO CHARGE") >= 0 or token.find("RECOVERING") >= 0 or token.find("WRONG LANE") >= 0 or token.find("DENIED") >= 0:
-		return FEEDBACK_PRIORITY_HIGH
-	if token.find("STRUCK") >= 0 or token.find("EXPOSED") >= 0 or token.find("PARRY") >= 0 or token.find("DODGE") >= 0 or token.find("THREAT CLOSE") >= 0:
-		return FEEDBACK_PRIORITY_HIGH
-	if token.find("TIMED") >= 0 or token.find("HIT") >= 0 or token.find("DEFEATED") >= 0 or token.find("BROKEN") >= 0:
-		return FEEDBACK_PRIORITY_MEDIUM
-	if token.find("QUEUE") >= 0:
-		return FEEDBACK_PRIORITY_LOW
-	return FEEDBACK_PRIORITY_LOW
 
 
 func _flash_meter_shell(color: Color, duration: float) -> void:
@@ -5329,16 +5249,21 @@ func _refresh_live_reward_shell() -> void:
 		return
 
 	var species_id: String = str(pending_creature.get("species_id", ""))
-	var threshold: float = float(pending_creature.get("dna_threshold", 0.0))
+	var threshold: float = GameState.get_effective_dna_threshold(species_id)
 	var current_dna: float = GameState.get_dna(species_id)
 	var display_name: String = str(pending_creature.get("display_name", "Creature"))
 	var encounter_context: String = _describe_creature_offer_context(pending_creature)
 	_live_reward_title_label.text = PRESENTATION_TEXT.live_reward_title(display_name)
+	
 	var live_body: String = _compact_hud_copy(str(pending_creature.get("description", "")), 30)
 	if not encounter_context.is_empty():
 		live_body += "  %s" % _compact_hud_copy(encounter_context, 12)
-	live_body += "\n%s" % PRESENTATION_TEXT.live_dna_gate_line(current_dna, threshold)
 	_live_reward_body_label.text = live_body
+	
+	if _live_reward_dna_label != null:
+		_live_reward_dna_label.text = PRESENTATION_TEXT.live_dna_gate_line(current_dna, threshold)
+		_live_reward_dna_label.modulate = Color(0.4, 0.9, 0.8) if current_dna >= threshold else Color(1.0, 0.4, 0.4)
+
 	_live_reward_hint_label.text = PRESENTATION_TEXT.live_reward_hint(_victory_reward_director.is_dna_locked(), _victory_reward_director.get_offer_timer())
 
 
@@ -5480,12 +5405,20 @@ func _on_style_changed(_score: float, tier: String) -> void:
 func _on_dna_gained(_species_id: String, _amount: float, _total: float) -> void:
 	_refresh_dna_hud()
 	if _song_reward_pending and _awaiting_reward_choice:
-		_pending_reward_dna_locked = not GameState.has_dna_for(
-			str(_pending_reward_creature.get("species_id", "")),
-			float(_pending_reward_creature.get("dna_threshold", 0.0))
-		)
+		var species_id: String = str(_pending_reward_creature.get("species_id", ""))
+		var threshold: float = GameState.get_effective_dna_threshold(species_id)
+		_pending_reward_dna_locked = not GameState.has_dna_for(species_id, threshold)
 		_refresh_live_reward_shell()
 		_refresh_song_controls_text()
+
+
+func _on_dna_lock_denied(_species_id: String, current: float, required: float) -> void:
+	var msg: String = "NEED %.0f DNA" % (required - current)
+	if current <= 0.0:
+		msg = "NO DNA COLLECTED"
+	_show_feedback(msg, Color(1.0, 0.42, 0.35, 1.0), 0.38)
+	EventBus.emit_signal("play_sfx", "choice_fail")
+	_presentation_runtime.on_screen_shake(1.5, 0.08)
 
 
 func _build_post_run_summary_payload() -> Dictionary:
@@ -5733,8 +5666,12 @@ func _refresh_enemy_marker_health(enemy_id: int) -> void:
 
 
 func _on_proc_feedback_requested(text: String, color: Color) -> void:
-	if text.strip_edges().to_upper() == "EMPTY PARRY":
+	var u: String = text.strip_edges().to_upper()
+	if u == "EMPTY PARRY":
 		_show_feedback("WRONG LANE", color, 0.28)
+		return
+	if u == "NOT READY":
+		# Ultimate rejection: main line already shows NO CHARGE from combat_input_resolved.
 		return
 	_show_feedback(text, color, 0.40)
 
@@ -5752,19 +5689,25 @@ func _on_enemy_defeated(enemy_id: int) -> void:
 		if healed > 0.0:
 			EventBus.emit_signal("player_healed", healed)
 	_remove_enemy_marker(enemy_id)
+	_all_enemies_by_id.erase(enemy_id)
+	_enemy_max_hp.erase(enemy_id)
+	_enemy_phase_by_id.erase(enemy_id)
 
 	# Region-specific kill momentum feedback (song mode only).
 	# Feeding Hollow: every kill pulses the predator identity.
 	# Pale Shelf: silence — deaths feel hollow, not celebrated.
-	# Drowned Cut: resonate the kill through the bond layer.
+	# Drowned Cut: handled below in DNA logic for maximum synergy.
 	if _song_mode and not _song_paused and not _song_boss_triggered:
 		match _region_id:
 			"feeding_hollow":
 				_show_beat_feedback("FLESH", Color(0.88, 0.28, 0.18, 1.0))
 				EventBus.emit_signal("screen_flash", Color(0.35, 0.05, 0.05, 0.05), 0.05)
 			"drowned_cut":
-				_show_beat_feedback("RESONANCE", Color(0.48, 0.88, 0.76, 1.0))
-				EventBus.emit_signal("screen_flash", Color(0.10, 0.38, 0.32, 0.05), 0.05)
+				# Standard resonance if no DNA result follows (bosses, etc)
+				if _song_boss_triggered:
+					_show_beat_feedback("RESONANCE", Color(0.48, 0.88, 0.76, 1.0))
+					EventBus.emit_signal("screen_flash", Color(0.10, 0.38, 0.32, 0.05), 0.05)
+					EventBus.emit_signal("dna_resonated", Color(0.48, 0.88, 0.76), 0.3)
 
 	# DNA economy: creature encounters now pay out the species you actually killed.
 	# Fallback to the phase reward pool only if a legacy enemy payload has no species id.
@@ -5772,13 +5715,21 @@ func _on_enemy_defeated(enemy_id: int) -> void:
 		var defeated_enemy: Dictionary = defeated_enemy_context
 		var dna_species: String = str(defeated_enemy.get("reward_species_id", defeated_enemy.get("species_id", "")))
 		var dna_amount: float = float(defeated_enemy.get("dna_reward", DNA_PER_KILL))
+		
+		# Fallback to local enemy reward pool if no direct species is identified.
+		if dna_species.is_empty() and defeated_enemy.has("reward_pool"):
+			var _local_pool: Array = defeated_enemy.get("reward_pool", [])
+			if not _local_pool.is_empty():
+				dna_species = str(_local_pool[0]) # Use first entry for direct enemy-driven DNA
+		
 		if dna_species.is_empty():
-			var _dna_phase: Dictionary = _song_phases[_song_phase_index]
-			var _dna_pool: Array = _dna_phase.get("reward_pool", [])
-			if not _dna_pool.is_empty():
-				dna_species = str(_dna_pool[_song_phase_dna_award_index % _dna_pool.size()])
-				_song_phase_dna_award_index += 1
-				dna_amount = DNA_PER_KILL
+			var _dna_phase_val = _song_phases[_song_phase_index]
+			if _dna_phase_val is Dictionary:
+				var _dna_pool: Array = _dna_phase_val.get("reward_pool", [])
+				if not _dna_pool.is_empty():
+					dna_species = str(_dna_pool[_song_phase_dna_award_index % _dna_pool.size()])
+					_song_phase_dna_award_index += 1
+					dna_amount = DNA_PER_KILL
 		if not dna_species.is_empty() and dna_amount > 0.0:
 			var dna_result: Dictionary = {}
 			if _run_growth != null and is_instance_valid(_run_growth) and _run_growth.has_method("process_dna_gain"):
@@ -5791,15 +5742,28 @@ func _on_enemy_defeated(enemy_id: int) -> void:
 					"route_id": "bond",
 					"exp_gained": 0.0
 				}
+			
 			EventBus.emit_signal("dna_gained", dna_species, dna_amount, float(dna_result.get("total", GameState.get_dna(dna_species))))
+			
 			var dna_name: String = str(COMBAT_CONTENT.get_creature(dna_species).get("display_name", dna_species)).to_upper()
 			if bool(dna_result.get("auto_bonded", false)):
 				# Skip DNA feedback; _on_creature_bonded will handle the 'BONDED' flash.
 				pass
 			elif bool(dna_result.get("banked", false)):
+				var dna_color := Color(0.24, 0.86, 0.74, 1.0)
+				if _region_id == "drowned_cut":
+					_show_beat_feedback("DROWNED RESONANCE", dna_color)
+					EventBus.emit_signal("screen_flash", Color(0.10, 0.38, 0.32, 0.12), 0.10)
+					EventBus.emit_signal("dna_resonated", dna_color, 0.85)
+				else:
+					_show_beat_feedback("%s DNA" % dna_name, dna_color)
+				
 				_show_feedback("+%s DNA" % dna_name, Color(0.62, 0.96, 0.78, 1.0), 0.22)
 				_maybe_show_dna_pickup_flavor(dna_species, dna_result)
 			else:
+				if _region_id == "drowned_cut":
+					_show_beat_feedback("RESONANCE", Color(0.48, 0.88, 0.76, 1.0))
+					EventBus.emit_signal("dna_resonated", Color(0.48, 0.88, 0.76), 0.4)
 				_show_feedback("+%s DNA -> EXP" % dna_name, Color(0.96, 0.84, 0.62, 1.0), 0.22)
 				_maybe_show_dna_pickup_flavor(dna_species, dna_result)
 
@@ -5815,6 +5779,17 @@ func _resolve_enemy_context(enemy_id: int) -> Dictionary:
 		if live_enemies.has(enemy_id):
 			return Dictionary(live_enemies[enemy_id]).duplicate(true)
 	return Dictionary(_all_enemies_by_id.get(enemy_id, {})).duplicate(true)
+
+
+func _resolve_newest_untracked_enemy_id(enemies: Dictionary) -> int:
+	var newest_id: int = -1
+	for key in enemies.keys():
+		var enemy_id: int = int(key)
+		if _all_enemies_by_id.has(enemy_id):
+			continue
+		if newest_id < 0 or enemy_id > newest_id:
+			newest_id = enemy_id
+	return newest_id
 
 
 func _resolve_dna_pickup_state(species_id: String, dna_result: Dictionary) -> String:
@@ -5993,6 +5968,7 @@ func _on_timed_attack_resolved(lane: int, quality: String, damage: float) -> voi
 		_notify_tempo_mastery(COMBAT_FEEL_CONTENT.TEMPO_PUNCTURE, "perfect_hit", {
 			"beat_quality": beat_quality
 		})
+		_try_apply_vessel_modifier_on_perfect(lane, damage)
 	elif quality == "good":
 		impact_fx_requested.emit(&"perfect", _impact_pos_lane(lane, 0.52), _impact_lane_forward(lane), 0.78)
 
@@ -6005,6 +5981,28 @@ func _on_timed_attack_resolved(lane: int, quality: String, damage: float) -> voi
 			"response": "timed_attack",
 			"quality": quality
 		})
+
+
+func _try_apply_vessel_modifier_on_perfect(origin_lane: int, origin_damage: float) -> void:
+	var bonded: Dictionary = GameState.get_active_bonded_creature()
+	if bonded.is_empty():
+		return
+	var species_id: String = String(bonded.get("species_id", ""))
+	var plan: Dictionary = VESSEL_MODIFIER_DIRECTOR.build_perfect_plan(species_id, origin_lane, origin_damage)
+	if plan.is_empty():
+		return
+	var targets: Array = plan.get("targets", [])
+	var cleave_damage: float = float(plan.get("damage", 0.0))
+	var silhouette_color: Color = plan.get("silhouette_color", Color(1.0, 1.0, 1.0, 0.30))
+	for target_variant in targets:
+		var target_lane: int = int(target_variant)
+		lane_manager.damage_enemy(target_lane, cleave_damage)
+		_presentation_runtime.spawn_attack_silhouette_to_lane(target_lane, silhouette_color, 7.0, 0.08, 0.92)
+	_show_feedback(
+		String(plan.get("label", "")),
+		plan.get("color", Color(1.0, 1.0, 1.0, 1.0)),
+		float(plan.get("label_duration", 0.28))
+	)
 
 
 func _on_player_parried(lane: int, quality: String, _reflect_damage: float) -> void:
@@ -6098,6 +6096,9 @@ func _on_combat_input_resolved(
 		_show_feedback("QUEUE %s" % action.to_upper(), Color(0.84, 0.90, 1.0, 1.0), 0.16)
 		return
 	if accepted:
+		return
+	if reason == "no_stamina":
+		# player_no_stamina already drives the banner + meter flash once.
 		return
 	_show_feedback(_compact_rejection_feedback(action, reason, state), Color(1.0, 0.56, 0.50, 1.0), 0.24)
 
@@ -6276,6 +6277,7 @@ func _on_creature_bonded(creature_data: Dictionary) -> void:
 	
 	_show_feedback(_flash_text, _flash_color, 0.48)
 	EventBus.emit_signal("screen_flash", _flash_color.lerp(Color.WHITE, 0.5), 0.12)
+	EventBus.emit_signal("dna_resonated", _flash_color, 1.0)
 	
 	_refresh_dna_hud()
 	_refresh_run_build_readout()
@@ -6863,6 +6865,20 @@ func _remove_enemy_marker(enemy_id: int) -> void:
 	)
 
 	_enemy_markers_by_id.erase(enemy_id)
+
+
+func _clear_song_enemy_tracking() -> void:
+	for marker_data in _enemy_markers_by_id.values():
+		if not (marker_data is Dictionary):
+			continue
+		var root_node = marker_data.get("root")
+		if is_instance_valid(root_node):
+			root_node.queue_free()
+	_enemy_markers_by_id.clear()
+	_all_enemies_by_id.clear()
+	_enemy_max_hp.clear()
+	_enemy_phase_by_id.clear()
+	_status_marker_overrides.clear()
 
 
 func _spawn_support_intervention(species_id: String, lane: int, tint: Color) -> void:

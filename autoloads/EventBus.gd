@@ -78,13 +78,17 @@ signal tier_changed(new_tier: String, old_tier: String)  # combat tier escalatio
 @warning_ignore("unused_signal")
 signal capture_offered(creature_data: Dictionary)
 @warning_ignore("unused_signal")
-signal creature_eaten(creature_data: Dictionary)
+signal dna_lock_denied(species_id: String, current: float, required: float)
 @warning_ignore("unused_signal")
 signal creature_bonded(creature_data: Dictionary)
+@warning_ignore("unused_signal")
+signal creature_eaten(creature_data: Dictionary)
 @warning_ignore("unused_signal")
 signal creature_ascended(data: Dictionary)
 @warning_ignore("unused_signal")
 signal dna_gained(species_id: String, amount: float, total: float)
+@warning_ignore("unused_signal")
+signal dna_resonated(color: Color, intensity: float)
 
 # Run
 @warning_ignore("unused_signal")

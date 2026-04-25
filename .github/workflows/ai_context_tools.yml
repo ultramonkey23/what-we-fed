@@ -1,0 +1,70 @@
+name: AI Context Tools
+
+on:
+  push:
+    paths:
+      - "tools/ai/build_context_pack.py"
+      - "tools/ai/lint_agent_prompt.py"
+      - "docs/ai/**"
+      - ".github/workflows/ai_context_tools.yml"
+  pull_request:
+    paths:
+      - "tools/ai/build_context_pack.py"
+      - "tools/ai/lint_agent_prompt.py"
+      - "docs/ai/**"
+      - ".github/workflows/ai_context_tools.yml"
+
+jobs:
+  ai-context-tools:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Validate context pack commands
+        run: |
+          python tools/ai/build_context_pack.py --help
+          python tools/ai/build_context_pack.py --mode kernel
+          python tools/ai/build_context_pack.py --mode implementation
+          python tools/ai/build_context_pack.py --mode lockbox
+
+      - name: Validate prompt linter help
+        run: python tools/ai/lint_agent_prompt.py --help
+
+      - name: Validate prompt lint fixtures
+        shell: bash
+        run: |
+          if [ -f "docs/ai/examples/_sample_prompt_good.txt" ]; then
+            set +e
+            python tools/ai/lint_agent_prompt.py docs/ai/examples/_sample_prompt_good.txt
+            status=$?
+            set -e
+            if [ "$status" -eq 0 ] || [ "$status" -eq 1 ]; then
+              echo "Good fixture accepted with status $status (PASS/WARN)."
+            else
+              echo "Good fixture failed unexpectedly with status $status."
+              exit 1
+            fi
+          else
+            echo "Good fixture missing: docs/ai/examples/_sample_prompt_good.txt (skipping)."
+          fi
+
+          if [ -f "docs/ai/examples/_sample_prompt_bad.txt" ]; then
+            set +e
+            python tools/ai/lint_agent_prompt.py docs/ai/examples/_sample_prompt_bad.txt
+            status=$?
+            set -e
+            if [ "$status" -eq 2 ]; then
+              echo "Bad fixture produced expected FAIL status 2."
+            else
+              echo "Bad fixture expected status 2 but got $status."
+              exit 1
+            fi
+          else
+            echo "Bad fixture missing: docs/ai/examples/_sample_prompt_bad.txt (skipping)."
+          fi

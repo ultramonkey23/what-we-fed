@@ -37,9 +37,9 @@ const PLAYER_IDLE_PATH: String = "res://assets/characters/player/combat/player_i
 const PLAYER_ATTACK_PATH: String = "res://assets/characters/player/combat/player_attack.png"
 const PLAYER_PARRY_PATH: String = "res://assets/characters/player/combat/player_parry.png"
 const PLAYER_HURT_PATH: String = "res://assets/characters/player/combat/player_hurt.png"
-# Base display scale for the Sprite2D. 0.13 → 512px image ≈ 67px tall.
+# Base display scale for the Sprite2D. 0.115 -> 512px image ~= 59px tall.
 # Kept compact so the character reads as a focal point inside the timing sigil.
-const PLAYER_SPRITE_SCALE_BASE: float = 0.13
+const PLAYER_SPRITE_SCALE_BASE: float = 0.115
 # How long each temporary image holds before returning to idle (seconds).
 const ATTACK_IMAGE_DURATION: float = 0.14
 const PARRY_IMAGE_DURATION: float = 0.22
@@ -1122,8 +1122,8 @@ func _setup_ground_shadow() -> void:
 	shadow.name = "GroundShadow"
 	shadow.z_index = -1
 	var pts := PackedVector2Array()
-	var rx := 16.0
-	var ry := 4.0
+	var rx := 14.0
+	var ry := 3.5
 	for i in range(24):
 		var a := (i / 24.0) * TAU
 		pts.append(Vector2(cos(a) * rx, sin(a) * ry))
@@ -1143,8 +1143,8 @@ func _setup_energy_aura() -> void:
 	
 	var mat = ParticleProcessMaterial.new()
 	mat.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_RING
-	mat.emission_ring_radius = 24.0
-	mat.emission_ring_inner_radius = 18.0
+	mat.emission_ring_radius = 21.0
+	mat.emission_ring_inner_radius = 15.5
 	mat.direction = Vector3(0, -1, 0)
 	mat.spread = 20.0
 	mat.initial_velocity_min = 24.0

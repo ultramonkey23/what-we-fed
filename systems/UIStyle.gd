@@ -472,6 +472,26 @@ static func _shell_palette_for_role(role: String) -> Dictionary:
 				"shadow_color": Color(0.10, 0.02, 0.03, 0.30),
 				"shadow_size": 2
 			}
+		"lair_sidebar":
+			return {
+				"bg_color": Color(0.05, 0.03, 0.08, 0.94),
+				"border_color": MM_BLOOD_EMBER,
+				"corner_radius": 0,
+				"asym_corners": Vector4(0, 0, 0, 0),
+				"border_width": 1,
+				"shadow_color": MM_INK_BLACK,
+				"shadow_size": 4
+			}
+		"lair_card":
+			return {
+				"bg_color": Color(0.08, 0.06, 0.12, 0.92),
+				"border_color": Color(0.34, 0.28, 0.40, 0.88),
+				"corner_radius": 0,
+				"asym_corners": Vector4(12, 0, 12, 0), # Slanted/clawed look
+				"border_width": 1,
+				"shadow_color": Color(0, 0, 0, 0.4),
+				"shadow_size": 3
+			}
 		"feedback_backing":
 			return {
 				"bg_color": Color(0.03, 0.02, 0.02, 0.94),

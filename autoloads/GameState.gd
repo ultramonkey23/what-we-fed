@@ -331,7 +331,7 @@ func get_effective_dna_threshold(species_id: String) -> float:
 	var base_threshold: float = float(creature_data.get("dna_threshold", 999.0))
 	var debt_mult: float = 1.0
 	if not is_species_ever_bonded(species_id):
-		debt_mult += get_creature_predation_debt(species_id) * 0.5
+		debt_mult += get_creature_predation_debt(species_id) * 0.25
 	return max((base_threshold * debt_mult) / stat_potential, 1.0)
 
 

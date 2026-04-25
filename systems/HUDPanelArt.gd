@@ -119,6 +119,22 @@ static func set_vein_pulse(panel: Control, intensity: float, backing_name: Strin
 		backing.material.set_shader_parameter("vein_pulse", clampf(intensity, 0.0, 1.0))
 
 
+static func set_vein_color(panel: Control, color: Color, backing_name: String = "HudPanelBacking") -> void:
+	var backing = panel.get_node_or_null(backing_name)
+	if backing is ColorRect and backing.material is ShaderMaterial:
+		backing.material.set_shader_parameter("vein_color", color)
+
+
+static func pulse_recursive(node: Node, intensity: float, color: Color = Color.TRANSPARENT) -> void:
+	if node is Control:
+		set_vein_pulse(node, intensity)
+		if color.a > 0.0:
+			set_vein_color(node, color)
+	
+	for child in node.get_children():
+		pulse_recursive(child, intensity, color)
+
+
 static func resolve_visible_region(texture: Texture2D, requested_region: Rect2, texture_path: String) -> Rect2:
 	if texture == null:
 		return Rect2()

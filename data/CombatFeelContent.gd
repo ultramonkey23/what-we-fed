@@ -7,9 +7,9 @@ const RING_POINT_COUNT: int = 32
 const EDGE_STATE_WIDTH: float = 0.016
 
 # ─── LANE VISUALS ────────────────────────────────────────────────────────────
-const LANE_BAND_HEIGHT: float = 36.0
-const LANE_IDLE_ALPHA: float = 0.062
-const LANE_THREAT_ALPHA: float = 0.14
+const LANE_BAND_HEIGHT: float = 28.0
+const LANE_IDLE_ALPHA: float = 0.038
+const LANE_THREAT_ALPHA: float = 0.12
 const LANE_CRITICAL_ALPHA: float = 0.24
 const LANE_THREAT_FOCUS_ALPHA: float = 0.32
 const LANE_IMMINENT_FOCUS_ALPHA: float = 0.64

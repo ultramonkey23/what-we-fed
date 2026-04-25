@@ -507,6 +507,13 @@ func draw_timing_circles(
 	var inactive_color: Color = biome.get("ring_inactive_color", Color(0.7, 0.7, 0.8, 0.45))
 
 	var base_color: Color = active_color if player_combat != null else inactive_color
+	var hit_zone_radius: float = _lane_hit_zone_pos(lane_manager, 2).distance_to(_lane_player_pos(lane_manager))
+	if hit_zone_radius <= 1.0:
+		hit_zone_radius = 110.0
+	var good_inner_radius: float = maxf(hit_zone_radius - COMBAT_FEEL_CONTENT.RING_OUTER_RADIUS, 8.0)
+	var good_outer_radius: float = hit_zone_radius + COMBAT_FEEL_CONTENT.RING_OUTER_RADIUS
+	var perfect_inner_radius: float = maxf(hit_zone_radius - COMBAT_FEEL_CONTENT.RING_PERFECT_RADIUS, 8.0)
+	var perfect_outer_radius: float = hit_zone_radius + COMBAT_FEEL_CONTENT.RING_PERFECT_RADIUS
 	var sigil_group := Node2D.new()
 	sigil_group.name = "TimingRing_Core"
 	if player_combat != null:
@@ -539,6 +546,34 @@ func draw_timing_circles(
 		5.0
 	)
 	outer_ring.name = "Outer"
+
+	var good_inner_guide := _make_ring_line(
+		good_inner_radius,
+		Color(base_color.r, base_color.g, base_color.b, base_color.a * 0.26),
+		1.6
+	)
+	good_inner_guide.name = "GoodInnerGuide"
+
+	var good_outer_guide := _make_ring_line(
+		good_outer_radius,
+		Color(base_color.r, base_color.g, base_color.b, base_color.a * 0.26),
+		1.6
+	)
+	good_outer_guide.name = "GoodOuterGuide"
+
+	var perfect_inner_guide := _make_ring_line(
+		perfect_inner_radius,
+		Color(base_color.r, base_color.g, base_color.b, 0.58).lightened(0.42),
+		2.2
+	)
+	perfect_inner_guide.name = "PerfectInnerGuide"
+
+	var perfect_outer_guide := _make_ring_line(
+		perfect_outer_radius,
+		Color(base_color.r, base_color.g, base_color.b, 0.58).lightened(0.42),
+		2.2
+	)
+	perfect_outer_guide.name = "PerfectOuterGuide"
 
 	var perfect_ring := _make_anomaly_sigil_ring(
 		PLAYER_SIGIL_INNER_RADIUS,
@@ -584,6 +619,10 @@ func draw_timing_circles(
 	sigil_group.add_child(fault_lines)
 	sigil_group.add_child(rune_chords)
 	sigil_group.add_child(cardinal_arms)
+	sigil_group.add_child(good_inner_guide)
+	sigil_group.add_child(good_outer_guide)
+	sigil_group.add_child(perfect_inner_guide)
+	sigil_group.add_child(perfect_outer_guide)
 	sigil_group.add_child(outer_ring)
 	sigil_group.add_child(perfect_ring)
 	sigil_group.add_child(beat_mark)
@@ -596,7 +635,12 @@ func draw_timing_circles(
 		"fill": receiver_fill,
 		"glow": receiver_glow,
 		"edge": edge_ring,
-		"beat": beat_mark
+		"beat": beat_mark,
+		"good_inner": good_inner_guide,
+		"good_outer": good_outer_guide,
+		"perfect_inner": perfect_inner_guide,
+		"perfect_outer": perfect_outer_guide,
+		"cardinal_arms": cardinal_arms
 	})
 
 
@@ -653,18 +697,33 @@ func _make_sigil_chords(radius: float, color: Color, width: float) -> Line2D:
 	return line
 
 
-func _make_sigil_cardinal_arms(inner_radius: float, outer_radius: float, color: Color, width: float) -> Node2D:
+func _make_sigil_cardinal_arms(inner_radius: float, outer_radius: float, color: Color, _width: float) -> Node2D:
 	var group := Node2D.new()
 	for i in range(4):
 		var a: float = (float(i) / 4.0) * TAU
-		var arm := Line2D.new()
-		arm.default_color = color
-		arm.width = width
-		arm.begin_cap_mode = Line2D.LINE_CAP_ROUND
-		arm.end_cap_mode = Line2D.LINE_CAP_ROUND
-		arm.add_point(Vector2(cos(a), sin(a)) * inner_radius)
-		arm.add_point(Vector2(cos(a), sin(a)) * outer_radius)
-		group.add_child(arm)
+		var dir := Vector2(cos(a), sin(a))
+		
+		# Create a stylized "fang" or "manga-ink" shard polygon
+		var fang := Polygon2D.new()
+		fang.name = "Fang_%d" % i
+		fang.color = color
+		
+		var pts := PackedVector2Array()
+		var base_width: float = 14.0
+		var inner: float = inner_radius - 10.0
+		var outer: float = outer_radius + 15.0
+		var ortho := dir.orthogonal()
+		
+		# Shard shape: wide base, slightly jagged mid-section, sharp point
+		pts.append(dir * inner + ortho * base_width * 0.45) # Base Left
+		pts.append(dir * (inner + (outer - inner) * 0.4) + ortho * base_width * 0.35) # Jagged notch 1
+		pts.append(dir * (inner + (outer - inner) * 0.5) + ortho * base_width * 0.6) # Jagged flare
+		pts.append(dir * outer) # Tip
+		pts.append(dir * (inner + (outer - inner) * 0.6) - ortho * base_width * 0.2) # Jagged notch 2
+		pts.append(dir * inner - ortho * base_width * 0.45) # Base Right
+		
+		fang.polygon = pts
+		group.add_child(fang)
 	return group
 
 
@@ -708,9 +767,8 @@ func update_timing_ring_proximity(
 	var biome: Dictionary = active_encounter.get("biome", {})
 	var ring_palette: Dictionary = UI_STYLE.get_combat_ring_palette()
 	var active_color: Color = biome.get("ring_active_color", ring_palette.get("active", Color(1.0, 0.95, 0.55, 1.0)))
-	var inactive_color: Color = biome.get("ring_inactive_color", ring_palette.get("inactive", Color(0.7, 0.7, 0.8, 0.45)))
 
-	var intercept_dist: float = _lane_intercept_distance(lane_manager, 2)
+	var intercept_dist: float = _lane_logical_intercept_distance(lane_manager, 2)
 	if intercept_dist <= 0.0:
 		return
 
@@ -751,8 +809,53 @@ func update_timing_ring_proximity(
 	var receiver_glow: Polygon2D = cache["glow"]
 	var edge_ring: Line2D = cache["edge"]
 	var beat_mark: Line2D = cache["beat"]
+	var good_inner_guide: Line2D = cache.get("good_inner", null) as Line2D
+	var good_outer_guide: Line2D = cache.get("good_outer", null) as Line2D
+	var perfect_inner_guide: Line2D = cache.get("perfect_inner", null) as Line2D
+	var perfect_outer_guide: Line2D = cache.get("perfect_outer", null) as Line2D
+	var cardinal_arms: Node2D = cache.get("cardinal_arms", null) as Node2D
+
 	if player_combat != null:
 		root.position = player_combat.position
+		
+		# Dynamic Facing Indicator Logic
+		if cardinal_arms != null:
+			var active_lane: int = -1
+			if player_combat.has_method("get_active_focus_lane"):
+				active_lane = int(player_combat.call("get_active_focus_lane"))
+			
+			# Map lane index to cardinal index
+			# Lane 0 (N) -> Child 3
+			# Lane 1 (S) -> Child 1
+			# Lane 2 (E) -> Child 0
+			# Lane 3 (W) -> Child 2
+			var active_child_idx: int = -1
+			match active_lane:
+				0: active_child_idx = 3
+				1: active_child_idx = 1
+				2: active_child_idx = 0
+				3: active_child_idx = 2
+			
+			var dt: float = 0.15 # Lerp weight for smooth transition
+			for i in range(cardinal_arms.get_child_count()):
+				var fang := cardinal_arms.get_child(i) as Polygon2D
+				if fang == null: continue
+				
+				var is_active := (i == active_child_idx)
+				var beat_scale_boost: float = beat_pulse * 1.8 if is_active else 0.0
+				var target_scale := Vector2(1.35 + beat_scale_boost, 1.35 + beat_scale_boost) if is_active else Vector2(0.8, 0.8)
+				var target_alpha := clampf(0.85 + beat_pulse * 2.0, 0.0, 1.0) if is_active else 0.22
+				var target_color := active_color if is_active else active_color.darkened(0.2)
+				
+				# Push the active fang out slightly for stronger silhouette
+				var a: float = (float(i) / 4.0) * TAU
+				var dir := Vector2(cos(a), sin(a))
+				var target_pos := dir * (6.0 + beat_pulse * 12.0) if is_active else Vector2.ZERO
+				
+				fang.scale = fang.scale.lerp(target_scale, dt)
+				fang.modulate.a = lerp(fang.modulate.a, target_alpha, dt)
+				fang.color = fang.color.lerp(target_color, dt)
+				fang.position = fang.position.lerp(target_pos, dt)
 
 	for timer in ring_highlight_timers:
 		if timer > 0.0:
@@ -761,8 +864,12 @@ func update_timing_ring_proximity(
 	var base_color: Color = active_color
 	var outer_color: Color = Color(base_color.r, base_color.g, base_color.b, base_color.a * 0.52)
 	var perfect_color: Color = base_color.lightened(0.32)
+	var good_guide_color: Color = Color(base_color.r, base_color.g, base_color.b, base_color.a * 0.26)
+	var perfect_guide_color: Color = Color(base_color.r, base_color.g, base_color.b, 0.58).lightened(0.42)
 	var outer_width: float = 2.8
 	var perfect_width: float = 4.6
+	var good_guide_width: float = 1.6
+	var perfect_guide_width: float = 2.2
 	var receiver_alpha: float = 0.10
 	var receiver_glow_alpha: float = 0.0
 	var edge_alpha: float = 0.0
@@ -805,6 +912,7 @@ func update_timing_ring_proximity(
 			fill_color = Color(threat_color.r, threat_color.g, threat_color.b, receiver_alpha)
 		elif p >= outer_entry and p <= outer_exit:
 			outer_color = threat_color.lightened(0.08)
+			good_guide_color = threat_color.lightened(0.06)
 			receiver_alpha = 0.24
 			receiver_glow_alpha = 0.18
 			beat_color = accent_color.lightened(0.18)
@@ -812,7 +920,9 @@ func update_timing_ring_proximity(
 
 			if p >= perfect_entry and p <= perfect_exit:
 				perfect_color = accent_color.lightened(0.26)
+				perfect_guide_color = accent_color.lightened(0.42)
 				perfect_width = 5.4
+				perfect_guide_width = 3.4
 				receiver_alpha = 0.36
 				receiver_glow_alpha = 0.24
 				beat_color = accent_color.lightened(0.34)
@@ -823,6 +933,7 @@ func update_timing_ring_proximity(
 				var edge_t: float = 1.0 - clamp(edge_distance / COMBAT_FEEL_CONTENT.EDGE_STATE_WIDTH, 0.0, 1.0)
 				edge_alpha = 0.20 + (0.30 * edge_t)
 				outer_width = lerp(outer_width, 4.0, edge_t)
+				good_guide_width = lerp(good_guide_width, 2.8, edge_t)
 
 	receiver_alpha = minf(receiver_alpha + beat_pulse, 0.52)
 	fill_color.a = receiver_alpha
@@ -859,6 +970,16 @@ func update_timing_ring_proximity(
 	outer_ring.width = outer_width
 	perfect_ring.default_color = perfect_color
 	perfect_ring.width = perfect_width
+	if good_inner_guide != null and good_outer_guide != null:
+		good_inner_guide.default_color = Color(good_guide_color.r, good_guide_color.g, good_guide_color.b, minf(good_guide_color.a, 0.46))
+		good_outer_guide.default_color = good_inner_guide.default_color
+		good_inner_guide.width = good_guide_width
+		good_outer_guide.width = good_guide_width
+	if perfect_inner_guide != null and perfect_outer_guide != null:
+		perfect_inner_guide.default_color = Color(perfect_guide_color.r, perfect_guide_color.g, perfect_guide_color.b, 0.74)
+		perfect_outer_guide.default_color = perfect_inner_guide.default_color
+		perfect_inner_guide.width = perfect_guide_width
+		perfect_outer_guide.width = perfect_guide_width
 
 
 func build_arena_visuals(
@@ -984,40 +1105,10 @@ void fragment() {
 		lane_marker_container.add_child(focal_root)
 		lane_hit_focus[lane] = focal_root
 
-		var marker_size: Vector2 = COMBAT_FEEL_CONTENT.FOCAL_MARKER_SIZE
-		var half: Vector2 = marker_size * 0.5
-		var bracket_len: float = 14.0
-		var tick_len: float = 4.0
-		var marker_color: Color = COMBAT_FEEL_CONTENT.FOCAL_MARKER_COLOR
-
-		for quadrant in range(4):
-			var bracket := Line2D.new()
-			bracket.width = COMBAT_FEEL_CONTENT.FOCAL_MARKER_WIDTH
-			bracket.default_color = marker_color
-			bracket.begin_cap_mode = Line2D.LINE_CAP_ROUND
-			bracket.end_cap_mode = Line2D.LINE_CAP_ROUND
-
-			var x_sign: float = -1.0 if quadrant % 2 == 0 else 1.0
-			var y_sign: float = -1.0 if quadrant < 2 else 1.0
-
-			bracket.add_point(Vector2(x_sign * half.x, y_sign * (half.y - bracket_len)))
-			bracket.add_point(Vector2(x_sign * half.x, y_sign * half.y))
-			bracket.add_point(Vector2(x_sign * (half.x - bracket_len), y_sign * half.y))
-			focal_root.add_child(bracket)
-
-		for i in range(2):
-			var tick := Line2D.new()
-			tick.width = COMBAT_FEEL_CONTENT.FOCAL_MARKER_WIDTH
-			tick.default_color = marker_color
-			var y_sign_tick: float = -1.0 if i == 0 else 1.0
-			tick.add_point(Vector2(0.0, y_sign_tick * half.y))
-			tick.add_point(Vector2(0.0, y_sign_tick * (half.y - tick_len)))
-			focal_root.add_child(tick)
-
 	for enemy_id in all_enemies_by_id.keys():
 		var enemy: Dictionary = all_enemies_by_id[enemy_id]
 		var lane_enemy: int = int(enemy.get("lane", 0))
-		var marker_size_enemy: float = 64.0 if is_boss_encounter else 42.0
+		var marker_size_enemy: float = 58.0 if is_boss_encounter else 36.0
 		var marker_data: Dictionary
 
 		if enemy_markers_by_id.has(enemy_id):
@@ -1299,6 +1390,17 @@ func _lane_intercept_distance(lane_manager: Node, lane: int) -> float:
 	return maxf(_lane_enemy_pos(lane_manager, lane).distance_to(_lane_hit_zone_pos(lane_manager, lane)), 1.0)
 
 
+func _lane_logical_intercept_distance(lane_manager: Node, lane: int) -> float:
+	if lane_manager != null and lane_manager.has_method("get_threat_spawn_pos") and lane_manager.has_method("get_threat_hit_zone_pos"):
+		var spawn_v: Variant = lane_manager.call("get_threat_spawn_pos", lane)
+		var hit_v: Variant = lane_manager.call("get_threat_hit_zone_pos", lane)
+		if spawn_v is Vector2 and hit_v is Vector2:
+			var spawn_pos: Vector2 = spawn_v
+			var hit_pos: Vector2 = hit_v
+			return maxf(spawn_pos.distance_to(hit_pos), 1.0)
+	return _lane_intercept_distance(lane_manager, lane)
+
+
 func _radial_lane_strip_position(lane_manager: Node, lane: int, strip_size: Vector2) -> Vector2:
 	var hit_zone: Vector2 = _lane_hit_zone_pos(lane_manager, lane)
 	var enemy_pos: Vector2 = _lane_enemy_pos(lane_manager, lane)
@@ -1542,6 +1644,13 @@ func create_reward_overlay(ui_layer: CanvasLayer) -> Dictionary:
 	_apply_text_role(reward_bond_label, "bond_heading")
 	reward_bond_card.add_child(reward_bond_label)
 
+	var reward_dna_label := Label.new()
+	reward_dna_label.name = "RewardDNALabel"
+	reward_dna_label.position = Vector2(18.0, 42.0)
+	reward_dna_label.size = Vector2(168.0, 18.0)
+	_apply_text_role(reward_dna_label, "hud_meta")
+	reward_bond_card.add_child(reward_dna_label)
+
 	var reward_bond_effect_scroll := ScrollContainer.new()
 	reward_bond_effect_scroll.name = "RewardBondEffectScroll"
 	reward_bond_effect_scroll.position = Vector2(18.0, 56.0)
@@ -1635,6 +1744,7 @@ func create_reward_overlay(ui_layer: CanvasLayer) -> Dictionary:
 		"reward_bond_card": reward_bond_card,
 		"reward_eat_card": reward_eat_card,
 		"reward_bond_label": reward_bond_label,
+		"reward_dna_label": reward_dna_label,
 		"reward_eat_label": reward_eat_label,
 		"reward_bond_effect_label": reward_bond_effect_label,
 		"reward_eat_effect_label": reward_eat_effect_label,
@@ -1727,6 +1837,13 @@ func create_live_reward_shell(ui_layer: CanvasLayer) -> Dictionary:
 	live_reward_body_label.add_theme_font_size_override("font_size", 13)
 	reward_body.add_child(live_reward_body_label)
 
+	var live_reward_dna_label := Label.new()
+	live_reward_dna_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	live_reward_dna_label.custom_minimum_size = Vector2(0.0, 18.0)
+	_apply_text_role(live_reward_dna_label, "hud_meta")
+	live_reward_dna_label.add_theme_font_size_override("font_size", 12)
+	reward_body.add_child(live_reward_dna_label)
+
 	var live_reward_hint_label := Label.new()
 	live_reward_hint_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	live_reward_hint_label.custom_minimum_size = Vector2(0.0, 18.0)
@@ -1738,6 +1855,7 @@ func create_live_reward_shell(ui_layer: CanvasLayer) -> Dictionary:
 		"live_reward_shell": live_reward_shell,
 		"live_reward_title_label": live_reward_title_label,
 		"live_reward_body_label": live_reward_body_label,
+		"live_reward_dna_label": live_reward_dna_label,
 		"live_reward_hint_label": live_reward_hint_label
 	}
 

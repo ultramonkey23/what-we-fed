@@ -1,6 +1,8 @@
 extends Node2D
 class_name Projectile
 
+const COMBAT_FEEL_CONTENT = preload("res://data/CombatFeelContent.gd")
+
 signal reached_hit_zone(projectile)
 signal player_contact(projectile)
 signal enemy_contact(projectile)
@@ -253,6 +255,13 @@ func evaluate_attack_timing() -> String:
 	if is_resolved or is_reflected:
 		return "already_resolved"
 
+	var quality: String = _evaluate_hit_zone_timing(
+		COMBAT_FEEL_CONTENT.RING_OUTER_RADIUS,
+		COMBAT_FEEL_CONTENT.RING_PERFECT_RADIUS
+	)
+	if not quality.is_empty():
+		return quality
+
 	if progress < ATTACK_GOOD_MIN:
 		return "early"
 	elif progress < ATTACK_PERFECT_MIN:
@@ -269,6 +278,13 @@ func evaluate_parry_timing() -> String:
 	if is_resolved or is_reflected:
 		return "already_resolved"
 
+	var quality: String = _evaluate_hit_zone_timing(
+		COMBAT_FEEL_CONTENT.RING_OUTER_RADIUS,
+		COMBAT_FEEL_CONTENT.RING_PERFECT_RADIUS
+	)
+	if not quality.is_empty():
+		return quality
+
 	if progress < PARRY_GOOD_MIN:
 		return "early"
 	elif progress < PARRY_PERFECT_MIN:
@@ -279,6 +295,15 @@ func evaluate_parry_timing() -> String:
 		return "good"
 
 	return "miss"
+
+
+func _evaluate_hit_zone_timing(good_radius: float, perfect_radius: float) -> String:
+	var distance_to_hit_zone: float = position.distance_to(hit_zone_pos)
+	if distance_to_hit_zone <= perfect_radius:
+		return "perfect"
+	if distance_to_hit_zone <= good_radius:
+		return "good"
+	return ""
 
 
 func time_until_hit_zone() -> float:

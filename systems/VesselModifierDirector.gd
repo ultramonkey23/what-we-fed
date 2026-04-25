@@ -8,6 +8,7 @@ const CLEAVE_DAMAGE_FRACTION: float = 0.35
 const ASHCLAW_ID: String = "ashclaw"
 const ASHCLAW_LABEL: String = "ASHCLAW CLEAVE"
 const ASHCLAW_EFFECT_ID: String = "ashclaw_cleave"
+const ASHCLAW_HUD_READOUT: String = "Vessel: cleave"
 const ASHCLAW_COLOR: Color = Color(0.92, 0.52, 0.22, 1.0)
 const ASHCLAW_SILHOUETTE_COLOR: Color = Color(0.92, 0.52, 0.22, 0.30)
 const ASHCLAW_LABEL_DURATION: float = 0.28
@@ -37,4 +38,15 @@ static func build_perfect_plan(species_id: String, origin_lane: int, origin_dama
 		"targets": targets,
 		"damage": cleave_damage,
 		"silhouette_color": ASHCLAW_SILHOUETTE_COLOR,
+	}
+
+
+static func get_modifier_readout(species_id: String) -> Dictionary:
+	if species_id != ASHCLAW_ID:
+		return {}
+	return {
+		"effect_id": ASHCLAW_EFFECT_ID,
+		"label": ASHCLAW_LABEL,
+		"hud_readout": ASHCLAW_HUD_READOUT,
+		"color": ASHCLAW_COLOR,
 	}

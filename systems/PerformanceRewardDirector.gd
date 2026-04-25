@@ -563,9 +563,8 @@ func _build_upgrade_choices_for_context(count: int, context: Dictionary) -> Arra
 func get_level_completion_choices(count: int = 3) -> Array[Dictionary]:
 	_is_level_completion_choice = true
 	var context: Dictionary = _build_completion_context_with_performance_verdict()
-	context["predation_pool"] = false
 	var resolved_count: int = _resolve_level_completion_choice_count(count, context)
-	_predation_pool_pending = false
+	_predation_pool_pending = bool(context.get("predation_pool", false)) and _has_predation_offers_available()
 	var had_stored_rewards: bool = not _stored_reward_ids.is_empty()
 	var stored_choices: Array[Dictionary] = _build_stored_reward_choices(resolved_count)
 	if stored_choices.size() >= resolved_count:

@@ -1,15 +1,22 @@
 # CURRENT_REPO_TRUTH_LEDGER
 
 ## Evidence Source
-- Source: Current Repo Truth Ledger Audit.
-- Last verified by: Codex (static audit pass).
-- Verified date: 2026-04-24.
-- Verified commit: `113c23a1ced258ab9f44e2db6550e433c1b824c7`.
-- Audit context commit: `e8b4e7219657ad402f8aecc66f15bb400596c42f`.
-- Validation level: 2 — Static validated.
-- Validation method: static file/code inspection only.
-- Runtime validation: Not performed.
+- Source: GODLY v2.3 medium-evolution validation pass.
+- Last verified by: Codex.
+- Verified date: 2026-04-25.
+- Verified commit: `304330050ca47612671c44ba0c4e7127c4a7feef`.
+- Audit context commit: `304330050ca47612671c44ba0c4e7127c4a7feef`.
+- Validation level: 3 — Automated headless validation.
+- Validation method: static file/code inspection plus `validate_data.bat`, `validate_project.bat`, and `smoke_project.bat`.
+- Runtime validation: Headless one-frame project boot passed via smoke/validate wrappers; live gameplay feel was not manually validated.
 - Manual playtest validation: Not performed.
+
+## 2026-04-25 GODLY v2.3 Automated Validation Evidence
+- `validate_data.bat`: PASS. Data validator now includes `PerformanceRewardContent.gd` reward-order, mix-reference, required-display-field, `effect.type`, and `flayed_vessel` Vessel payoff schema checks.
+- `validate_project.bat`: PASS. The wrapper retried import in headless mode after a Windows renderer/import issue, then completed with `VALIDATE OK` and chained passing data validation.
+- `smoke_project.bat`: PASS. Headless one-frame boot completed with `SMOKE OK`.
+- Targeted diff review: PASS for scoped changed files. `git diff --check` reported only a line-ending normalization warning for `tools/validate_data_content.gd`.
+- Manual playtest: Not performed; HUD readability and live predation-offer presentation remain manual-validation items.
 
 ## Verified Current Systems (Static / Code-Confirmed)
 - Combat lane model: implemented in code as a 4-cardinal-lane model in `LaneManager.gd` (runtime behavior unverified).
@@ -17,6 +24,9 @@
 - Rhythm core: `SongConductor.gd` implements beat logic and beat-related signals (runtime sync/readability unverified).
 - Projectile timing: `Projectile.gd` contains progress/timing evaluation logic (runtime timing feel unverified).
 - Core state/autoload presence: `EventBus.gd` and `GameState.gd` exist as core systems and are autoloaded in `project.godot`.
+- Performance reward data validation: implemented in `tools/validate_data_content.gd` for reward ID integrity, phase/affinity mix references, required display fields, effect type presence, and `flayed_vessel` Vessel payoff schema.
+- Predation-pool completion trigger: `PerformanceRewardDirector.gd` now preserves qualified `predation_pool` verdict context and marks pending predation offers only when `PredationPool.build_offers(1)` has available offers.
+- Vessel support HUD readout: `VesselModifierDirector.gd` exposes a pure Ashclaw modifier readout, and `CombatHUDPresenter.gd` appends the compact Vessel cue through the existing support trigger label.
 
 ## Files Confirmed Touched / Inspected
 - `scenes/combat/CombatScene.gd` (architecture-risk check)
@@ -29,10 +39,15 @@
 - `autoloads/GameState.gd` (core system existence)
 - `data/CombatContent.gd` (content-level combat wiring context)
 - `project.godot` (autoload/main-scene context)
+- `tools/validate_data_content.gd` (performance reward validation coverage)
+- `systems/PerformanceRewardDirector.gd` (predation-pool pending trigger)
+- `systems/VesselModifierDirector.gd` (Vessel modifier display readout)
+- `systems/CombatHUDPresenter.gd` (support HUD Vessel cue)
 
 ## Validated Behavior
-- Validation scope for this ledger entry is static/file/code inspection only.
-- No runtime gameplay behavior is validated by this ledger entry.
+- Validation scope for this ledger entry is static/file/code inspection plus automated headless Godot validation.
+- Headless project boot and automated data/project validation passed for the current commit.
+- No manual gameplay feel/readability behavior is validated by this ledger entry.
 - No manual feel/readability/combat-honesty behavior is validated by this ledger entry.
 
 ## Unverified / Needs Validation

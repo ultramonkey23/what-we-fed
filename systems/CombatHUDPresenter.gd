@@ -1,6 +1,7 @@
 extends RefCounted
 
 const DEBUG_TRACE = preload("res://systems/DebugTrace.gd")
+const VESSEL_MODIFIER_DIRECTOR = preload("res://systems/VesselModifierDirector.gd")
 
 # ── Bound node references ─────────────────────────────────────────────────────
 # All nodes are created and owned by CombatScene.
@@ -433,7 +434,11 @@ func refresh_support(current: float, maximum: float, active_species_id: String, 
 			var trigger_line: String = trigger_hint
 			if not cue_name.is_empty():
 				trigger_line = "%s | %s" % [cue_name, trigger_hint]
-			_support_trigger_label.text = compact_hud_copy(trigger_line, 18)
+			var vessel_readout: Dictionary = VESSEL_MODIFIER_DIRECTOR.get_modifier_readout(active_species_id)
+			var vessel_hint: String = String(vessel_readout.get("hud_readout", "")).strip_edges()
+			if not vessel_hint.is_empty():
+				trigger_line = "%s | %s" % [trigger_line, vessel_hint]
+			_support_trigger_label.text = compact_hud_copy(trigger_line, 24)
 		else:
 			var tendency_summary: String = compact_hud_copy(_format_upgrade_summary(run_growth), 18)
 			if tendency_summary.is_empty() or tendency_summary == "--":

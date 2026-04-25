@@ -22,5 +22,14 @@ Use this whenever the repo needs proof rather than confidence.
 - Treat parse errors, script errors, user errors, and unexpected runtime errors as real failures.
 - Known safe Windows warnings may be noted, but do not hide other errors behind them.
 
+## Core System Change — Regression Checklist
+If the change touches any of these files or systems, work through `docs/ai/REGRESSION_CHECKLIST.md` before reporting validation complete:
+- `CombatScene.gd`, `PlayerCombat.gd`, `LaneManager.gd`, `CombatMeter.gd`, `SongConductor.gd`
+- `EventBus.gd`, `GameState.gd`
+- Any scene file in `scenes/combat/`
+
+The checklist covers: boot/flow, combat basics, systems integrity, identity check, and visual truth.
+Include the checklist pass/fail result in the validation report.
+
 ## Output
 Return validation evidence type: runtime-verified, data-validated, static-only, visual-evidence, or speculative.

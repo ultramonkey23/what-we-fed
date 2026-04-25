@@ -707,7 +707,7 @@ If commit_allowed is false, the run must stop with a commit-ready report only.
 ## Signal Map Integration
 
 If a GODLY run changes EventBus signal declarations, signal emitters, signal consumers, or signal payload shape:
-- regenerate `docs/ai/SIGNAL_MAP.md` with `python tools/ai/generate_signal_map.py`
+- regenerate `docs/ai/SIGNAL_MAP.md` by running from the `what-we-fed/` directory: `python ../tools/ai/generate_signal_map.py`
 - SYMBIOTE Firmware Interlock must consult the signal map before passing signal interlock
 - CYBORG must check signal-truth claims against source and verify no undeclared references
 - BUILD DOCTOR must verify the map was regenerated (or document why it was not)

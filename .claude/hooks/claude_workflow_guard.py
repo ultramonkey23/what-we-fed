@@ -9,6 +9,10 @@ import sys
 from pathlib import Path
 
 
+SIGNAL_CRITICAL = (
+    "autoloads/eventbus.gd",
+)
+
 COMBAT_CRITICAL = (
     "scenes/combat/combatscene.gd",
     "scenes/combat/playercombat.gd",
@@ -83,6 +87,11 @@ def main() -> int:
         return 0
 
     notes: list[str] = []
+
+    if _matches(path, SIGNAL_CRITICAL):
+        notes.append(
+            "EventBus.gd edit: signal contract may have changed. After implementation, regenerate docs/ai/SIGNAL_MAP.md by running from what-we-fed/: python ../tools/ai/generate_signal_map.py — then update Curated Notes if contracts changed. Required before SYMBIOTE Firmware Interlock in any GODLY run."
+        )
 
     if "scenes/combat/combatscene.gd" in path:
         notes.append(

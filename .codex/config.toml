@@ -10,6 +10,8 @@ entrypoint_doc = "PROJECT_SETUP_AND_VALIDATION.md"
 system_map_doc = "REPO_SYSTEM_MAP.md"
 context_expansion_doc = "docs/ai/CONTEXT_EXPANSION_MAP.md"
 visual_truth_loop_doc = "docs/ai/VISUAL_TRUTH_LOOP.md"
+godly_workflow_doc = "docs/ai/GODLY_WORKFLOW.md"
+signal_map_doc = "docs/ai/SIGNAL_MAP.md"
 
 [godot]
 run_script = "run_project.bat"

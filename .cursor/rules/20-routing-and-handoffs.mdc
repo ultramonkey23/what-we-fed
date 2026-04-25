@@ -29,9 +29,17 @@ When the task involves screenshots, captures, HUD readability, combat clarity, V
 - Use `unknown` for missing metadata instead of guessing.
 - Hand ALFRED a Visual Audit Receipt with target files and acceptance criteria.
 
+# Bounded Evolution
+
+For multi-agent improvement passes, autonomous upgrades, or structured sprints: use the GODLY v2.3 workflow.
+- Load `docs/ai/GODLY_WORKFLOW.md` for the full manifest → agent council → leverage picks → Firmware Yield Gate order.
+- Required council seats: BRAIN, SURGEON, CYBORG, SYMBIOTE, VIBE-CODER, BUILD DOCTOR, VISUAL INSPECTOR, ALFRED.
+
 # Deep References
 
 - `docs/ai/MULTI_AI_OPERATING_LAYER.md`
 - `docs/ai/HANDOFF_TEMPLATES.md`
 - `docs/ai/NEXT_MOVE_ROUTER.md`
 - `docs/ai/VISUAL_TRUTH_LOOP.md`
+- `docs/ai/GODLY_WORKFLOW.md`
+- `docs/ai/SIGNAL_MAP.md`

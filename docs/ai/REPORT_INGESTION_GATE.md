@@ -77,6 +77,15 @@ Examples: `docs/ai/examples/AGENT_REPORT_SCORE_EXAMPLE.md`
 
 ---
 
+## Lockbox Report Rule
+A Lockbox-related report may not mark a card VALIDATED COMPLETE unless:
+- the report passes the ingestion gate
+- the scorer returns PASS or accepted WARN
+- validation level matches the type of claim
+- Command Center v1 accepts the status update
+
+---
+
 ## Notes
 - Ingestion is not the same as implementation. A PASS report confirms truth; it does not automatically authorize the next step.
 - A WARN report can still be useful — flag the caveats and use it with eyes open.

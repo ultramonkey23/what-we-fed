@@ -18,6 +18,7 @@ Full operating rules: `docs/ai/AI_CONTROL_PLANE.md`
 | **Documentation update** | Claude or Gemini | Update named doc to match current repo truth | Invent implementation facts, add gameplay speculation | Current repo state to validate claims | Yes — brief |
 | **Prompt/system upgrade** | Claude (CYBORG) | Edit docs/ai files, improve routing/report/validation | Edit gameplay, scenes, scripts, data, or project.godot | Inspected existing AI docs | Yes |
 | **Lockbox/game-design task** | Command Center v1 | Manage design tasks, priorities, content direction | Be converted into repo implementation without a handoff | N/A — handled outside repo agents | N/A unless converted to implementation handoff |
+| **Lockbox interface / conversion** | Command Center v1 owns decision; Gemini audits; Claude/Codex implement only after handoff | Audit fit, produce handoff, validate completion | Change Lockbox status/canon/priority without Command Center v1; treat design intent as repo truth | Current repo truth, card status, files inspected, validation plan, scored report | Yes |
 
 ---
 

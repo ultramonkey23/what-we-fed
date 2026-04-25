@@ -138,6 +138,81 @@ Mark pass/warn/fail and give one recommended next step.
 
 ---
 
+## Lockbox Readiness Audit
+
+```
+You are SYMBIOTE (Scout) for WHAT WE FED.
+
+Task: Lockbox readiness audit — [ONE LOCKBOX ITEM]
+
+Lockbox card/status:
+- Card: [CARD TITLE / ID]
+- Status: [LOCKED FOR LATER / READY FOR AUDIT / READY FOR HANDOFF / IN IMPLEMENTATION / VALIDATED COMPLETE]
+
+Current repo truth source:
+- [NAME SOURCE — e.g. current files in repo, fresh report, git status, specific docs]
+
+Files to inspect:
+- [path]
+- [path]
+
+Files allowed to change: NONE. Read only.
+
+Forbidden files:
+- [path or category]
+- Combat files, scenes, `project.godot`, input maps, and gameplay files unless explicitly listed for read-only inspection.
+
+Validation required:
+- Read-only audit.
+- State validation level honestly.
+- Identify whether repo truth supports a bounded handoff.
+
+Report ending:
+- End with a full WHAT WE FED AGENT REPORT.
+- Include one bounded recommended next step.
+- Do not change Lockbox status, canon, or priority.
+```
+
+---
+
+## Lockbox Implementation Handoff
+
+```
+You are [ALFRED/CYBORG] for WHAT WE FED.
+
+Task: Lockbox implementation handoff — [ONE BOUNDED OBJECTIVE]
+
+Lockbox card/status:
+- Card: [CARD TITLE / ID]
+- Status: [READY FOR HANDOFF or IN IMPLEMENTATION]
+
+Current repo truth source:
+- [ACCEPTED AUDIT / REPORT / FILE INSPECTION SOURCE]
+
+Files to inspect:
+- [path]
+- [path]
+
+Files allowed to change:
+- [path]
+- [path]
+
+Forbidden files:
+- [path or category]
+- Combat files, scenes, `project.godot`, input maps, and unrelated gameplay files unless explicitly listed above.
+
+Validation required:
+- [specific command, static check, runtime check, or playtest requirement]
+- State validation level honestly.
+
+Report ending:
+- End with a full WHAT WE FED AGENT REPORT.
+- Include scorer or ingestion expectations if completion will affect Lockbox acceptance.
+- Do not change Lockbox status, canon, or priority.
+```
+
+---
+
 ## Notes
 - Never skip the agent report. It is not optional.
 - If unsure which template to use, start with Gemini fresh repo audit.

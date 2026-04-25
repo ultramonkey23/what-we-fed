@@ -10,6 +10,11 @@ This file defines how AI agents work inside the WHAT WE FED repo without driftin
 - **This AI Control Plane** handles agent routing, prompt quality, report quality, validation discipline, and stale-truth prevention.
 - Do not mix Lockbox/game-design speculation into confirmed repo truth.
 
+## Lockbox Interface
+The AI Control Plane does not own Lockbox priority or canon.
+Use `docs/ai/LOCKBOX_INTERFACE_CONTRACT.md` when a Lockbox item is referenced in repo work.
+Lockbox items are design intent until converted into repo-audited handoffs.
+
 ## Core Rules
 1. Inspect before editing.
 2. Prefer small safe changes.

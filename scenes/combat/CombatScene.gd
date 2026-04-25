@@ -85,6 +85,7 @@ const ENCOUNTER_GENERATOR_SCRIPT_PATH: String = "res://examples/demo_encounter_s
 const COMBAT_HUD_PRESENTER = preload("res://systems/CombatHUDPresenter.gd")
 const COMBAT_FEEDBACK_SHELL = preload("res://scenes/ui/CombatFeedbackShell.gd")
 const IMPACT_FX_RUNTIME_SCENE: PackedScene = preload("res://systems/presentation/ImpactFxRuntime.tscn")
+const COMBAT_VISUAL_RIG_SCENE: PackedScene = preload("res://scenes/combat/CombatVisualRig.tscn")
 
 # ─── STATE VARIABLES ─────────────────────────────────────────────────────────
 var _run_director: Node = null
@@ -168,6 +169,7 @@ var _bonded_creature_sprite: Sprite2D = null
 var _bonded_creature_species: String = ""
 var _presentation_runtime: RefCounted = null
 var _presentation_controller: Node = null
+var _combat_visual_rig: Node2D = null
 var _hud_presenter: RefCounted = null
 var _scouter_shell: Panel = null
 var _power_scouter_label: Label = null
@@ -857,6 +859,7 @@ func _apply_attack_authority_budget(snapshot: Dictionary = {}, phase: Dictionary
 
 func _initialize_ui() -> void:
 	_setup_presentation_controller()
+	_setup_combat_visual_rig()
 	_setup_visuals()
 	_ensure_hud_root()
 	_create_feedback_shell()
@@ -895,6 +898,25 @@ func _setup_presentation_controller() -> void:
 	_presentation_controller = COMBAT_PRESENTATION_CONTROLLER.new()
 	_presentation_controller.name = "CombatPresentationController"
 	add_child(_presentation_controller)
+
+
+func _setup_combat_visual_rig() -> void:
+	if _combat_visual_rig != null and is_instance_valid(_combat_visual_rig):
+		return
+	if COMBAT_VISUAL_RIG_SCENE == null:
+		return
+	var inst: Node = COMBAT_VISUAL_RIG_SCENE.instantiate()
+	if inst == null or not (inst is Node2D):
+		if inst != null:
+			inst.queue_free()
+		return
+	_combat_visual_rig = inst as Node2D
+	_combat_visual_rig.name = "CombatVisualRig"
+	add_child(_combat_visual_rig)
+	if _presentation_controller != null and _presentation_controller.has_method("set_combat_visual_rig"):
+		_presentation_controller.call("set_combat_visual_rig", _combat_visual_rig)
+	if player_combat != null and player_combat.has_method("set_combat_visual_rig"):
+		player_combat.call("set_combat_visual_rig", _combat_visual_rig)
 
 
 func _initialize_run_state() -> void:
@@ -1344,6 +1366,10 @@ func _current_void_elapsed_seconds() -> float:
 
 
 func _update_presentation_layers() -> void:
+	if _combat_visual_rig != null and is_instance_valid(_combat_visual_rig) and lane_manager != null:
+		_combat_visual_rig.global_position = lane_manager.call("get_player_pos")
+		if player_combat != null and player_combat.has_method("sync_presentation_facing_with_lane_manager"):
+			player_combat.call("sync_presentation_facing_with_lane_manager", lane_manager)
 	if _timing_circle_container != null:
 		_update_timing_ring_proximity()
 		if _presentation_runtime != null and player_combat != null:
@@ -1713,6 +1739,18 @@ func _setup_visuals() -> void:
 	_battlefield_right_shade = refs.get("battlefield_right_shade")
 	_battlefield_top_trim = refs.get("battlefield_top_trim")
 	_battlefield_bottom_trim = refs.get("battlefield_bottom_trim")
+	_clear_legacy_visual_clutter()
+
+
+func _clear_legacy_visual_clutter() -> void:
+	# Keep the authored combat field clean now that direction and spacing are owned by CombatVisualRig.
+	for node in [_battlefield_left_shade, _battlefield_right_shade, _battlefield_top_trim, _battlefield_bottom_trim]:
+		if node != null and is_instance_valid(node):
+			node.queue_free()
+	_battlefield_left_shade = null
+	_battlefield_right_shade = null
+	_battlefield_top_trim = null
+	_battlefield_bottom_trim = null
 
 
 func _sync_fullscreen_underlay_controls() -> void:

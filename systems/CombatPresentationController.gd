@@ -11,6 +11,20 @@ const PLAYER_SIGIL_CORE_RADIUS: float = 22.0
 
 var _active_bg_env: Dictionary = {}
 var _shared_noise_tex: NoiseTexture2D = null
+## Optional `CombatVisualRig` (or compatible Node) parented under CombatScene for editor anchors.
+var _combat_visual_rig: Node = null
+
+
+func set_combat_visual_rig(rig: Node) -> void:
+	_combat_visual_rig = rig
+
+
+func _apply_visual_rig_enemy_present_pos(lane: int, baseline: Vector2, lane_manager: Node) -> Vector2:
+	if _combat_visual_rig == null or not is_instance_valid(_combat_visual_rig):
+		return baseline
+	if not _combat_visual_rig.has_method("resolve_enemy_marker_world_pos"):
+		return baseline
+	return _combat_visual_rig.call("resolve_enemy_marker_world_pos", lane, baseline, lane_manager)
 
 
 func _get_shared_noise_tex() -> NoiseTexture2D:
@@ -582,29 +596,6 @@ func draw_timing_circles(
 	)
 	perfect_ring.name = "Perfect"
 
-	var fault_lines := _make_sigil_fault_lines(
-		PLAYER_SIGIL_INNER_RADIUS + 6.0,
-		PLAYER_SIGIL_OUTER_RADIUS - 4.0,
-		Color(base_color.r, base_color.g, base_color.b, 0.48),
-		1.5
-	)
-	fault_lines.name = "FaultLines"
-
-	var rune_chords := _make_sigil_chords(
-		PLAYER_SIGIL_INNER_RADIUS - 8.0,
-		Color(base_color.r, base_color.g, base_color.b, 0.38),
-		1.1
-	)
-	rune_chords.name = "RuneChords"
-
-	var cardinal_arms := _make_sigil_cardinal_arms(
-		PLAYER_SIGIL_INNER_RADIUS - 4.0,
-		PLAYER_SIGIL_OUTER_RADIUS + 6.0,
-		Color(base_color.r, base_color.g, base_color.b, 0.40),
-		1.6
-	)
-	cardinal_arms.name = "CardinalArms"
-
 	var beat_mark := Line2D.new()
 	beat_mark.name = "BeatMark"
 	beat_mark.default_color = Color(base_color.r, base_color.g, base_color.b, base_color.a * 0.55)
@@ -615,9 +606,6 @@ func draw_timing_circles(
 	sigil_group.add_child(receiver_glow)
 	sigil_group.add_child(receiver_fill)
 	sigil_group.add_child(edge_ring)
-	sigil_group.add_child(fault_lines)
-	sigil_group.add_child(rune_chords)
-	sigil_group.add_child(cardinal_arms)
 	sigil_group.add_child(good_inner_guide)
 	sigil_group.add_child(good_outer_guide)
 	sigil_group.add_child(perfect_inner_guide)
@@ -638,8 +626,7 @@ func draw_timing_circles(
 		"good_inner": good_inner_guide,
 		"good_outer": good_outer_guide,
 		"perfect_inner": perfect_inner_guide,
-		"perfect_outer": perfect_outer_guide,
-		"cardinal_arms": cardinal_arms
+		"perfect_outer": perfect_outer_guide
 	})
 
 
@@ -863,50 +850,29 @@ func update_timing_ring_proximity(
 	var good_outer_guide: Line2D = cache.get("good_outer", null) as Line2D
 	var perfect_inner_guide: Line2D = cache.get("perfect_inner", null) as Line2D
 	var perfect_outer_guide: Line2D = cache.get("perfect_outer", null) as Line2D
-	var cardinal_arms: Node2D = cache.get("cardinal_arms", null) as Node2D
 
 	if player_combat != null:
 		root.position = player_combat.position
 		
-		# Dynamic Facing Indicator Logic
-		if cardinal_arms != null:
-			var active_lane: int = -1
+		# Bone-Ink beat spine: aim at active focus lane (presentation-only; GOOD/PERFECT rings unchanged).
+		if beat_mark != null and lane_manager != null:
+			var focus_lane: int = 2
 			if player_combat.has_method("get_active_focus_lane"):
-				active_lane = int(player_combat.call("get_active_focus_lane"))
-			
-			# Map lane index to cardinal index
-			# Lane 0 (N) -> Child 3
-			# Lane 1 (S) -> Child 1
-			# Lane 2 (E) -> Child 0
-			# Lane 3 (W) -> Child 2
-			var active_child_idx: int = -1
-			match active_lane:
-				0: active_child_idx = 3
-				1: active_child_idx = 1
-				2: active_child_idx = 0
-				3: active_child_idx = 2
-			
-			var dt: float = 0.15 # Lerp weight for smooth transition
-			for i in range(cardinal_arms.get_child_count()):
-				var fang := cardinal_arms.get_child(i) as Polygon2D
-				if fang == null: continue
-				
-				var is_active := (i == active_child_idx)
-				var beat_scale_boost: float = beat_pulse * 1.8 if is_active else 0.0
-				var target_scale := Vector2(1.35 + beat_scale_boost, 1.35 + beat_scale_boost) if is_active else Vector2(0.8, 0.8)
-				var target_alpha := clampf(0.85 + beat_pulse * 2.0, 0.0, 1.0) if is_active else 0.22
-				var target_color := active_color if is_active else active_color.darkened(0.2)
-				
-				# Push the active fang out slightly for stronger silhouette
-				var a: float = (float(i) / 4.0) * TAU
-				var dir := Vector2(cos(a), sin(a))
-				var target_pos := dir * (6.0 + beat_pulse * 12.0) if is_active else Vector2.ZERO
-				
-				fang.scale = fang.scale.lerp(target_scale, dt)
-				fang.modulate.a = lerp(fang.modulate.a, target_alpha, dt)
-				fang.color = fang.color.lerp(target_color, dt)
-				fang.position = fang.position.lerp(target_pos, dt)
-
+				focus_lane = int(player_combat.call("get_active_focus_lane"))
+			focus_lane = clampi(focus_lane, 0, lane_manager.THREAT_COUNT - 1 if lane_manager else 3)
+			var dir_vec: Vector2 = _lane_direction(lane_manager, focus_lane)
+			if dir_vec.length_squared() > 0.0001:
+				var pos_off := Vector2.ZERO
+				var rot_off := 0.0
+				if _combat_visual_rig != null and is_instance_valid(_combat_visual_rig):
+					if _combat_visual_rig.has_method("get_sigil_bone_ink_local_offset"):
+						pos_off = _combat_visual_rig.call("get_sigil_bone_ink_local_offset")
+					if _combat_visual_rig.has_method("get_sigil_bone_ink_rotation_offset"):
+						rot_off = float(_combat_visual_rig.call("get_sigil_bone_ink_rotation_offset"))
+				beat_mark.position = pos_off
+				var aim: float = dir_vec.angle() - PI * 0.5 + rot_off
+				beat_mark.rotation = lerp_angle(beat_mark.rotation, aim, 0.18)
+		
 	for timer in ring_highlight_timers:
 		if timer > 0.0:
 			return
@@ -1390,6 +1356,7 @@ func _build_enemy_marker(
 
 
 func _lane_enemy_pos(lane_manager: Node, lane: int) -> Vector2:
+	var baseline: Vector2 = Vector2.ZERO
 	if lane_manager != null and lane_manager.has_method("get_enemy_pos"):
 		var enemy_id: int = -1
 		if lane_manager.has_method("get_enemy"):
@@ -1397,10 +1364,13 @@ func _lane_enemy_pos(lane_manager: Node, lane: int) -> Vector2:
 			if enemy_data is Dictionary:
 				enemy_id = int(enemy_data.get("id", -1))
 		if enemy_id >= 0:
-			return lane_manager.call("get_enemy_pos", enemy_id)
+			baseline = lane_manager.call("get_enemy_pos", enemy_id)
+			return _apply_visual_rig_enemy_present_pos(lane, baseline, lane_manager)
 	if lane_manager != null and lane_manager.has_method("get_threat_spawn_pos"):
-		return lane_manager.call("get_threat_spawn_pos", lane)
-	return _lane_player_pos(lane_manager) + _lane_direction_fallback(lane) * 260.0
+		baseline = lane_manager.call("get_threat_spawn_pos", lane)
+		return _apply_visual_rig_enemy_present_pos(lane, baseline, lane_manager)
+	baseline = _lane_player_pos(lane_manager) + _lane_direction_fallback(lane) * 260.0
+	return _apply_visual_rig_enemy_present_pos(lane, baseline, lane_manager)
 
 
 func _lane_hit_zone_pos(lane_manager: Node, lane: int) -> Vector2:
@@ -1525,14 +1495,17 @@ func update_enemy_marker_threat_states(
 		if not is_instance_valid(marker_root):
 			continue
 		
-		# UPDATE POSITION: Use the new LaneManager authority-aware positioning
+		var resolved_lane: int = _resolve_live_lane_for_enemy(lane_manager, enemy_id)
+		
+		# UPDATE POSITION: LaneManager gameplay truth + optional CombatVisualRig presentation anchors.
 		if lane_manager.has_method("get_enemy_pos"):
-			marker_root.position = lane_manager.get_enemy_pos(enemy_id)
+			var baseline: Vector2 = lane_manager.get_enemy_pos(enemy_id)
+			marker_root.position = _apply_visual_rig_enemy_present_pos(resolved_lane, baseline, lane_manager)
 		
 		var enemy: Dictionary = all_enemies_by_id.get(enemy_id, {})
-		var lane: int = _resolve_live_lane_for_enemy(lane_manager, enemy_id)
-		if lane < 0:
-			lane = int(enemy.get("lane", -1))
+		var lane_for_threat: int = resolved_lane
+		if lane_for_threat < 0:
+			lane_for_threat = int(enemy.get("lane", -1))
 		
 		# For markers in orbit (no lane), we just show them as idle.
 		# Threat visuals (pressure/imminent) only apply if they are in a lane and attacking.
@@ -1550,8 +1523,8 @@ func update_enemy_marker_threat_states(
 		var pressure: float = 0.0
 		var imminent: float = 0.0
 		
-		if lane >= 0:
-			var projectile = lane_manager.get_projectile(lane)
+		if lane_for_threat >= 0:
+			var projectile = lane_manager.get_projectile(lane_for_threat)
 			if projectile != null and not projectile.is_resolved and not projectile.is_reflected and int(projectile.enemy_id) == enemy_id:
 				var telegraph_profile: Dictionary = COMBAT_CONTENT.get_enemy_telegraph_profile(enemy)
 				var warning_bias: float = max(float(telegraph_profile.get("warning_bias", 1.0)), 0.84)

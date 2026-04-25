@@ -103,6 +103,7 @@ var _sprite_pose_tween: Tween = null
 var _world_motion_tween: Tween = null
 
 var _player_sprite: Sprite2D = null
+var _combat_visual_rig: Node = null
 var _energy_aura: GPUParticles2D = null
 var _idle_tex: Texture2D = null
 var _attack_tex: Texture2D = null
@@ -429,6 +430,30 @@ func set_song_conductor(conductor: Node) -> void:
 
 func set_run_growth(rg: Node) -> void:
 	_run_growth = rg
+
+
+func set_combat_visual_rig(rig: Node) -> void:
+	_combat_visual_rig = rig
+
+
+func sync_presentation_facing_with_lane_manager(lm: Node) -> void:
+	if _player_sprite == null or lm == null:
+		return
+	if _combat_visual_rig == null or not is_instance_valid(_combat_visual_rig):
+		return
+	var lane: int = clampi(active_focus_lane, 0, lm.THREAT_COUNT - 1 if lm else 3)
+	var to_threat: Vector2 = lm.call("get_threat_hit_zone_pos", lane) - lm.call("get_player_pos")
+	if to_threat.length_squared() < 4.0:
+		return
+	var base_angle: float = to_threat.angle()
+	var off: float = -PI * 0.5
+	var lerp_w: float = 0.22
+	if _combat_visual_rig.has_method("get_player_visual_facing_angle_offset"):
+		off = float(_combat_visual_rig.call("get_player_visual_facing_angle_offset"))
+	if _combat_visual_rig.has_method("get_player_facing_lerp_weight"):
+		lerp_w = float(_combat_visual_rig.call("get_player_facing_lerp_weight"))
+	var target: float = base_angle + off
+	_player_sprite.rotation = lerp_angle(_player_sprite.rotation, target, lerp_w)
 
 
 func _get_beat_quality() -> String:
@@ -1111,6 +1136,8 @@ func _show_hurt_image() -> void:
 
 func _apply_sprite_facing(direction: int) -> void:
 	if _player_sprite == null:
+		return
+	if _combat_visual_rig != null and is_instance_valid(_combat_visual_rig):
 		return
 	match direction:
 		2: _player_sprite.flip_h = false  # East — face right

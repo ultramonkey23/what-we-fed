@@ -21,18 +21,23 @@
       "Bash(./debug_harness.bat)",
       "Bash(./run_project.bat)",
       "Bash(./editor_project.bat)",
+      "Bash(./resolve_godot.bat)",
+      "Bash(./add_tools_to_path.bat)",
       "Bash(smoke_project.bat)",
       "Bash(validate_data.bat)",
       "Bash(validate_project.bat)",
       "Bash(debug_harness.bat)",
       "Bash(run_project.bat)",
       "Bash(editor_project.bat)",
+      "Bash(resolve_godot.bat)",
+      "Bash(add_tools_to_path.bat)",
 
       "Bash(ls:*)",
       "Bash(echo:*)",
       "Bash(awk:*)",
       "Bash(xargs:*)",
       "Bash(grep:*)",
+      "Bash(rg:*)",
       "Bash(identify:*)",
       "Bash(find:*)",
       "Bash(jq:*)",
@@ -42,7 +47,16 @@
       "Bash(mv /tmp/* *)",
       "Bash(cp /tmp/* *)",
 
-      "PowerShell"
+      "PowerShell",
+
+      "Skill(combat-actualization)",
+      "Skill(combat-surgery)",
+      "Skill(godly-run)",
+      "Skill(playtest-readout)",
+      "Skill(repo-truth-update)",
+      "Skill(score-report)",
+      "Skill(validation-pass)",
+      "Skill(visual-inspector)"
     ]
   }
 }

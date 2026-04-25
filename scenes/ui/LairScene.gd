@@ -16,12 +16,13 @@ const CREATURE_TRAITS = preload("res://data/CreatureTraitContent.gd")
 
 const HOLD_RELEASE_TIME: float = 1.2
 
-var _creature_cards: Array[ColorRect] = []
+var _creature_cards: Array[Panel] = []
 var _card_accents: Array[ColorRect] = []
 var _card_index_labels: Array[Label] = []
 var _active_pills: Array[Label] = []
 var _selected_index: int = -1
 var _can_input: bool = false
+var _breath_time: float = 0.0
 
 var _ui_layer: CanvasLayer
 var _hub_solo_label: Label
@@ -59,6 +60,9 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	if not _can_input:
 		return
+	
+	_breath_time += delta
+	_update_breathing(_breath_time)
 		
 	if _is_releasing:
 		if Input.is_key_pressed(KEY_X):
@@ -131,6 +135,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				_refresh_card_highlights()
 				_refresh_active_support_panel()
 				_refresh_bottom_bar()
+				_breath_time = 0.0
 		get_viewport().set_input_as_handled()
 		return
 
@@ -216,6 +221,15 @@ func _play_feedback(text: String) -> void:
 	tween.tween_property(_feedback_label, "modulate:a", 0.0, 0.24)
 
 
+func _update_breathing(t: float) -> void:
+	if _selected_index < 0 or _selected_index >= _creature_cards.size():
+		return
+	var accent := _card_accents[_selected_index]
+	if is_instance_valid(accent):
+		var pulse: float = (sin(t * 2.5) + 1.0) * 0.5
+		accent.modulate.a = 0.4 + (pulse * 0.6)
+
+
 func _build_ui() -> void:
 	if is_instance_valid(_ui_layer):
 		_ui_layer.queue_free()
@@ -291,19 +305,11 @@ func _build_empty_state(canvas: CanvasLayer) -> void:
 
 
 func _build_den_sidebar(canvas: CanvasLayer, lair: Array) -> void:
-	var slab: ColorRect = ColorRect.new()
-	slab.color = UI_STYLE.get_manga_color("deep_violet")
-	slab.color.a = 0.92
+	var slab: Panel = Panel.new()
 	slab.position = Vector2(SIDEBAR_X - 6.0, 118.0)
 	slab.size = Vector2(SIDEBAR_W + 12.0, 498.0)
+	UI_STYLE.apply_shell_style(slab, "lair_sidebar")
 	canvas.add_child(slab)
-
-	var rim: ColorRect = ColorRect.new()
-	rim.color = UI_STYLE.get_manga_color("blood_ember")
-	rim.color.a = 0.45
-	rim.position = Vector2(SIDEBAR_X - 6.0, 118.0)
-	rim.size = Vector2(SIDEBAR_W + 12.0, 2.0)
-	canvas.add_child(rim)
 
 	var den: Label = Label.new()
 	den.text = PRESENTATION_TEXT.LAIR_DEN_LABEL if not _archive_mode else "Extracted Traits"
@@ -485,16 +491,16 @@ func _build_creature_list(canvas: CanvasLayer, lair: Array) -> void:
 
 
 func _build_creature_card(canvas: CanvasLayer, creature: Dictionary, index: int, x: float, y: float, w: float, h: float) -> void:
-	var card: ColorRect = ColorRect.new()
-	card.color = UI_STYLE.get_manga_color("deep_violet")
+	var card: Panel = Panel.new()
 	card.size = Vector2(w, h)
 	card.position = Vector2(x, y)
+	UI_STYLE.apply_shell_style(card, "lair_card")
 	canvas.add_child(card)
 
 	var accent: ColorRect = ColorRect.new()
 	accent.color = Color(0.0, 0.0, 0.0, 0.0)
-	accent.size = Vector2(4.0, h)
-	accent.position = Vector2.ZERO
+	accent.size = Vector2(4.0, h - 4.0)
+	accent.position = Vector2(2.0, 2.0)
 	card.add_child(accent)
 
 	var num_label: Label = Label.new()
@@ -654,13 +660,15 @@ func _refresh_card_highlights() -> void:
 		if not is_instance_valid(_creature_cards[i]):
 			continue
 		var is_selected: bool = (i == _selected_index)
-		_creature_cards[i].color = UI_STYLE.get_manga_color("blood_ember") if is_selected else UI_STYLE.get_manga_color("deep_violet")
+		
 		if is_selected:
-			_creature_cards[i].color.a = 0.34
+			UI_STYLE.apply_shell_style(_creature_cards[i], "mm_apex")
 		else:
-			_creature_cards[i].color.a = 1.0
+			UI_STYLE.apply_shell_style(_creature_cards[i], "lair_card")
+			
 		if i < _card_accents.size() and is_instance_valid(_card_accents[i]):
 			_card_accents[i].color = UI_STYLE.get_manga_color("alert_gold") if is_selected else Color(0.0, 0.0, 0.0, 0.0)
+			_card_accents[i].modulate.a = 1.0
 		if i < _active_pills.size() and is_instance_valid(_active_pills[i]):
 			_active_pills[i].visible = is_selected
 		if i < _card_index_labels.size() and is_instance_valid(_card_index_labels[i]):
@@ -697,7 +705,7 @@ func _refresh_active_support_panel() -> void:
 		_hub_identity.text = _identity_line(c, species_id)
 		
 		var player_dna: float = GameState.get_dna(species_id)
-		_hub_dna_stat.text = "DNA Catalog: %.0f" % player_dna
+		_hub_dna_stat.text = PRESENTATION_TEXT.dna_status_line(species_id)
 		
 		var role: Dictionary = COMBAT_CONTENT.get_support_role(species_id)
 		if role.is_empty():

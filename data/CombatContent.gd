@@ -1,3 +1,4 @@
+class_name COMBAT_CONTENT
 extends RefCounted
 
 const BIOME_FEEDING_HOLLOW := {
@@ -452,7 +453,7 @@ const CREATURES := {
 			"hud_trigger_hint": "Kill: heal+rend"
 		},
 		"quig_offer_text": "Quig: \"If your kill rhythm drops, it notices. Keep pressure.\"",
-		"wrong_detail": "claws shaped for closing and not opening again"
+		"wrong_detail": "claws shaped only for closing; they have forgotten the geometry of letting go"
 	}
 }
 

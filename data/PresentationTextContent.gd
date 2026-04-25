@@ -1,5 +1,7 @@
 extends RefCounted
 
+const COMBAT_CONTENT = preload("res://data/CombatContent.gd")
+
 const SUPPORT_EMPTY_NAME: String = "No bond"
 const SUPPORT_EMPTY_TRIGGER: String = "No support"
 const RUN_BUILD_EATEN_CAPTION: String = "Eaten"
@@ -235,12 +237,19 @@ const QUIG_REACTIVE_LINES := {
 	}
 }
 
-static func dna_status_line(current: float, threshold: float, locked: bool) -> String:
-	return "DNA  %.0f / %.0f  %s" % [current, threshold, "LOCKED" if locked else "READY"]
+static func dna_status_line(species_id: String) -> String:
+	var current: float = GameState.get_dna(species_id)
+	var threshold: float = GameState.get_effective_dna_threshold(species_id)
+	var base: float = float(COMBAT_CONTENT.get_creature(species_id).get("dna_threshold", 0.0))
+	
+	var line: String = "DNA COLLECTION: %.0f / %.0f" % [current, threshold]
+	if threshold > base:
+		line += " (PENALTY +%.0f%%)" % (((threshold/base) - 1.0) * 100.0)
+	return line
 
 
 static func live_dna_gate_line(current: float, threshold: float) -> String:
-	return "DNA  %.0f/%.0f" % [current, threshold]
+	return "DNA  %.0f / %.0f" % [current, threshold]
 
 
 static func reward_bond_label(locked: bool) -> String:

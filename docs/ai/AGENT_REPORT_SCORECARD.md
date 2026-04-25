@@ -63,6 +63,7 @@ All reports must contain:
 | Validation run | Command or method used; or "none" (be honest) |
 | Validation level | 0–4 per Control Plane ladder |
 | Validation result | Passed / failed / partial / unable |
+| Micro-Capability | (Optional) Performance of repo-side agents during micro-tasks |
 | Confirmed repo truth | Only facts directly evidenced by inspection |
 | Unverified assumptions | Anything not directly confirmed |
 | Recommended next step | Exactly one |

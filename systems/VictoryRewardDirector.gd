@@ -72,7 +72,7 @@ func resolve_choice(choice_id: String) -> bool:
 			GameState.register_growth_choice("bond")
 		EventBus.emit_signal("creature_bonded", updated_creature)
 	else:
-		var absorbed: Dictionary = GameState.absorb_creature_type(_pending_creature)
+		var _absorbed: Dictionary = GameState.absorb_creature_type(_pending_creature)
 		if GameState.has_method("register_growth_choice"):
 			GameState.register_growth_choice("eat")
 		EventBus.emit_signal("creature_eaten", _pending_creature)
@@ -114,6 +114,10 @@ func is_awaiting_choice() -> bool:
 	return _is_awaiting_choice and not _choice_made
 
 func is_dna_locked() -> bool:
+	if not _pending_creature.is_empty():
+		var species_id: String = String(_pending_creature.get("species_id", ""))
+		var effective_threshold: float = GameState.get_effective_dna_threshold(species_id)
+		_is_dna_locked = not GameState.has_dna_for(species_id, effective_threshold)
 	return _is_dna_locked
 
 func get_offer_timer() -> float:

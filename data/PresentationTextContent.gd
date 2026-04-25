@@ -16,13 +16,13 @@ const REWARD_BODY_PASSED: String = "It leaves hungry."
 const REWARD_HINT_WAIT: String = "..."
 const REWARD_HINT_RESTART: String = "R re-instantiate"
 const REWARD_CONTROLS_RESTART: String = "Run complete  |  R re-instantiate pattern"
-const REWARD_HINT_LOCKED: String = "DNA locked  |  N pass"
+const REWARD_HINT_LOCKED: String = "Bond DNA locked  |  E eat  |  N pass"
 const REWARD_HINT_CHOICE: String = "Choose  |  B bond  |  E eat  |  N pass"
-const REWARD_CONTROLS_LOCKED: String = "DNA locked  |  N pass"
+const REWARD_CONTROLS_LOCKED: String = "Bond DNA locked  |  E eat  |  N pass"
 const REWARD_CONTROLS_CHOICE: String = "Reward choice  |  B bond  |  E eat  |  N pass"
-const LIVE_CONTROLS_LOCKED: String = "DNA locked  |  N pass"
+const LIVE_CONTROLS_LOCKED: String = "Bond DNA locked  |  E eat  |  N pass"
 const LIVE_CONTROLS_CHOICE: String = "B bond  |  E eat  |  N pass"
-const LIVE_REWARD_LOCKED_HINT_PREFIX: String = "Locked | N"
+const LIVE_REWARD_LOCKED_HINT_PREFIX: String = "Bond locked | E/N"
 const LIVE_REWARD_CHOICE_HINT_PREFIX: String = "B/E/N"
 const BOSS_STATE_OPENING: String = "Phase I  |  Hold line"
 const BOSS_STATE_FINAL: String = "Unleashed  |  No shelter"
@@ -254,11 +254,11 @@ static func live_dna_gate_line(current: float, threshold: float) -> String:
 
 
 static func reward_bond_label(locked: bool) -> String:
-	return "Bond  [B]  - locked" if locked else "Bond  [B]"
+	return "Bond  [B]  - DNA locked" if locked else "Bond  [B]"
 
 
-static func reward_eat_label(locked: bool) -> String:
-	return "Eat  [E]  - locked" if locked else "Eat  [E]"
+static func reward_eat_label(_locked: bool) -> String:
+	return "Eat  [E]"
 
 
 static func reward_bond_body(passive_text: String) -> String:

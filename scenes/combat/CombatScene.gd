@@ -683,7 +683,7 @@ func _refresh_reward_overlay_content() -> void:
 		_reward_dna_label.text = PRESENTATION_TEXT.dna_status_line(_offer_species_id)
 		_reward_dna_label.modulate = Color(0.4, 0.9, 0.8) if _player_dna >= _offer_dna_threshold else Color(1.0, 0.4, 0.4)
 
-	_reward_bond_label.text = "B Bond"
+	_reward_bond_label.text = "B Bond" if not _pending_reward_dna_locked else "B Bond - DNA locked"
 	_reward_eat_label.text = "E Eat"
 
 	# Evolutionary logic: bond passive is scaled by current potential
@@ -3546,7 +3546,7 @@ func _show_growth_choice_intersection(
 		"creature": _pending_reward_creature.duplicate(true),
 		"performance": perf_summary.duplicate(true),
 		"bond_available": not _pending_reward_dna_locked,
-		"eat_available": not _pending_reward_dna_locked,
+		"eat_available": true,
 		"fail_safe_pass_allowed": _pending_reward_dna_locked or source_flow == "song_between_level"
 	}
 	GameState.set_growth_choice_intersection_payload(payload)
@@ -3680,12 +3680,7 @@ func _on_growth_choice_selected(choice_id: String) -> void:
 	if _victory_reward_director != null:
 		_victory_reward_director.resolve_choice(choice_id)
 
-
-# Removed legacy growth choice handler.
-
-# End of resolution block.
-
-	var source_flow: String = str(_growth_choice_context.get("source_flow", "legacy"))
+	var source_flow: String = str(_growth_choice_context.get("source_flow", "route"))
 	_growth_choice_context.clear()
 
 	if source_flow == "song":
@@ -4877,7 +4872,7 @@ func _complete_current_encounter() -> void:
 		if not pool.is_empty():
 			reward_creature = pool[randi() % pool.size()]
 	if not reward_creature.is_empty():
-		_show_growth_choice_intersection(reward_creature, "legacy", "route", false)
+		_show_growth_choice_intersection(reward_creature, "route", "route", false)
 		return
 
 	_refresh_run_build_readout()
@@ -5330,23 +5325,14 @@ func _describe_creature_offer_context(creature_data: Dictionary) -> String:
 	return COMBAT_CONTENT.get_creature_encounter_summary(species_id)
 
 
-# Legacy reward methods removed.
-
-
 func _choose_bond() -> void:
 	if _victory_reward_director != null:
 		_victory_reward_director.resolve_choice("bond")
 
 
-# Removed legacy choice methods.
-
-
 func _choose_eat() -> void:
 	if _victory_reward_director != null:
 		_victory_reward_director.resolve_choice("eat")
-
-
-# Removed legacy eat method.
 
 
 func _pass_reward() -> void:

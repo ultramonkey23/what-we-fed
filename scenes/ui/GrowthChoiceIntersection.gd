@@ -183,7 +183,7 @@ func _build_summary_text(perf: Dictionary) -> String:
 func _build_creature_line(creature: Dictionary) -> String:
 	var creature_name: String = String(creature.get("display_name", "Unknown Creature"))
 	var species_id: String = String(creature.get("species_id", ""))
-	var threshold: float = float(creature.get("dna_threshold", 0.0))
+	var threshold: float = GameState.get_effective_dna_threshold(species_id)
 	var dna_now: float = GameState.get_dna(species_id)
 	var dna_line: String = "DNA %.0f / %.0f" % [dna_now, threshold]
 	return "%s\n%s" % [creature_name, dna_line]
@@ -192,13 +192,20 @@ func _build_creature_line(creature: Dictionary) -> String:
 func _build_bond_line(creature: Dictionary) -> String:
 	var bond_text: String = "BOND [B]\n"
 	if not _bond_enabled:
-		return bond_text + "Unavailable"
+		var species_id: String = String(creature.get("species_id", ""))
+		var threshold: float = GameState.get_effective_dna_threshold(species_id)
+		var missing: float = maxf(threshold - GameState.get_dna(species_id), 0.0)
+		return bond_text + "Need %.0f more DNA.\nEating stays available." % missing
 
-	var bond_level: int = int(creature.get("bond_level", 1))
+	var species_id: String = String(creature.get("species_id", ""))
+	var bonded: Dictionary = GameState.get_bonded_creature(species_id)
+	var current_level: int = int(bonded.get("bond_level", 0))
+	var next_level: int = clampi(current_level + 1, 1, 5)
 	@warning_ignore("static_called_on_instance")
-	var level_mult: float = GameState.get_bond_level_mult(bond_level)
+	var level_mult: float = GameState.get_bond_level_mult(next_level)
 	var passive: String = String(creature.get("bond_passive", {}).get("summary", "Strengthen creature support."))
-	return "%s%s\nPower %.2fx" % [bond_text, passive, level_mult]
+	var action_line: String = "New support L1" if current_level <= 0 else "Deepen to L%d" % next_level
+	return "%s%s\n%s\nPower %.2fx" % [bond_text, action_line, passive, level_mult]
 
 
 func _build_eat_line(creature: Dictionary) -> String:
@@ -207,8 +214,6 @@ func _build_eat_line(creature: Dictionary) -> String:
 		return eat_text + "Unavailable"
 
 	var eat_effect: Dictionary = Dictionary(creature.get("eat_effect", {}))
-	# var eat_type: String = String(eat_effect.get("type", "damage_flat"))
-	# var eat_value: float = float(eat_effect.get("value", 0.0))
 	var mutation_summary: String = String(creature.get("mutation", {}).get("summary", ""))
 	var effect_line: String = PRESENTATION_TEXT.format_eat_effect(eat_effect)
 	if mutation_summary.is_empty():
@@ -245,6 +250,8 @@ func _build_stat_preview(creature: Dictionary) -> String:
 func _build_hint_text() -> String:
 	if _bond_enabled and _eat_enabled:
 		return "B - Bond    |    E - Eat"
+	if _eat_enabled:
+		return "B locked by DNA    |    E - Eat    |    N - Pass"
 	if _fail_safe_pass_allowed:
 		return "N - Fail-safe pass (no valid DNA spend path)"
 	return "Awaiting valid growth choice"

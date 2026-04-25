@@ -46,6 +46,8 @@ Do not claim gameplay feel validation from smoke/validate alone. State exactly w
 - Current spine: `docs/GAME_SPINE.md`, `docs/NEXT_PHASE_PLAN.md`
 - Deep AI doctrine: `docs/ai/SYSTEM_KERNEL.md`, `docs/ai/PROJECT_KERNEL.md`
 - Visual evidence loop: `docs/ai/VISUAL_TRUTH_LOOP.md`
+- Bounded improvement workflow: `docs/ai/GODLY_WORKFLOW.md`
+- Signal flow reference: `docs/ai/SIGNAL_MAP.md`
 
 Default behavior: inspect real files first, identify the bottleneck, choose one bounded fix, preserve working behavior, validate honestly, and report compactly.
 

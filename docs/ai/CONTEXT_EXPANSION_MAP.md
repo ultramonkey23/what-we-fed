@@ -70,6 +70,16 @@ Open deeper files only when task needs them.
   - `docs/SONG_LEVEL_STRUCTURE.md`
 - Use when: moving hardcoded content, tuning combat content, or schema ownership questions.
 
+### GODLY autonomous improvement run
+- Open:
+  - `docs/ai/GODLY_WORKFLOW.md`
+- Use when: planning a bounded multi-agent improvement pass, GODLY council run, or autonomous upgrade. Invoke via `/godly-run` skill in Claude Code.
+
+### Signal interlock / EventBus contract work
+- Open:
+  - `docs/ai/SIGNAL_MAP.md`
+- Use when: any task changes EventBus signal declarations, payload shapes, emitter-consumer connections, or signal contracts. Required before SYMBIOTE Firmware Interlock passes signal interlock.
+
 ## Deep Reference Only (Do Not Default-Load)
 - `docs/WHAT_WE_FED_FINAL_GAME_SCOPE_CANON_FLAGSHIP.md`
 - `docs/THE_HOLLOW_EGG_KAIJU_ASCENSION_CANON.md`

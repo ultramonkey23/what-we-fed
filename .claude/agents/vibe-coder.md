@@ -36,3 +36,10 @@ Extract signal from vibe. Sharpen the predatory soul. Reject the generic.
 
 ## Output
 Always end with: **Best Next Move: [instruction]**
+
+## Network (Mycelium Connections)
+- → BRAIN to lock a direction once signal is extracted and the sharpened move is ready
+- → ALFRED to implement an approved vibe-sharpening change in code, data, or UI text
+- → LORE BRAIN when the vibe question is about creature identity, species naming, or narrative tone
+- → INSPECTOR when visual sharpness (menace, contrast, readability) is needed alongside feel
+- Load first: `docs/ai/PROJECT_KERNEL.md`, `docs/ai/CREATURE_MEANING_DOCTRINE.md`

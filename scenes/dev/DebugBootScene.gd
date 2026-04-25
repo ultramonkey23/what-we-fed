@@ -1,7 +1,7 @@
 extends Node2D
 
 const ROUTE_CONTENT = preload("res://data/RouteContent.gd")
-const COMBAT_CONTENT = preload("res://data/CombatContent.gd")
+const COMBAT_DATA = preload("res://data/CombatContent.gd")
 const UI_STYLE = preload("res://systems/UIStyle.gd")
 
 const COMBAT_SCENE_PATH: String = "res://scenes/combat/CombatScene.tscn"
@@ -371,7 +371,7 @@ func _refresh_ui() -> void:
 	var support_species_id: String = _resolve_support_species_id(preset)
 	var support_name: String = "None"
 	if not support_species_id.is_empty():
-		support_name = String(COMBAT_CONTENT.get_creature(support_species_id).get("display_name", support_species_id))
+		support_name = String(COMBAT_DATA.get_creature(support_species_id).get("display_name", support_species_id))
 
 	_summary_label.text = String(preset.get("summary", ""))
 	_region_value_label.text = "%s  |  %s" % [
@@ -434,14 +434,14 @@ func _build_detail_text(preset: Dictionary, support_species_id: String) -> Strin
 			parts.append("Harness: auto N/E/S/W focus plus attack/parry/dodge sequence")
 
 	if not support_species_id.is_empty():
-		parts.append("Support: %s bonded at level 2" % String(COMBAT_CONTENT.get_creature(support_species_id).get("display_name", support_species_id)))
+		parts.append("Support: %s bonded at level 2" % String(COMBAT_DATA.get_creature(support_species_id).get("display_name", support_species_id)))
 
 	var dna_seed: Dictionary = preset.get("dna_seed", {})
 	if not dna_seed.is_empty():
 		var dna_tokens: Array[String] = []
 		for species_id in dna_seed.keys():
 			dna_tokens.append("%s %.0f" % [
-				String(COMBAT_CONTENT.get_creature(String(species_id)).get("display_name", species_id)),
+				String(COMBAT_DATA.get_creature(String(species_id)).get("display_name", species_id)),
 				float(dna_seed[species_id])
 			])
 		parts.append("DNA: " + ", ".join(dna_tokens))
@@ -450,12 +450,12 @@ func _build_detail_text(preset: Dictionary, support_species_id: String) -> Strin
 	if not absorbed_species_ids.is_empty():
 		var absorbed_names: Array[String] = []
 		for species_id in absorbed_species_ids:
-			absorbed_names.append(String(COMBAT_CONTENT.get_creature(String(species_id)).get("display_name", species_id)))
+			absorbed_names.append(String(COMBAT_DATA.get_creature(String(species_id)).get("display_name", species_id)))
 		parts.append("Absorbed: " + ", ".join(absorbed_names))
 
 	var reward_species_id: String = String(preset.get("preview_live_reward_species_id", ""))
 	if not reward_species_id.is_empty():
-		parts.append("Live reward: %s preview" % String(COMBAT_CONTENT.get_creature(reward_species_id).get("display_name", reward_species_id)))
+		parts.append("Live reward: %s preview" % String(COMBAT_DATA.get_creature(reward_species_id).get("display_name", reward_species_id)))
 
 	var run_growth: Dictionary = preset.get("run_growth", {})
 	if not run_growth.is_empty():

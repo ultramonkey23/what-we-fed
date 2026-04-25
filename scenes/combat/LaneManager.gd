@@ -1,7 +1,5 @@
 extends Node
 
-const COMBAT_CONTENT = preload("res://data/CombatContent.gd")
-
 const THREAT_COUNT: int = 4
 # fire_stagger is the wait between firing successive directions in a single cycle.
 # Wider = each lane projectile arrives as a distinct timed event.
@@ -20,6 +18,8 @@ const STRIKER_VISUAL_RADIAL_SPREAD: float = 18.0
 const PROJECTILE_SCENE_PATH: String = "res://scenes/combat/Projectile.tscn"
 const MELEE_APPROACH_SCRIPT_PATH: String = "res://scenes/combat/MeleeApproach.gd"
 const MIN_IMPACT_SEPARATION: float = 0.40
+const _DEBUG_LOG_PATH: String = "debug-1960b2.log"
+const _DEBUG_SESSION_ID: String = "1960b2"
 
 # Status effect constants.
 const REND_DAMAGE_MULT: float = 1.30        # +30% damage to the enemy while REND is active
@@ -80,16 +80,39 @@ var _enemy_statuses: Dictionary = {}
 var _cycle_task_id: int = 0
 
 
+func _agent_log(run_id: String, hypothesis_id: String, location: String, message: String, data: Dictionary = {}) -> void:
+	var file: FileAccess = FileAccess.open(_DEBUG_LOG_PATH, FileAccess.READ_WRITE)
+	if file == null:
+		file = FileAccess.open(_DEBUG_LOG_PATH, FileAccess.WRITE_READ)
+	if file == null:
+		return
+	file.seek_end()
+	var payload: Dictionary = {
+		"sessionId": _DEBUG_SESSION_ID,
+		"runId": run_id,
+		"hypothesisId": hypothesis_id,
+		"location": location,
+		"message": message,
+		"data": data,
+		"timestamp": Time.get_unix_time_from_system() * 1000
+	}
+	file.store_line(JSON.stringify(payload))
+	file.close()
+
+
 func setup_layout(viewport_size: Vector2) -> void:
 	# Computes the 4 cardinal threat positions centered on the screen.
-	_viewport_size = viewport_size
-	_center_pos = viewport_size * 0.5
-	
+	var safe_size: Vector2 = viewport_size
+	if safe_size.x < 10.0 or safe_size.y < 10.0:
+		safe_size = Vector2(1280.0, 720.0) # Fallback to HD default
+
+	_viewport_size = safe_size
+	_center_pos = safe_size * 0.5
+
 	_threat_spawn_positions.clear()
 	_threat_hit_zone_positions.clear()
-	
-	var spawn_dist: float = viewport_size.y * SPAWN_DISTANCE_RATIO
-	
+
+	var spawn_dist: float = safe_size.y * SPAWN_DISTANCE_RATIO	
 	# Mapping: 0=N, 1=S, 2=E, 3=W
 	var directions = [
 		Vector2(0, -1), # North
@@ -719,6 +742,16 @@ func _fire_melee_lane(lane: int, enemy: Dictionary, id: int) -> bool:
 
 	melee.connect("resolved", _on_projectile_resolved.bind(lane))
 	melee.connect("player_contact", _on_melee_player_contact.bind(lane))
+	# #region agent log
+	_agent_log("baseline", "H1", "LaneManager.gd:_fire_melee_lane", "melee signal wiring snapshot", {
+		"lane": lane,
+		"enemy_id": id,
+		"resolved_connected": melee.is_connected("resolved", _on_projectile_resolved.bind(lane)),
+		"player_contact_connected": melee.is_connected("player_contact", _on_melee_player_contact.bind(lane)),
+		"enemy_contact_signal_exists": melee.has_signal("enemy_contact"),
+		"enemy_contact_connected_to_lane_manager": melee.is_connected("enemy_contact", _on_projectile_enemy_contact.bind(lane))
+	})
+	# #endregion
 	_projectile_slots[lane] = melee
 
 	EventBus.emit_signal("projectile_fired", lane, id)

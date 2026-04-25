@@ -2,7 +2,6 @@ extends Node
 
 # Persistent run-level state. Modularized for v2.0 Architecture.
 const RITUAL_CONTENT = preload("res://data/RitualConsumableContent.gd")
-const COMBAT_CONTENT = preload("res://data/CombatContent.gd")
 const CREATURE_TRAITS = preload("res://data/CreatureTraitContent.gd")
 const COLLAR_CONTENT = preload("res://data/CollarContent.gd")
 const LAIR_RESONANCE = preload("res://data/LairResonanceContent.gd")
@@ -65,10 +64,6 @@ var stat_intelligence: float:
 var stat_adaptability: float:
 	get: return player.stat_adaptability
 	set(v): player.stat_adaptability = v
-
-var taken_upgrades: Array[String]:
-	get: return player.taken_upgrades
-	set(v): player.taken_upgrades = v
 
 var is_in_combat: bool:
 	get: return run.is_in_combat
@@ -231,7 +226,7 @@ func _process(delta: float) -> void:
 
 # --- Creature Logic ---
 
-static func get_bond_level_mult(bond_level: int) -> float:
+func get_bond_level_mult(bond_level: int) -> float:
 	return 1.0 + max(0, bond_level - 1) * 0.20
 
 
@@ -533,13 +528,9 @@ func set_mutation_flag(mutation_id: String, flag: String, value: bool) -> void:
 			return
 
 
-func add_upgrade(upgrade_id: String) -> void:
-	if upgrade_id.is_empty() or taken_upgrades.has(upgrade_id): return
-	taken_upgrades.append(upgrade_id)
-
-
 func has_upgrade(upgrade_id: String) -> bool:
-	return taken_upgrades.has(upgrade_id)
+	if rewards == null: return false
+	return rewards.has_reward(upgrade_id)
 
 
 func register_growth_choice(choice_id: String) -> void:
@@ -552,6 +543,10 @@ func get_reward_weight_profile() -> Dictionary:
 
 func is_reward_offer_eligible(reward_data: Dictionary) -> bool:
 	return rewards.is_reward_offer_eligible(reward_data)
+
+
+func has_reward(reward_id: String) -> bool:
+	return rewards.has_reward(reward_id)
 
 
 func add_reward_to_ecology(reward_data: Dictionary) -> Dictionary:

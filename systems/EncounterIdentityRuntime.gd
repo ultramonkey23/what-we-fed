@@ -1,6 +1,6 @@
 extends RefCounted
 
-const COMBAT_CONTENT = preload("res://data/CombatContent.gd")
+const COMBAT_DATA = preload("res://data/CombatContent.gd")
 const REGION_SONG_CONTENT = preload("res://data/RegionSongContent.gd")
 const IDENTITY_CONTENT = preload("res://data/EncounterIdentityContent.gd")
 const RUN_PACING_CONTENT = preload("res://data/RunPacingContent.gd")
@@ -26,8 +26,8 @@ static func build_song_run(region_id: String, regular_level_index: int = 0, leve
 
 
 static func build_live_boss_encounter() -> Dictionary:
-	var boss_encounter: Dictionary = COMBAT_CONTENT.get_encounter("feeding_hollow_boss")
-	boss_encounter["reward_creature_pool"] = [COMBAT_CONTENT.get_creature("thornback")]
+	var boss_encounter: Dictionary = COMBAT_DATA.get_encounter("feeding_hollow_boss")
+	boss_encounter["reward_creature_pool"] = [COMBAT_DATA.get_creature("thornback")]
 	return boss_encounter
 
 
@@ -100,11 +100,11 @@ static func pick_weighted_enemy(phase: Dictionary, rng: RandomNumberGenerator) -
 static func _get_biome_for_region(region_id: String) -> Dictionary:
 	match region_id:
 		"pale_shelf":
-			return COMBAT_CONTENT.BIOME_PALE_SHELF.duplicate(true)
+			return COMBAT_DATA.BIOME_PALE_SHELF.duplicate(true)
 		"drowned_cut":
-			return COMBAT_CONTENT.BIOME_DROWNED_CUT.duplicate(true)
+			return COMBAT_DATA.BIOME_DROWNED_CUT.duplicate(true)
 		_:
-			return COMBAT_CONTENT.BIOME_FEEDING_HOLLOW.duplicate(true)
+			return COMBAT_DATA.BIOME_FEEDING_HOLLOW.duplicate(true)
 
 
 static func _preferred_lane_order(spawn_mode: String, player_lane: int, rng: RandomNumberGenerator) -> Array:

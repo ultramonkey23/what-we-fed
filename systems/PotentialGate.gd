@@ -1,6 +1,6 @@
 extends RefCounted
 
-const COMBAT_CONTENT = preload("res://data/CombatContent.gd")
+const COMBAT_DATA = preload("res://data/CombatContent.gd")
 
 const GRADE_BROOD: String = "brood"
 const GRADE_MATURE: String = "mature"
@@ -30,7 +30,7 @@ static func resolve_creature_grade_ceiling(active_creature: Dictionary) -> Strin
 	var species_id: String = String(active_creature.get("species_id", ""))
 	if species_id.is_empty():
 		return GRADE_ALPHA
-	var template: Dictionary = COMBAT_CONTENT.get_creature(species_id)
+	var template: Dictionary = COMBAT_DATA.get_creature(species_id)
 	if template.is_empty():
 		return GRADE_ALPHA
 	return normalize_grade_id(String(template.get("potential_max_grade", GRADE_ALPHA)))

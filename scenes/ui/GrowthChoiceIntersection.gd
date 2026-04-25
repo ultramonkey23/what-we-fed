@@ -3,7 +3,7 @@ extends Node2D
 signal growth_choice_selected(choice_id: String)
 
 const UI_STYLE = preload("res://systems/UIStyle.gd")
-const COMBAT_CONTENT = preload("res://data/CombatContent.gd")
+const COMBAT_DATA = preload("res://data/CombatContent.gd")
 const GROWTH_STATS = preload("res://data/GrowthStats.gd")
 const PRESENTATION_TEXT = preload("res://data/PresentationTextContent.gd")
 

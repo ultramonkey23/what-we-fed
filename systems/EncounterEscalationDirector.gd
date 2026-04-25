@@ -4,7 +4,7 @@ extends Node
 # Centralizes live escalation, phase progression, and pressure-aware spawning.
 # Now includes timer management to prevent phantom spawns across state changes.
 
-const COMBAT_CONTENT = preload("res://data/CombatContent.gd")
+const COMBAT_DATA = preload("res://data/CombatContent.gd")
 const ENCOUNTER_IDENTITY_RUNTIME = preload("res://systems/EncounterIdentityRuntime.gd")
 const IDENTITY_CONTENT = preload("res://data/EncounterIdentityContent.gd")
 
@@ -465,7 +465,7 @@ func _pick_pressure_aware_enemy(phase: Dictionary) -> Dictionary:
 				if hp < 25.0:
 					weight *= 1.4
 
-		if _player_hp_ratio < 0.40 and species_id in COMBAT_CONTENT.CLUTCH_SPECIES:
+		if _player_hp_ratio < 0.40 and species_id in COMBAT_DATA.CLUTCH_SPECIES:
 			weight *= 2.5 * clutch_species_mult
 			if _rng.randf() < 0.15:
 				feedback_requested.emit("THE HOLLOW PROVIDES", Color(0.70, 0.96, 0.84, 1.0), 0.35)

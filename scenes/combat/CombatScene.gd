@@ -21,7 +21,6 @@ signal impact_fx_requested(kind: StringName, world_pos: Vector2, direction: Vect
 @onready var controls_label: Label = $UI/ControlsLabel
 
 # ─── PRELOADS ────────────────────────────────────────────────────────────────
-const COMBAT_CONTENT = preload("res://data/CombatContent.gd")
 const COMBAT_FEEL_CONSTANTS = preload("res://data/CombatFeelConstants.gd")
 const COMBAT_FEEL_CONTENT = preload("res://data/CombatFeelContent.gd")
 const PRESENTATION_TEXT = preload("res://data/PresentationTextContent.gd")
@@ -3101,7 +3100,9 @@ func _setup_performance_rewards() -> void:
 	if _performance_reward_director.has_method("bind_runtime"):
 		_performance_reward_director.call("bind_runtime", combat_meter, _run_growth, _run_stats)
 		_performance_reward_director.set("offers_enabled", false)
-		if _performance_reward_director.has_method("sync_from_gamestate"):
+		if _performance_reward_director.has_method("sync_from_reward_state"):
+			_performance_reward_director.call("sync_from_reward_state")
+		elif _performance_reward_director.has_method("sync_from_gamestate"):
 			_performance_reward_director.call("sync_from_gamestate")
 
 	if _performance_reward_director.has_signal("reward_claimed"):
@@ -6810,21 +6811,6 @@ func _get_growth_effect(effect_type: String) -> Dictionary:
 		var runtime_effect: Dictionary = _run_growth.call("get_runtime_effect", effect_type)
 		if not runtime_effect.is_empty():
 			return runtime_effect
-	return _get_legacy_upgrade_effect(effect_type)
-
-
-func _get_legacy_upgrade_effect(effect_type: String) -> Dictionary:
-	# Deprecated compatibility path for stale taken_upgrades data.
-	# Real run growth now resolves through RunGrowth tendency effects.
-	for upgrade in GROWTH_CONTENT.UPGRADE_POOL:
-		var upgrade_id: String = str(upgrade.get("id", ""))
-		if not GameState.has_upgrade(upgrade_id):
-			continue
-
-		var effect: Dictionary = upgrade.get("effect", {})
-		if str(effect.get("type", "")) == effect_type:
-			return effect
-
 	return {}
 
 

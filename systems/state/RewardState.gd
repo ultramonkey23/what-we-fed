@@ -105,6 +105,20 @@ func is_reward_offer_eligible(reward_data: Dictionary) -> bool:
 		return carry.size() < RITUAL_CONTENT.CARRY_LIMIT
 	return false
 
+
+func has_reward(reward_id: String) -> bool:
+	if reward_id.is_empty():
+		return false
+	for slot in loot_slots:
+		if loot_slots[slot].has(reward_id):
+			return true
+	for slot in artifact_slots:
+		if artifact_slots[slot].has(reward_id):
+			return true
+	if consumable_slots["prepared"].has(reward_id) or consumable_slots["carry"].has(reward_id):
+		return true
+	return false
+
 func add_reward(reward_data: Dictionary) -> Dictionary:
 	var lane: String = String(reward_data.get("lane", ""))
 	var reward_id: String = String(reward_data.get("id", ""))

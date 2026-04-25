@@ -2,7 +2,7 @@ extends RefCounted
 
 ## Between-level DNA / creature offers (v1). Structural only — not live combat rewards.
 
-const COMBAT_CONTENT = preload("res://data/CombatContent.gd")
+const COMBAT_DATA = preload("res://data/CombatContent.gd")
 
 const KIND_DEEPEN: String = "deepen_bond"
 const KIND_TITHE: String = "flesh_tithe"
@@ -13,14 +13,14 @@ const KIND_MUTATION: String = "mutation_stitch"
 static func _creature_name(species_id: String) -> String:
 	if species_id.is_empty():
 		return "?"
-	var c: Dictionary = COMBAT_CONTENT.get_creature(species_id)
+	var c: Dictionary = COMBAT_DATA.get_creature(species_id)
 	if c.is_empty():
 		return species_id
 	return String(c.get("display_name", species_id))
 
 
 static func _threshold_for(species_id: String) -> float:
-	var c: Dictionary = COMBAT_CONTENT.get_creature(species_id)
+	var c: Dictionary = COMBAT_DATA.get_creature(species_id)
 	return maxf(1.0, float(c.get("dna_threshold", 8.0)))
 
 
@@ -174,7 +174,7 @@ static func apply_choice(choice: Dictionary, run_growth: Node) -> bool:
 			if int(bonded.get("bond_level", 1)) >= 5:
 				return false
 			GameState.spend_dna(sid, cost)
-			var template: Dictionary = COMBAT_CONTENT.get_creature(sid)
+			var template: Dictionary = COMBAT_DATA.get_creature(sid)
 			if template.is_empty():
 				return false
 			GameState.add_bonded_creature(template)

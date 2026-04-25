@@ -23,7 +23,6 @@ var stat_potential: float = 1.0        # Hollow: EXP/Tendency/DNA Efficiency Mul
 var stat_intelligence: float = 1.0     # Eye: Support Charge & Telegraph Read Mult
 var stat_adaptability: float = 1.0     # Form: Timed Attack & Combo Armor Mult
 
-var taken_upgrades: Array[String] = []
 
 func reset_to_base() -> void:
 	stat_vitality = BASE_MAX_HP
@@ -40,7 +39,7 @@ func reset_to_base() -> void:
 	base_damage = stat_power
 	defense = stat_carapace
 	hp = max_hp
-	taken_upgrades.clear()
+
 
 func heal(amount: float) -> float:
 	if amount <= 0.0:

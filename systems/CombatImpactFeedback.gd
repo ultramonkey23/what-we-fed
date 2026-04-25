@@ -4,7 +4,7 @@ extends RefCounted
 # Now uses centralized CombatFeelConstants for consistent feel across all systems.
 
 const COMBAT_FEEL_CONSTANTS = preload("res://data/CombatFeelConstants.gd")
-const COMBAT_CONTENT = preload("res://data/CombatContent.gd")
+const COMBAT_DATA = preload("res://data/CombatContent.gd")
 
 static var _last_scanned_species: String = ""
 
@@ -145,8 +145,8 @@ static func build_enemy_hit_profile(damage: float, is_boss_target: bool, species
 	}
 
 	# Apply species-specific affinity tints if available
-	if target_species != "" and "CREATURES" in COMBAT_CONTENT:
-		var creatures: Dictionary = COMBAT_CONTENT.CREATURES
+	if target_species != "" and "CREATURES" in COMBAT_DATA:
+		var creatures: Dictionary = COMBAT_DATA.CREATURES
 		if target_species in creatures:
 			var creature: Dictionary = creatures[target_species]
 			var affinity: String = creature.get("affinity", "")

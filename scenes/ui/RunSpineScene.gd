@@ -8,11 +8,33 @@ signal management_action_requested(action_id: String, payload: Dictionary)
 
 const UI_STYLE = preload("res://systems/UIStyle.gd")
 const PRESENTATION_TEXT = preload("res://data/PresentationTextContent.gd")
-const COMBAT_CONTENT = preload("res://data/CombatContent.gd")
+const COMBAT_DATA = preload("res://data/CombatContent.gd")
 const PERFORMANCE_REWARD_CONTENT = preload("res://data/PerformanceRewardContent.gd")
 const RITUAL_CONTENT = preload("res://data/RitualConsumableContent.gd")
 const COLLAR_CONTENT = preload("res://data/CollarContent.gd")
 const PATH_RUN_PLAN = preload("res://systems/PathRunPlan.gd")
+const _DEBUG_LOG_PATH: String = "debug-1960b2.log"
+const _DEBUG_SESSION_ID: String = "1960b2"
+
+
+func _agent_log(run_id: String, hypothesis_id: String, location: String, message: String, data: Dictionary = {}) -> void:
+	var file: FileAccess = FileAccess.open(_DEBUG_LOG_PATH, FileAccess.READ_WRITE)
+	if file == null:
+		file = FileAccess.open(_DEBUG_LOG_PATH, FileAccess.WRITE_READ)
+	if file == null:
+		return
+	file.seek_end()
+	var payload: Dictionary = {
+		"sessionId": _DEBUG_SESSION_ID,
+		"runId": run_id,
+		"hypothesisId": hypothesis_id,
+		"location": location,
+		"message": message,
+		"data": data,
+		"timestamp": Time.get_unix_time_from_system() * 1000
+	}
+	file.store_line(JSON.stringify(payload))
+	file.close()
 
 var _choices: Array[Dictionary] = []
 var _run_growth: Node = null
@@ -501,7 +523,7 @@ func _refresh_prep_body() -> void:
 func _creature_display_name(species_id: String) -> String:
 	if species_id.is_empty():
 		return "?"
-	var creature: Dictionary = COMBAT_CONTENT.get_creature(species_id)
+	var creature: Dictionary = COMBAT_DATA.get_creature(species_id)
 	if creature.is_empty():
 		return species_id
 	return str(creature.get("display_name", species_id))
@@ -684,10 +706,49 @@ func _compose_management_digest_block() -> String:
 			item_idx + 1,
 			items.size()
 		])
+		
+		# Management-Rich Detail (surfaced for the active selection)
+		if i == _management_section_index:
+			lines.append("    " + _reward_detail_text(item_id))
+			
 	lines.append("  Collar slot  |  " + _equipped_collar_label())
 	if not _management_status_line.is_empty():
 		lines.append("  Last action  |  " + _management_status_line)
 	return "\n".join(PackedStringArray(lines))
+
+
+func _reward_detail_text(reward_id: String) -> String:
+	var reward_data: Dictionary = PERFORMANCE_REWARD_CONTENT.get_reward(reward_id)
+	if reward_data.is_empty():
+		reward_data = RITUAL_CONTENT.get_ritual(reward_id)
+	
+	if reward_data.is_empty():
+		return "No detail available"
+		
+	var summary: String = str(reward_data.get("summary", ""))
+	var tag: String = str(reward_data.get("tag", "ITEM"))
+	var tier: int = int(reward_data.get("power_tier", 1))
+	
+	var detail: String = "[%s T%d] %s" % [tag, tier, summary]
+	
+	var effect: Dictionary = reward_data.get("effect", {})
+	if not effect.is_empty():
+		# #region agent log
+		_agent_log("baseline", "H2", "RunSpineScene.gd:_reward_detail_text", "reward effect detail path", {
+			"reward_id": reward_id,
+			"effect_type_raw": str(effect.get("type", ""))
+		})
+		# #endregion
+		var type: String = str(effect.get("type", "")).replace("_", " ")
+		var stats: Array[String] = []
+		for key in effect.keys():
+			if key == "type": continue
+			stats.append("%s: %s" % [key.replace("_", " "), str(effect[key])])
+		
+		if not stats.is_empty():
+			detail += "\n    Stats  |  " + "  ".join(PackedStringArray(stats))
+			
+	return detail
 
 
 func _compose_collar_menu_block() -> String:

@@ -3,7 +3,7 @@ extends Node
 # VictoryRewardDirector - Manages the orchestration of creature rewards (Bond vs Eat)
 # Extracted from CombatScene.gd to adhere to the "Combat-Clean, Management-Rich" mandate.
 
-const COMBAT_CONTENT = preload("res://data/CombatContent.gd")
+const COMBAT_DATA = preload("res://data/CombatContent.gd")
 const PRESENTATION_TEXT = preload("res://data/PresentationTextContent.gd")
 
 signal offer_started(creature_data: Dictionary, is_live: bool, is_dna_locked: bool, timer: float)

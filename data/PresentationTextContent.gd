@@ -1,6 +1,8 @@
 extends RefCounted
 
-const COMBAT_CONTENT = preload("res://data/CombatContent.gd")
+const COMBAT_DATA = preload("res://data/CombatContent.gd")
+const _DEBUG_LOG_PATH: String = "debug-1960b2.log"
+const _DEBUG_SESSION_ID: String = "1960b2"
 
 const SUPPORT_EMPTY_NAME: String = "No bond"
 const SUPPORT_EMPTY_TRIGGER: String = "No support"
@@ -237,10 +239,36 @@ const QUIG_REACTIVE_LINES := {
 	}
 }
 
+static func _agent_log(run_id: String, hypothesis_id: String, location: String, message: String, data: Dictionary = {}) -> void:
+	var file: FileAccess = FileAccess.open(_DEBUG_LOG_PATH, FileAccess.READ_WRITE)
+	if file == null:
+		file = FileAccess.open(_DEBUG_LOG_PATH, FileAccess.WRITE_READ)
+	if file == null:
+		return
+	file.seek_end()
+	var payload: Dictionary = {
+		"sessionId": _DEBUG_SESSION_ID,
+		"runId": run_id,
+		"hypothesisId": hypothesis_id,
+		"location": location,
+		"message": message,
+		"data": data,
+		"timestamp": Time.get_unix_time_from_system() * 1000
+	}
+	file.store_line(JSON.stringify(payload))
+	file.close()
+
+
 static func dna_status_line(species_id: String) -> String:
+	# #region agent log
+	_agent_log("baseline", "H1", "PresentationTextContent.gd:dna_status_line", "dna status line using COMBAT_DATA symbol", {
+		"species_id": species_id,
+		"symbol_type": typeof(COMBAT_DATA)
+	})
+	# #endregion
 	var current: float = GameState.get_dna(species_id)
 	var threshold: float = GameState.get_effective_dna_threshold(species_id)
-	var base: float = float(COMBAT_CONTENT.get_creature(species_id).get("dna_threshold", 0.0))
+	var base: float = float(COMBAT_DATA.get_creature(species_id).get("dna_threshold", 0.0))
 	
 	var line: String = "DNA COLLECTION: %.0f / %.0f" % [current, threshold]
 	if threshold > base:
@@ -249,6 +277,12 @@ static func dna_status_line(species_id: String) -> String:
 
 
 static func live_dna_gate_line(current: float, threshold: float) -> String:
+	# #region agent log
+	_agent_log("baseline", "H4", "PresentationTextContent.gd:live_dna_gate_line", "live dna gate line invoked", {
+		"current": current,
+		"threshold": threshold
+	})
+	# #endregion
 	return "DNA  %.0f / %.0f" % [current, threshold]
 
 

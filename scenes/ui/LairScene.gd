@@ -9,7 +9,7 @@ const LIST_X: float = 392.0
 const LIST_W: float = 832.0
 const UI_STYLE = preload("res://systems/UIStyle.gd")
 const PRESENTATION_TEXT = preload("res://data/PresentationTextContent.gd")
-const COMBAT_CONTENT = preload("res://data/CombatContent.gd")
+const COMBAT_DATA = preload("res://data/CombatContent.gd")
 const POTENTIAL_GATE = preload("res://systems/PotentialGate.gd")
 const GROWTH_STATS = preload("res://data/GrowthStats.gd")
 const CREATURE_TRAITS = preload("res://data/CreatureTraitContent.gd")
@@ -590,7 +590,7 @@ func _identity_line(creature: Dictionary, species_id: String) -> String:
 
 
 func _support_one_liner(creature: Dictionary, species_id: String) -> String:
-	var role: Dictionary = COMBAT_CONTENT.get_support_role(species_id)
+	var role: Dictionary = COMBAT_DATA.get_support_role(species_id)
 	if role.is_empty():
 		role = creature.get("support_role", {})
 	var readout: String = String(role.get("readout_name", creature.get("display_name", ""))).strip_edges()
@@ -614,7 +614,7 @@ func _reflow_lair_desc_scroll(scroll: ScrollContainer, label: Label) -> void:
 func _get_potential_label_for_species(species_id: String) -> String:
 	if species_id.is_empty():
 		return POTENTIAL_GATE.GRADE_ALPHA.to_upper()
-	var creature_template: Dictionary = COMBAT_CONTENT.get_creature(species_id)
+	var creature_template: Dictionary = COMBAT_DATA.get_creature(species_id)
 	var potential_grade: String = POTENTIAL_GATE.normalize_grade_id(
 		String(creature_template.get("potential_max_grade", POTENTIAL_GATE.GRADE_ALPHA))
 	)
@@ -707,7 +707,7 @@ func _refresh_active_support_panel() -> void:
 		var player_dna: float = GameState.get_dna(species_id)
 		_hub_dna_stat.text = PRESENTATION_TEXT.dna_status_line(species_id)
 		
-		var role: Dictionary = COMBAT_CONTENT.get_support_role(species_id)
+		var role: Dictionary = COMBAT_DATA.get_support_role(species_id)
 		if role.is_empty():
 			role = c.get("support_role", {})
 		var trig_hint: String = String(role.get("hud_trigger_hint", "")).strip_edges()

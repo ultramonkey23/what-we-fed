@@ -5,7 +5,7 @@ extends Node
 # This system replaces hardcoded encounter data with procedural generation
 
 const ENEMY_TEMPLATES = preload("res://data/EnemyTemplates.gd")
-const COMBAT_CONTENT = preload("res://data/CombatContent.gd")
+const COMBAT_DATA = preload("res://data/CombatContent.gd")
 
 signal encounter_generated(encounter_data: Dictionary)
 
@@ -289,7 +289,7 @@ func _assign_lane_for_distribution(distribution: String, occupied: Array[int], e
 func _apply_biome_styling(encounter_data: Dictionary) -> Dictionary:
 	# Get biome data from CombatContent
 	var biome_id: String = region_id + "_boss" if encounter_data.get("is_boss", false) else region_id
-	var biome: Dictionary = COMBAT_CONTENT.get_biome(biome_id)
+	var biome: Dictionary = COMBAT_DATA.get_biome(biome_id)
 	
 	encounter_data["biome"] = biome
 	
@@ -309,7 +309,7 @@ func _generate_reward_pool(size: int) -> Array:
 	var region_creatures: Array = []
 	
 	# This would ideally be data-driven based on region affinity
-	var all_creatures: Dictionary = COMBAT_CONTENT.CREATURES
+	var all_creatures: Dictionary = COMBAT_DATA.CREATURES
 	for creature_id in all_creatures:
 		var creature: Dictionary = all_creatures[creature_id]
 		# Simple region affinity check (could be more sophisticated)

@@ -271,8 +271,6 @@ func claim_active_offer(source: String = "manual") -> void:
 	if not reward_id.is_empty():
 		_stored_reward_ids.erase(reward_id)
 		_refresh_banked_reward_count_from_stored()
-		if lane != "consumable" and GameState.has_method("add_upgrade"):
-			GameState.add_upgrade(reward_id)
 		if lane == "consumable":
 			if not _claimed_ritual_ids.has(reward_id):
 				_claimed_ritual_ids.append(reward_id)
@@ -290,25 +288,40 @@ func claim_active_offer(source: String = "manual") -> void:
 	_show_next_queued_offer()
 
 
-func sync_from_gamestate() -> void:
-	# Restores runtime effects and claimed status from persistent GameState upgrades.
+func sync_from_reward_state() -> void:
+	# Restores runtime effects and claimed status from RewardState and legacy upgrades.
 	# Essential for multi-level runs where the director is re-instantiated.
-	if not GameState.has_method("has_upgrade"):
-		return
-		
-	for reward_id in PERFORMANCE_REWARD_CONTENT.REWARD_ORDER:
-		if GameState.call("has_upgrade", reward_id):
-			var reward_data: Dictionary = PERFORMANCE_REWARD_CONTENT.get_reward(reward_id)
-			if not reward_data.is_empty():
-				var effect: Dictionary = reward_data.get("effect", {})
-				var effect_type: String = String(effect.get("type", ""))
-				if not effect_type.is_empty():
-					_runtime_effects[effect_type] = effect.duplicate(true)
-				if not _claimed_reward_ids.has(reward_id):
-					_claimed_reward_ids.append(reward_id)
-				if not _reserved_reward_ids.has(reward_id):
-					_reserved_reward_ids.append(reward_id)
+	
+	# Primary: Build from structured RewardState
+	var snapshot: Dictionary = GameState.get_reward_ecology_snapshot()
+	var loot: Dictionary = snapshot.get("loot", {})
+	var artifacts: Dictionary = snapshot.get("artifact", {})
+	
+	for slot in loot:
+		for reward_id in loot[slot]:
+			_register_synced_reward(reward_id)
+			
+	for slot in artifacts:
+		for reward_id in artifacts[slot]:
+			_register_synced_reward(reward_id)
+	
 	_emit_state_changed()
+
+
+func _register_synced_reward(reward_id: String) -> void:
+	var reward_data: Dictionary = PERFORMANCE_REWARD_CONTENT.get_reward(reward_id)
+	if reward_data.is_empty():
+		return
+	var effect: Dictionary = reward_data.get("effect", {})
+	var effect_type: String = String(effect.get("type", ""))
+	if not effect_type.is_empty():
+		_runtime_effects[effect_type] = effect.duplicate(true)
+	if not _claimed_reward_ids.has(reward_id):
+		_claimed_reward_ids.append(reward_id)
+	if not _reserved_reward_ids.has(reward_id):
+		_reserved_reward_ids.append(reward_id)
+	if not _claimed_rewards.has(reward_data):
+		_claimed_rewards.append(reward_data)
 
 
 func get_active_offer() -> Dictionary:

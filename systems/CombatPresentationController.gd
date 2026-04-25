@@ -1,6 +1,5 @@
 extends Node
 
-const COMBAT_CONTENT = preload("res://data/CombatContent.gd")
 const COMBAT_FEEL_CONTENT = preload("res://data/CombatFeelContent.gd")
 const COMBAT_BG_CONTENT = preload("res://data/CombatBackgroundContent.gd")
 const UI_STYLE = preload("res://systems/UIStyle.gd")

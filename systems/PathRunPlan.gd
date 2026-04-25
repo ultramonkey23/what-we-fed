@@ -1,7 +1,7 @@
 extends RefCounted
 
 const PATH_CONTENT = preload("res://data/PathContent.gd")
-const COMBAT_CONTENT = preload("res://data/CombatContent.gd")
+const COMBAT_DATA = preload("res://data/CombatContent.gd")
 const RUN_PACING_CONTENT = preload("res://data/RunPacingContent.gd")
 
 const BOND_NODE_IDS: Array[String] = ["bond_rite"]
@@ -213,7 +213,7 @@ static func _raise_active_bond_level(gain: int) -> void:
 	var species_id: String = String(active.get("species_id", ""))
 	if species_id.is_empty():
 		return
-	var base_creature: Dictionary = COMBAT_CONTENT.get_creature(species_id)
+	var base_creature: Dictionary = COMBAT_DATA.get_creature(species_id)
 	if base_creature.is_empty():
 		return
 	for _i in range(gain):

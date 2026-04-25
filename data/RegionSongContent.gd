@@ -1,6 +1,6 @@
 extends RefCounted
 
-const COMBAT_CONTENT = preload("res://data/CombatContent.gd")
+const COMBAT_DATA = preload("res://data/CombatContent.gd")
 
 # Per-region song phase definitions.
 # CombatScene._start_song_run() selects from here based on GameState.active_region.id.
@@ -352,7 +352,7 @@ static func get_song_phases(region_id: String) -> Array:
 		var resolved_phase: Dictionary = phase.duplicate(true)
 		var built_pool: Array = []
 		for entry in resolved_phase.get("enemy_pool", []):
-			built_pool.append(COMBAT_CONTENT.build_creature_enemy(entry))
+			built_pool.append(COMBAT_DATA.build_creature_enemy(entry))
 		resolved_phase["enemy_pool"] = built_pool
 		built_phases.append(resolved_phase)
 	return built_phases

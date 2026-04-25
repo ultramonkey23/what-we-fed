@@ -1,10 +1,7 @@
 extends Node
 
 const GROWTH_CONTENT = preload("res://data/RunGrowthContent.gd")
-const COMBAT_CONTENT = preload("res://data/CombatContent.gd")
 const PRESENTATION_TEXT = preload("res://data/PresentationTextContent.gd")
-
-@onready var growth_stats: GrowthStats = preload("res://data/GrowthStats.gd").new()
 
 # Modular Managers
 var progression := ProgressionManager.new()
@@ -41,7 +38,7 @@ var active_surges: Dictionary:
 var mutations: Array[Dictionary] = []
 var pending_bonds: Array[String] = []
 
-var _encounter_style_tiers_awarded: Dictionary[String, bool] = {}
+var _encounter_style_tiers_awarded: Dictionary = {}
 var _encounter_survival_spent: bool = false
 var _encounter_pressure_mend_spent: bool = false
 var _level_bonus_base_damage: float = 0.0
@@ -79,11 +76,9 @@ func _ready() -> void:
 	_emit_growth_state()
 	_emit_support_state()
 	_emit_dna_routing_state()
-	_reset_tendencies()
 
 
 func _exit_tree() -> void:
-	# Cleanup connections...
 	pass
 
 
@@ -116,7 +111,7 @@ func get_tendency_summary() -> String:
 				"bond": label = "SYNC"
 			tendency_tokens.append(label)
 
-	var ordered_ids: Array[String] = _sorted_tendency_ids_by_level()
+	var ordered_ids: Array[String] = tendencies.get_sorted_ids()
 	for i in range(min(2, ordered_ids.size())):
 		var tendency_id: String = ordered_ids[i]
 		var tendency_level: int = int(tendency_levels.get(tendency_id, 0))
@@ -126,7 +121,7 @@ func get_tendency_summary() -> String:
 	if not tendency_tokens.is_empty():
 		return " | ".join(PackedStringArray(tendency_tokens))
 
-	var lead_id: String = _get_leading_tendency_id()
+	var lead_id: String = tendencies.get_leading_id(!get_active_species_id().is_empty())
 	if lead_id.is_empty(): return "--"
 	return _tendency_short_name(lead_id)
 
@@ -152,10 +147,6 @@ func get_runtime_effect(effect_type: String) -> Dictionary:
 		"bond_trigger_mult":
 			if has_surge("bond"): return {"type": effect_type, "value": 2.0}
 	return {}
-
-
-func get_growth_effect(effect_type: String) -> Dictionary:
-	return _get_growth_effect(effect_type)
 
 
 func has_surge(surge_type: String) -> bool:
@@ -204,7 +195,7 @@ func get_growth_snapshot() -> Dictionary:
 		"player_hp": GameState.player_hp, "player_max_hp": GameState.player_max_hp,
 		"support_charge": support_charge, "support_max": GROWTH_CONTENT.SUPPORT_MAX,
 		"dna_routing_preference": dna_routing_preference,
-		"good_timed_bonus_damage_mult": 0.12 * cadence_level,
+		"good_timed_bonus_damage_mult": 0.05 * cadence_level,
 		"support_charge_gain_mult": 1.0 + 0.12 * bond_level
 	}
 
@@ -258,7 +249,7 @@ func _on_run_started(_run_number: int) -> void:
 	_level_bonus_base_damage = 0.0
 	_level_bonus_max_hp = 0.0
 	_level_bonus_defense = 0.0
-	tendencies.reset(growth_stats.default_surges)
+	tendencies.reset()
 	_refresh_primary_combat_stats(0.0)
 	var region_mod: Dictionary = GameState.active_region.get("modifier", {})
 	if region_mod.get("type", "") == "starting_support_charge":
@@ -304,31 +295,6 @@ func _on_timed_attack_resolved(lane: int, quality: String, _damage: float) -> vo
 	_grant_exp(GROWTH_CONTENT.EXP_TIMED_ATTACK)
 	_gain_support_charge(GROWTH_CONTENT.CHARGE_TIMED_ATTACK)
 
-	# Trait Pass: Venomous Sting
-	if quality == "perfect":
-		for creature in GameState.roster:
-			if String(creature.get("trait_id", "")) == "venomous_sting_v22":
-				var venom_beats: int = 4
-				var venom_damage: float = 0.10
-				# Synergy Check: Sludge Doom
-				var has_sludge_synergy: bool = false
-				for other in GameState.roster:
-					if String(other.get("secondary_type", "")) == "sludge_doom" or String(other.get("primary_type", "")) == "sludge_doom":
-						has_sludge_synergy = true
-						break
-				
-				if has_sludge_synergy:
-					venom_beats *= 2
-					# Slow effect is now supported in LaneManager via 'slow' parameter
-					EventBus.proc_feedback_requested.emit("SYSTEM BREACH: SLUDGE", Color(0.2, 0.8, 0.2, 1.0))
-				
-				EventBus.enemy_status_applied_requested.emit(lane, "venom", {
-					"beats": venom_beats, 
-					"damage_ratio": venom_damage,
-					"slow": has_sludge_synergy
-				})
-				break
-
 	var rend_charges: float = get_mutation_bonus("rend_on_hit", {"quality": quality})
 	if rend_charges > 0.0:
 		EventBus.enemy_status_applied_requested.emit(lane, "rend", {"charges": int(rend_charges)})
@@ -349,8 +315,6 @@ func _on_timed_attack_resolved(lane: int, quality: String, _damage: float) -> vo
 	elif quality == "perfect": cadence_gain = 1.4
 	_grant_tendency("cadence", cadence_gain)
 	if quality == "perfect":
-		_apply_upgrade_effect_on_event("perfect_timing")
-		_apply_upgrade_effect_on_event("perfect_timed_heal")
 		_trigger_active_support_for_event("perfect_timed_attack", lane)
 	elif quality == "good": _trigger_active_support_for_event("good_timed_attack", lane)
 
@@ -358,15 +322,14 @@ func _on_timed_attack_resolved(lane: int, quality: String, _damage: float) -> vo
 func _on_player_parried(lane: int, quality: String, _reflect_damage: float) -> void:
 	match quality:
 		"perfect":
-			_grant_exp(GROWTH_CONTENT.EXP_PERFECT_PARRY)
-			_gain_support_charge(GROWTH_CONTENT.CHARGE_PERFECT_PARRY)
+			_grant_exp(15.0) # Corrected T2.2 value
+			_gain_support_charge(25.0)
 			_grant_tendency("guard", 1.2)
 			_grant_tendency("cadence", 0.5)
-			_apply_upgrade_effect_on_event("perfect_timing")
 			_trigger_active_support_for_event("perfect_parry", lane)
 		"good":
-			_grant_exp(GROWTH_CONTENT.EXP_GOOD_PARRY)
-			_gain_support_charge(GROWTH_CONTENT.CHARGE_GOOD_PARRY)
+			_grant_exp(7.0)
+			_gain_support_charge(12.0)
 			_grant_tendency("guard", 0.8)
 
 
@@ -380,16 +343,12 @@ func _on_combo_changed(_count: int, tier: String) -> void:
 
 func _on_ultimate_fired(_power: float) -> void:
 	_grant_exp(GROWTH_CONTENT.EXP_ULTIMATE)
-	_apply_upgrade_effect_on_event("ultimate_fired")
 	_trigger_active_support_for_event("ultimate_fired", 1)
 	_grant_tendency("aggression", 1.4)
 
 
 func _on_player_took_damage(_amount: float, source_lane: int) -> void:
 	if has_surge("guard"): consume_surge_hit("guard")
-	if not _encounter_survival_spent and _apply_upgrade_effect_on_event("first_damage_taken"): _encounter_survival_spent = true
-	if not _encounter_pressure_mend_spent and GameState.get_hp_percent() < 0.50:
-		if _apply_upgrade_effect_on_event("low_hp_first_hit"): _encounter_pressure_mend_spent = true
 	_trigger_active_support_for_event("damage_taken_when_ready", source_lane)
 	_grant_tendency("guard", 0.25)
 
@@ -429,16 +388,19 @@ func _grant_exp(amount: float) -> void:
 func _gain_support_charge(amount: float) -> void:
 	if amount <= 0.0 or get_active_species_id().is_empty(): return
 	var gain_mult: float = 1.0 * GameState.stat_intelligence
-	var gain_effect: Dictionary = _get_growth_effect("support_charge_gain_mult")
+	
+	# Tendency-based charge multiplier (Cadence surge)
+	var gain_effect: Dictionary = get_runtime_effect("support_charge_gain_mult")
 	if not gain_effect.is_empty(): gain_mult *= float(gain_effect.get("value", 1.0))
+	
 	var synergy_bonus: float = 1.0
 	var active_creature: Dictionary = GameState.get_active_bonded_creature()
 	if not active_creature.is_empty():
 		var p_type: String = String(active_creature.get("primary_type", ""))
 		for eaten in GameState.absorbed_types:
 			if String(eaten.get("type", "")) == p_type: synergy_bonus = 1.25; break
-	var flat: float = float(_get_growth_effect("support_charge_flat_bonus").get("value", 0.0))
-	support.gain_charge(amount + flat, gain_mult * synergy_bonus)
+	
+	support.gain_charge(amount, gain_mult * synergy_bonus)
 	_emit_support_state()
 
 
@@ -456,50 +418,6 @@ func _trigger_active_support_for_event(event_id: String, lane: int) -> void:
 	var role: Dictionary = COMBAT_CONTENT.get_support_role(species_id)
 	if role.is_empty() or not role.get("trigger_on", []).has(event_id): return
 	_trigger_support(species_id, lane, String(role.get("effect_id", "")))
-
-
-func _get_growth_effect(effect_type: String) -> Dictionary:
-	var runtime: Dictionary = get_runtime_effect(effect_type)
-	if not runtime.is_empty(): return runtime
-	for upgrade in GROWTH_CONTENT.UPGRADE_POOL:
-		if GameState.has_upgrade(String(upgrade.get("id", ""))) and String(upgrade.get("effect", {}).get("type", "")) == effect_type:
-			return upgrade.get("effect", {})
-	return {}
-
-
-func _apply_upgrade_effect_on_event(event_id: String) -> bool:
-	match event_id:
-		"perfect_timing":
-			var eff: Dictionary = _get_growth_effect("perfect_bonus_exp_and_charge")
-			if eff.is_empty(): return false
-			_grant_exp(float(eff.get("exp_value", 0.0)))
-			_gain_support_charge(float(eff.get("charge_value", 0.0)))
-			return true
-		"ultimate_fired":
-			var eff: Dictionary = _get_growth_effect("support_charge_on_ultimate")
-			if eff.is_empty(): return false
-			_gain_support_charge(float(eff.get("value", 0.0)))
-			return true
-		"first_damage_taken":
-			var eff: Dictionary = _get_growth_effect("first_hit_recovery")
-			if eff.is_empty(): return false
-			var healed: float = GameState.heal_player(float(eff.get("heal_value", 0.0)))
-			if healed > 0.0: EventBus.player_healed.emit(healed)
-			_gain_support_charge(float(eff.get("charge_value", 0.0)))
-			return true
-		"perfect_timed_heal":
-			var eff: Dictionary = _get_growth_effect("hp_on_perfect_timed")
-			if eff.is_empty(): return false
-			var healed: float = GameState.heal_player(float(eff.get("value", 0.0)))
-			if healed > 0.0: EventBus.player_healed.emit(healed)
-			return true
-		"low_hp_first_hit":
-			var eff: Dictionary = _get_growth_effect("low_hp_first_damage_heal")
-			if eff.is_empty(): return false
-			var healed: float = GameState.heal_player(float(eff.get("value", 0.0)))
-			if healed > 0.0: EventBus.player_healed.emit(healed)
-			return true
-	return false
 
 
 func _apply_hp_on_kill_passive() -> void:
@@ -528,7 +446,6 @@ func gain_reward_support_charge(amount: float) -> void:
 
 func apply_debug_state(state: Dictionary) -> void:
 	if state.is_empty(): return
-	print("[DEBUG] Applying debug state: ", state)
 	level = max(int(state.get("level", level)), 1)
 	current_exp = max(float(state.get("exp", current_exp)), 0.0)
 	exp_to_next = progression.get_exp_threshold(level)
@@ -536,17 +453,21 @@ func apply_debug_state(state: Dictionary) -> void:
 	for k in tendency_levels.keys(): tendency_levels[k] = max(int(state.get("tendency_levels", {}).get(k, 0)), 0)
 	if state.has("support_charge"): support_charge = clamp(float(state.get("support_charge", support_charge)), 0.0, GROWTH_CONTENT.SUPPORT_MAX)
 	_emit_growth_state(); _emit_support_state()
-	print("[DEBUG] Applied state: level=", level, " exp=", current_exp, " support=", support_charge)
 
 
-func _reset_tendencies() -> void: tendencies.reset(growth_stats.default_surges)
+func _on_bonded_support_triggered_from_event(species_id: String, lane: int, effect_id: String) -> void:
+	_on_bonded_support_triggered(species_id, lane, effect_id)
+
+
+func _get_leading_tendency_id() -> String:
+	return tendencies.get_leading_id(!get_active_species_id().is_empty())
+
+
 func _grant_tendency(id: String, amt: float) -> void: tendencies.grant_points(id, amt, GameState.stat_potential)
-func _get_leading_tendency_id() -> String: return tendencies.get_leading_id(!get_active_species_id().is_empty())
-func _sorted_tendency_ids_by_level() -> Array[String]: return tendencies.get_sorted_ids()
 
 
 func _apply_real_time_growth_pulse() -> void:
-	var id: String = _get_leading_tendency_id()
+	var id: String = tendencies.get_leading_id(!get_active_species_id().is_empty())
 	if id.is_empty(): id = "aggression"
 	var new_lvl: int = int(tendency_levels.get(id, 0)) + 1
 	tendency_levels[id] = new_lvl
@@ -563,13 +484,14 @@ func _resolve_tendency_level_up(id: String, lvl: int) -> Dictionary:
 	if out.is_empty(): return {}
 	var changes: Array[Dictionary] = []
 	var creature: Dictionary = GameState.get_active_bonded_creature()
-	var weights: Dictionary = {"stat_potential": 10} if creature.is_empty() else {}
+	var weights: Dictionary = {"stat_potential": 10}
 	if not creature.is_empty():
-		var p_w: Dictionary = growth_stats.genetic_weights.get(creature.get("primary_type", ""), {})
-		var s_w: Dictionary = growth_stats.genetic_weights.get(creature.get("secondary_type", ""), {})
-		for k in p_w.keys(): weights[k] = weights.get(k, 0) + p_w[k]
-		for k in s_w.keys(): weights[k] = weights.get(k, 0) + s_w[k]
-	if weights.is_empty(): weights = {"stat_potential": 10}
+		weights = {
+			"stat_vitality": 2, "stat_power": 2, "stat_carapace": 2, 
+			"stat_endurance": 2, "stat_swiftness": 2, "stat_luck": 2, 
+			"stat_potential": 2, "stat_intelligence": 2, "stat_adaptability": 2
+		}
+	
 	var keys: Array = weights.keys(); var total: int = 0
 	for v in weights.values(): total += int(v)
 	for i in range(4):

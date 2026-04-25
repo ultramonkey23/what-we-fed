@@ -4,7 +4,7 @@ extends RefCounted
 ## dictionary shape expected by `CombatScene._load_encounter_payload` (hp/damage, biome,
 ## boss labels, reward pool). Used only from debug harness paths.
 
-const COMBAT_CONTENT = preload("res://data/CombatContent.gd")
+const COMBAT_DATA = preload("res://data/CombatContent.gd")
 
 
 static func normalize_for_combat_scene(raw: Dictionary, region_id: String, is_boss: bool) -> Dictionary:
@@ -23,14 +23,14 @@ static func _resolve_biome(encounter: Dictionary, region_id: String, is_boss: bo
 		return
 	match region_id:
 		"pale_shelf":
-			encounter["biome"] = COMBAT_CONTENT.BIOME_PALE_SHELF.duplicate(true)
+			encounter["biome"] = COMBAT_DATA.BIOME_PALE_SHELF.duplicate(true)
 		"drowned_cut":
-			encounter["biome"] = COMBAT_CONTENT.BIOME_DROWNED_CUT.duplicate(true)
+			encounter["biome"] = COMBAT_DATA.BIOME_DROWNED_CUT.duplicate(true)
 		_:
 			if is_boss:
-				encounter["biome"] = COMBAT_CONTENT.BIOME_FEEDING_HOLLOW_BOSS.duplicate(true)
+				encounter["biome"] = COMBAT_DATA.BIOME_FEEDING_HOLLOW_BOSS.duplicate(true)
 			else:
-				encounter["biome"] = COMBAT_CONTENT.BIOME_FEEDING_HOLLOW.duplicate(true)
+				encounter["biome"] = COMBAT_DATA.BIOME_FEEDING_HOLLOW.duplicate(true)
 
 
 static func _normalize_phases(encounter: Dictionary) -> void:
@@ -65,10 +65,10 @@ static func _sanitize_reward_pool(encounter: Dictionary) -> void:
 			if item is Dictionary and not (item as Dictionary).is_empty():
 				cleaned.append((item as Dictionary).duplicate(true))
 		if cleaned.is_empty():
-			var fallback: Dictionary = COMBAT_CONTENT.get_creature("thornback")
+			var fallback: Dictionary = COMBAT_DATA.get_creature("thornback")
 			if not fallback.is_empty():
 				cleaned.append(fallback)
 		encounter["reward_creature_pool"] = cleaned
 	else:
-		var fb: Dictionary = COMBAT_CONTENT.get_creature("thornback")
+		var fb: Dictionary = COMBAT_DATA.get_creature("thornback")
 		encounter["reward_creature_pool"] = [] if fb.is_empty() else [fb]

@@ -4,7 +4,7 @@ extends RefCounted
 # Extracts creature-specific support resolution from CombatScene.
 # Uses signals for feedback and interventions to maintain a clean interface.
 
-const COMBAT_CONTENT = preload("res://data/CombatContent.gd")
+const COMBAT_DATA = preload("res://data/CombatContent.gd")
 const COMBAT_IMPACT_FEEDBACK = preload("res://systems/CombatImpactFeedback.gd")
 
 signal feedback_requested(text, color, duration)
@@ -38,7 +38,7 @@ func resolve(ctx: Dictionary) -> void:
 		_apply_collar_behavior(ctx, collar_mod)
 		return
 
-	var support_role: Dictionary = COMBAT_CONTENT.get_support_role(species_id)
+	var support_role: Dictionary = COMBAT_DATA.get_support_role(species_id)
 	if support_role.is_empty():
 		return
 

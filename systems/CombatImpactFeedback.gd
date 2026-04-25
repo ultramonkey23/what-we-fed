@@ -23,10 +23,10 @@ static func build_timed_attack_profile(quality: String, _beat_quality: String) -
 	var profile: Dictionary = {
 		"flash_color": Color(0.8, 0.8, 0.9, 0.12),
 		"flash_duration": base_flash.get("duration", 0.04),
-		"shake_intensity": base_shake.get("intensity", 0.40),
-		"shake_duration": base_shake.get("duration", 0.04),
-		"hitstop_scale": 0.88,
-		"hitstop_duration": base_hitstop,
+		"shake_intensity": base_shake.get("intensity", 0.65),
+		"shake_duration": base_shake.get("duration", 0.06),
+		"hitstop_scale": 0.80,
+		"hitstop_duration": base_hitstop + 0.02,
 		"ring_width": 3.4,
 		"burst_color": Color(0.1, 0.1, 0.15, 0.8), # Ink Core
 		"burst_scale": base_impact.get("scale_multiplier", 1.10),
@@ -44,10 +44,10 @@ static func build_timed_attack_profile(quality: String, _beat_quality: String) -
 		# SIGNAL: Alert Gold + Void Ink
 		profile["flash_color"] = Color(1.0, 0.9, 0.3, 0.18)
 		profile["flash_duration"] = perfect_flash.get("duration", 0.07)
-		profile["shake_intensity"] = perfect_shake.get("intensity", 0.95)
-		profile["shake_duration"] = perfect_shake.get("duration", 0.07)
-		profile["hitstop_scale"] = 0.70
-		profile["hitstop_duration"] = perfect_hitstop
+		profile["shake_intensity"] = perfect_shake.get("intensity", 1.45)
+		profile["shake_duration"] = perfect_shake.get("duration", 0.10)
+		profile["hitstop_scale"] = 0.55
+		profile["hitstop_duration"] = perfect_hitstop + 0.04
 		profile["ring_width"] = 5.4
 		profile["burst_color"] = Color(0.0, 0.0, 0.0, 1.0) # Pure Void Ink
 		profile["burst_scale"] = perfect_impact.get("scale_multiplier", 1.50)
@@ -63,8 +63,10 @@ static func build_parry_profile(quality: String, _beat_quality: String) -> Dicti
 	var profile: Dictionary = {
 		"flash_color": Color(0.2, 0.6, 1.0, 0.1),
 		"flash_duration": 0.05,
-		"shake_intensity": 0.0,
-		"shake_duration": 0.0,
+		"shake_intensity": 0.62,
+		"shake_duration": 0.06,
+		"hitstop_scale": 0.82,
+		"hitstop_duration": 0.08,
 		"ring_width": 3.6,
 		"burst_color": Color(0.01, 0.01, 0.02, 0.9), # Ink Seam
 		"burst_scale": 1.14,
@@ -75,10 +77,10 @@ static func build_parry_profile(quality: String, _beat_quality: String) -> Dicti
 		var perf_flash: Dictionary = COMBAT_FEEL_CONSTANTS.get_screen_flash_params("perfect_parry")
 		profile["flash_color"] = Color(1.0, 1.0, 1.0, 0.99)
 		profile["flash_duration"] = perf_flash.get("duration", 0.08)
-		profile["shake_intensity"] = 1.1 # More violent
-		profile["shake_duration"] = 0.08
-		profile["hitstop_scale"] = 0.60
-		profile["hitstop_duration"] = 0.12
+		profile["shake_intensity"] = 1.62 # More violent
+		profile["shake_duration"] = 0.12
+		profile["hitstop_scale"] = 0.50
+		profile["hitstop_duration"] = 0.22
 		profile["ring_width"] = 7.0
 		profile["burst_color"] = Color(0.0, 0.0, 0.0, 1.0) # Void Shatter
 		profile["burst_scale"] = 1.6
@@ -160,10 +162,10 @@ static func build_enemy_hit_profile(damage: float, is_boss_target: bool, species
 	if heavy:
 		profile["flash_color"] = Color(1.0, 0.42, 0.20, 0.075) if target_species == "" else profile["flash_color"]
 		profile["flash_duration"] = 0.05
-		profile["shake_intensity"] = 0.72
-		profile["shake_duration"] = 0.06
-		profile["hitstop_scale"] = 0.82
-		profile["hitstop_duration"] = 0.05
+		profile["shake_intensity"] = 0.92
+		profile["shake_duration"] = 0.08
+		profile["hitstop_scale"] = 0.78
+		profile["hitstop_duration"] = 0.08
 		profile["burst_scale"] = 1.22
 		profile["enemy_push"] = 11.0
 		profile["enemy_scale"] = Vector2(1.20, 0.80)
@@ -172,10 +174,10 @@ static func build_enemy_hit_profile(damage: float, is_boss_target: bool, species
 	if is_boss_target:
 		profile["flash_color"] = Color(1.0, 0.62, 0.24, 0.065)
 		profile["flash_duration"] = 0.05
-		profile["shake_intensity"] = float(profile["shake_intensity"]) + 0.55
-		profile["shake_duration"] = max(float(profile["shake_duration"]), 0.07)
-		profile["hitstop_scale"] = min(float(profile.get("hitstop_scale", 0.90)), 0.76)
-		profile["hitstop_duration"] = max(float(profile.get("hitstop_duration", 0.03)), 0.06)
+		profile["shake_intensity"] = float(profile["shake_intensity"]) + 0.85
+		profile["shake_duration"] = max(float(profile["shake_duration"]), 0.12)
+		profile["hitstop_scale"] = min(float(profile.get("hitstop_scale", 0.90)), 0.62)
+		profile["hitstop_duration"] = max(float(profile.get("hitstop_duration", 0.03)), 0.12)
 		profile["burst_scale"] = float(profile["burst_scale"]) + 0.22
 		profile["enemy_push"] = float(profile["enemy_push"]) + 2.0
 		profile["enemy_scale"] = Vector2(1.24, 0.78) if heavy else Vector2(1.18, 0.84)

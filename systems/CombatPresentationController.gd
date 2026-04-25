@@ -5,9 +5,9 @@ const COMBAT_BG_CONTENT = preload("res://data/CombatBackgroundContent.gd")
 const UI_STYLE = preload("res://systems/UIStyle.gd")
 const HUD_PANEL_ART = preload("res://systems/HUDPanelArt.gd")
 
-const PLAYER_SIGIL_OUTER_RADIUS: float = 130.0
-const PLAYER_SIGIL_INNER_RADIUS: float = 90.0
-const PLAYER_SIGIL_CORE_RADIUS: float = 28.0
+const PLAYER_SIGIL_OUTER_RADIUS: float = 100.0
+const PLAYER_SIGIL_INNER_RADIUS: float = 70.0
+const PLAYER_SIGIL_CORE_RADIUS: float = 22.0
 
 var _active_bg_env: Dictionary = {}
 var _shared_noise_tex: NoiseTexture2D = null

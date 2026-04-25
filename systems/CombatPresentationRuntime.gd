@@ -407,7 +407,7 @@ func highlight_timing_ring(lane: int, color: Color, width: float = 4.0) -> void:
 	if group == null:
 		return
 
-	_ring_highlight_timers[lane] = 0.20
+	_ring_highlight_timers[lane] = 0.15
 
 	for child in group.get_children():
 		if child is Line2D:
@@ -423,7 +423,7 @@ func highlight_timing_ring(lane: int, color: Color, width: float = 4.0) -> void:
 			var flash_color: Color = Color(color.r, color.g, color.b, 0.28)
 			fill.color = flash_color
 			var tween := fill.create_tween()
-			tween.tween_property(fill, "color:a", original_alpha, 0.22)
+			tween.tween_property(fill, "color:a", original_alpha, 0.15)
 
 
 func animate_timing_ring_press(lane: int) -> void:
@@ -434,12 +434,12 @@ func animate_timing_ring_press(lane: int) -> void:
 	var original_position: Vector2 = group.position
 	var original_scale: Vector2 = group.scale
 
-	group.scale = Vector2(0.92, 0.92)
-	group.position += Vector2(randf_range(-2.0, 2.0), randf_range(-2.0, 2.0))
+	group.scale = Vector2(0.88, 0.88)
+	group.position += Vector2(randf_range(-3.0, 3.0), randf_range(-3.0, 3.0))
 
 	var tween := group.create_tween()
-	tween.tween_property(group, "scale", original_scale, 0.06)
-	tween.parallel().tween_property(group, "position", original_position, 0.06)
+	tween.tween_property(group, "scale", original_scale, 0.04)
+	tween.parallel().tween_property(group, "position", original_position, 0.04)
 
 
 func _get_timing_receiver(lane: int) -> Node2D:

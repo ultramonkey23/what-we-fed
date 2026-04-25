@@ -1,28 +1,13 @@
 # WHAT WE FED — LOCKBOX REGISTRY
 
-## Snapshot Metadata
-- Snapshot type: Command Center Lockbox mirror
-- Canonical owner: Command Center v1
-- Repo role: agent-facing snapshot for audits/handoffs
-- Synced from: WHAT_WE_FED_LOCKBOX_REGISTRY_FULL.md
-- Synced date: 2026-04-25
-- Synced by: Codex
-- Repo commit before sync: 1849840
-- Source Lockbox item count: 37
-- Validation level: 2 — static docs sync
-- Runtime validation: not applicable
-- Manual playtest validation: not applicable
-- Status promotion allowed in this pass: no
+A living registry for **design-locked ideas** that should not be implemented until fresh repo truth confirms fit.
 
-## Authority Warning
-- Command Center v1 owns live Lockbox status, canon, and priority.
-- This repo file is a synced snapshot, not the source of creative authority.
-- This file is design/task intent, not confirmed repo truth.
-- Agents must not implement directly from this file.
-- Agents must use docs/ai/LOCKBOX_INTERFACE_CONTRACT.md before converting any card into audit/handoff/implementation work.
-- No Lockbox item becomes implementation without current repo truth, readiness audit, scoped handoff, validation, and scored agent report.
+This file protects strong ideas from getting lost while preventing scope creep. Items stay here until they are audited, converted into a precise handoff prompt, implemented, validated, and marked complete.
 
-## Current Active Priority
+---
+
+## Current active priority
+
 ```text
 Combat must become reliable, readable, crunchy, directional, and action-RPG/gamey with beat-feel.
 ```
@@ -32,6 +17,7 @@ Fresh repo truth is currently **unknown** until an agent report is ingested.
 ---
 
 ## Command Center Core Rules
+
 This chat is the **WHAT WE FED Command Center**, not the repo agent.
 
 Every exchange should improve the project command system when useful. Command Center should quietly critique new ideas, protect against drift, evolve relevant direction, update the Lockbox when direction changes, and keep responses compact unless the user asks for a full breakdown.
@@ -55,7 +41,120 @@ Core operating rules:
 
 ---
 
-## Status Meanings
+## Ultra-Compact Output Protocol
+
+Default response mode is minimal and must not use web/search/citations/tools unless the user explicitly asks, freshness is required, or an artifact/repo action requires it.
+
+For normal design/canon/workflow updates, output only:
+
+```text
+Updated. [1 short sentence if needed]
+Lockbox items: [number]
+```
+
+For disagreement or critique, output only:
+
+```text
+Critique: [1-2 short sentences]
+Update: [1 short sentence]
+Lockbox items: [number]
+```
+
+For routing/handoff requests, provide only the prompt or ordered action list requested.
+
+Do not explain every Lockbox update.
+Do not restate canon unless asked.
+Do not output full cards unless asked.
+Do not cite sources unless research was requested or factual freshness matters.
+Prefer concise, clear, specific outputs.
+Use migration warnings only when risk is real.
+
+---
+
+## Command Center Self-Improvement Rule
+
+After each user message, Command Center should silently ask:
+
+```text
+Does this message change canon, priority, workflow, routing, risk, or implementation order?
+```
+
+If yes, update the Lockbox or core rules.
+
+Also silently ask:
+
+```text
+Can this chat workflow be made safer, sharper, shorter, or easier for future desktop execution?
+```
+
+If yes, improve the operating protocol or offer a cleaner command/handoff pattern.
+
+---
+
+## Migration Safety Protocol
+
+Offer migration when any of these become true:
+
+- the chat becomes too long to trust context safely
+- old canon conflicts with newer decisions
+- repo truth and design direction become tangled
+- multiple agent reports have not been compressed into a ledger
+- the user is about to start major implementation from stale context
+- the Lockbox grows large enough that retrieval may become unreliable
+- the current conversation starts causing repeated corrections or confusion
+
+Migration output should include:
+
+1. current confirmed canon
+2. current repo truth status
+3. current priority stack
+4. active Lockbox item count
+5. retired/stale assumptions
+6. next desktop action
+7. paste-ready fresh-chat starter prompt
+
+Do not migrate automatically. Offer it when risky, and generate it when the user says MIGRATE.
+
+Migration hardening note: the canvas/Lockbox Registry may not automatically transfer to a fresh chat. Migration prompts should include the core operating contract, current canon, Lockbox item list/count, and a note to ask for or paste the full registry only when exact card text is needed.
+
+---
+
+## How to use this registry in ChatGPT
+
+Use these commands:
+
+```text
+PULL LOCKBOX: [card name]
+```
+
+```text
+UPDATE LOCKBOX: [card name]
+[changes]
+```
+
+```text
+MARK LOCKBOX READY: [card name]
+[why it is ready]
+```
+
+```text
+MAKE HANDOFF FROM LOCKBOX: [card name]
+```
+
+```text
+MARK LOCKBOX COMPLETE: [card name]
+[paste agent report / validation]
+```
+
+```text
+ARCHIVE LOCKBOX: [card name]
+[reason]
+```
+
+---
+
+## Status meanings
+
 | Status | Meaning |
 |---|---|
 | **LOCKED FOR LATER** | Good idea, but do not implement yet. Needs repo truth or higher priority work first. |
@@ -67,7 +166,8 @@ Core operating rules:
 
 ---
 
-## Universal Implementation Gate
+## Universal implementation gate
+
 Before any Lockbox item becomes an implementation prompt, it must pass this gate:
 
 ```text
@@ -87,8 +187,9 @@ No item moves to implementation without direct repo inspection or a correctly fo
 
 ---
 
-## Canon Notes
-### Player / Creature Separation
+# Canon Notes
+
+## Player / Creature Separation
 
 The player is separate from creatures.
 
@@ -98,7 +199,7 @@ Creatures are bonded modifiers that can transform playstyle through auto-attacks
 
 Creature count is meta progression.
 
-### Combat Rhythm Doctrine
+## Combat Rhythm Doctrine
 
 Combat should feel gamey, RPG-like, and action-driven — not turn-based, not fully song-locked, and not strictly lane-bound in presentation.
 
@@ -114,13 +215,13 @@ Parry, dodge, movement, creature support, RPG modifiers, enemy pressure, and bui
 
 Lanes are no longer sacred as visible combat structure. They may survive only as hidden timing/threat scaffolding if they help readability. The evolved combat direction is a freer action-RPG hunting field with beat-feel attacks and readable threat direction.
 
-### World Start
+## World Start
 
 The world begins uncorrupted, safer, strange, beautiful, alive, and worth affecting.
 
 The horror is not the starting point. The horror is what the world can become through feeding, bonding, corruption, ritual pressure, and escalation.
 
-### Spire
+## Spire
 
 The player is moving toward a giant distant Spire.
 
@@ -128,7 +229,7 @@ The Spire should visibly get closer with each level and transform with world sta
 
 The Spire starts beautiful, ancient, and mysterious — not obviously evil.
 
-### Style Doctrine
+## Style Doctrine
 
 WHAT WE FED uses **Wild Fable Ink** as the core visual identity: hand-drawn folklore creature art with readable silhouettes, strange natural beauty, mythic texture, and world-state mutation layers.
 
@@ -136,15 +237,16 @@ WHAT WE FED uses **Wild Fable Ink** as the core visual identity: hand-drawn folk
 
 ---
 
-## Proper Implementation Order
-### Phase 0 — Project control and truth discipline
+# Proper Implementation Order
+
+## Phase 0 — Project control and truth discipline
 
 1. Agent Report Automation Contract
 2. Current Repo Truth Ledger
 3. Lockbox Registry Workflow
 4. Validation / Playtest Protocol
 
-### Phase 1 — Combat trust foundation
+## Phase 1 — Combat trust foundation
 
 5. Combat Input Trust
 6. Beat-Feel Combat Loosening
@@ -153,14 +255,14 @@ WHAT WE FED uses **Wild Fable Ink** as the core visual identity: hand-drawn folk
 9. Enemy HP / Grade / Damage Readability
 10. Living Hunting Field
 
-### Phase 2 — Creature support foundation
+## Phase 2 — Creature support foundation
 
 11. Player as Vessel, Creatures as Class Modifiers
 12. Bonded Creature Class Loadout
 13. Creature-Based Ranged Pressure
 14. Creature Support Readability Rules
 
-### Phase 3 — Level-end feedback and lightweight RPG memory
+## Phase 3 — Level-end feedback and lightweight RPG memory
 
 15. Adaptive Defeated Enemy Lineup
 16. Creature Fate Choices
@@ -168,14 +270,14 @@ WHAT WE FED uses **Wild Fable Ink** as the core visual identity: hand-drawn folk
 18. World Memory
 19. Tendency-Based RPG Growth
 
-### Phase 4 — Art identity and UI foundation
+## Phase 4 — Art identity and UI foundation
 
 20. Wild Fable Ink Core Style
 21. Silhouette-First Creature Pipeline
 22. Ritual Card UI
 23. Mood-Layer Palette System
 
-### Phase 5 — World progression visuals
+## Phase 5 — World progression visuals
 
 24. Uncorrupted Living World Start
 25. Beauty-to-Hunger World Escalation
@@ -183,14 +285,14 @@ WHAT WE FED uses **Wild Fable Ink** as the core visual identity: hand-drawn folk
 27. Spire World-State Transformation
 28. Escalation-Based Visual Pressure
 
-### Phase 6 — Background/parallax/procedural visual system
+## Phase 6 — Background/parallax/procedural visual system
 
 29. Layered Living Diorama
 30. Combat-Safe Procedural Background Rules
 31. Spire Parallax Progression
 32. Procedural Vista Composer
 
-### Phase 7 — Deeper RPG/story systems
+## Phase 7 — Deeper RPG/story systems
 
 33. System-First Story Engine
 34. Creature Evolution by Witnessed Behavior
@@ -200,50 +302,12 @@ WHAT WE FED uses **Wild Fable Ink** as the core visual identity: hand-drawn folk
 
 ---
 
-## Card Index
-| # | Card | Phase | Status |
-|---|---|---|---|
-| 1 | Agent Report Automation Contract | Phase 0 — Project control and truth discipline | LOCKED FOR LATER unless repo-level rules are not installed yet. |
-| 2 | Current Repo Truth Ledger | Phase 0 — Project control and truth discipline | LOCKED FOR LATER unless missing. |
-| 3 | Lockbox Registry Workflow | Phase 0 — Project control and truth discipline | IN USE IN CHATGPT. Repo copy optional later. |
-| 4 | Validation / Playtest Protocol | Phase 0 — Project control and truth discipline | LOCKED FOR LATER unless validation docs are missing. |
-| 5 | Combat Input Trust | Phase 1 — Combat trust foundation | LOCKED FOR LATER — needs fresh combat audit first. |
-| 6 | Beat-Feel Combat Loosening | Phase 1 — Combat trust foundation | LOCKED FOR LATER — needs fresh combat audit first. |
-| 7 | Visible Facing / Directional Truth | Phase 1 — Combat trust foundation | LOCKED FOR LATER — needs fresh combat audit first. |
-| 8 | Crunchy Truthful Feedback | Phase 1 — Combat trust foundation | LOCKED FOR LATER — after input and facing are reliable. |
-| 9 | Enemy HP / Grade / Damage Readability | Phase 1 — Combat trust foundation | LOCKED FOR LATER — after basic combat trust. |
-| 10 | Living Hunting Field | Phase 1 — Combat trust foundation | LOCKED FOR LATER — after input/facing truth. |
-| 11 | Player as Vessel, Creatures as Class Modifiers | Phase 2 — Creature support foundation | LOCKED FOR LATER — needs audit of current creature/reward systems. |
-| 12 | Bonded Creature Class Loadout | Phase 2 — Creature support foundation | LOCKED FOR LATER. |
-| 13 | Creature-Based Ranged Pressure | Phase 2 — Creature support foundation | LOCKED FOR LATER. |
-| 14 | Creature Support Readability Rules | Phase 2 — Creature support foundation | LOCKED FOR LATER — before implementing multiple creature effects. |
-| 15 | Adaptive Defeated Enemy Lineup | Phase 3 — Level-end feedback and lightweight RPG memory | LOCKED FOR LATER. |
-| 16 | Creature Fate Choices | Phase 3 — Level-end feedback and lightweight RPG memory | LOCKED FOR LATER. |
-| 17 | Behavior-Grown Tendencies | Phase 3 — Level-end feedback and lightweight RPG memory | LOCKED FOR LATER. |
-| 18 | World Memory | Phase 3 — Level-end feedback and lightweight RPG memory | LOCKED FOR LATER. |
-| 19 | Tendency-Based RPG Growth | Phase 3 — Level-end feedback and lightweight RPG memory | LOCKED FOR LATER. |
-| 20 | Wild Fable Ink Core Style | Phase 4 — Art identity and UI foundation | LOCKED FOR LATER. |
-| 21 | Silhouette-First Creature Pipeline | Phase 4 — Art identity and UI foundation | LOCKED FOR LATER. |
-| 22 | Ritual Card UI | Phase 4 — Art identity and UI foundation | LOCKED FOR LATER. |
-| 23 | Mood-Layer Palette System | Phase 4 — Art identity and UI foundation | LOCKED FOR LATER. |
-| 24 | Uncorrupted Living World Start | Phase 5 — World progression visuals | LOCKED FOR LATER. |
-| 25 | Beauty-to-Hunger World Escalation | Phase 5 — World progression visuals | LOCKED FOR LATER. |
-| 26 | The Approaching Spire | Phase 5 — World progression visuals | LOCKED FOR LATER. |
-| 27 | Spire World-State Transformation | Phase 5 — World progression visuals | LOCKED FOR LATER. |
-| 28 | Escalation-Based Visual Pressure | Phase 5 — World progression visuals | LOCKED FOR LATER. |
-| 29 | Layered Living Diorama | Phase 6 — Background/parallax/procedural visual system | LOCKED FOR LATER. |
-| 30 | Combat-Safe Procedural Background Rules | Phase 6 — Background/parallax/procedural visual system | LOCKED FOR LATER. |
-| 31 | Spire Parallax Progression | Phase 6 — Background/parallax/procedural visual system | LOCKED FOR LATER. |
-| 32 | Procedural Vista Composer | Phase 6 — Background/parallax/procedural visual system | LOCKED FOR LATER. |
-| 33 | System-First Story Engine | Phase 7 — Deeper RPG/story systems | LOCKED FOR LATER. |
-| 34 | Creature Evolution by Witnessed Behavior | Phase 7 — Deeper RPG/story systems | LOCKED FOR LATER. |
-| 35 | Multi-Creature Meta Progression | Phase 7 — Deeper RPG/story systems | LOCKED FOR LATER. |
-| 36 | Omen / Ritual Rule-Breaking Layer | Phase 7 — Deeper RPG/story systems | LOCKED FOR LATER. |
-| 37 | Codex / Field Journal Layer | Phase 7 — Deeper RPG/story systems | LOCKED FOR LATER. |
+# LOCKBOX CARDS
 
-## Lockbox Cards
+---
 
-### 1. LOCKBOX CARD
+## 1. LOCKBOX CARD
+
 ### Name:
 Agent Report Automation Contract
 
@@ -270,7 +334,8 @@ Do not change gameplay code during this setup.
 
 ---
 
-### 2. LOCKBOX CARD
+## 2. LOCKBOX CARD
+
 ### Name:
 Current Repo Truth Ledger
 
@@ -297,7 +362,8 @@ Do not invent repo truth. Do not store dream scope as confirmed implementation.
 
 ---
 
-### 3. LOCKBOX CARD
+## 3. LOCKBOX CARD
+
 ### Name:
 Lockbox Registry Workflow
 
@@ -324,7 +390,8 @@ Do not treat Lockbox items as approved implementation tasks automatically.
 
 ---
 
-### 4. LOCKBOX CARD
+## 4. LOCKBOX CARD
+
 ### Name:
 Validation / Playtest Protocol
 
@@ -351,7 +418,8 @@ Do not accept “looks good” as validation.
 
 ---
 
-### 5. LOCKBOX CARD
+## 5. LOCKBOX CARD
+
 ### Name:
 Combat Input Trust
 
@@ -378,7 +446,8 @@ Do not rewrite combat. Do not add new combat features before input trust.
 
 ---
 
-### 6. LOCKBOX CARD
+## 6. LOCKBOX CARD
+
 ### Name:
 Beat-Feel Combat Loosening
 
@@ -411,7 +480,8 @@ Do not turn combat into turn-based combat. Do not remove timing feel entirely. D
 
 ---
 
-### 7. LOCKBOX CARD
+## 7. LOCKBOX CARD
+
 ### Name:
 Visible Facing / Directional Truth
 
@@ -438,7 +508,8 @@ Do not add free aim or complex targeting before facing truth works.
 
 ---
 
-### 8. LOCKBOX CARD
+## 8. LOCKBOX CARD
+
 ### Name:
 Crunchy Truthful Feedback
 
@@ -465,7 +536,8 @@ Do not add large visual clutter. Do not make feedback lie about mechanics.
 
 ---
 
-### 9. LOCKBOX CARD
+## 9. LOCKBOX CARD
+
 ### Name:
 Enemy HP / Grade / Damage Readability
 
@@ -492,7 +564,8 @@ Do not build a full RPG stat screen yet.
 
 ---
 
-### 10. LOCKBOX CARD
+## 10. LOCKBOX CARD
+
 ### Name:
 Living Hunting Field
 
@@ -519,7 +592,8 @@ Do not cling to visible lanes if they are making the game worse. Do not delete t
 
 ---
 
-### 11. LOCKBOX CARD
+## 11. LOCKBOX CARD
+
 ### Name:
 Player as Vessel, Creatures as Class Modifiers
 
@@ -546,7 +620,8 @@ Do not add a party system immediately. Do not let creatures replace attack/parry
 
 ---
 
-### 12. LOCKBOX CARD
+## 12. LOCKBOX CARD
+
 ### Name:
 Bonded Creature Class Loadout
 
@@ -573,7 +648,8 @@ Do not add four active creatures immediately. Do not overpower player timing wit
 
 ---
 
-### 13. LOCKBOX CARD
+## 13. LOCKBOX CARD
+
 ### Name:
 Creature-Based Ranged Pressure
 
@@ -600,7 +676,8 @@ Do not add free-aim shooting yet. Do not turn combat into bullet hell.
 
 ---
 
-### 14. LOCKBOX CARD
+## 14. LOCKBOX CARD
+
 ### Name:
 Creature Support Readability Rules
 
@@ -627,7 +704,8 @@ Do not let creatures fire constant unclear projectiles. Do not allow support eff
 
 ---
 
-### 15. LOCKBOX CARD
+## 15. LOCKBOX CARD
+
 ### Name:
 Adaptive Defeated Enemy Lineup
 
@@ -662,7 +740,8 @@ Do not add scrolling, long text, codex behavior, fate markers, or click-through 
 
 ---
 
-### 16. LOCKBOX CARD
+## 16. LOCKBOX CARD
+
 ### Name:
 Creature Fate Choices
 
@@ -689,7 +768,8 @@ Do not add four-way choices before Bond/Eat is clean. Do not add morality meters
 
 ---
 
-### 17. LOCKBOX CARD
+## 17. LOCKBOX CARD
+
 ### Name:
 Behavior-Grown Tendencies
 
@@ -716,7 +796,8 @@ Do not build a full use-based leveling system or hidden formula web immediately.
 
 ---
 
-### 18. LOCKBOX CARD
+## 18. LOCKBOX CARD
+
 ### Name:
 World Memory
 
@@ -743,7 +824,8 @@ Do not build a full world simulation yet. Do not create invisible consequences.
 
 ---
 
-### 19. LOCKBOX CARD
+## 19. LOCKBOX CARD
+
 ### Name:
 Tendency-Based RPG Growth
 
@@ -770,7 +852,8 @@ Do not create a full stat sheet immediately. Do not reward boring repetitive spa
 
 ---
 
-### 20. LOCKBOX CARD
+## 20. LOCKBOX CARD
+
 ### Name:
 Wild Fable Ink Core Style
 
@@ -797,7 +880,8 @@ Do not make brutality the entire identity. Do not chase painterly AI detail.
 
 ---
 
-### 21. LOCKBOX CARD
+## 21. LOCKBOX CARD
+
 ### Name:
 Silhouette-First Creature Pipeline
 
@@ -824,7 +908,8 @@ Do not make creatures that only work as large concept art.
 
 ---
 
-### 22. LOCKBOX CARD
+## 22. LOCKBOX CARD
+
 ### Name:
 Ritual Card UI
 
@@ -851,7 +936,8 @@ Do not overdecorate or use unreadable fonts for important info.
 
 ---
 
-### 23. LOCKBOX CARD
+## 23. LOCKBOX CARD
+
 ### Name:
 Mood-Layer Palette System
 
@@ -878,7 +964,8 @@ Do not recolor combat-critical markers until readability is validated.
 
 ---
 
-### 24. LOCKBOX CARD
+## 24. LOCKBOX CARD
+
 ### Name:
 Uncorrupted Living World Start
 
@@ -905,7 +992,8 @@ Do not make the world cute or toothless. Do not make corruption the default visu
 
 ---
 
-### 25. LOCKBOX CARD
+## 25. LOCKBOX CARD
+
 ### Name:
 Beauty-to-Hunger World Escalation
 
@@ -932,7 +1020,8 @@ Do not make every escalation state darker. Do not change combat-critical silhoue
 
 ---
 
-### 26. LOCKBOX CARD
+## 26. LOCKBOX CARD
+
 ### Name:
 The Approaching Spire
 
@@ -959,7 +1048,8 @@ Do not make the Spire evil from the start. Do not build a huge overworld map yet
 
 ---
 
-### 27. LOCKBOX CARD
+## 27. LOCKBOX CARD
+
 ### Name:
 Spire World-State Transformation
 
@@ -986,7 +1076,8 @@ Do not make every system affect the Spire at once. Do not over-explain early.
 
 ---
 
-### 28. LOCKBOX CARD
+## 28. LOCKBOX CARD
+
 ### Name:
 Escalation-Based Visual Pressure
 
@@ -1013,7 +1104,8 @@ Do not add constant particles, constant shake, or noisy red overlays.
 
 ---
 
-### 29. LOCKBOX CARD
+## 29. LOCKBOX CARD
+
 ### Name:
 Layered Living Diorama
 
@@ -1040,7 +1132,8 @@ Do not add busy foreground art. Do not replace combat logic.
 
 ---
 
-### 30. LOCKBOX CARD
+## 30. LOCKBOX CARD
+
 ### Name:
 Combat-Safe Procedural Background Rules
 
@@ -1067,7 +1160,8 @@ Do not let procedural placement ignore combat lanes. Do not use clarity-reducing
 
 ---
 
-### 31. LOCKBOX CARD
+## 31. LOCKBOX CARD
+
 ### Name:
 Spire Parallax Progression
 
@@ -1094,7 +1188,8 @@ Do not create a huge map system or unique Spire art for every level.
 
 ---
 
-### 32. LOCKBOX CARD
+## 32. LOCKBOX CARD
+
 ### Name:
 Procedural Vista Composer
 
@@ -1121,7 +1216,8 @@ Do not generate full AI images at runtime. Do not create endless clutter.
 
 ---
 
-### 33. LOCKBOX CARD
+## 33. LOCKBOX CARD
+
 ### Name:
 System-First Story Engine
 
@@ -1148,7 +1244,8 @@ Do not add a giant narrative framework or cutscene-heavy storytelling.
 
 ---
 
-### 34. LOCKBOX CARD
+## 34. LOCKBOX CARD
+
 ### Name:
 Creature Evolution by Witnessed Behavior
 
@@ -1175,7 +1272,8 @@ Do not create a giant evolution tree or hidden condition web yet.
 
 ---
 
-### 35. LOCKBOX CARD
+## 35. LOCKBOX CARD
+
 ### Name:
 Multi-Creature Meta Progression
 
@@ -1202,7 +1300,8 @@ Do not jump to 3–4 active creatures before one slot works.
 
 ---
 
-### 36. LOCKBOX CARD
+## 36. LOCKBOX CARD
+
 ### Name:
 Omen / Ritual Rule-Breaking Layer
 
@@ -1229,7 +1328,8 @@ Do not add broad reality-breaking mechanics before core loop is clear.
 
 ---
 
-### 37. LOCKBOX CARD
+## 37. LOCKBOX CARD
+
 ### Name:
 Codex / Field Journal Layer
 
@@ -1256,11 +1356,35 @@ Do not build a huge encyclopedia before core creature data is stable.
 
 ---
 
-## Sync Discipline
-- Command Center v1 remains canonical.
-- Repo snapshot must be refreshed after major Command Center Lockbox changes.
-- Status changes require a separate reconcile audit.
-- VALIDATED COMPLETE requires scored report and validation evidence.
-- Phase 1+ gameplay/design cards cannot be promoted from docs evidence alone.
-- If repo truth and Lockbox text conflict, stop and route to Command Center v1 plus Gemini audit.
+# Next Best Lockbox Usage
 
+Do not implement from this registry directly.
+
+Next practical desktop flow:
+
+1. Run report automation setup if missing.
+2. Run fresh Gemini combat/repo audit.
+3. Ingest the report in ChatGPT.
+4. Pull the highest-priority relevant Lockbox card.
+5. Convert it into a bounded handoff prompt.
+6. Require a correctly formatted agent report.
+7. Mark the card READY, IN IMPLEMENTATION, COMPLETE, or leave it LOCKED.
+
+---
+
+# Short Doctrine
+
+```text
+Protect the current playable prototype unless repo audit proves it is fighting the evolved game.
+Fix combat trust first.
+Make combat action-RPG/gamey with beat-feel.
+Player attacks and enemy attacks must feel on beat.
+Do not preserve strict lanes as sacred.
+Keep the player separate from creatures.
+Let creatures transform playstyle.
+Let the world begin alive.
+Let the Spire pull the run forward.
+Let art mutate with world state.
+Let procedural visuals compose controlled pieces, not noise.
+Move Lockbox ideas only after repo truth confirms fit.
+```

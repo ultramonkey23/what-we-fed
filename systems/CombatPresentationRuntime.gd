@@ -22,6 +22,19 @@ var _enemy_flash_tweens_by_id: Dictionary = {}
 ## 0..1 from CombatScene critical threat; dampens low-authority screen flashes only.
 var _readability_stress: float = 0.0
 
+# Sigil heartbeat overlay state — created lazily inside the TimingRing_Core sigil group.
+# Communicates input-heard / recovery-clock / result-emphasis. Never names a verb.
+var _sigil_overlay_ready: bool = false
+var _input_echo_line: Line2D = null
+var _recovery_arc_line: Line2D = null
+var _ready_pulse_line: Line2D = null
+var _input_echo_tween: Tween = null
+var _ready_pulse_tween: Tween = null
+var _result_snap_tween: Tween = null
+var _recovery_initial: float = 0.0
+var _recovery_state: String = ""
+var _recovery_was_locked: bool = false
+
 
 func _init(
 	flash_overlay: ColorRect,
@@ -670,3 +683,225 @@ func spawn_impact_lines(center: Vector2, color: Color, count: int, length: float
 			if is_instance_valid(line):
 				line.queue_free()
 		)
+
+
+# --- Sigil heartbeat: input echo / recovery sweep / result snap ----------------------------
+# These overlays sit inside the TimingRing_Core sigil group and reflect combat *state* only:
+# input was heard, recovery is ticking, a clean exchange just landed. They never tell the
+# player which verb to press and never gate inputs to the beat — the sigil stays a heartbeat.
+
+func _ensure_sigil_overlay_nodes() -> void:
+	if _sigil_overlay_ready and is_instance_valid(_input_echo_line) \
+			and is_instance_valid(_recovery_arc_line) and is_instance_valid(_ready_pulse_line):
+		return
+	if _timing_circle_container == null:
+		return
+	var sigil_group: Node2D = _timing_circle_container.get_node_or_null("TimingRing_Core")
+	if sigil_group == null:
+		return
+
+	var outer_r: float = 96.0
+	var perfect_inner_r: float = 72.0
+	var perfect_outer_r: float = 110.0
+	var existing_outer: Node = sigil_group.get_node_or_null("Outer")
+	if existing_outer is Line2D and (existing_outer as Line2D).points.size() > 0:
+		outer_r = (existing_outer as Line2D).points[0].length()
+	var existing_perfect_inner: Node = sigil_group.get_node_or_null("PerfectInnerGuide")
+	if existing_perfect_inner is Line2D and (existing_perfect_inner as Line2D).points.size() > 0:
+		perfect_inner_r = (existing_perfect_inner as Line2D).points[0].length()
+	var existing_perfect_outer: Node = sigil_group.get_node_or_null("PerfectOuterGuide")
+	if existing_perfect_outer is Line2D and (existing_perfect_outer as Line2D).points.size() > 0:
+		perfect_outer_r = (existing_perfect_outer as Line2D).points[0].length()
+
+	if not is_instance_valid(_input_echo_line):
+		_input_echo_line = Line2D.new()
+		_input_echo_line.name = "InputEcho"
+		_input_echo_line.closed = true
+		_input_echo_line.joint_mode = Line2D.LINE_JOINT_ROUND
+		_input_echo_line.begin_cap_mode = Line2D.LINE_CAP_ROUND
+		_input_echo_line.end_cap_mode = Line2D.LINE_CAP_ROUND
+		_input_echo_line.default_color = Color(1.0, 1.0, 1.0, 0.0)
+		_input_echo_line.width = 2.4
+		var ep := PackedVector2Array()
+		for i in range(48):
+			var a: float = (float(i) / 48.0) * TAU
+			ep.append(Vector2(cos(a), sin(a)) * (outer_r + 4.0))
+		_input_echo_line.points = ep
+		sigil_group.add_child(_input_echo_line)
+
+	if not is_instance_valid(_recovery_arc_line):
+		_recovery_arc_line = Line2D.new()
+		_recovery_arc_line.name = "RecoveryArc"
+		_recovery_arc_line.closed = false
+		_recovery_arc_line.joint_mode = Line2D.LINE_JOINT_ROUND
+		_recovery_arc_line.begin_cap_mode = Line2D.LINE_CAP_ROUND
+		_recovery_arc_line.end_cap_mode = Line2D.LINE_CAP_ROUND
+		_recovery_arc_line.default_color = Color(0.92, 0.66, 0.32, 0.0)
+		_recovery_arc_line.width = 2.4
+		_recovery_arc_line.set_meta("radius", (perfect_inner_r + perfect_outer_r) * 0.5 - 6.0)
+		sigil_group.add_child(_recovery_arc_line)
+
+	if not is_instance_valid(_ready_pulse_line):
+		_ready_pulse_line = Line2D.new()
+		_ready_pulse_line.name = "ReadyPulse"
+		_ready_pulse_line.closed = true
+		_ready_pulse_line.joint_mode = Line2D.LINE_JOINT_ROUND
+		_ready_pulse_line.begin_cap_mode = Line2D.LINE_CAP_ROUND
+		_ready_pulse_line.end_cap_mode = Line2D.LINE_CAP_ROUND
+		_ready_pulse_line.default_color = Color(0.85, 0.96, 1.0, 0.0)
+		_ready_pulse_line.width = 1.8
+		var rp := PackedVector2Array()
+		for i in range(48):
+			var a: float = (float(i) / 48.0) * TAU
+			rp.append(Vector2(cos(a), sin(a)) * max(perfect_inner_r - 4.0, 12.0))
+		_ready_pulse_line.points = rp
+		sigil_group.add_child(_ready_pulse_line)
+
+	_sigil_overlay_ready = true
+
+
+func pulse_sigil_input_echo(action: String, accepted: bool, buffered: bool, reason: String) -> void:
+	# State-only feedback that the input was heard. Color codes resolution (accepted /
+	# buffered / rejected) without naming a verb. Keeps the sigil a heartbeat, not a prompt.
+	_ensure_sigil_overlay_nodes()
+	if not is_instance_valid(_input_echo_line):
+		return
+
+	var tint: Color
+	var fade: float
+	if accepted:
+		tint = Color(1.0, 0.98, 0.92, 0.46)
+		fade = 0.22
+	elif buffered:
+		tint = Color(0.66, 0.86, 1.0, 0.42)
+		fade = 0.20
+	else:
+		match reason:
+			"no_stamina":
+				tint = Color(1.0, 0.45, 0.45, 0.40)
+			"no_charge":
+				tint = Color(1.0, 0.62, 0.30, 0.38)
+			"locked":
+				tint = Color(1.0, 0.78, 0.42, 0.38)
+			_:
+				tint = Color(1.0, 0.55, 0.48, 0.36)
+		fade = 0.18
+
+	_input_echo_line.default_color = tint
+	_input_echo_line.width = 3.2 if accepted else (2.4 if buffered else 2.0)
+
+	if _input_echo_tween != null and is_instance_valid(_input_echo_tween):
+		_input_echo_tween.kill()
+	_input_echo_tween = _input_echo_line.create_tween()
+	_input_echo_tween.tween_property(_input_echo_line, "default_color:a", 0.0, fade)
+	# Suppress unused-arg warning while keeping the public contract self-documenting.
+	if action.is_empty():
+		pass
+
+
+func tick_sigil_recovery(player_combat: Node2D, _delta: float) -> void:
+	# Polled per frame from CombatScene._update_presentation_layers. Reads the player's
+	# action_lock_timer and visualizes the shrinking recovery arc, then fires a "ready"
+	# pulse on the lock→unlock transition. Tells the player WHEN they can act again.
+	_ensure_sigil_overlay_nodes()
+	if not is_instance_valid(_recovery_arc_line) or player_combat == null:
+		return
+
+	var lock_now: float = float(player_combat.get("action_lock_timer"))
+	var state_now: String = String(player_combat.get("current_action_state"))
+
+	if lock_now > 0.0:
+		if not _recovery_was_locked or lock_now > _recovery_initial:
+			_recovery_initial = max(lock_now, 0.001)
+			_recovery_state = state_now
+		var t: float = clamp(lock_now / _recovery_initial, 0.0, 1.0)
+		_draw_recovery_arc(t, _recovery_state)
+		_recovery_was_locked = true
+	else:
+		if _recovery_was_locked:
+			_emit_ready_pulse(_recovery_state)
+			_recovery_arc_line.points = PackedVector2Array()
+			_recovery_arc_line.default_color.a = 0.0
+		_recovery_was_locked = false
+		_recovery_initial = 0.0
+		_recovery_state = ""
+
+
+func _draw_recovery_arc(progress: float, state: String) -> void:
+	if not is_instance_valid(_recovery_arc_line):
+		return
+	var radius: float = float(_recovery_arc_line.get_meta("radius", 80.0))
+	var arc_color: Color = _recovery_arc_color_for_state(state)
+	arc_color.a = lerpf(0.18, 0.62, clampf(progress, 0.0, 1.0))
+	_recovery_arc_line.default_color = arc_color
+
+	# Sweep clockwise from the top (-PI/2) so a fixed anchor reads like a clock hand.
+	var start_angle: float = -PI * 0.5
+	var sweep: float = TAU * progress
+	var seg_count: int = 36
+	var pts := PackedVector2Array()
+	for i in range(seg_count + 1):
+		var f: float = float(i) / float(seg_count)
+		var a: float = start_angle + sweep * f
+		pts.append(Vector2(cos(a), sin(a)) * radius)
+	_recovery_arc_line.points = pts
+
+
+func _recovery_arc_color_for_state(state: String) -> Color:
+	match state:
+		"parry", "failed_parry", "parry_followup":
+			return Color(0.55, 0.92, 0.74, 1.0)
+		"dodge":
+			return Color(0.62, 0.84, 1.0, 1.0)
+		"ultimate":
+			return Color(1.0, 0.78, 0.32, 1.0)
+		"early_attack", "late_attack":
+			return Color(1.0, 0.55, 0.36, 1.0)
+		_:
+			return Color(0.95, 0.78, 0.42, 1.0)
+
+
+func _emit_ready_pulse(prev_state: String) -> void:
+	if not is_instance_valid(_ready_pulse_line):
+		return
+	var pulse_color: Color = _recovery_arc_color_for_state(prev_state)
+	pulse_color.a = 0.62
+	_ready_pulse_line.default_color = pulse_color
+	_ready_pulse_line.width = 2.2
+	_ready_pulse_line.scale = Vector2.ONE
+
+	if _ready_pulse_tween != null and is_instance_valid(_ready_pulse_tween):
+		_ready_pulse_tween.kill()
+	_ready_pulse_tween = _ready_pulse_line.create_tween().set_parallel(true)
+	_ready_pulse_tween.tween_property(_ready_pulse_line, "scale", Vector2(1.18, 1.18), 0.22) \
+		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUART)
+	_ready_pulse_tween.tween_property(_ready_pulse_line, "default_color:a", 0.0, 0.22)
+
+
+func pulse_sigil_result_snap(quality: String, _family: String) -> void:
+	# Briefly snaps the sigil's fault lines outward on a clean exchange. Amplifies the
+	# chunky read of a good/perfect resolve. State-feedback only — never names the verb.
+	if quality != "perfect" and quality != "good":
+		return
+	if _timing_circle_container == null:
+		return
+	var sigil_group: Node2D = _timing_circle_container.get_node_or_null("TimingRing_Core")
+	if sigil_group == null:
+		return
+	var fault_lines: Node = sigil_group.get_node_or_null("FaultLines")
+	if not (fault_lines is Line2D):
+		return
+	var line := fault_lines as Line2D
+
+	var snap_scale: float = 1.18 if quality == "perfect" else 1.10
+	var hold: float = 0.06 if quality == "perfect" else 0.04
+	var release: float = 0.22 if quality == "perfect" else 0.16
+
+	if _result_snap_tween != null and is_instance_valid(_result_snap_tween):
+		_result_snap_tween.kill()
+	line.scale = Vector2.ONE
+	_result_snap_tween = line.create_tween()
+	_result_snap_tween.tween_property(line, "scale", Vector2(snap_scale, snap_scale), hold) \
+		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+	_result_snap_tween.tween_property(line, "scale", Vector2.ONE, release) \
+		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)

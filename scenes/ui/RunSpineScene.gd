@@ -13,28 +13,6 @@ const PERFORMANCE_REWARD_CONTENT = preload("res://data/PerformanceRewardContent.
 const RITUAL_CONTENT = preload("res://data/RitualConsumableContent.gd")
 const COLLAR_CONTENT = preload("res://data/CollarContent.gd")
 const PATH_RUN_PLAN = preload("res://systems/PathRunPlan.gd")
-const _DEBUG_LOG_PATH: String = "debug-1960b2.log"
-const _DEBUG_SESSION_ID: String = "1960b2"
-
-
-func _agent_log(run_id: String, hypothesis_id: String, location: String, message: String, data: Dictionary = {}) -> void:
-	var file: FileAccess = FileAccess.open(_DEBUG_LOG_PATH, FileAccess.READ_WRITE)
-	if file == null:
-		file = FileAccess.open(_DEBUG_LOG_PATH, FileAccess.WRITE_READ)
-	if file == null:
-		return
-	file.seek_end()
-	var payload: Dictionary = {
-		"sessionId": _DEBUG_SESSION_ID,
-		"runId": run_id,
-		"hypothesisId": hypothesis_id,
-		"location": location,
-		"message": message,
-		"data": data,
-		"timestamp": Time.get_unix_time_from_system() * 1000
-	}
-	file.store_line(JSON.stringify(payload))
-	file.close()
 
 var _choices: Array[Dictionary] = []
 var _run_growth: Node = null
@@ -733,13 +711,7 @@ func _reward_detail_text(reward_id: String) -> String:
 	
 	var effect: Dictionary = reward_data.get("effect", {})
 	if not effect.is_empty():
-		# #region agent log
-		_agent_log("baseline", "H2", "RunSpineScene.gd:_reward_detail_text", "reward effect detail path", {
-			"reward_id": reward_id,
-			"effect_type_raw": str(effect.get("type", ""))
-		})
-		# #endregion
-		var type: String = str(effect.get("type", "")).replace("_", " ")
+		var _type: String = str(effect.get("type", "")).replace("_", " ")
 		var stats: Array[String] = []
 		for key in effect.keys():
 			if key == "type": continue

@@ -643,6 +643,57 @@ func draw_timing_circles(
 	})
 
 
+func refresh_vessel_vibe(class_data: Dictionary, timing_rings_cache: Array[Dictionary]) -> void:
+	if class_data.is_empty():
+		return
+		
+	var vibe_color: Color = class_data.get("vibe_color", Color.WHITE)
+	var style: Dictionary = class_data.get("visual_style", {})
+	var jitter: float = float(style.get("jitter", 0.0))
+	var width_mult: float = float(style.get("width_mult", 1.0))
+	var pulse_speed: float = float(style.get("aura_pulse_speed", 1.0))
+	var aura_alpha: float = float(style.get("aura_alpha", 0.2))
+	
+	for ring_data in timing_rings_cache:
+		var root: Node2D = ring_data.get("root")
+		if not is_instance_valid(root):
+			continue
+			
+		var tween = root.create_tween().set_parallel(true)
+		
+		# Transition main sigil rings
+		var perfect_ring: Line2D = ring_data.get("perfect")
+		if is_instance_valid(perfect_ring):
+			tween.tween_property(perfect_ring, "default_color", vibe_color.lightened(0.32), 0.45)
+			tween.tween_property(perfect_ring, "width", 2.0 * width_mult, 0.4)
+			# Apply manga jitter if supported by the line shader/logic
+			if perfect_ring.has_meta("base_jitter"):
+				tween.tween_method(func(v): perfect_ring.set_meta("current_jitter", v), 0.0, jitter, 0.5)
+			
+		var outer_ring: Line2D = ring_data.get("outer")
+		if is_instance_valid(outer_ring):
+			tween.tween_property(outer_ring, "default_color", Color(vibe_color, 0.52), 0.6)
+			tween.tween_property(outer_ring, "width", 1.0 * width_mult, 0.6)
+			
+		var fill: Polygon2D = ring_data.get("fill")
+		if is_instance_valid(fill):
+			tween.tween_property(fill, "color", Color(vibe_color, 0.08), 0.8)
+			
+		# Enhanced pulsing aura for the vessel
+		var glow: Polygon2D = ring_data.get("glow")
+		if is_instance_valid(glow):
+			glow.color = Color(vibe_color, 0.0)
+			# Kill previous aura tweens if they exist
+			var old_tweens = glow.get_tree().get_processed_tweens().filter(func(t): return t.is_valid() and t.get_meta("vessel_aura", false))
+			for t in old_tweens: t.kill()
+			
+			var glow_tween = glow.create_tween().set_loops()
+			glow_tween.set_meta("vessel_aura", true)
+			var duration: float = 1.2 / pulse_speed
+			glow_tween.tween_property(glow, "color:a", aura_alpha, duration).set_trans(Tween.TRANS_SINE)
+			glow_tween.tween_property(glow, "color:a", aura_alpha * 0.4, duration).set_trans(Tween.TRANS_SINE)
+
+
 func _make_anomaly_sigil_ring(radius: float, color: Color, width: float, jitter: float) -> Line2D:
 	var line := Line2D.new()
 	line.default_color = color

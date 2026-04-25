@@ -1,6 +1,5 @@
 extends RefCounted
 
-const DEBUG_TRACE = preload("res://systems/DebugTrace.gd")
 const VESSEL_MODIFIER_DIRECTOR = preload("res://systems/VesselModifierDirector.gd")
 
 # ── Bound node references ─────────────────────────────────────────────────────
@@ -77,32 +76,7 @@ func _init(combat_content: GDScript, presentation_text: GDScript, ui_style: GDSc
 	_ui_style = ui_style
 
 
-#region agent log
-func _agent_debug_log(run_id: String, hypothesis_id: String, location: String, message: String, data: Dictionary) -> void:
-	DEBUG_TRACE.append_agent_event(run_id, hypothesis_id, location, message, data)
-#endregion
-
-
 func bind_nodes(nodes: Dictionary) -> void:
-	#region agent log
-	var scouter_node: Variant = nodes.get("scouter_shell")
-	var support_node: Variant = nodes.get("support_shell")
-	var run_build_node: Variant = nodes.get("run_build_shell")
-	var dna_node: Variant = nodes.get("dna_shell")
-	_agent_debug_log(
-		"pre-fix",
-		"H_BIND_TYPES",
-		"CombatHUDPresenter.gd:bind_nodes",
-		"Binding HUD shell node types",
-		{
-			"scouter_type": scouter_node.get_class() if scouter_node is Object else "null_or_non_object",
-			"support_type": support_node.get_class() if support_node is Object else "null_or_non_object",
-			"run_build_type": run_build_node.get_class() if run_build_node is Object else "null_or_non_object",
-			"dna_type": dna_node.get_class() if dna_node is Object else "null_or_non_object",
-			"scouter_equals_support": scouter_node == support_node
-		}
-	)
-	#endregion
 	# Static @onready nodes
 	_combo_label = nodes.get("combo_label")
 	_style_label = nodes.get("style_label")

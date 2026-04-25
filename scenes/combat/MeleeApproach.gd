@@ -20,8 +20,6 @@ const PARRY_PERFECT_MAX: float = 1.02
 const PARRY_GOOD_MAX: float = 1.04
 const BOUNCE_SPEED_MULT: float = 2.0
 const PLAYER_CONTACT_PROGRESS: float = 1.12
-const _DEBUG_LOG_PATH: String = "debug-1960b2.log"
-const _DEBUG_SESSION_ID: String = "1960b2"
 
 # Duck-typing flag for LaneManager.clear_slot() guard.
 const is_melee_approach: bool = true
@@ -55,26 +53,6 @@ var _aura: Line2D = null
 var _approach_tick: Line2D = null
 var _base_color: Color = Color(0.90, 0.28, 0.10, 0.92)
 var _hit_tween: Tween = null
-
-
-func _agent_log(run_id: String, hypothesis_id: String, location: String, message: String, data: Dictionary = {}) -> void:
-	var file: FileAccess = FileAccess.open(_DEBUG_LOG_PATH, FileAccess.READ_WRITE)
-	if file == null:
-		file = FileAccess.open(_DEBUG_LOG_PATH, FileAccess.WRITE_READ)
-	if file == null:
-		return
-	file.seek_end()
-	var payload: Dictionary = {
-		"sessionId": _DEBUG_SESSION_ID,
-		"runId": run_id,
-		"hypothesisId": hypothesis_id,
-		"location": location,
-		"message": message,
-		"data": data,
-		"timestamp": Time.get_unix_time_from_system() * 1000
-	}
-	file.store_line(JSON.stringify(payload))
-	file.close()
 
 
 func _ready() -> void:
@@ -190,13 +168,6 @@ func _process_approach(delta: float) -> void:
 	if not _reported_player_contact and progress >= PLAYER_CONTACT_PROGRESS:
 		_reported_player_contact = true
 		player_contact.emit(self)
-		# #region agent log
-		_agent_log("baseline", "H2", "MeleeApproach.gd:_process_approach", "melee emitted player_contact", {
-			"lane": lane,
-			"enemy_id": enemy_id,
-			"progress": progress
-		})
-		# #endregion
 		_start_bounce()
 
 
@@ -258,12 +229,6 @@ func resolve(result: String) -> void:
 	if result == "enemy_defeated":
 		is_resolved = true
 		resolved.emit(self, result)
-		# #region agent log
-		_agent_log("baseline", "H4", "MeleeApproach.gd:resolve", "melee resolved enemy_defeated", {
-			"lane": lane,
-			"enemy_id": enemy_id
-		})
-		# #endregion
 		var timer: SceneTreeTimer = get_tree().create_timer(0.10)
 		timer.timeout.connect(queue_free)
 	else:

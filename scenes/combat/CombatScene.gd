@@ -89,6 +89,7 @@ const IMPACT_FX_RUNTIME_SCENE: PackedScene = preload("res://systems/presentation
 # ─── STATE VARIABLES ─────────────────────────────────────────────────────────
 var _run_director: Node = null
 var _victory_reward_director: Node = null
+var _vessel_modifier_director: Node = null
 var _base_time_scale: float = 1.0
 var _ring_highlight_timers: Array[float] = [0.0, 0.0, 0.0, 0.0]
 var _surge_window_tendency: String = ""
@@ -453,6 +454,7 @@ func _initialize_systems() -> void:
 	_setup_run_growth()
 	_setup_run_stats()
 	_setup_performance_rewards()
+	_setup_vessel_modifier_director()
 	_setup_escalation_director()
 	_setup_music_difficulty_layers()
 	_setup_run_director()
@@ -1344,6 +1346,8 @@ func _current_void_elapsed_seconds() -> float:
 func _update_presentation_layers() -> void:
 	if _timing_circle_container != null:
 		_update_timing_ring_proximity()
+		if _presentation_runtime != null and player_combat != null:
+			_presentation_runtime.tick_sigil_recovery(player_combat, get_process_delta_time())
 	if _lane_marker_container != null:
 		_update_lane_visual_states()
 	if _enemy_marker_container != null:
@@ -3111,6 +3115,18 @@ func _setup_performance_rewards() -> void:
 		_performance_reward_director.connect("proc_feedback", Callable(self, "_on_performance_reward_feedback"))
 	if _performance_reward_director.has_signal("pressure_bias_changed"):
 		_performance_reward_director.connect("pressure_bias_changed", Callable(self, "_on_performance_pressure_bias_changed"))
+
+
+func _setup_vessel_modifier_director() -> void:
+	# Connect listener first so the initial _refresh_active_vessel() inside bind_runtime
+	# delivers vessel_shifted to this scene when the run resumes with a bonded creature.
+	if not EventBus.vessel_shifted.is_connected(_on_vessel_shifted):
+		EventBus.vessel_shifted.connect(_on_vessel_shifted)
+
+	_vessel_modifier_director = VESSEL_MODIFIER_DIRECTOR.new()
+	_vessel_modifier_director.name = "VesselModifierDirector"
+	add_child(_vessel_modifier_director)
+	_vessel_modifier_director.bind_runtime(lane_manager)
 
 
 func _setup_performance_hud() -> void:
@@ -5962,7 +5978,8 @@ func _on_timed_attack_resolved(lane: int, quality: String, damage: float) -> voi
 		impact_fx_requested.emit(&"perfect", _impact_pos_lane(lane, 0.52), _impact_lane_forward(lane), 0.78)
 
 	_presentation_runtime.apply_impact_profile(COMBAT_IMPACT_FEEDBACK.build_timed_attack_profile(quality, beat_quality), lane, enemy_id)
-	
+	_presentation_runtime.pulse_sigil_result_snap(quality, "attack")
+
 	if quality == "perfect":
 		_presentation_controller.on_combat_event(_bg_sprite, "perfect")
 	if _tempo_state_family == COMBAT_FEEL_CONTENT.TEMPO_DECREE and (quality == "perfect" or quality == "good"):
@@ -6020,7 +6037,8 @@ func _on_player_parried(lane: int, quality: String, _reflect_damage: float) -> v
 	impact_fx_requested.emit(&"parry", _impact_pos_lane(lane, 0.56), _impact_lane_forward(lane), parry_scale)
 
 	_presentation_runtime.apply_impact_profile(COMBAT_IMPACT_FEEDBACK.build_parry_profile(quality, bq), lane, enemy_id)
-	
+	_presentation_runtime.pulse_sigil_result_snap(quality, "parry")
+
 	if quality == "perfect":
 		_presentation_controller.on_combat_event(_bg_sprite, "perfect")
 		_notify_tempo_mastery(COMBAT_FEEL_CONTENT.TEMPO_PUNCTURE, "perfect_parry", {
@@ -6081,6 +6099,8 @@ func _on_combat_input_resolved(
 		"state": state,
 		"cooldowns": cooldowns
 	}
+	if _presentation_runtime != null:
+		_presentation_runtime.pulse_sigil_input_echo(action, accepted, buffered, reason)
 	if buffered:
 		_show_feedback("QUEUE %s" % action.to_upper(), Color(0.84, 0.90, 1.0, 1.0), 0.16)
 		return
@@ -6256,6 +6276,19 @@ func _refresh_quig_ui_state() -> void:
 	var reward_live: bool = _reward_overlay != null and _reward_overlay.visible and _reward_quig_label != null and not _reward_quig_label.text.is_empty()
 	if _reward_quig_sprite != null:
 		_reward_quig_sprite.visible = reward_live
+
+
+func _on_vessel_shifted(class_data: Dictionary) -> void:
+	if class_data.is_empty():
+		return
+		
+	var vibe_color: Color = class_data.get("vibe_color", Color.WHITE)
+	_presentation_controller.refresh_vessel_vibe(class_data, _timing_rings_cache)
+	
+	# Visual feedback
+	EventBus.screen_flash.emit(vibe_color.lerp(Color.WHITE, 0.4), 0.1)
+	EventBus.slow_motion.emit(0.2, 0.08)
+	EventBus.play_sfx.emit("vessel_shift")
 
 
 func _on_creature_bonded(creature_data: Dictionary) -> void:

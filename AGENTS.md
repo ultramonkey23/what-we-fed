@@ -104,5 +104,7 @@ When handing off to INSPECTOR, include this block. If a value is unavailable, wr
 
 ## AI Control Plane
 Before repo work, read `docs/ai/AI_CONTROL_PLANE.md` and follow the relevant routing, report, and validation contract.
+For normal bounded tasks, load docs/ai/AGENT_BOOTSTRAP_LEAN.md first to reduce prompt/token load.
+Escalate to full docs only for high-risk, cross-system, or protected-file work.
 Quick routing lookup: `docs/ai/AGENT_ROUTING_MATRIX.md`
 Prompt templates: `docs/ai/PROMPT_CONTRACTS.md`

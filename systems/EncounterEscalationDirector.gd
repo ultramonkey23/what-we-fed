@@ -81,6 +81,12 @@ func _ready():
 	set_process(true)
 	if not EventBus.timed_attack_resolved.is_connected(_on_timed_attack_resolved):
 		EventBus.timed_attack_resolved.connect(_on_timed_attack_resolved)
+
+
+func _exit_tree() -> void:
+	stop()
+	if EventBus.timed_attack_resolved.is_connected(_on_timed_attack_resolved):
+		EventBus.timed_attack_resolved.disconnect(_on_timed_attack_resolved)
 	
 func _process(delta):
 	_prune_finished_timers()

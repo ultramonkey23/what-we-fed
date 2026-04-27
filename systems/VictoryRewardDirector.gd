@@ -21,7 +21,10 @@ var _is_live_offer: bool = false
 
 func offer_creature(creature_data: Dictionary, is_live: bool, timer: float = 0.0) -> void:
 	if _is_awaiting_choice and not _choice_made:
-		_reward_queue.append(creature_data.duplicate(true))
+		var queue_entry: Dictionary = creature_data.duplicate(true)
+		queue_entry["_is_live"] = is_live
+		queue_entry["_timer"] = timer
+		_reward_queue.append(queue_entry)
 		emit_signal("queue_updated", _reward_queue.size())
 		return
 
@@ -77,6 +80,11 @@ func resolve_choice(choice_id: String) -> bool:
 		var _absorbed: Dictionary = GameState.absorb_creature_type(_pending_creature)
 		if GameState.has_method("register_growth_choice"):
 			GameState.register_growth_choice("eat")
+		
+		# Predatory Gain: Award lineage DNA for consumption.
+		# A Hunt Offer 'Eat' is a significant predation event (5x standard kill).
+		GameState.add_dna(species_id, 12.5)
+		
 		EventBus.emit_signal("creature_eaten", _pending_creature)
 
 	emit_signal("choice_resolved", choice_id, _pending_creature)
@@ -106,8 +114,15 @@ func _check_next_offer() -> void:
 		
 	var next: Dictionary = _reward_queue.pop_front()
 	emit_signal("queue_updated", _reward_queue.size())
-	# For now, next offers are treated as non-live or use a default timer if live
-	offer_creature(next, _is_live_offer, 3.2 if _is_live_offer else 0.0)
+	
+	var is_live: bool = bool(next.get("_is_live", false))
+	var timer: float = float(next.get("_timer", 0.0))
+	
+	# Clean up internal keys before offering
+	next.erase("_is_live")
+	next.erase("_timer")
+	
+	offer_creature(next, is_live, timer)
 
 func get_pending_creature() -> Dictionary:
 	return _pending_creature.duplicate(true)

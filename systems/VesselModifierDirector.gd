@@ -69,6 +69,19 @@ func _connect_eventbus() -> void:
 		EventBus.creature_eaten.connect(_on_creature_changed)
 
 
+func _exit_tree() -> void:
+	if EventBus.timed_attack_resolved.is_connected(_on_timed_attack_resolved):
+		EventBus.timed_attack_resolved.disconnect(_on_timed_attack_resolved)
+	if EventBus.player_parried.is_connected(_on_player_parried):
+		EventBus.player_parried.disconnect(_on_player_parried)
+	if EventBus.player_dodged.is_connected(_on_player_dodged):
+		EventBus.player_dodged.disconnect(_on_player_dodged)
+	if EventBus.creature_bonded.is_connected(_on_creature_changed):
+		EventBus.creature_bonded.disconnect(_on_creature_changed)
+	if EventBus.creature_eaten.is_connected(_on_creature_changed):
+		EventBus.creature_eaten.disconnect(_on_creature_changed)
+
+
 func _on_creature_changed(_data: Dictionary) -> void:
 	call_deferred("_refresh_active_vessel")
 

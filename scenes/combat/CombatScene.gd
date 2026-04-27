@@ -357,10 +357,6 @@ func _exit_tree() -> void:
 	# Disconnect all EventBus signals to prevent memory leaks and desync.
 	if EventBus.combo_changed.is_connected(_on_combo_changed):
 		EventBus.combo_changed.disconnect(_on_combo_changed)
-	if EventBus.style_changed.is_connected(_on_style_changed):
-		EventBus.style_changed.disconnect(_on_style_changed)
-	if EventBus.stamina_changed.is_connected(_on_stamina_changed):
-		EventBus.stamina_changed.disconnect(_on_stamina_changed)
 	if EventBus.player_took_damage.is_connected(_on_player_took_damage):
 		EventBus.player_took_damage.disconnect(_on_player_took_damage)
 	if EventBus.player_healed.is_connected(_on_player_healed):
@@ -377,6 +373,14 @@ func _exit_tree() -> void:
 		EventBus.enemy_defeated.disconnect(_on_enemy_defeated)
 	if EventBus.dna_lock_denied.is_connected(_on_dna_lock_denied):
 		EventBus.dna_lock_denied.disconnect(_on_dna_lock_denied)
+	if EventBus.vessel_shifted.is_connected(_on_vessel_shifted):
+		EventBus.vessel_shifted.disconnect(_on_vessel_shifted)
+	if EventBus.proc_feedback_requested.is_connected(_on_proc_feedback_requested):
+		EventBus.proc_feedback_requested.disconnect(_on_proc_feedback_requested)
+	if lane_manager != null and is_instance_valid(lane_manager) and EventBus.enemy_status_applied_requested.is_connected(lane_manager.apply_status):
+		EventBus.enemy_status_applied_requested.disconnect(lane_manager.apply_status)
+	if EventBus.ultimate_power_granted.is_connected(_on_ultimate_power_granted):
+		EventBus.ultimate_power_granted.disconnect(_on_ultimate_power_granted)
 	
 	if _presentation_runtime != null:
 		if EventBus.screen_flash.is_connected(_presentation_runtime.on_screen_flash):
@@ -442,6 +446,9 @@ func _exit_tree() -> void:
 	if EventBus.quig_narrative_triggered.is_connected(_on_quig_narrative_triggered):
 		EventBus.quig_narrative_triggered.disconnect(_on_quig_narrative_triggered)
 	
+	if _hud_presenter != null:
+		_hud_presenter.cleanup()
+
 	if _victory_reward_director != null and is_instance_valid(_victory_reward_director):
 		if _victory_reward_director.has_method("reset"):
 			_victory_reward_director.reset()
@@ -493,14 +500,19 @@ func _setup_support_resolver() -> void:
 	_support_resolver.intervention_requested.connect(_spawn_support_intervention)
 	_support_resolver.heal_requested.connect(func(amt): 
 		var healed = GameState.heal_player(amt)
-		if healed > 0.0: EventBus.emit_signal("player_healed", healed)
+		if healed > 0.0: 
+			EventBus.emit_signal("player_healed", healed)
+			_refresh_run_build_readout()
 	)
 	_support_resolver.stamina_requested.connect(func(amt):
-		if combat_meter != null: combat_meter.call("restore_stamina", amt)
+		if combat_meter != null: 
+			combat_meter.call("restore_stamina", amt)
+			_refresh_run_build_readout()
 	)
 	_support_resolver.support_charge_requested.connect(func(amt):
 		if _run_growth != null and _run_growth.has_method("gain_support_charge_direct"):
 			_run_growth.call("gain_support_charge_direct", amt)
+			_refresh_run_build_readout()
 	)
 	_support_resolver.highlight_ring_requested.connect(func(lane, color, duration):
 		if _presentation_runtime != null: _presentation_runtime.highlight_timing_ring(lane, color, duration)
@@ -2861,7 +2873,6 @@ func _refresh_hud_snapshot(score_value: int, exp_value: float, style_tier: Strin
 	_refresh_run_build_readout()
 	_hud_presenter.refresh_combo(score_value, style_tier)
 	_hud_presenter.refresh_style(style_tier)
-	_refresh_power_level_readout()
 
 
 func _create_feedback_label() -> void:
@@ -3144,8 +3155,6 @@ func _setup_performance_rewards() -> void:
 		elif _performance_reward_director.has_method("sync_from_gamestate"):
 			_performance_reward_director.call("sync_from_gamestate")
 
-	if _performance_reward_director.has_signal("reward_claimed"):
-		_performance_reward_director.connect("reward_claimed", Callable(self, "_on_performance_reward_claimed"))
 	if _performance_reward_director.has_signal("proc_feedback"):
 		_performance_reward_director.connect("proc_feedback", Callable(self, "_on_performance_reward_feedback"))
 	if _performance_reward_director.has_signal("pressure_bias_changed"):
@@ -3212,11 +3221,6 @@ func _center_performance_offer_shell() -> void:
 	_presentation_controller.center_performance_offer_shell(_live_reward_shell, _performance_hud)
 
 
-func _on_performance_reward_claimed(_reward_data: Dictionary, _source: String) -> void:
-	# CombatScene-side logic for claims (e.g. SFX) can go here.
-	pass
-
-
 func _on_performance_pressure_bias_changed(snapshot: Dictionary) -> void:
 	if not _song_mode or _song_paused or _song_boss_triggered or _run_finished:
 		return
@@ -3237,8 +3241,6 @@ func _on_performance_reward_feedback(text: String, color: Color) -> void:
 
 func _connect_eventbus() -> void:
 	EventBus.combo_changed.connect(_on_combo_changed)
-	EventBus.style_changed.connect(_on_style_changed)
-	EventBus.stamina_changed.connect(_on_stamina_changed)
 	EventBus.player_took_damage.connect(_on_player_took_damage)
 	EventBus.player_healed.connect(_on_player_healed)
 	EventBus.ultimate_available.connect(_on_ultimate_available)
@@ -4727,6 +4729,7 @@ func _build_arena_visuals() -> void:
 		self,
 		_active_encounter,
 		lane_manager,
+		player_combat,
 		_all_enemies_by_id,
 		_enemy_phase_by_id,
 		_enemy_markers_by_id,
@@ -5227,11 +5230,6 @@ func _flash_meter_shell(color: Color, duration: float) -> void:
 	tween.parallel().tween_property(_resource_shell, "color", resource_base, 0.12)
 
 
-func _offer_victory_reward(creature_data: Dictionary) -> void:
-	if _victory_reward_director != null:
-		_victory_reward_director.offer_creature(creature_data, false)
-
-
 func _hide_reward_overlay() -> void:
 	_reward_overlay.visible = false
 	_pending_reward_creature = {}
@@ -5252,23 +5250,7 @@ func _hide_reward_overlay() -> void:
 
 func _refresh_run_build_readout() -> void:
 	_hud_presenter.refresh_run_build(_run_growth)
-	_refresh_power_level_readout()
 	_refresh_dna_hud()
-
-
-func _refresh_power_level_readout() -> void:
-	_hud_presenter.refresh_power_level(_resolve_live_power_level())
-
-
-func _resolve_live_power_level() -> float:
-	var power_level: float = GameState.get_power_level()
-	if _run_growth != null and is_instance_valid(_run_growth) and _run_growth.has_method("get_runtime_effect"):
-		var aggression_effect: Dictionary = Dictionary(_run_growth.call("get_runtime_effect", "timed_attack_bonus_damage"))
-		var cadence_effect: Dictionary = Dictionary(_run_growth.call("get_runtime_effect", "good_timed_bonus_damage"))
-		power_level *= 1.0 + maxf(float(aggression_effect.get("value", 0.0)), 0.0) + maxf(float(cadence_effect.get("value", 0.0)), 0.0)
-	if combat_meter != null and is_instance_valid(combat_meter) and combat_meter.has_method("damage_multiplier"):
-		power_level *= maxf(float(combat_meter.call("damage_multiplier")), 1.0)
-	return power_level
 
 
 func _refresh_dna_hud() -> void:
@@ -5298,9 +5280,9 @@ func _refresh_live_reward_shell() -> void:
 	var encounter_context: String = _describe_creature_offer_context(pending_creature)
 	_live_reward_title_label.text = PRESENTATION_TEXT.live_reward_title(display_name)
 	
-	var live_body: String = _compact_hud_copy(str(pending_creature.get("description", "")), 30)
+	var live_body: String = _hud_presenter.compact_hud_copy(str(pending_creature.get("description", "")), 30)
 	if not encounter_context.is_empty():
-		live_body += "  %s" % _compact_hud_copy(encounter_context, 12)
+		live_body += "  %s" % _hud_presenter.compact_hud_copy(encounter_context, 12)
 	_live_reward_body_label.text = live_body
 	
 	if _live_reward_dna_label != null:
@@ -5308,15 +5290,6 @@ func _refresh_live_reward_shell() -> void:
 		_live_reward_dna_label.modulate = Color(0.4, 0.9, 0.8) if current_dna >= threshold else Color(1.0, 0.4, 0.4)
 
 	_live_reward_hint_label.text = PRESENTATION_TEXT.live_reward_hint(_victory_reward_director.is_dna_locked(), _victory_reward_director.get_offer_timer())
-
-
-func _compact_hud_copy(text: String, max_length: int) -> String:
-	var compact: String = " ".join(text.split("\n", false)).strip_edges()
-	if compact.length() <= max_length:
-		return compact
-	if max_length <= 3:
-		return compact.left(max_length)
-	return compact.left(max_length - 3).strip_edges() + "..."
 
 
 func _hide_live_reward_shell() -> void:
@@ -5385,7 +5358,6 @@ func _pass_reward() -> void:
 
 func _on_combo_changed(count: int, tier: String) -> void:
 	_hud_presenter.refresh_combo(count, tier)
-	_refresh_power_level_readout()
 
 
 func _on_run_score_changed(score: int) -> void:
@@ -5430,10 +5402,6 @@ func _show_end_stats() -> void:
 		+ post_run_summary
 	)
 	_end_stats_label.visible = true
-
-
-func _on_style_changed(_score: float, _tier: String) -> void:
-	pass
 
 
 func _on_dna_gained(_species_id: String, _amount: float, _total: float) -> void:
@@ -5482,25 +5450,49 @@ func _on_dna_routing_changed(route_id: String, label: String) -> void:
 		_run_spine_surface.call("refresh_prep_summary")
 
 
-func _on_stamina_changed(_current: float, _maximum: float) -> void:
-	pass
-
-
 func _on_player_took_damage(amount: float, source_lane: int) -> void:
 	if _escalation_director != null:
 		_escalation_director.notify_player_hp_changed(GameState.get_hp_percent())
 		_escalation_director.notify_player_took_damage(amount, source_lane)
-	# Pale Shelf: hits feel clinical and punishing — "EXPOSED" in cold blue, harder flash.
-	# All other regions: standard warm "STRUCK".
-	if _region_id == "pale_shelf":
-		_show_feedback("EXPOSED", Color(0.72, 0.76, 0.96, 1.0), 0.48)
-		_presentation_runtime.highlight_timing_ring(source_lane, Color(0.65, 0.72, 0.98, 1.0), 5.0)
-		_flash_meter_shell(Color(0.18, 0.18, 0.38, 0.96), 0.22)
-		EventBus.emit_signal("screen_flash", Color(0.38, 0.40, 0.62, 0.18), 0.28)
-	else:
-		_show_feedback("STRUCK", Color(0.96, 0.44, 0.40, 1.0), 0.24)
-		_presentation_runtime.highlight_timing_ring(source_lane, Color(1.0, 0.25, 0.25, 1.0), 5.0)
-		_flash_meter_shell(Color(0.42, 0.10, 0.11, 0.94), 0.18)
+	
+	_trigger_regional_feedback("player_damaged", {"lane": source_lane})
+
+
+func _trigger_regional_feedback(event_id: String, ctx: Dictionary = {}) -> void:
+	var lane: int = int(ctx.get("lane", -1))
+	match event_id:
+		"player_damaged":
+			if _region_id == "pale_shelf":
+				_show_feedback("EXPOSED", Color(0.72, 0.76, 0.96, 1.0), 0.48)
+				_presentation_runtime.highlight_timing_ring(lane, Color(0.65, 0.72, 0.98, 1.0), 5.0)
+				_flash_meter_shell(Color(0.18, 0.18, 0.38, 0.96), 0.22)
+				EventBus.emit_signal("screen_flash", Color(0.38, 0.40, 0.62, 0.18), 0.28)
+			else:
+				_show_feedback("STRUCK", Color(0.96, 0.44, 0.40, 1.0), 0.24)
+				_presentation_runtime.highlight_timing_ring(lane, Color(1.0, 0.25, 0.25, 1.0), 5.0)
+				_flash_meter_shell(Color(0.42, 0.10, 0.11, 0.94), 0.18)
+		
+		"enemy_defeated":
+			match _region_id:
+				"feeding_hollow":
+					_show_beat_feedback("FLESH", Color(0.88, 0.28, 0.18, 1.0))
+					EventBus.emit_signal("screen_flash", Color(0.35, 0.05, 0.05, 0.05), 0.05)
+				"drowned_cut":
+					if _song_boss_triggered:
+						_show_beat_feedback("RESONANCE", Color(0.48, 0.88, 0.76, 1.0))
+						EventBus.emit_signal("screen_flash", Color(0.10, 0.38, 0.32, 0.05), 0.05)
+						EventBus.emit_signal("dna_resonated", Color(0.48, 0.88, 0.76), 0.3)
+		
+		"phrase_milestone":
+			var count: int = int(ctx.get("count", 0))
+			if count >= 8:
+				_show_beat_feedback("FLOW STATE", Color(1.0, 0.88, 0.40, 1.0))
+				EventBus.emit_signal("screen_flash", Color(0.60, 0.50, 0.12, 0.08), 0.06)
+			elif count == 5:
+				_show_beat_feedback("IN THE POCKET", Color(0.95, 0.82, 0.38, 1.0))
+				EventBus.emit_signal("screen_flash", Color(0.50, 0.42, 0.10, 0.06), 0.05)
+			elif count == 3:
+				_show_beat_feedback("PHRASE", Color(0.88, 0.78, 0.36, 1.0))
 
 
 func _on_player_healed(_amount: float) -> void:
@@ -5725,84 +5717,76 @@ func _on_enemy_defeated(enemy_id: int) -> void:
 	_enemy_max_hp.erase(enemy_id)
 	_enemy_phase_by_id.erase(enemy_id)
 
-	# Region-specific kill momentum feedback (song mode only).
-	# Feeding Hollow: every kill pulses the predator identity.
-	# Pale Shelf: silence — deaths feel hollow, not celebrated.
-	# Drowned Cut: handled below in DNA logic for maximum synergy.
 	if _song_mode and not _song_paused and not _song_boss_triggered:
-		match _region_id:
-			"feeding_hollow":
-				_show_beat_feedback("FLESH", Color(0.88, 0.28, 0.18, 1.0))
-				EventBus.emit_signal("screen_flash", Color(0.35, 0.05, 0.05, 0.05), 0.05)
-			"drowned_cut":
-				# Standard resonance if no DNA result follows (bosses, etc)
-				if _song_boss_triggered:
-					_show_beat_feedback("RESONANCE", Color(0.48, 0.88, 0.76, 1.0))
-					EventBus.emit_signal("screen_flash", Color(0.10, 0.38, 0.32, 0.05), 0.05)
-					EventBus.emit_signal("dna_resonated", Color(0.48, 0.88, 0.76), 0.3)
+		_trigger_regional_feedback("enemy_defeated")
 
 	# DNA economy: creature encounters now pay out the species you actually killed.
-	# Fallback to the phase reward pool only if a legacy enemy payload has no species id.
 	if _song_mode and not _song_boss_triggered and _song_phase_index >= 0 and _song_phase_index < _song_phases.size():
-		var defeated_enemy: Dictionary = defeated_enemy_context
-		var dna_species: String = str(defeated_enemy.get("reward_species_id", defeated_enemy.get("species_id", "")))
-		var dna_amount: float = float(defeated_enemy.get("dna_reward", DNA_PER_KILL))
-		
-		# Fallback to local enemy reward pool if no direct species is identified.
-		if dna_species.is_empty() and defeated_enemy.has("reward_pool"):
-			var _local_pool: Array = defeated_enemy.get("reward_pool", [])
-			if not _local_pool.is_empty():
-				dna_species = str(_local_pool[0]) # Use first entry for direct enemy-driven DNA
-		
-		if dna_species.is_empty():
-			var _dna_phase_val = _song_phases[_song_phase_index]
-			if _dna_phase_val is Dictionary:
-				var _dna_pool: Array = _dna_phase_val.get("reward_pool", [])
-				if not _dna_pool.is_empty():
-					dna_species = str(_dna_pool[_song_phase_dna_award_index % _dna_pool.size()])
-					_song_phase_dna_award_index += 1
-					dna_amount = DNA_PER_KILL
-		if not dna_species.is_empty() and dna_amount > 0.0:
-			var dna_result: Dictionary = {}
-			if _run_growth != null and is_instance_valid(_run_growth) and _run_growth.has_method("process_dna_gain"):
-				dna_result = _run_growth.call("process_dna_gain", dna_species, dna_amount)
-			else:
-				GameState.add_dna(dna_species, dna_amount)
-				dna_result = {
-					"banked": true,
-					"total": GameState.get_dna(dna_species),
-					"route_id": "bond",
-					"exp_gained": 0.0
-				}
-			
-			EventBus.emit_signal("dna_gained", dna_species, dna_amount, float(dna_result.get("total", GameState.get_dna(dna_species))))
-			
-			var dna_name: String = str(COMBAT_CONTENT.get_creature(dna_species).get("display_name", dna_species)).to_upper()
-			if bool(dna_result.get("auto_bonded", false)):
-				# Skip DNA feedback; _on_creature_bonded will handle the 'BONDED' flash.
-				pass
-			elif bool(dna_result.get("banked", false)):
-				var dna_color := Color(0.24, 0.86, 0.74, 1.0)
-				if _region_id == "drowned_cut":
-					_show_beat_feedback("DROWNED RESONANCE", dna_color)
-					EventBus.emit_signal("screen_flash", Color(0.10, 0.38, 0.32, 0.12), 0.10)
-					EventBus.emit_signal("dna_resonated", dna_color, 0.85)
-				else:
-					_show_beat_feedback("%s DNA" % dna_name, dna_color)
-				
-				_show_feedback("+%s DNA" % dna_name, Color(0.62, 0.96, 0.78, 1.0), 0.22)
-				_maybe_show_dna_pickup_flavor(dna_species, dna_result)
-			else:
-				if _region_id == "drowned_cut":
-					_show_beat_feedback("RESONANCE", Color(0.48, 0.88, 0.76, 1.0))
-					EventBus.emit_signal("dna_resonated", Color(0.48, 0.88, 0.76), 0.4)
-				_show_feedback("+%s DNA -> EXP" % dna_name, Color(0.96, 0.84, 0.62, 1.0), 0.22)
-				_maybe_show_dna_pickup_flavor(dna_species, dna_result)
+		_process_dna_award(defeated_enemy_context)
 
 	if _song_mode and not _song_paused and not _song_boss_triggered:
 		if _escalation_director != null:
 			var defeated_lane: int = int(defeated_enemy_context.get("lane", -1))
 			_escalation_director.notify_enemy_defeated(enemy_id, defeated_lane, false)
+
+
+func _process_dna_award(defeated_enemy: Dictionary) -> void:
+	var dna_species: String = str(defeated_enemy.get("reward_species_id", defeated_enemy.get("species_id", "")))
+	var dna_amount: float = float(defeated_enemy.get("dna_reward", DNA_PER_KILL))
+	
+	# Fallback to local enemy reward pool if no direct species is identified.
+	if dna_species.is_empty() and defeated_enemy.has("reward_pool"):
+		var _local_pool: Array = defeated_enemy.get("reward_pool", [])
+		if not _local_pool.is_empty():
+			dna_species = str(_local_pool[0])
+	
+	if dna_species.is_empty():
+		var _dna_phase_val = _song_phases[_song_phase_index]
+		if _dna_phase_val is Dictionary:
+			var _dna_pool: Array = _dna_phase_val.get("reward_pool", [])
+			if not _dna_pool.is_empty():
+				dna_species = str(_dna_pool[_song_phase_dna_award_index % _dna_pool.size()])
+				_song_phase_dna_award_index += 1
+				dna_amount = DNA_PER_KILL
+				
+	if dna_species.is_empty() or dna_amount <= 0.0:
+		return
+
+	var dna_result: Dictionary = {}
+	if _run_growth != null and is_instance_valid(_run_growth) and _run_growth.has_method("process_dna_gain"):
+		dna_result = _run_growth.call("process_dna_gain", dna_species, dna_amount)
+	else:
+		GameState.add_dna(dna_species, dna_amount)
+		dna_result = {"banked": true, "total": GameState.get_dna(dna_species)}
+	
+	EventBus.emit_signal("dna_gained", dna_species, dna_amount, float(dna_result.get("total", GameState.get_dna(dna_species))))
+	_show_dna_feedback(dna_species, dna_amount, dna_result)
+
+
+func _show_dna_feedback(species_id: String, _amount: float, result: Dictionary) -> void:
+	var dna_name: String = str(COMBAT_CONTENT.get_creature(species_id).get("display_name", species_id)).to_upper()
+	if bool(result.get("auto_bonded", false)):
+		return
+
+	if bool(result.get("banked", false)):
+		var dna_color := Color(0.24, 0.86, 0.74, 1.0)
+		if _region_id == "drowned_cut":
+			_show_beat_feedback("DROWNED RESONANCE", dna_color)
+			EventBus.emit_signal("screen_flash", Color(0.10, 0.38, 0.32, 0.12), 0.10)
+			EventBus.emit_signal("dna_resonated", dna_color, 0.85)
+		else:
+			_show_beat_feedback("%s DNA" % dna_name, dna_color)
+		
+		_show_feedback("+%s DNA" % dna_name, Color(0.62, 0.96, 0.78, 1.0), 0.22)
+		_maybe_show_dna_pickup_flavor(species_id, result)
+	else:
+		if _region_id == "drowned_cut":
+			_show_beat_feedback("RESONANCE", Color(0.48, 0.88, 0.76, 1.0))
+			EventBus.emit_signal("screen_flash", Color(0.10, 0.38, 0.32, 0.05), 0.05)
+			EventBus.emit_signal("dna_resonated", Color(0.48, 0.88, 0.76), 0.4)
+		_show_feedback("+%s DNA -> EXP" % dna_name, Color(0.96, 0.84, 0.62, 1.0), 0.22)
+		_maybe_show_dna_pickup_flavor(species_id, result)
+
 
 
 func _resolve_enemy_context(enemy_id: int) -> Dictionary:
@@ -6173,7 +6157,7 @@ func _on_run_growth_level_resolved(result: Dictionary) -> void:
 	var summary: String = str(result.get("summary", ""))
 	if readout_label.is_empty():
 		return
-	_quig_anchor_label.text = _compact_hud_copy("%s - %s" % [readout_label, summary], 34)
+	_quig_anchor_label.text = _hud_presenter.compact_hud_copy("%s - %s" % [readout_label, summary], 34)
 	_quig_anchor_label.visible = true
 	_refresh_quig_ui_state()
 	
@@ -6216,7 +6200,7 @@ func _on_tendency_growth_resolved(tendency_id: String, title: String, summary: S
 	_show_feedback(title, color, 0.42)
 	_surge_window_tendency = tendency_id
 	_surge_window_timer = 4.0
-	_quig_anchor_label.text = _compact_hud_copy(summary, 34)
+	_quig_anchor_label.text = _hud_presenter.compact_hud_copy(summary, 34)
 	_quig_anchor_label.visible = true
 	_refresh_quig_ui_state()
 	
@@ -6649,47 +6633,6 @@ func _get_current_cadence_window() -> String:
 	return ""
 
 
-func _build_support_mastery_context(effect_id: String, lane: int) -> Dictionary:
-	var context: Dictionary = {
-		"source_event": "",
-		"lane": lane,
-		"action_quality": "",
-		"beat_quality": "off",
-		"phrase_window": _get_mastery_window(),
-		"cadence_window": _get_current_cadence_window(),
-		"is_recent": false,
-		"window_id": ""
-	}
-	if not _last_mastery_context.is_empty():
-		var now: float = Time.get_ticks_msec() / 1000.0
-		var age: float = now - float(_last_mastery_context.get("timestamp", -999.0))
-		if age <= SUPPORT_MASTERY_CONTEXT_TIMEOUT:
-			context["source_event"] = str(_last_mastery_context.get("event_id", ""))
-			context["lane"] = int(_last_mastery_context.get("lane", lane))
-			context["action_quality"] = str(_last_mastery_context.get("action_quality", ""))
-			context["beat_quality"] = str(_last_mastery_context.get("beat_quality", "off"))
-			context["phrase_window"] = str(_last_mastery_context.get("phrase_window", context["phrase_window"]))
-			context["cadence_window"] = str(_last_mastery_context.get("cadence_window", context["cadence_window"]))
-			context["is_recent"] = true
-
-	var phrase_window: String = str(context.get("phrase_window", ""))
-	var cadence_window: String = str(context.get("cadence_window", ""))
-	var action_quality: String = str(context.get("action_quality", ""))
-	var beat_quality: String = str(context.get("beat_quality", "off"))
-	var precision: bool = action_quality == "perfect" and (beat_quality == "perfect" or beat_quality == "good")
-
-	if precision and cadence_window == "surge" and (phrase_window == "flow_state" or phrase_window == "in_pocket"):
-		context["window_id"] = "cadence_surge"
-	elif phrase_window == "flow_state":
-		context["window_id"] = "flow_state"
-	elif phrase_window == "in_pocket":
-		context["window_id"] = "in_pocket"
-	elif precision and cadence_window == "drive" and effect_id == "thornback_rend":
-		context["window_id"] = "in_pocket"
-
-	return context
-
-
 func _on_bonded_support_triggered(species_id: String, lane: int, effect_id: String) -> void:
 	var combo_mult: float = float(combat_meter.call("damage_multiplier"))
 	var active_creature: Dictionary = GameState.get_active_bonded_creature()
@@ -6697,27 +6640,31 @@ func _on_bonded_support_triggered(species_id: String, lane: int, effect_id: Stri
 	var bond_mult: float = GameState.get_bond_level_mult(int(active_creature.get("bond_level", 1)))
 	
 	# Bond Surge: next support trigger has doubled effectiveness.
-	var bond_surge: bool = false
 	var surge_mult: float = 1.0
 	if _run_growth != null and _run_growth.has_method("get_runtime_effect"):
 		var surge_effect: Dictionary = Dictionary(_run_growth.call("get_runtime_effect", "bond_trigger_mult"))
 		surge_mult = float(surge_effect.get("value", 1.0))
-		bond_surge = surge_mult > 1.0
 
-	var mastery_context: Dictionary = _build_support_mastery_context(effect_id, lane)
-	var mastery: String = str(mastery_context.get("window_id", ""))
-	var cadence_surge: bool = mastery == "cadence_surge"
-	var support_profile: Dictionary = COMBAT_IMPACT_FEEDBACK.build_support_profile(effect_id, cadence_surge, bond_surge)
-	
-	if bond_surge:
+	if surge_mult > 1.0:
 		_show_feedback("SYNC ACTIVE", Color(0.44, 0.96, 0.78, 1.0), 0.42)
-	var support_enemy_id: int = _get_enemy_id_for_lane(lane)
-	if effect_id == "bond_remnant_mend" or effect_id == "gruvek_gorge" or effect_id == "marrowward_ward" or effect_id == "gorefane_maul" or effect_id == "siltgrip_drag":
-		support_enemy_id = -1
 
-	# HOLLOW amplifier: when Bond Remnant is the active creature, REND gets one extra charge
-	# and EXPOSE lasts 0.5 s longer. Mastery windows stack on top of this.
-	var is_hollow_active: bool = str(active_creature.get("species_id", "")) == "bond_remnant"
+	var mastery_context: Dictionary = _support_resolver.call(
+		"build_mastery_context",
+		effect_id,
+		lane,
+		_get_mastery_window(),
+		_get_current_cadence_window(),
+		_last_mastery_context,
+		SUPPORT_MASTERY_CONTEXT_TIMEOUT
+	)
+	
+	var mastery: String = str(mastery_context.get("window_id", ""))
+	var cadence_surge: bool = (mastery == "cadence_surge")
+	var support_profile: Dictionary = COMBAT_IMPACT_FEEDBACK.build_support_profile(effect_id, cadence_surge, surge_mult > 1.0)
+	
+	var support_enemy_id: int = _get_enemy_id_for_lane(lane)
+	if effect_id in ["bond_remnant_mend", "gruvek_gorge", "marrowward_ward", "gorefane_maul", "siltgrip_drag"]:
+		support_enemy_id = -1
 
 	if _support_resolver != null:
 		var ctx: Dictionary = {
@@ -6728,44 +6675,19 @@ func _on_bonded_support_triggered(species_id: String, lane: int, effect_id: Stri
 			"bond_mult": bond_mult,
 			"surge_mult": surge_mult,
 			"mastery_window": mastery,
-			"source_event": str(mastery_context.get("source_event", "")),
-			"source_lane": int(mastery_context.get("lane", lane)),
-			"action_quality": str(mastery_context.get("action_quality", "")),
-			"beat_quality": str(mastery_context.get("beat_quality", "off")),
 			"cadence_surge": cadence_surge,
-			"bond_surge": bond_surge,
-			"is_hollow_active": is_hollow_active,
+			"bond_surge": surge_mult > 1.0,
+			"is_hollow_active": str(active_creature.get("species_id", "")) == "bond_remnant",
 			"lane_manager": lane_manager,
 			"combat_meter": combat_meter,
 			"game_state": GameState
 		}
 		
-		var collar_data: Dictionary = GameState.get_equipped_collar()
-		var collar_mod: Dictionary = {}
-		if not collar_data.is_empty():
-			var mod: Dictionary = Dictionary(collar_data.get("mod", {}))
-			collar_mod = mod.duplicate(true)
-			collar_mod["feedback_text"] = String(collar_data.get("title", "COLLAR")).to_upper()
-			collar_mod["satisfied"] = true
-			
-			if mod.has("support_impact_mult"):
-				ctx["surge_mult"] = float(ctx.get("surge_mult", 1.0)) * float(mod["support_impact_mult"])
-			
-			if mod.has("stamina_cost_mult"):
-				var cost: float = 25.0 * float(mod["stamina_cost_mult"])
-				if combat_meter != null:
-					var current_stamina: float = float(combat_meter.get("stamina"))
-					if current_stamina >= cost:
-						combat_meter.set("stamina", max(current_stamina - cost, 0.0))
-						EventBus.emit_signal("stamina_changed", combat_meter.get("stamina"), combat_meter.get("stamina_max"))
-					else:
-						collar_mod["satisfied"] = false
-						collar_mod["suppress_support"] = true
+		ctx["collar_mod"] = _support_resolver.call("apply_collar_logic", ctx, GameState.get_equipped_collar(), combat_meter)
 		
-		ctx["collar_mod"] = collar_mod
-		
-		if collar_mod.has("redirected_lane"):
+		if ctx["collar_mod"].has("redirected_lane"):
 			support_enemy_id = _get_enemy_id_for_lane(int(ctx.get("lane", lane)))
+		
 		_support_resolver.resolve(ctx)
 
 	_presentation_runtime.apply_impact_profile(support_profile, lane, support_enemy_id)
@@ -6782,15 +6704,8 @@ func _on_phrase_milestone(count: int) -> void:
 	if _music_control_layer != null and _music_control_layer.has_method("notify_phrase_marker"):
 		_music_control_layer.call("notify_phrase_marker", count)
 	_rebuild_music_driven_difficulty()
-	# Consecutive quality action chain announcements.
-	if count >= 8:
-		_show_beat_feedback("FLOW STATE", Color(1.0, 0.88, 0.40, 1.0))
-		EventBus.emit_signal("screen_flash", Color(0.60, 0.50, 0.12, 0.08), 0.06)
-	elif count == 5:
-		_show_beat_feedback("IN THE POCKET", Color(0.95, 0.82, 0.38, 1.0))
-		EventBus.emit_signal("screen_flash", Color(0.50, 0.42, 0.10, 0.06), 0.05)
-	elif count == 3:
-		_show_beat_feedback("PHRASE", Color(0.88, 0.78, 0.36, 1.0))
+	
+	_trigger_regional_feedback("phrase_milestone", {"count": count})
 
 
 func _on_tier_changed(new_tier: String, _old_tier: String) -> void:
@@ -6953,11 +6868,10 @@ func _spawn_support_intervention(species_id: String, lane: int, tint: Color) -> 
 func _on_quig_narrative_triggered(text: String, duration: float) -> void:
 	if _quig_anchor_label == null:
 		return
-	
-	_quig_anchor_label.text = _compact_hud_copy(text, 58)
+
+	_quig_anchor_label.text = _hud_presenter.compact_hud_copy(text, 58)
 	_quig_anchor_label.visible = true
-	_refresh_quig_ui_state()
-	
+	_refresh_quig_ui_state()	
 	if _quig_tween != null:
 		_quig_tween.kill()
 	

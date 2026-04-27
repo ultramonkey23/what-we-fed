@@ -19,6 +19,17 @@ const PROJECTILE_SCENE_PATH: String = "res://scenes/combat/Projectile.tscn"
 const MELEE_APPROACH_SCRIPT_PATH: String = "res://scenes/combat/MeleeApproach.gd"
 const MIN_IMPACT_SEPARATION: float = 0.40
 
+# --- Hunting Field - Any-Angle Spawning ---
+# Instead of fixed 8 positions, we can now derive any spawn point from an angle.
+func get_spawn_pos_for_angle(angle: float) -> Vector2:
+	var spawn_dist: float = _viewport_size.y * SPAWN_DISTANCE_RATIO
+	var dir: Vector2 = Vector2(cos(angle), sin(angle))
+	return _center_pos + dir * spawn_dist
+
+func get_hit_zone_pos_for_angle(angle: float) -> Vector2:
+	var dir: Vector2 = Vector2(cos(angle), sin(angle))
+	return _center_pos + dir * HIT_ZONE_DISTANCE
+
 # Status effect constants.
 const REND_DAMAGE_MULT: float = 1.30        # +30% damage to the enemy while REND is active
 const REND_BASE_CHARGES: int = 3            # REND consumes on hit; expires after 3 hits
@@ -48,12 +59,12 @@ var _threat_hit_zone_positions: Array[Vector2] = []
 
 var _projectile_scene: PackedScene = null
 var _melee_approach_script: Script = null
-var _projectile_slots: Array = [null, null, null, null, null, null, null, null]
+var _active_projectiles: Dictionary = {} # enemy_id -> projectile node
 var _enemies: Dictionary = {} # enemy_id -> Dictionary (Population)
-var _strikers: Array[int] = [-1, -1, -1, -1, -1, -1, -1, -1] # enemy_id per direction
+var _strikers: Dictionary = {} # enemy_id -> Dictionary (Attacker state)
 var _orbiting_enemy_ids: Array[int] = [] # Ordered for fair authority
-var _lane_authority_debt: Array[float] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-var _lane_last_fired_cycle: Array[int] = [-999, -999, -999, -999, -999, -999, -999, -999]
+var _enemy_authority_debt: Dictionary = {} # enemy_id -> float
+var _enemy_last_fired_cycle: Dictionary = {} # enemy_id -> int
 var _fire_cycle_index: int = 0
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
@@ -122,7 +133,7 @@ func load_scene() -> bool:
 
 
 func start_combat(enemy_data: Array) -> void:
-	# Starts or restarts a combat cycle with one enemy dictionary per lane.
+	# Starts or restarts a combat cycle with dynamic strikers.
 	if combat_scene == null:
 		push_error("LaneManager.combat_scene must be set before start_combat().")
 		return
@@ -134,23 +145,25 @@ func start_combat(enemy_data: Array) -> void:
 	stop()
 
 	_enemies.clear()
-	_strikers = [-1, -1, -1, -1, -1, -1, -1, -1]
+	_strikers.clear()
 	_orbiting_enemy_ids.clear()
 	_orbit_angles.clear()
 	_orbit_radius_offsets.clear()
 	_orbit_drift_accum.clear()
 	_enemy_visual_offsets.clear()
 
-	for lane in range(THREAT_COUNT):
-		if lane < enemy_data.size():
-			var enemy = enemy_data[lane].duplicate(true)
-			var id = int(enemy.get("id", _next_enemy_id))
-			if id == _next_enemy_id: _next_enemy_id += 1
-			enemy["id"] = id
-			enemy["lane"] = lane
-			_enemies[id] = enemy
-			_strikers[lane] = id
-			_assign_striker_visual_offset(id, lane)
+	for lane in range(enemy_data.size()):
+		var enemy = enemy_data[lane].duplicate(true)
+		var id = int(enemy.get("id", _next_enemy_id))
+		if id == _next_enemy_id: _next_enemy_id += 1
+		enemy["id"] = id
+		enemy["lane"] = lane # Maintain legacy lane ID for signals
+		_enemies[id] = enemy
+		
+		# Any-angle initialization: map 8 lanes to angles, but store as dynamic striker.
+		var angle: float = (float(lane) / float(THREAT_COUNT)) * TAU - PI/2.0
+		_strikers[id] = {"angle": angle, "lane": lane}
+		_assign_striker_visual_offset(id, lane)
 
 	_combat_running = true
 	_cycle_task_id += 1
@@ -194,38 +207,31 @@ func _on_song_beat_pulse(_beat_index: int, _intensity: float, _quality: String) 
 
 
 func get_projectile(lane: int):
-	if lane < 0 or lane >= THREAT_COUNT:
-		return null
-
-	var projectile = _projectile_slots[lane]
-	if projectile == null:
-		return null
-
-	if not is_instance_valid(projectile):
-		_projectile_slots[lane] = null
-		return null
-
-	return projectile
+	# Legacy lookup: find the projectile for the enemy in this lane.
+	for id in _active_projectiles:
+		var striker = _strikers.get(id, {})
+		if int(striker.get("lane", -1)) == lane:
+			var projectile = _active_projectiles[id]
+			if is_instance_valid(projectile):
+				return projectile
+	return null
 
 
 func is_lane_empty(lane: int) -> bool:
-	if lane < 0 or lane >= THREAT_COUNT:
-		return false
-	return _strikers[lane] == -1
+	for id in _strikers:
+		if int(_strikers[id].get("lane", -1)) == lane:
+			return false
+	return true
 
 
 func clear_slot(lane: int) -> void:
-	if lane < 0 or lane >= THREAT_COUNT:
-		return
-
-	var existing = _projectile_slots[lane]
-	if existing != null and is_instance_valid(existing):
-		var is_melee_approach: bool = ("is_melee_approach" in existing and existing.get("is_melee_approach"))
-		var is_resolved: bool = ("is_resolved" in existing and existing.get("is_resolved"))
-		if is_melee_approach and not is_resolved:
-			return  # Alive melee stays in slot; it bounces, not vanishes
-
-	_projectile_slots[lane] = null
+	# In the dynamic system, slots are cleared when projectiles resolve via their callbacks.
+	# We maintain this for legacy cleanup calls that might still exist.
+	var projectile = get_projectile(lane)
+	if projectile != null:
+		var id = projectile.get("enemy_id")
+		if id != null:
+			_active_projectiles.erase(int(id))
 
 
 func get_player_pos() -> Vector2:
@@ -314,9 +320,14 @@ func set_enemy(lane: int, enemy_data: Dictionary) -> void:
 	enemy["id"] = id
 	_enemies[id] = enemy
 	
-	# Decide if they join orbit or take an empty lane
-	if lane >= 0 and lane < THREAT_COUNT and _strikers[lane] == -1 and alive_striker_count() < attack_authority_budget:
-		_strikers[lane] = id
+	# Decide if they join orbit or take a striker slot
+	# Hunting Field expansion: attack_authority_budget now allows more than 8.
+	if alive_striker_count() < attack_authority_budget:
+		var angle: float = (float(lane) / float(THREAT_COUNT)) * TAU - PI/2.0
+		if lane < 0:
+			angle = _rng.randf_range(0.0, TAU)
+		
+		_strikers[id] = {"angle": angle, "lane": lane}
 		enemy["lane"] = lane
 		_assign_striker_visual_offset(id, lane)
 	else:
@@ -334,15 +345,14 @@ func set_enemy(lane: int, enemy_data: Dictionary) -> void:
 
 
 func damage_enemy(lane: int, amount: float) -> void:
-	# Applies damage to a lane's active enemy.
+	# Applies damage to a lane's active enemy. Supports legacy lane lookup.
 	if lane < 0 or lane >= THREAT_COUNT:
 		return
 	
-	var id = _strikers[lane]
-	if id == -1:
-		return
-		
-	damage_enemy_by_id(id, amount)
+	for id in _strikers:
+		if int(_strikers[id].get("lane", -1)) == lane:
+			damage_enemy_by_id(id, amount)
+			return
 
 
 func damage_enemy_by_id(id: int, amount: float) -> void:
@@ -395,13 +405,13 @@ func _handle_enemy_defeat(id: int) -> void:
 
 	EventBus.emit_signal("enemy_defeated", id)
 
-	if lane >= 0:
-		var projectile = get_projectile(lane)
-		if projectile != null:
+	var projectile = _active_projectiles.get(id)
+	if projectile != null:
+		if is_instance_valid(projectile):
 			projectile.resolve("enemy_defeated")
-			clear_slot(lane)
-		_strikers[lane] = -1
+		_active_projectiles.erase(id)
 	
+	_strikers.erase(id)
 	_orbiting_enemy_ids.erase(id)
 	_orbit_angles.erase(id)
 	_orbit_radius_offsets.erase(id)
@@ -419,8 +429,11 @@ func _handle_enemy_defeat(id: int) -> void:
 func get_enemy(lane: int) -> Dictionary:
 	if lane < 0 or lane >= THREAT_COUNT:
 		return {}
-	var id = _strikers[lane]
-	return _enemies.get(id, {})
+	
+	for id in _strikers:
+		if int(_strikers[id].get("lane", -1)) == lane:
+			return _enemies.get(id, {})
+	return {}
 
 
 func get_all_enemies() -> Dictionary:
@@ -437,18 +450,20 @@ func alive_count() -> int:
 
 
 func alive_striker_count() -> int:
-	var total: int = 0
-	for id in _strikers:
-		if id != -1:
-			total += 1
-	return total
+	return _strikers.size()
 
 
 func _find_lane_for_enemy(id: int) -> int:
-	for i in range(THREAT_COUNT):
-		if _strikers[i] == id:
-			return i
-	return -1
+	var striker = _strikers.get(id, {})
+	return int(striker.get("lane", -1))
+
+
+func _get_lane_from_angle(angle: float) -> int:
+	# Sector size is TAU/8 (45 degrees)
+	var sector: float = TAU / 8.0
+	# Offset so sector 0 is centered on -PI/2 (North)
+	var norm_angle: float = fposmod(angle + PI/2.0 + sector/2.0, TAU)
+	return int(floor(norm_angle / sector)) % 8
 
 
 func stop() -> void:
@@ -459,18 +474,18 @@ func stop() -> void:
 	_enemy_statuses.clear()
 	_reset_attack_authority_state()
 	_enemies.clear()
-	_strikers = [-1, -1, -1, -1, -1, -1, -1, -1]
+	_strikers.clear()
 	_orbiting_enemy_ids.clear()
 	_orbit_angles.clear()
 	_orbit_radius_offsets.clear()
 	_orbit_drift_accum.clear()
 	_enemy_visual_offsets.clear()
 
-	for lane in range(THREAT_COUNT):
-		var projectile = get_projectile(lane)
-		if projectile != null:
+	for id in _active_projectiles:
+		var projectile = _active_projectiles[id]
+		if is_instance_valid(projectile):
 			projectile.queue_free()
-		_projectile_slots[lane] = null
+	_active_projectiles.clear()
 
 
 func _process(delta: float) -> void:
@@ -504,10 +519,11 @@ func apply_status(lane: int, status_id: String, params: Dictionary = {}) -> void
 	# Applies a combat status to the enemy in the given lane.
 	if lane < 0 or lane >= THREAT_COUNT:
 		return
-	var id = _strikers[lane]
-	if id == -1:
-		return
-	apply_status_by_id(id, status_id, params)
+	
+	for id in _strikers:
+		if int(_strikers[id].get("lane", -1)) == lane:
+			apply_status_by_id(id, status_id, params)
+			return
 
 
 func apply_status_by_id(id: int, status_id: String, params: Dictionary = {}) -> void:
@@ -546,12 +562,22 @@ func apply_status_by_id(id: int, status_id: String, params: Dictionary = {}) -> 
 		EventBus.emit_signal("enemy_status_applied", lane, status_id, params)
 
 
-func get_status_id(lane: int) -> String:
+func get_enemy_status_id(lane: int) -> String:
 	if lane < 0 or lane >= THREAT_COUNT: return ""
-	var id = _strikers[lane]
-	if id == -1 or not _enemy_statuses.has(id):
-		return ""
-	return String(_enemy_statuses[id].get("id", ""))
+	
+	for id in _strikers:
+		if int(_strikers[id].get("lane", -1)) == lane:
+			if not _enemy_statuses.has(id):
+				return ""
+			return String(_enemy_statuses[id].get("id", ""))
+	return ""
+
+
+func get_enemy_status(lane: int) -> Dictionary:
+	for id in _strikers:
+		if int(_strikers[id].get("lane", -1)) == lane:
+			return _enemy_statuses.get(id, {})
+	return {}
 
 
 func _get_status_damage_mult_by_id(id: int) -> float:
@@ -577,17 +603,17 @@ func _run_fire_cycle(task_id: int) -> void:
 		paused = combat_scene.is_song_paused()
 
 	if not paused:
-		var lanes_to_fire: Array[int] = _resolve_authorized_lanes_for_cycle()
-		for i in range(lanes_to_fire.size()):
+		var ids_to_fire: Array[int] = _resolve_authorized_strikers_for_cycle()
+		for i in range(ids_to_fire.size()):
 			if not _combat_running or task_id != _cycle_task_id:
 				return
 
-			var lane: int = lanes_to_fire[i]
-			if _fire_lane(lane):
-				_lane_authority_debt[lane] = maxf(_lane_authority_debt[lane] - 2.0, 0.0)
-				_lane_last_fired_cycle[lane] = _fire_cycle_index
+			var id: int = ids_to_fire[i]
+			if _fire_striker(id):
+				_enemy_authority_debt[id] = maxf(_enemy_authority_debt.get(id, 0.0) - 2.0, 0.0)
+				_enemy_last_fired_cycle[id] = _fire_cycle_index
 
-			if i < lanes_to_fire.size() - 1:
+			if i < ids_to_fire.size() - 1:
 				var offset_timer: SceneTreeTimer = get_tree().create_timer(fire_stagger)
 				await offset_timer.timeout
 
@@ -606,25 +632,25 @@ func _run_fire_cycle(task_id: int) -> void:
 		_run_fire_cycle(task_id)
 
 
-func _fire_lane(lane: int) -> bool:
-	if get_projectile(lane) != null:
-		return false
-
-	var id = _strikers[lane]
-	if id == -1:
+func _fire_striker(id: int) -> bool:
+	if _active_projectiles.has(id) and is_instance_valid(_active_projectiles[id]):
 		return false
 		
 	var enemy: Dictionary = _enemies.get(id, {})
 	if enemy.is_empty():
 		return false
 
+	var striker_data = _strikers.get(id, {})
+	var angle: float = float(striker_data.get("angle", 0.0))
+	var lane: int = int(striker_data.get("lane", -1))
+
 	var behaviour_tags = enemy.get("behaviour_tags", [])
 	if behaviour_tags is Array and (behaviour_tags as Array).has("melee"):
-		return _fire_melee_lane(lane, enemy, id)
+		return _fire_melee_striker(id, enemy, angle, lane)
 
 	var projectile_speed: float = _get_enemy_projectile_speed(enemy)
 
-	if not _can_schedule_projectile(projectile_speed):
+	if not _can_schedule_projectile_id(projectile_speed):
 		return false
 
 	var projectile = _projectile_scene.instantiate()
@@ -638,7 +664,7 @@ func _fire_lane(lane: int) -> bool:
 	if _enemy_statuses.has(id) and _enemy_statuses[id].get("id", "") == "pale" and _enemy_statuses[id].get("fire_pending", false):
 		projectile_damage *= PALE_DAMAGE_MULT
 		_enemy_statuses.erase(id)
-		EventBus.emit_signal("enemy_status_cleared", lane)
+		if lane >= 0: EventBus.emit_signal("enemy_status_cleared", lane)
 
 	var telegraph_profile: Dictionary = COMBAT_CONTENT.get_enemy_telegraph_profile(enemy)
 	telegraph_profile["projectile_body_path"] = COMBAT_CONTENT.get_projectile_body_resource_path(enemy)
@@ -659,21 +685,25 @@ func _fire_lane(lane: int) -> bool:
 		player_combat = combat_scene.get_node_or_null("PlayerCombat") as Node2D
 
 	combat_scene.add_child(projectile)
+	
+	var spawn_pos: Vector2 = get_spawn_pos_for_angle(angle)
+	var hit_zone_pos: Vector2 = get_hit_zone_pos_for_angle(angle)
+	
 	projectile.setup(
 		lane,
 		id,
 		projectile_damage,
 		projectile_speed,
-		get_threat_spawn_pos(lane),
-		get_threat_hit_zone_pos(lane),
+		spawn_pos,
+		hit_zone_pos,
 		get_player_pos(),
 		telegraph_profile,
 		player_combat
 	)
 
-	projectile.resolved.connect(_on_projectile_resolved.bind(lane))
-	projectile.enemy_contact.connect(_on_projectile_enemy_contact.bind(lane))
-	_projectile_slots[lane] = projectile
+	projectile.resolved.connect(_on_projectile_resolved_id.bind(id, lane))
+	projectile.enemy_contact.connect(_on_projectile_enemy_contact_id.bind(id, lane))
+	_active_projectiles[id] = projectile
 
 	# ABSOLUTE SONG SYNC:
 	if _song_mode and combat_scene != null and combat_scene.has_method("get_song_conductor"):
@@ -688,8 +718,8 @@ func _fire_lane(lane: int) -> bool:
 	return true
 
 
-func _fire_melee_lane(lane: int, enemy: Dictionary, id: int) -> bool:
-	if get_projectile(lane) != null:
+func _fire_melee_striker(id: int, enemy: Dictionary, angle: float, lane: int) -> bool:
+	if _active_projectiles.has(id) and is_instance_valid(_active_projectiles[id]):
 		return false
 
 	if _melee_approach_script == null:
@@ -707,58 +737,53 @@ func _fire_melee_lane(lane: int, enemy: Dictionary, id: int) -> bool:
 		player_combat = combat_scene.get_node_or_null("PlayerCombat") as Node2D
 
 	combat_scene.add_child(melee)
+	
+	var spawn_pos: Vector2 = get_spawn_pos_for_angle(angle)
+	var hit_zone_pos: Vector2 = get_hit_zone_pos_for_angle(angle)
+	
 	melee.call("setup",
 		lane,
 		id,
 		melee_damage,
 		approach_speed,
-		get_threat_spawn_pos(lane),
-		get_threat_hit_zone_pos(lane),
+		spawn_pos,
+		hit_zone_pos,
 		get_player_pos(),
 		{},
 		player_combat
 	)
 
-	melee.connect("resolved", _on_projectile_resolved.bind(lane))
-	melee.connect("player_contact", _on_melee_player_contact.bind(lane))
-	_projectile_slots[lane] = melee
+	melee.connect("resolved", _on_projectile_resolved_id.bind(id, lane))
+	melee.connect("player_contact", _on_melee_player_contact_id.bind(id, lane))
+	_active_projectiles[id] = melee
 
 	EventBus.emit_signal("projectile_fired", lane, id)
 	return true
 
 
-func _on_melee_player_contact(_melee: Node2D, _lane: int) -> void:
-	# Player damage is handled by PlayerCombat via its player_contact listener.
-	# The melee entity auto-bounces in MeleeApproach._process_approach().
-	pass
-
-
-func _resolve_authorized_lanes_for_cycle() -> Array[int]:
+func _resolve_authorized_strikers_for_cycle() -> Array[int]:
 	_fire_cycle_index += 1
 	
 	# 1. Promote Orbiting to Strikers if budget allows
 	_promote_orbiting_to_strikers()
 	
 	var candidates: Array = []
-	for lane in range(THREAT_COUNT):
-		var id = _strikers[lane]
-		if id == -1: continue
-		
+	for id in _strikers:
 		var enemy: Dictionary = _enemies.get(id, {})
 		if enemy.is_empty(): continue
-		if get_projectile(lane) != null:
+		if _active_projectiles.has(id) and is_instance_valid(_active_projectiles[id]):
 			continue
 			
-		_lane_authority_debt[lane] = minf(_lane_authority_debt[lane] + 1.0, 8.0)
+		_enemy_authority_debt[id] = minf(_enemy_authority_debt.get(id, 0.0) + 1.0, 8.0)
 		
 		var damage_score: float = clampf(float(enemy.get("damage", 8.0)) / 10.0, 0.60, 1.80)
 		var speed_score: float = clampf(_get_enemy_projectile_speed(enemy) / 320.0, 0.70, 1.70)
-		var cycles_since_last: int = _fire_cycle_index - _lane_last_fired_cycle[lane]
+		var cycles_since_last: int = _fire_cycle_index - int(_enemy_last_fired_cycle.get(id, -999))
 		var age_bonus: float = clampf(float(cycles_since_last) / 4.0, 0.0, 1.4)
 		var jitter: float = _rng.randf() * 0.08
-		var score: float = _lane_authority_debt[lane] * 1.35 + age_bonus + damage_score * 0.35 + speed_score * 0.25 + jitter
+		var score: float = _enemy_authority_debt[id] * 1.35 + age_bonus + damage_score * 0.35 + speed_score * 0.25 + jitter
 		candidates.append({
-			"lane": lane,
+			"id": id,
 			"score": score
 		})
 		
@@ -769,50 +794,55 @@ func _resolve_authorized_lanes_for_cycle() -> Array[int]:
 		return float(a.get("score", 0.0)) > float(b.get("score", 0.0))
 	)
 
-	var budget: int = clampi(attack_authority_budget, 1, THREAT_COUNT)
+	var budget: int = clampi(attack_authority_budget, 1, 16) # Pressure expansion: allowed more than 8
 	var selected_count: int = mini(budget, candidates.size())
-	var selected_lanes: Array[int] = []
+	var selected_ids: Array[int] = []
 	for i in range(selected_count):
-		selected_lanes.append(int(candidates[i]["lane"]))
-	return selected_lanes
+		selected_ids.append(int(candidates[i]["id"]))
+	return selected_ids
 
 
 func _promote_orbiting_to_strikers() -> void:
 	if _orbiting_enemy_ids.is_empty():
 		return
 		
-	var budget = clampi(attack_authority_budget, 1, THREAT_COUNT)
+	var budget = clampi(attack_authority_budget, 1, 16)
 	var current_strikers = alive_striker_count()
 	
-	# Try to fill lanes from orbit
+	# Try to fill strikers from orbit
 	var orbit_index = 0
 	while current_strikers < budget and orbit_index < _orbiting_enemy_ids.size():
 		var id = _orbiting_enemy_ids[orbit_index]
-		var best_lane = _pick_best_lane_for_strike(id)
-		if best_lane != -1:
-			_strikers[best_lane] = id
-			_enemies[id]["lane"] = best_lane
-			_assign_striker_visual_offset(id, best_lane)
-			_orbiting_enemy_ids.remove_at(orbit_index)
-			_orbit_angles.erase(id)
-			_orbit_radius_offsets.erase(id)
-			current_strikers += 1
-			# Don't increment orbit_index as we just removed an element
-		else:
-			orbit_index += 1
+		
+		# Any-Angle Promotion: Use their current orbit angle as their strike angle
+		var angle = _orbit_angles.get(id, _rng.randf_range(0.0, TAU))
+		var lane = _get_lane_from_angle(angle) # Derive closest lane for visuals
+		
+		_strikers[id] = {"angle": angle, "lane": lane}
+		_enemies[id]["lane"] = lane
+		_assign_striker_visual_offset(id, lane)
+		
+		_orbiting_enemy_ids.remove_at(orbit_index)
+		_orbit_angles.erase(id)
+		_orbit_radius_offsets.erase(id)
+		current_strikers += 1
+		# Don't increment orbit_index as we just removed an element
 
 
 func _pick_best_lane_for_strike(_id: int) -> int:
+	var occupied_lanes = []
+	for sid in _strikers:
+		occupied_lanes.append(int(_strikers[sid].get("lane", -1)))
+
 	var free_lanes = []
 	for i in range(THREAT_COUNT):
-		if _strikers[i] == -1:
+		if not i in occupied_lanes:
 			free_lanes.append(i)
-	
+
 	if free_lanes.is_empty():
 		return -1
-		
-	return free_lanes[_rng.randi() % free_lanes.size()]
 
+	return free_lanes[_rng.randi() % free_lanes.size()]
 
 func get_enemy_pos(id: int) -> Vector2:
 	if not _enemies.has(id):
@@ -845,18 +875,18 @@ func _assign_striker_visual_offset(id: int, lane: int) -> void:
 
 
 func _reset_attack_authority_state() -> void:
-	_lane_authority_debt = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-	_lane_last_fired_cycle = [-999, -999, -999, -999, -999, -999, -999, -999]
+	_enemy_authority_debt.clear()
+	_enemy_last_fired_cycle.clear()
 	_fire_cycle_index = 0
 
 
-func _can_schedule_projectile(new_speed: float) -> bool:
+func _can_schedule_projectile_id(new_speed: float) -> bool:
 	# Prevents incoming hit windows from stacking too closely.
 	var new_eta: float = _travel_time_to_hit_zone(new_speed)
 
-	for lane in range(THREAT_COUNT):
-		var projectile = get_projectile(lane)
-		if projectile == null:
+	for id in _active_projectiles:
+		var projectile = _active_projectiles[id]
+		if not is_instance_valid(projectile):
 			continue
 
 		var existing_eta: float = projectile.time_until_hit_zone()
@@ -876,24 +906,30 @@ func _travel_time_to_hit_zone(projectile_speed: float) -> float:
 	return distance / projectile_speed
 
 
-func _on_projectile_resolved(projectile, result: String, lane: int) -> void:
-	if get_projectile(lane) == projectile:
-		_projectile_slots[lane] = null
+func _on_projectile_resolved_id(projectile: Node, result: String, id: int, lane: int) -> void:
+	if _active_projectiles.get(id) == projectile:
+		_active_projectiles.erase(id)
 
 	if result == "miss":
-		EventBus.emit_signal("projectile_missed", lane, float(projectile.damage))
+		EventBus.emit_signal("projectile_missed", lane, float(projectile.get("damage") if "damage" in projectile else 8.0))
 
 
-func _on_projectile_enemy_contact(projectile, lane: int) -> void:
+func _on_projectile_enemy_contact_id(projectile: Node, id: int, _lane: int) -> void:
 	# Resolves reflected projectiles when they reach the enemy side.
-	if projectile == null or projectile.is_resolved:
+	if projectile == null or bool(projectile.get("is_resolved")):
 		return
 
-	damage_enemy(lane, float(projectile.reflected_damage))
-	projectile.resolve("reflected_hit")
+	damage_enemy_by_id(id, float(projectile.get("reflected_damage") if "reflected_damage" in projectile else 0.0))
+	projectile.call("resolve", "reflected_hit")
 
-	if get_projectile(lane) == projectile:
-		_projectile_slots[lane] = null
+	if _active_projectiles.get(id) == projectile:
+		_active_projectiles.erase(id)
+
+
+func _on_melee_player_contact_id(_melee: Node2D, _id: int, _lane: int) -> void:
+	# Player damage is handled by PlayerCombat via its player_contact listener.
+	# The melee entity auto-bounces in MeleeApproach._process_approach().
+	pass
 
 
 func _get_enemy_status_flags(enemy: Dictionary) -> Dictionary:

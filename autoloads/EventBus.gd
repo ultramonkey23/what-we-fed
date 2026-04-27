@@ -108,6 +108,8 @@ signal tendency_growth_resolved(tendency_id: String, title: String, summary: Str
 @warning_ignore("unused_signal")
 signal support_charge_changed(current: float, maximum: float, active_species_id: String)
 @warning_ignore("unused_signal")
+signal support_manual_activation_requested(lane: int, beat_quality: String)
+@warning_ignore("unused_signal")
 signal dna_routing_changed(route_id: String, label: String)
 @warning_ignore("unused_signal")
 signal bonded_support_triggered(species_id: String, lane: int, effect_id: String)

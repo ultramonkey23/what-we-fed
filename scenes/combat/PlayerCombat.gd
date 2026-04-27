@@ -23,10 +23,10 @@ const GOOD_PARRY_RECOVERY: float = 0.22
 const PERFECT_PARRY_RECOVERY: float = 0.14
 const FAILED_PARRY_RECOVERY: float = 0.32
 
-const DODGE_RECOVERY: float = 0.30
-const DODGE_GOOD_RECOVERY: float = 0.18
-const DODGE_IFRAME_WINDOW: float = 0.11
-const DODGE_IFRAME_WINDOW_ON_BEAT: float = 0.15
+const DODGE_RECOVERY: float = 0.42
+const DODGE_GOOD_RECOVERY: float = 0.28
+const DODGE_IFRAME_WINDOW: float = 0.18
+const DODGE_IFRAME_WINDOW_ON_BEAT: float = 0.24
 const ULTIMATE_RECOVERY: float = 0.45
 
 const CHAIN_BYPASS_WINDOW: float = 0.60
@@ -104,6 +104,7 @@ const FOCUS_SNAP_THRESHOLD: float = 0.2 # Minimum joystick deflection to change 
 var free_position: Vector2 = Vector2.ZERO
 var _facing_direction: Vector2 = Vector2.RIGHT
 var movement_enabled: bool = true
+var _is_invincible: bool = false
 
 var _sprite_pose_tween: Tween = null
 var _world_motion_tween: Tween = null
@@ -132,6 +133,10 @@ func _ready() -> void:
 func _exit_tree() -> void:
 	if EventBus.projectile_fired.is_connected(_on_projectile_fired):
 		EventBus.projectile_fired.disconnect(_on_projectile_fired)
+	if EventBus.combo_changed.is_connected(_on_combo_changed):
+		EventBus.combo_changed.disconnect(_on_combo_changed)
+	if EventBus.song_beat_pulse.is_connected(_on_song_beat_pulse):
+		EventBus.song_beat_pulse.disconnect(_on_song_beat_pulse)
 
 
 func _process(delta: float) -> void:
@@ -233,6 +238,8 @@ func _get_combat_action_from_event(event: InputEvent) -> String:
 		return "dodge"
 	if event.is_action_pressed("action_ultimate"):
 		return "ultimate"
+	if event.is_action_pressed("action_support"):
+		return "support"
 	return ""
 
 
@@ -266,6 +273,9 @@ func _handle_directional_action(_legacy_input_dir: int, action_type: String) -> 
 		"dodge":
 			_emit_input_report(action_type, resolved_lane, true, false, "accepted")
 			_try_dodge_radial(resolved_lane)
+		"support":
+			_emit_input_report(action_type, resolved_lane, true, false, "accepted")
+			_try_support_activation(resolved_lane)
 		"ultimate":
 			_emit_input_report(action_type, resolved_lane, true, false, "accepted")
 			_try_ultimate()
@@ -623,6 +633,13 @@ func _lock_action(duration: float, state: String) -> void:
 	var nerve_mult: float = clampf(1.0 / maxf(GameState.stat_swiftness, 0.1), 0.40, 2.0)
 	action_lock_timer = max(duration * nerve_mult, 0.0)
 	current_action_state = state
+	
+	# Soulslike i-frames: handle invincibility window during the initial recovery burst.
+	if state == "dodge" or state == "timed_dodge":
+		var beat: String = _get_beat_quality()
+		var iframe_dur: float = DODGE_IFRAME_WINDOW_ON_BEAT if beat == "perfect" else DODGE_IFRAME_WINDOW
+		_is_invincible = true
+		get_tree().create_timer(iframe_dur).timeout.connect(func(): _is_invincible = false)
 
 
 func _select_action_lane(target_lane: int) -> void:
@@ -757,27 +774,31 @@ func _try_parry(target_context: Dictionary) -> void:
 	_lock_action(recovery, "parry")
 
 
-func _try_dodge(target_dir: int) -> void:
-	# Clamping to valid threat indices.
-	target_dir = clampi(target_dir, 0, 3)
-	
+const DODGE_DISTANCE: float = 70.0
+
+func _try_dodge(_legacy_target_dir: int) -> void:
 	if not combat_meter.call("spend_stamina_for_dodge"):
 		return
 
-	# In centered combat, dodge is an iframe-dash toward the threat or to the center.
-	# We snap the player toward the threat briefly and return to neutral.
-	var to_pos: Vector2 = lane_manager.get_threat_hit_zone_pos(target_dir)
+	# Hunting Field Dodge: Roll in the direction of movement.
+	# Use current input if available for max responsiveness, fallback to last pressed.
+	var input_vec: Vector2 = Input.get_vector("mod_left", "mod_right", "mod_up", "mod_down")
+	var dodge_dir_vec: Vector2 = input_vec.normalized() if input_vec.length() > 0.0 else _facing_direction
+	
+	var to_pos: Vector2 = global_position + dodge_dir_vec * DODGE_DISTANCE
+	
+	# Derive lane index for visual/signal compatibility
+	var dodge_lane: int = _get_lane_from_vector(dodge_dir_vec)
 
-	EventBus.emit_signal("player_teleported", current_lane, target_dir)
-	_play_dodge_state_radial(target_dir, to_pos)
+	EventBus.emit_signal("player_teleported", current_lane, dodge_lane)
+	_play_dodge_state_radial(dodge_lane, to_pos)
 
 	# I-frames and masteries.
 	var beat: String = _get_beat_quality()
 	combat_meter.call("record_dodge")
 	combat_meter.call("record_phrase_action", "good")
-	_emit_mastery_context("dodge", target_dir, "good", beat)
-	EventBus.emit_signal("player_dodged", current_lane, target_dir)
-	dodge_invuln_timer = DODGE_IFRAME_WINDOW_ON_BEAT if (beat == "perfect" or beat == "good") else DODGE_IFRAME_WINDOW
+	_emit_mastery_context("dodge", dodge_lane, "good", beat)
+	EventBus.emit_signal("player_dodged", current_lane, dodge_lane)
 
 	if beat == "perfect" or beat == "good":
 		_flash_sprite_color(Color(0.55, 0.82, 1.0, 1.0), 0.10)
@@ -788,21 +809,36 @@ func _try_dodge(target_dir: int) -> void:
 		_lock_action(DODGE_RECOVERY, "dodge")
 
 
-func _play_dodge_state_radial(target_dir: int, target_pos: Vector2) -> void:
-	_apply_sprite_facing(target_dir)
+func _try_support_activation(target_lane: int) -> void:
+	# Active Creature Support: Trigger the bonded creature's support move manually.
+	# This move consumes support charge (handled in RunGrowth).
+	var beat: String = _get_beat_quality()
+	EventBus.support_manual_activation_requested.emit(target_lane, beat)
+	
+	if beat == "perfect":
+		_flash_sprite_color(Color(1.0, 1.0, 1.0, 1.0), 0.12)
+		_lock_action(PERFECT_ATTACK_RECOVERY, "support")
+	else:
+		_lock_action(TIMED_ATTACK_RECOVERY, "support")
+
+func _play_dodge_state_radial(_target_dir: int, target_pos: Vector2) -> void:
+	_apply_sprite_facing(_target_dir)
 	_spawn_dodge_afterimage()
 	_play_sprite_pose(DODGE_SPRITE_POSITION, DODGE_SPRITE_SCALE, 0.10)
 
-	# Motion toward the threat hit-zone, then return to neutral center.
+	# Motion toward the threat hit-zone, then remain there (Hunting Field freedom).
 	if _world_motion_tween != null:
 		_world_motion_tween.kill()
 
+	movement_enabled = false
+
 	_world_motion_tween = create_tween()
-	_world_motion_tween.tween_property(self, "position", target_pos, 0.05) \
+	_world_motion_tween.tween_property(self, "global_position", target_pos, 0.10) \
 		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CIRC)
-	_world_motion_tween.tween_property(self, "position", _neutral_world_position(), 0.16) \
-		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+	
 	_world_motion_tween.tween_callback(func() -> void:
+		free_position = global_position
+		movement_enabled = true
 		current_lane = NEUTRAL_LANE
 	)
 
@@ -1072,6 +1108,10 @@ func _play_counter_warp_state(target_lane: int) -> void:
 
 
 func _take_damage(amount: float, source_lane: int) -> void:
+	if _is_invincible:
+		EventBus.emit_signal("proc_feedback_requested", "DODGED", Color(0.24, 0.78, 1.0, 1.0))
+		return
+
 	_play_hit_state(source_lane)
 	_show_hurt_image()
 
@@ -1338,13 +1378,14 @@ func _return_to_neutral_state(immediate: bool = false) -> void:
 	var neutral_s: Vector2 = NEUTRAL_SPRITE_SCALE * (PLAYER_SPRITE_SCALE_BASE if _player_sprite != null else 1.0)
 
 	if immediate:
+		# Note: We keep global_position sync for immediate resets (start/restart)
 		global_position = _neutral_world_position()
 		vis_node.position = NEUTRAL_SPRITE_POSITION
 		vis_node.scale = neutral_s
 		return
 
 	_play_sprite_pose(NEUTRAL_SPRITE_POSITION, NEUTRAL_SPRITE_SCALE, 0.06)
-	_play_world_motion(_neutral_world_position(), _neutral_world_position(), 0.0, 0.08)
+	# World motion snap-back removed to allow player to own their position.
 
 
 func _play_attack_state(target_lane: int) -> void:
@@ -1413,13 +1454,13 @@ func _play_sprite_pose(target_position: Vector2, target_scale: Vector2, return_t
 		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
 
 
-func _play_world_motion(action_position: Vector2, return_position: Vector2, push_time: float, return_time: float) -> void:
+func _play_world_motion(action_position: Vector2, _unused_return_position: Vector2, push_time: float, _return_time: float) -> void:
 	if _world_motion_tween != null:
 		_world_motion_tween.kill()
 
 	# Capture acting state
 	var acting_lane: int = current_lane
-	movement_enabled = false # Disable free movement during action lunges
+	movement_enabled = false # Disable free movement during the lunge "push"
 
 	_world_motion_tween = create_tween()
 	if push_time > 0.0:
@@ -1428,11 +1469,11 @@ func _play_world_motion(action_position: Vector2, return_position: Vector2, push
 	else:
 		global_position = action_position
 
-	_world_motion_tween.tween_property(self, "global_position", return_position, return_time) \
-		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+	# Permissive Recovery: Once the push is finished, the player owns their new position.
 	_world_motion_tween.tween_callback(func() -> void:
-		movement_enabled = true # Re-enable free movement
-		global_position = free_position # Snap back to the underlying free_position
+		free_position = global_position
+		movement_enabled = true 
+		
 		if current_lane != acting_lane:
 			return
 		current_lane = NEUTRAL_LANE

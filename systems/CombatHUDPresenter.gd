@@ -6,6 +6,8 @@ const VESSEL_MODIFIER_DIRECTOR = preload("res://systems/VesselModifierDirector.g
 # All nodes are created and owned by CombatScene.
 # This presenter holds references only — it never frees them.
 
+var _combat_meter: Node # Bound to CombatMeter for real-time multipliers
+
 # Static HUD nodes (from @onready in CombatScene)
 var _combo_label: Label
 var _style_label: Label
@@ -77,6 +79,7 @@ func _init(combat_content: GDScript, presentation_text: GDScript, ui_style: GDSc
 
 
 func bind_nodes(nodes: Dictionary) -> void:
+	_combat_meter = nodes.get("combat_meter")
 	# Static @onready nodes
 	_combo_label = nodes.get("combo_label")
 	_style_label = nodes.get("style_label")
@@ -134,6 +137,23 @@ func bind_nodes(nodes: Dictionary) -> void:
 		EventBus.player_took_damage.connect(_on_player_took_damage_event)
 
 
+func cleanup() -> void:
+	if EventBus.combat_started.is_connected(_on_combat_started):
+		EventBus.combat_started.disconnect(_on_combat_started)
+	if EventBus.player_teleported.is_connected(_on_player_teleported):
+		EventBus.player_teleported.disconnect(_on_player_teleported)
+	if EventBus.player_attacked.is_connected(_on_player_attacked):
+		EventBus.player_attacked.disconnect(_on_player_attacked)
+	if EventBus.stamina_changed.is_connected(refresh_stamina):
+		EventBus.stamina_changed.disconnect(refresh_stamina)
+	if EventBus.style_changed.is_connected(_on_style_changed):
+		EventBus.style_changed.disconnect(_on_style_changed)
+	if EventBus.player_healed.is_connected(_on_player_health_changed_event):
+		EventBus.player_healed.disconnect(_on_player_health_changed_event)
+	if EventBus.player_took_damage.is_connected(_on_player_took_damage_event):
+		EventBus.player_took_damage.disconnect(_on_player_took_damage_event)
+
+
 # ── Resource HUD ──────────────────────────────────────────────────────────────
 
 func _on_style_changed(_score: float, tier: String) -> void:
@@ -160,7 +180,16 @@ func refresh_stamina(current: float, maximum: float) -> void:
 		_stamina_bar.value = current
 
 
-func refresh_power_level(power_level: float) -> void:
+func refresh_power_level(run_growth: Node = null) -> void:
+	var power_level: float = GameState.get_power_level()
+	if run_growth != null and is_instance_valid(run_growth) and run_growth.has_method("get_runtime_effect"):
+		var aggression_effect: Dictionary = Dictionary(run_growth.call("get_runtime_effect", "timed_attack_bonus_damage"))
+		var cadence_effect: Dictionary = Dictionary(run_growth.call("get_runtime_effect", "good_timed_bonus_damage"))
+		power_level *= 1.0 + maxf(float(aggression_effect.get("value", 0.0)), 0.0) + maxf(float(cadence_effect.get("value", 0.0)), 0.0)
+	
+	if _combat_meter != null and is_instance_valid(_combat_meter) and _combat_meter.has_method("damage_multiplier"):
+		power_level *= maxf(float(_combat_meter.call("damage_multiplier")), 1.0)
+
 	_last_power_level = power_level
 	if _power_scouter_label == null:
 		return
@@ -211,6 +240,7 @@ func _on_combat_started(enemy_data: Array) -> void:
 
 func _on_player_teleported(_from: int, to: int) -> void:
 	_update_scouter_focus(to)
+	refresh_power_level()
 
 
 func _on_player_attacked(lane: int, _damage: float, _was_timed: bool) -> void:
@@ -275,7 +305,7 @@ func refresh_scouter_target(species_id: String, display_name: String, flavor: St
 	# Step 4: Return to power
 	t.tween_callback(func(): 
 		_scouter_is_cycling = false
-		refresh_power_level(_last_power_level)
+		refresh_power_level()
 	)
 	t.tween_property(_power_scouter_label, "modulate", Color(1.0, 0.85, 0.20, 1.0), 0.2)
 
@@ -291,6 +321,8 @@ func refresh_combo(count: int, tier: String = "") -> void:
 			var tween := _combo_label.create_tween()
 			_combo_label.scale = Vector2(1.24, 1.24)
 			tween.tween_property(_combo_label, "scale", Vector2.ONE, 0.12)
+	
+	refresh_power_level()
 
 
 func refresh_style(tier: String) -> void:
@@ -300,6 +332,8 @@ func refresh_style(tier: String) -> void:
 			compact = compact.left(4)
 		_style_label.text = compact
 		_style_label.modulate = _ui_style.get_tier_color(tier)
+	
+	refresh_power_level()
 
 
 func set_ultimate_text(text: String) -> void:
@@ -479,6 +513,8 @@ func refresh_run_build(run_growth: Node) -> void:
 	if _run_build_shell != null:
 		var has_build: bool = not GameState.absorbed_types.is_empty() or not GameState.active_mutations.is_empty()
 		_run_build_shell.color = Color(0.08, 0.08, 0.10, 0.60) if has_build else Color(0.07, 0.07, 0.09, 0.50)
+	
+	refresh_power_level(run_growth)
 
 
 # ── DNA HUD ───────────────────────────────────────────────────────────────────
@@ -523,7 +559,7 @@ func refresh_dna_hud(song_mode: bool, song_phase_index: int, song_phases: Array,
 		var species_id: String = relevant_species[i]
 		var creature: Dictionary = _combat_content.get_creature(species_id)
 		var display_name: String = String(creature.get("display_name", species_id)).to_upper()
-		var threshold: float = float(creature.get("dna_threshold", 0.0))
+		var threshold: float = GameState.get_effective_dna_threshold(species_id)
 		var current_dna: float = GameState.get_dna(species_id)
 		if threshold > 0.0:
 			var gate_state: String = "READY" if current_dna >= threshold else "LOCKED"

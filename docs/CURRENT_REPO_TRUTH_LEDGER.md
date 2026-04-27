@@ -1,5 +1,18 @@
 # CURRENT_REPO_TRUTH_LEDGER
 
+## 2026-04-27 GODLY v2.3 Nightly Closeout Validation Evidence
+- `validate_project.bat`: PASS. Parser error for `_travel_time_to_hit_zone` resolved. ID-keyed authority state confirmed.
+- `validate_data.bat`: PASS. All data structures remain consistent.
+- Targeted diff review: Confirmed permissive movement, chunky dodge, manual support, and any-angle presentation anchors.
+
+## Verified Current Systems (Static / Code-Confirmed)
+- Hunting Field Combat Evolution (v2.3.2):
+    - **Permissive Action Recovery**: Implemented in `PlayerCombat.gd`. Players can move during lunge recovery without snap-back to origin.
+    - **Chunky Soulslike Dodge**: Implemented in `PlayerCombat.gd`. 70-unit distance, 0.10s lunge, 0.42s recovery, 0.18s i-frames (0.24s on-beat). Precise input-based direction.
+    - **Any-Angle Spawning & Pressure Director**: Implemented in `LaneManager.gd`. Threats now spawn from any orbit angle; authority system is ID-keyed and supports up to 16 simultaneous strikers.
+    - **Manual Creature Support**: Implemented in `PlayerCombat.gd` and `RunGrowth.gd`. Players manually trigger support with `action_support`. On-beat usage grants extra Tendency rewards.
+    - **Dynamic Visual Scaffolding**: Implemented in `CombatPresentationController.gd`. Timing rings, lane strips, and markers now anchor to and follow the player's dynamic position rather than screen center.
+
 ## Evidence Source
 - Source: GODLY v2.3 medium-evolution validation pass.
 - Last verified by: Codex.
@@ -21,8 +34,17 @@
 ## Verified Current Systems (Static / Code-Confirmed)
 - Combat lane model: implemented in code as a 4-cardinal-lane model in `LaneManager.gd` (runtime behavior unverified).
 - Input core: `PlayerCombat.gd` contains buffering/recovery/i-frame mechanisms. Input buffer set to 0.14s.
-- DNA Economy Fix (v2.3.1): `VictoryRewardDirector.gd` resolved a confirmed bug where choosing to 'Eat' incorrectly consumed DNA. 'Eat' is now correctly verified as a predation/gain path, not a consumer path.
+- DNA Economy Fix (v2.3.1): `VictoryRewardDirector.gd` resolved a confirmed bug where choosing to 'Eat' incorrectly consumed DNA.
+- Predatory Gain / Maw Logic (v2.3.1.4): `VictoryRewardDirector.gd` now correctly awards DNA (12.5 per offer) when 'Eat' is chosen, aligning with the project's predatory doctrine.
+- Maw Marker (v2.3.1.8): `CombatPresentationController.gd` now builds a pulsating red 'MAW' label above enemies that will yield a Hunt Offer upon death, providing clear pre-kill eligibility feedback.
+- Predation Instruction Clarity (v2.3.1.7): `PresentationTextContent.gd` hints updated with 'PRESS E TO EAT (GAIN LINEAGE DNA)' to clarify the reward outcome and required input.
+- HUD Synchronization (v2.3.1.2): `CombatHUDPresenter.gd` updated to use `GameState.get_effective_dna_threshold()` for DNA slot status, ensuring predation debt is accurately reflected in the HUD.
+- Reward Queue Integrity (v2.3.1.4): `VictoryRewardDirector.gd` now preserves 'is_live' and 'timer' state per-item in the queue, preventing mid-combat rewards from losing their timed behavior.
+- Cleanup Safety (v2.3.1.4): `CombatScene.gd` now includes null-guards for `lane_manager` during EventBus disconnection to prevent crashes on specific shutdown sequences.
+- Label Accuracy (v2.3.1.1): `PresentationTextContent.gd` updated to clarify that only Bonding is DNA-locked, while Eating remains a gain path. Tone adjusted to reflect predatory gain (Maw/Predation logic).
 - Reward Flow Integrity: `VictoryRewardDirector.gd` now includes a `reset()` method called during `CombatScene` destruction to prevent stale reward leakage between runs.
+- Cross-System Event Leak Audit (v2.3.1.3): Comprehensive audit of `EventBus` connections. Missing disconnections identified and fixed in `CombatScene.gd`, `PlayerCombat.gd`, `RunGrowth.gd`, `VesselModifierDirector.gd`, `EncounterEscalationDirector.gd`, and `CombatHUDPresenter.gd`.
+- Signal Cleanup (v2.3.1.3): Every persistent `EventBus` connection in core combat systems now has a verified matching `disconnect()` call in the corresponding `_exit_tree()` or `cleanup()` method.
 - Core state/autoload presence: `EventBus.gd` and `GameState.gd` exist as core systems and are autoloaded in `project.godot`.
 - Performance reward data validation: implemented in `tools/validate_data_content.gd`.
 

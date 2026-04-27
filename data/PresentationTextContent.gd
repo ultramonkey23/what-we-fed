@@ -16,12 +16,12 @@ const REWARD_BODY_PASSED: String = "It leaves hungry."
 const REWARD_HINT_WAIT: String = "..."
 const REWARD_HINT_RESTART: String = "R re-instantiate"
 const REWARD_CONTROLS_RESTART: String = "Run complete  |  R re-instantiate pattern"
-const REWARD_HINT_LOCKED: String = "Bond DNA locked  |  E eat  |  N pass"
-const REWARD_HINT_CHOICE: String = "Choose  |  B bond  |  E eat  |  N pass"
-const REWARD_CONTROLS_LOCKED: String = "Bond DNA locked  |  E eat  |  N pass"
-const REWARD_CONTROLS_CHOICE: String = "Reward choice  |  B bond  |  E eat  |  N pass"
-const LIVE_CONTROLS_LOCKED: String = "Bond DNA locked  |  E eat  |  N pass"
-const LIVE_CONTROLS_CHOICE: String = "B bond  |  E eat  |  N pass"
+const REWARD_HINT_LOCKED: String = "Bond DNA locked (LACK) | PRESS E TO EAT (GAIN LINEAGE DNA) | N pass"
+const REWARD_HINT_CHOICE: String = "Choose | PRESS B TO BOND (SPEND) | PRESS E TO EAT (GAIN LINEAGE DNA) | N pass"
+const REWARD_CONTROLS_LOCKED: String = "Bond DNA locked | E eat | N pass"
+const REWARD_CONTROLS_CHOICE: String = "Reward choice | B bond | E eat | N pass"
+const LIVE_CONTROLS_LOCKED: String = "Bond locked | E/N"
+const LIVE_CONTROLS_CHOICE: String = "B bond | E eat | N pass"
 const LIVE_REWARD_LOCKED_HINT_PREFIX: String = "Bond locked | E/N"
 const LIVE_REWARD_CHOICE_HINT_PREFIX: String = "B/E/N"
 const BOSS_STATE_OPENING: String = "Phase I  |  Hold line"
@@ -64,8 +64,8 @@ const RUN_SPINE_PREDATION_SUBTITLE: String = "One compact feeding between legs o
 const RUN_SPINE_PREDATION_CONTROLS: String = "1/2/3 commit predation  |  Q route (bond<->growth)"
 const RUN_SPINE_REVIEW_HEADER: String = "CARRY LOCKED"
 const RUN_SPINE_REVIEW_SUBTITLE: String = "Evolution is set for this leg. Use management hooks, then continue."
-const COMBAT_CONTROLS: String = "W/A/S/D focus  |  J attack  |  K parry  |  L dodge  |  R apex"
-const COMBAT_BOSS_CONTROLS: String = "Boss  |  W/A/S/D focus  |  J attack  |  K parry  |  L dodge  |  R apex"
+const COMBAT_CONTROLS: String = "ARROWS move  |  Space attack  |  Z parry  |  Shift dodge  |  X support  |  C apex"
+const COMBAT_BOSS_CONTROLS: String = "Boss  |  ARROWS move  |  Space attack  |  Z parry  |  Shift dodge  |  X support  |  C apex"
 const RUN_END_CONTROLS_VICTORY: String = "Run complete  |  R re-instantiate  |  T lair"
 const RUN_END_CONTROLS_FAILURE: String = "Run broken  |  R re-instantiate  |  T recall"
 const DEFAULT_DNA_PICKUP_FLAVOR: String = "The world marks the gain."
@@ -185,6 +185,19 @@ const QUIG_REACTIVE_LINES := {
 			"You found the seam."
 		]
 	},
+	"tutorials": {
+		"movement": [
+			"Quig: \"Use the ARROW KEYS to move the Vessel. Don't be static.\"",
+			"Quig: \"Navigation is survival. Move with the pulse.\""
+		],
+		"combat": [
+			"Quig: \"SPACE to attack. Timing is everything here.\"",
+			"Quig: \"Z to parry. Rejection is a predatory act.\"",
+			"Quig: \"SHIFT to dodge. Own your distance.\"",
+			"Quig: \"X to invoke support. Use your debt.\"",
+			"Quig: \"C for Apex. Let the pattern collapse.\""
+		]
+	},
 	"bond_eat": {
 		"bond": [
 			"A debt beside you. Don't let it starve.",
@@ -276,7 +289,7 @@ static func reward_bond_body(passive_text: String) -> String:
 
 
 static func reward_eat_body(effect_text: String) -> String:
-	return "Take it inside.\n\n%s\n\nPower now. Cost later." % effect_text
+	return "Take it inside.\n\n%s\n\nPower now. No DNA cost." % effect_text
 
 
 static func support_trigger_line(trigger_text: String) -> String:

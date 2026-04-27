@@ -521,7 +521,7 @@ func draw_timing_circles(
 	var inactive_color: Color = biome.get("ring_inactive_color", Color(0.7, 0.7, 0.8, 0.45))
 
 	var base_color: Color = active_color if player_combat != null else inactive_color
-	var hit_zone_radius: float = _lane_hit_zone_pos(lane_manager, 2).distance_to(_lane_player_pos(lane_manager))
+	var hit_zone_radius: float = _lane_hit_zone_pos(lane_manager, 2, player_combat).distance_to(player_combat.position if player_combat != null else _lane_player_pos(lane_manager))
 	if hit_zone_radius <= 1.0:
 		hit_zone_radius = 110.0
 	var good_inner_radius: float = maxf(hit_zone_radius - COMBAT_FEEL_CONTENT.RING_OUTER_RADIUS, 8.0)
@@ -808,7 +808,7 @@ func update_timing_ring_proximity(
 	var ring_palette: Dictionary = UI_STYLE.get_combat_ring_palette()
 	var active_color: Color = biome.get("ring_active_color", ring_palette.get("active", Color(1.0, 0.95, 0.55, 1.0)))
 
-	var intercept_dist: float = _lane_logical_intercept_distance(lane_manager, 2)
+	var intercept_dist: float = _lane_logical_intercept_distance(lane_manager, 2, player_combat)
 	if intercept_dist <= 0.0:
 		return
 
@@ -1039,6 +1039,7 @@ func build_arena_visuals(
 	host: Node2D,
 	active_encounter: Dictionary,
 	lane_manager: Node,
+	player_combat: Node2D,
 	all_enemies_by_id: Dictionary,
 	enemy_phase_by_id: Dictionary,
 	enemy_markers_by_id: Dictionary,
@@ -1083,9 +1084,9 @@ func build_arena_visuals(
 
 		var lane_strip := TextureRect.new()
 		lane_strip.name = "Strip"
-		lane_strip.size = Vector2(_lane_intercept_distance(lane_manager, lane), COMBAT_FEEL_CONTENT.LANE_BAND_HEIGHT)
-		lane_strip.position = _radial_lane_strip_position(lane_manager, lane, lane_strip.size)
-		lane_strip.rotation = _lane_direction(lane_manager, lane).angle()
+		lane_strip.size = Vector2(_lane_intercept_distance(lane_manager, lane, player_combat), COMBAT_FEEL_CONTENT.LANE_BAND_HEIGHT)
+		lane_strip.position = _radial_lane_strip_position(lane_manager, lane, lane_strip.size, player_combat)
+		lane_strip.rotation = _lane_direction(lane_manager, lane, player_combat).angle()
 		lane_strip.pivot_offset = lane_strip.size * 0.5
 		lane_strip.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		lane_strip.stretch_mode = TextureRect.STRETCH_SCALE
@@ -1160,8 +1161,8 @@ void fragment() {
 
 		var focal_root := Node2D.new()
 		focal_root.name = "FocalMarker_%d" % lane
-		focal_root.position = _lane_hit_zone_pos(lane_manager, lane)
-		focal_root.rotation = _lane_direction(lane_manager, lane).angle()
+		focal_root.position = _lane_hit_zone_pos(lane_manager, lane, player_combat)
+		focal_root.rotation = _lane_direction(lane_manager, lane, player_combat).angle()
 		lane_marker_container.add_child(focal_root)
 		lane_hit_focus[lane] = focal_root
 
@@ -1185,7 +1186,8 @@ void fragment() {
 					marker_size_enemy,
 					inactive_enemy_color,
 					lane_manager,
-					texture_cache
+					texture_cache,
+					player_combat
 				)
 				enemy_marker_container.add_child(marker_data["root"])
 				enemy_markers_by_id[enemy_id] = marker_data
@@ -1256,7 +1258,8 @@ func _build_enemy_marker(
 	marker_size: float,
 	base_color: Color,
 	lane_manager: Node,
-	texture_cache: Dictionary
+	texture_cache: Dictionary,
+	player_node: Node2D = null
 ) -> Dictionary:
 	var telegraph_profile: Dictionary = COMBAT_CONTENT.get_enemy_telegraph_profile(enemy)
 	var marker_half: float = marker_size * 0.5
@@ -1269,7 +1272,7 @@ func _build_enemy_marker(
 	var is_elite_marker: bool = is_boss_marker or grade_id == "alpha" or is_tagged_elite
 	var marker_root := Node2D.new()
 	marker_root.name = "Enemy_%d" % enemy_id
-	marker_root.position = _lane_enemy_pos(lane_manager, lane)
+	marker_root.position = _lane_enemy_pos(lane_manager, lane, player_node)
 
 	var frame := ColorRect.new()
 	frame.name = "Frame"
@@ -1379,12 +1382,37 @@ func _build_enemy_marker(
 	threat_label.size = Vector2(readout_width, 17.0)
 	threat_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	threat_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	apply_text_role(threat_label, "hud_metric_title", HORIZONTAL_ALIGNMENT_CENTER)
-	threat_label.add_theme_font_size_override("font_size", 13 if is_boss_marker else 10)
-	threat_label.add_theme_constant_override("outline_size", 2)
+	apply_text_role(threat_label, "hud_meta", HORIZONTAL_ALIGNMENT_CENTER)
+	threat_label.add_theme_font_size_override("font_size", 12 if is_boss_marker else 10)
+	threat_label.add_theme_constant_override("outline_size", 3)
 	if is_elite_marker:
 		threat_label.modulate = Color(1.0, 0.64, 0.34, 1.0)
 	marker_root.add_child(threat_label)
+
+	# --- MAW MARKER (v2.3.1.8) ---
+	# Enemies that yield DNA/Rewards are marked with the MAW sigil.
+	var creature_info: Dictionary = COMBAT_CONTENT.get_creature(species_id)
+	var has_maw: bool = float(creature_info.get("dna_threshold", 0.0)) > 0.0
+	if has_maw:
+		var maw_label := Label.new()
+		maw_label.name = "MawLabel"
+		maw_label.text = "MAW"
+		# Positioned above the threat label
+		maw_label.position = Vector2(-readout_width * 0.5, -marker_half - (38.0 if is_boss_marker else 32.0))
+		maw_label.size = Vector2(readout_width, 17.0)
+		maw_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		maw_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		apply_text_role(maw_label, "hud_title", HORIZONTAL_ALIGNMENT_CENTER)
+		maw_label.modulate = Color(1.0, 0.2, 0.15, 0.95) # Intense Maw Red
+		maw_label.add_theme_font_size_override("font_size", 13 if is_boss_marker else 11)
+		maw_label.add_theme_constant_override("outline_size", 4)
+		maw_label.add_theme_color_override("font_outline_color", Color(0.4, 0.05, 0.05, 0.8))
+		marker_root.add_child(maw_label)
+		
+		# Pulsate effect for high-urgency visibility
+		var t := maw_label.create_tween().set_loops()
+		t.tween_property(maw_label, "modulate:a", 0.45, 0.6)
+		t.tween_property(maw_label, "modulate:a", 0.95, 0.4)
 
 	return {
 		"root": marker_root,
@@ -1400,7 +1428,7 @@ func _build_enemy_marker(
 	}
 
 
-func _lane_enemy_pos(lane_manager: Node, lane: int) -> Vector2:
+func _lane_enemy_pos(lane_manager: Node, lane: int, player_node: Node2D = null) -> Vector2:
 	var baseline: Vector2 = Vector2.ZERO
 	if lane_manager != null and lane_manager.has_method("get_enemy_pos"):
 		var enemy_id: int = -1
@@ -1414,14 +1442,18 @@ func _lane_enemy_pos(lane_manager: Node, lane: int) -> Vector2:
 	if lane_manager != null and lane_manager.has_method("get_threat_spawn_pos"):
 		baseline = lane_manager.call("get_threat_spawn_pos", lane)
 		return _apply_visual_rig_enemy_present_pos(lane, baseline, lane_manager)
-	baseline = _lane_player_pos(lane_manager) + _lane_direction_fallback(lane) * 260.0
+	
+	var p_pos: Vector2 = player_node.position if player_node != null else _lane_player_pos(lane_manager)
+	baseline = p_pos + _lane_direction_fallback(lane) * 260.0
 	return _apply_visual_rig_enemy_present_pos(lane, baseline, lane_manager)
 
 
-func _lane_hit_zone_pos(lane_manager: Node, lane: int) -> Vector2:
+func _lane_hit_zone_pos(lane_manager: Node, lane: int, player_node: Node2D = null) -> Vector2:
 	if lane_manager != null and lane_manager.has_method("get_threat_hit_zone_pos"):
 		return lane_manager.call("get_threat_hit_zone_pos", lane)
-	return _lane_player_pos(lane_manager) + _lane_direction_fallback(lane) * 110.0
+	
+	var p_pos: Vector2 = player_node.position if player_node != null else _lane_player_pos(lane_manager)
+	return p_pos + _lane_direction_fallback(lane) * 110.0
 
 
 func _lane_player_pos(lane_manager: Node) -> Vector2:
@@ -1430,8 +1462,9 @@ func _lane_player_pos(lane_manager: Node) -> Vector2:
 	return Vector2.ZERO
 
 
-func _lane_direction(lane_manager: Node, lane: int) -> Vector2:
-	var dir: Vector2 = _lane_hit_zone_pos(lane_manager, lane) - _lane_player_pos(lane_manager)
+func _lane_direction(lane_manager: Node, lane: int, player_node: Node2D = null) -> Vector2:
+	var p_pos: Vector2 = player_node.position if player_node != null else _lane_player_pos(lane_manager)
+	var dir: Vector2 = _lane_hit_zone_pos(lane_manager, lane, player_node) - p_pos
 	if dir.length_squared() < 1.0:
 		return _lane_direction_fallback(lane)
 	return dir.normalized()
@@ -1451,11 +1484,11 @@ func _lane_direction_fallback(lane: int) -> Vector2:
 			return Vector2.RIGHT
 
 
-func _lane_intercept_distance(lane_manager: Node, lane: int) -> float:
-	return maxf(_lane_enemy_pos(lane_manager, lane).distance_to(_lane_hit_zone_pos(lane_manager, lane)), 1.0)
+func _lane_intercept_distance(lane_manager: Node, lane: int, player_node: Node2D = null) -> float:
+	return maxf(_lane_enemy_pos(lane_manager, lane, player_node).distance_to(_lane_hit_zone_pos(lane_manager, lane, player_node)), 1.0)
 
 
-func _lane_logical_intercept_distance(lane_manager: Node, lane: int) -> float:
+func _lane_logical_intercept_distance(lane_manager: Node, lane: int, player_node: Node2D = null) -> float:
 	if lane_manager != null and lane_manager.has_method("get_threat_spawn_pos") and lane_manager.has_method("get_threat_hit_zone_pos"):
 		var spawn_v: Variant = lane_manager.call("get_threat_spawn_pos", lane)
 		var hit_v: Variant = lane_manager.call("get_threat_hit_zone_pos", lane)
@@ -1463,12 +1496,12 @@ func _lane_logical_intercept_distance(lane_manager: Node, lane: int) -> float:
 			var spawn_pos: Vector2 = spawn_v
 			var hit_pos: Vector2 = hit_v
 			return maxf(spawn_pos.distance_to(hit_pos), 1.0)
-	return _lane_intercept_distance(lane_manager, lane)
+	return _lane_intercept_distance(lane_manager, lane, player_node)
 
 
-func _radial_lane_strip_position(lane_manager: Node, lane: int, strip_size: Vector2) -> Vector2:
-	var hit_zone: Vector2 = _lane_hit_zone_pos(lane_manager, lane)
-	var enemy_pos: Vector2 = _lane_enemy_pos(lane_manager, lane)
+func _radial_lane_strip_position(lane_manager: Node, lane: int, strip_size: Vector2, player_node: Node2D = null) -> Vector2:
+	var hit_zone: Vector2 = _lane_hit_zone_pos(lane_manager, lane, player_node)
+	var enemy_pos: Vector2 = _lane_enemy_pos(lane_manager, lane, player_node)
 	var midpoint: Vector2 = hit_zone.lerp(enemy_pos, 0.5)
 	return midpoint - Vector2(strip_size.x * 0.5, strip_size.y * 0.5)
 

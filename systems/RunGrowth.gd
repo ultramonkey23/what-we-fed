@@ -71,6 +71,8 @@ func _ready() -> void:
 		EventBus.enemy_status_applied.connect(_on_enemy_status_applied)
 	if not EventBus.player_dodged.is_connected(_on_player_dodged):
 		EventBus.player_dodged.connect(_on_player_dodged)
+	if not EventBus.support_manual_activation_requested.is_connected(_on_support_manual_activation_requested):
+		EventBus.support_manual_activation_requested.connect(_on_support_manual_activation_requested)
 	if not EventBus.bonded_support_triggered.is_connected(_on_bonded_support_triggered):
 		EventBus.bonded_support_triggered.connect(_on_bonded_support_triggered)
 	_emit_growth_state()
@@ -79,7 +81,35 @@ func _ready() -> void:
 
 
 func _exit_tree() -> void:
-	pass
+	if EventBus.run_started.is_connected(_on_run_started):
+		EventBus.run_started.disconnect(_on_run_started)
+	if EventBus.combat_started.is_connected(_on_combat_started):
+		EventBus.combat_started.disconnect(_on_combat_started)
+	if EventBus.enemy_defeated.is_connected(_on_enemy_defeated):
+		EventBus.enemy_defeated.disconnect(_on_enemy_defeated)
+	if EventBus.timed_attack_resolved.is_connected(_on_timed_attack_resolved):
+		EventBus.timed_attack_resolved.disconnect(_on_timed_attack_resolved)
+	if EventBus.player_parried.is_connected(_on_player_parried):
+		EventBus.player_parried.disconnect(_on_player_parried)
+	if EventBus.combo_changed.is_connected(_on_combo_changed):
+		EventBus.combo_changed.disconnect(_on_combo_changed)
+	if EventBus.ultimate_fired.is_connected(_on_ultimate_fired):
+		EventBus.ultimate_fired.disconnect(_on_ultimate_fired)
+	if EventBus.player_took_damage.is_connected(_on_player_took_damage):
+		EventBus.player_took_damage.disconnect(_on_player_took_damage)
+	if EventBus.creature_bonded.is_connected(_on_creature_bonded):
+		EventBus.creature_bonded.disconnect(_on_creature_bonded)
+	if EventBus.creature_eaten.is_connected(_on_creature_changed):
+		EventBus.creature_eaten.disconnect(_on_creature_changed)
+	if EventBus.enemy_status_applied.is_connected(_on_enemy_status_applied):
+		EventBus.enemy_status_applied.disconnect(_on_enemy_status_applied)
+	if not EventBus.player_dodged.is_connected(_on_player_dodged):
+		EventBus.player_dodged.connect(_on_player_dodged)
+	if EventBus.support_manual_activation_requested.is_connected(_on_support_manual_activation_requested):
+		EventBus.support_manual_activation_requested.disconnect(_on_support_manual_activation_requested)
+	if not EventBus.bonded_support_triggered.is_connected(_on_bonded_support_triggered):
+		EventBus.bonded_support_triggered.connect(_on_bonded_support_triggered)
+
 
 
 func _process(delta: float) -> void:
@@ -380,6 +410,31 @@ func _on_enemy_status_applied(_lane: int, status_id: String, _params: Dictionary
 func _on_player_dodged(_from_lane: int, _to_lane: int) -> void:
 	_grant_tendency("guard", 0.55)
 	_trigger_active_support_for_event("player_dodged", _to_lane)
+
+
+func _on_support_manual_activation_requested(lane: int, beat_quality: String) -> void:
+	if not support.is_ready():
+		# Optional: Feedback for not ready
+		return
+		
+	var species_id: String = get_active_species_id()
+	if species_id.is_empty():
+		return
+		
+	var role: Dictionary = COMBAT_CONTENT.get_support_role(species_id)
+	if role.is_empty():
+		return
+	
+	# Grant extra tendency for manual, on-beat usage
+	if beat_quality == "perfect":
+		_grant_tendency("cadence", 2.0)
+		_grant_tendency("bond", 2.0)
+		# Future: Add a "Manual Support Surge" flag to context for Resolver
+	elif beat_quality == "good":
+		_grant_tendency("cadence", 1.0)
+		_grant_tendency("bond", 1.0)
+
+	_trigger_support(species_id, lane, String(role.get("effect_id", "")))
 
 
 func _on_bonded_support_triggered(_species_id: String, _lane: int, _effect_id: String) -> void:

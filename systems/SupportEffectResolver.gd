@@ -360,9 +360,78 @@ func _apply_collar_behavior(ctx: Dictionary, collar_mod: Dictionary) -> void:
 	if not status_id.is_empty() and lane_manager != null and lane >= 0:
 		lane_manager.apply_status(lane, status_id, {})
 
-	if collar_mod.has("redirected_lane") and lane_manager != null and lane >= 0:
-		for neighbor_lane in range(4):
-			if neighbor_lane != lane:
-				lane_manager.apply_status(neighbor_lane, "pale", {})
-
 	feedback_requested.emit(text, Color(0.72, 0.88, 1.0, 1.0), 0.32)
+
+
+func build_mastery_context(
+	effect_id: String,
+	lane: int,
+	phrase_window: String,
+	cadence_window: String,
+	last_mastery_context: Dictionary,
+	timeout: float
+) -> Dictionary:
+	var context: Dictionary = {
+		"source_event": "",
+		"lane": lane,
+		"action_quality": "",
+		"beat_quality": "off",
+		"phrase_window": phrase_window,
+		"cadence_window": cadence_window,
+		"is_recent": false,
+		"window_id": ""
+	}
+	
+	if not last_mastery_context.is_empty():
+		var now: float = Time.get_ticks_msec() / 1000.0
+		var age: float = now - float(last_mastery_context.get("timestamp", -999.0))
+		if age <= timeout:
+			context["source_event"] = str(last_mastery_context.get("event_id", ""))
+			context["lane"] = int(last_mastery_context.get("lane", lane))
+			context["action_quality"] = str(last_mastery_context.get("action_quality", ""))
+			context["beat_quality"] = str(last_mastery_context.get("beat_quality", "off"))
+			context["phrase_window"] = str(last_mastery_context.get("phrase_window", context["phrase_window"]))
+			context["cadence_window"] = str(last_mastery_context.get("cadence_window", context["cadence_window"]))
+			context["is_recent"] = true
+
+	var action_quality: String = str(context.get("action_quality", ""))
+	var beat_quality: String = str(context.get("beat_quality", "off"))
+	var precision: bool = action_quality == "perfect" and (beat_quality == "perfect" or beat_quality == "good")
+
+	if precision and cadence_window == "surge" and (phrase_window == "flow_state" or phrase_window == "in_pocket"):
+		context["window_id"] = "cadence_surge"
+	elif phrase_window == "flow_state":
+		context["window_id"] = "flow_state"
+	elif phrase_window == "in_pocket":
+		context["window_id"] = "in_pocket"
+	elif precision and cadence_window == "drive" and effect_id == "thornback_rend":
+		context["window_id"] = "in_pocket"
+
+	return context
+
+
+func apply_collar_logic(ctx: Dictionary, collar_data: Dictionary, combat_meter_node: Node) -> Dictionary:
+	var collar_mod: Dictionary = {}
+	if collar_data.is_empty():
+		return collar_mod
+		
+	var mod: Dictionary = Dictionary(collar_data.get("mod", {}))
+	collar_mod = mod.duplicate(true)
+	collar_mod["feedback_text"] = String(collar_data.get("title", "COLLAR")).to_upper()
+	collar_mod["satisfied"] = true
+	
+	if mod.has("support_impact_mult"):
+		ctx["surge_mult"] = float(ctx.get("surge_mult", 1.0)) * float(mod["support_impact_mult"])
+	
+	if mod.has("stamina_cost_mult"):
+		var cost: float = 25.0 * float(mod["stamina_cost_mult"])
+		if combat_meter_node != null:
+			var current_stamina: float = float(combat_meter_node.get("stamina"))
+			if current_stamina >= cost:
+				stamina_requested.emit(-cost)
+			else:
+				collar_mod["satisfied"] = false
+				collar_mod["suppress_support"] = true
+				
+	return collar_mod
+

@@ -1,13 +1,13 @@
 extends RefCounted
 
 # ─── TIMING RINGS ────────────────────────────────────────────────────────────
-const RING_OUTER_RADIUS: float = 30.0 # SUCCESS: matches Projectile.ATTACK_GOOD_MIN (0.96) @ 1280 width
-const RING_PERFECT_RADIUS: float = 15.0 # PERFECT: matches Projectile.ATTACK_PERFECT_MIN (0.98) @ 1280 width
+const RING_OUTER_RADIUS: float = 18.0 # Strong pass: tighter good window, matches smaller sigil.
+const RING_PERFECT_RADIUS: float = 9.0 # Inner perfect window aligned to reduced outer ring.
 const RING_POINT_COUNT: int = 32
 const EDGE_STATE_WIDTH: float = 0.016
 
 # ─── LANE VISUALS ────────────────────────────────────────────────────────────
-const LANE_BAND_HEIGHT: float = 28.0
+const LANE_BAND_HEIGHT: float = 18.0
 const LANE_IDLE_ALPHA: float = 0.038
 const LANE_THREAT_ALPHA: float = 0.12
 const LANE_CRITICAL_ALPHA: float = 0.24

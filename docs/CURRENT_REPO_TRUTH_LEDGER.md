@@ -20,13 +20,11 @@
 
 ## Verified Current Systems (Static / Code-Confirmed)
 - Combat lane model: implemented in code as a 4-cardinal-lane model in `LaneManager.gd` (runtime behavior unverified).
-- Input core: `PlayerCombat.gd` contains buffering/recovery/i-frame mechanisms (runtime reliability and feel unverified).
-- Rhythm core: `SongConductor.gd` implements beat logic and beat-related signals (runtime sync/readability unverified).
-- Projectile timing: `Projectile.gd` contains progress/timing evaluation logic (runtime timing feel unverified).
+- Input core: `PlayerCombat.gd` contains buffering/recovery/i-frame mechanisms. Input buffer set to 0.14s.
+- DNA Economy Fix (v2.3.1): `VictoryRewardDirector.gd` resolved a confirmed bug where choosing to 'Eat' incorrectly consumed DNA. 'Eat' is now correctly verified as a predation/gain path, not a consumer path.
+- Reward Flow Integrity: `VictoryRewardDirector.gd` now includes a `reset()` method called during `CombatScene` destruction to prevent stale reward leakage between runs.
 - Core state/autoload presence: `EventBus.gd` and `GameState.gd` exist as core systems and are autoloaded in `project.godot`.
-- Performance reward data validation: implemented in `tools/validate_data_content.gd` for reward ID integrity, phase/affinity mix references, required display fields, effect type presence, and `flayed_vessel` Vessel payoff schema.
-- Predation-pool completion trigger: `PerformanceRewardDirector.gd` now preserves qualified `predation_pool` verdict context and marks pending predation offers only when `PredationPool.build_offers(1)` has available offers.
-- Vessel support HUD readout: `VesselModifierDirector.gd` exposes a pure Ashclaw modifier readout, and `CombatHUDPresenter.gd` appends the compact Vessel cue through the existing support trigger label.
+- Performance reward data validation: implemented in `tools/validate_data_content.gd`.
 
 ## Files Confirmed Touched / Inspected
 - `scenes/combat/CombatScene.gd` (architecture-risk check)

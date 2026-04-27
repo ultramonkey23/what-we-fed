@@ -74,13 +74,13 @@ func _ready() -> void:
 	_aura = Line2D.new()
 	_aura.name = "Aura"
 	_aura.default_color = Color(0.90, 0.28, 0.10, 0.0)
-	_aura.width = 2.8
+	_aura.width = 2.2
 	_aura.closed = true
 	_aura.joint_mode = Line2D.LINE_JOINT_ROUND
 	var aura_pts := PackedVector2Array()
 	for i in range(20):
 		var a: float = (float(i) / 20.0) * TAU
-		aura_pts.append(Vector2(cos(a), sin(a)) * 28.0)
+		aura_pts.append(Vector2(cos(a), sin(a)) * 21.0)
 	_aura.points = aura_pts
 	add_child(_aura)
 
@@ -88,10 +88,10 @@ func _ready() -> void:
 	_body = Polygon2D.new()
 	_body.name = "Body"
 	_body.polygon = PackedVector2Array([
-		Vector2(0.0, -22.0),
-		Vector2(16.0, 0.0),
-		Vector2(0.0, 14.0),
-		Vector2(-16.0, 0.0)
+		Vector2(0.0, -16.0),
+		Vector2(12.0, 0.0),
+		Vector2(0.0, 10.0),
+		Vector2(-12.0, 0.0)
 	])
 	_body.color = Color(0.90, 0.28, 0.10, 0.92)
 	add_child(_body)
@@ -100,10 +100,10 @@ func _ready() -> void:
 	_inner_shard = Polygon2D.new()
 	_inner_shard.name = "InnerShard"
 	_inner_shard.polygon = PackedVector2Array([
-		Vector2(0.0, -11.0),
-		Vector2(8.0, 0.0),
-		Vector2(0.0, 7.0),
-		Vector2(-8.0, 0.0)
+		Vector2(0.0, -8.0),
+		Vector2(6.0, 0.0),
+		Vector2(0.0, 5.0),
+		Vector2(-6.0, 0.0)
 	])
 	_inner_shard.color = Color(1.0, 0.75, 0.50, 0.85)
 	add_child(_inner_shard)
@@ -113,11 +113,11 @@ func _ready() -> void:
 	_approach_tick = Line2D.new()
 	_approach_tick.name = "ApproachTick"
 	_approach_tick.default_color = Color(1.0, 0.70, 0.40, 0.60)
-	_approach_tick.width = 2.0
+	_approach_tick.width = 1.6
 	_approach_tick.begin_cap_mode = Line2D.LINE_CAP_ROUND
 	_approach_tick.end_cap_mode = Line2D.LINE_CAP_ROUND
-	_approach_tick.add_point(Vector2(18.0, 0.0))
-	_approach_tick.add_point(Vector2(34.0, 0.0))
+	_approach_tick.add_point(Vector2(14.0, 0.0))
+	_approach_tick.add_point(Vector2(26.0, 0.0))
 	add_child(_approach_tick)
 
 
@@ -283,7 +283,7 @@ func _update_visuals() -> void:
 
 	# Scale grows significantly as it closes — creates approach pressure.
 	var scale_t: float = approach_t if not is_bouncing else clampf(progress, 0.0, 1.0)
-	var entity_scale: float = lerpf(0.7, 1.3, scale_t)
+	var entity_scale: float = lerpf(0.55, 1.02, scale_t)
 	_body.scale = Vector2(entity_scale, entity_scale)
 	_inner_shard.scale = Vector2(entity_scale, entity_scale)
 

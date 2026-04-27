@@ -5,9 +5,9 @@ const COMBAT_BG_CONTENT = preload("res://data/CombatBackgroundContent.gd")
 const UI_STYLE = preload("res://systems/UIStyle.gd")
 const HUD_PANEL_ART = preload("res://systems/HUDPanelArt.gd")
 
-const PLAYER_SIGIL_OUTER_RADIUS: float = 100.0
-const PLAYER_SIGIL_INNER_RADIUS: float = 70.0
-const PLAYER_SIGIL_CORE_RADIUS: float = 22.0
+const PLAYER_SIGIL_OUTER_RADIUS: float = 62.0
+const PLAYER_SIGIL_INNER_RADIUS: float = 42.0
+const PLAYER_SIGIL_CORE_RADIUS: float = 13.0
 const SIGIL_FOLLOW_LERP: float = 0.12 # Subtle follow speed
 
 var _active_bg_env: Dictionary = {}
@@ -247,7 +247,7 @@ func apply_combat_background(
 	# PREMIUM: Manga-style transition for background swaps
 	if bg_sprite != null and is_instance_valid(bg_sprite):
 		# If we're swapping, trigger a high-contrast transition
-		EventBus.emit_signal("screen_flash", Color(1.0, 1.0, 1.0, 0.99), 0.15)
+		EventBus.emit_signal("screen_flash", Color(0.92, 0.86, 0.74, 0.20), 0.10)
 		bg_sprite.queue_free()
 		bg_sprite = null
 
@@ -555,44 +555,44 @@ func draw_timing_circles(
 
 	var outer_ring := _make_anomaly_sigil_ring(
 		PLAYER_SIGIL_OUTER_RADIUS,
-		Color(base_color.r, base_color.g, base_color.b, base_color.a * 0.52),
-		2.8,
+		Color(base_color.r, base_color.g, base_color.b, base_color.a * 0.36),
+		2.0,
 		5.0
 	)
 	outer_ring.name = "Outer"
 
 	var good_inner_guide := _make_ring_line(
 		good_inner_radius,
-		Color(base_color.r, base_color.g, base_color.b, base_color.a * 0.26),
-		1.6
+		Color(base_color.r, base_color.g, base_color.b, base_color.a * 0.18),
+		1.2
 	)
 	good_inner_guide.name = "GoodInnerGuide"
 
 	var good_outer_guide := _make_ring_line(
 		good_outer_radius,
-		Color(base_color.r, base_color.g, base_color.b, base_color.a * 0.26),
-		1.6
+		Color(base_color.r, base_color.g, base_color.b, base_color.a * 0.18),
+		1.2
 	)
 	good_outer_guide.name = "GoodOuterGuide"
 
 	var perfect_inner_guide := _make_ring_line(
 		perfect_inner_radius,
-		Color(base_color.r, base_color.g, base_color.b, 0.58).lightened(0.42),
-		2.2
+		Color(base_color.r, base_color.g, base_color.b, 0.42).lightened(0.30),
+		1.6
 	)
 	perfect_inner_guide.name = "PerfectInnerGuide"
 
 	var perfect_outer_guide := _make_ring_line(
 		perfect_outer_radius,
-		Color(base_color.r, base_color.g, base_color.b, 0.58).lightened(0.42),
-		2.2
+		Color(base_color.r, base_color.g, base_color.b, 0.42).lightened(0.30),
+		1.6
 	)
 	perfect_outer_guide.name = "PerfectOuterGuide"
 
 	var perfect_ring := _make_anomaly_sigil_ring(
 		PLAYER_SIGIL_INNER_RADIUS,
-		base_color.lightened(0.32),
-		4.6,
+		base_color.lightened(0.20),
+		3.2,
 		3.0
 	)
 	perfect_ring.name = "Perfect"
@@ -600,8 +600,8 @@ func draw_timing_circles(
 	var cardinal_arms := _make_sigil_cardinal_arms(
 		PLAYER_SIGIL_INNER_RADIUS - 4.0,
 		PLAYER_SIGIL_OUTER_RADIUS + 6.0,
-		Color(base_color.r, base_color.g, base_color.b, 0.40),
-		1.6
+		Color(base_color.r, base_color.g, base_color.b, 0.24),
+		1.2
 	)
 	cardinal_arms.name = "CardinalArms"
 
@@ -916,14 +916,14 @@ func update_timing_ring_proximity(
 			return
 
 	var base_color: Color = active_color
-	var outer_color: Color = Color(base_color.r, base_color.g, base_color.b, base_color.a * 0.52)
-	var perfect_color: Color = base_color.lightened(0.32)
-	var good_guide_color: Color = Color(base_color.r, base_color.g, base_color.b, base_color.a * 0.26)
-	var perfect_guide_color: Color = Color(base_color.r, base_color.g, base_color.b, 0.58).lightened(0.42)
-	var outer_width: float = 2.8
-	var perfect_width: float = 4.6
-	var good_guide_width: float = 1.6
-	var perfect_guide_width: float = 2.2
+	var outer_color: Color = Color(base_color.r, base_color.g, base_color.b, base_color.a * 0.36)
+	var perfect_color: Color = base_color.lightened(0.20)
+	var good_guide_color: Color = Color(base_color.r, base_color.g, base_color.b, base_color.a * 0.18)
+	var perfect_guide_color: Color = Color(base_color.r, base_color.g, base_color.b, 0.42).lightened(0.30)
+	var outer_width: float = 2.0
+	var perfect_width: float = 3.2
+	var good_guide_width: float = 1.2
+	var perfect_guide_width: float = 1.6
 	var receiver_alpha: float = 0.10
 	var receiver_glow_alpha: float = 0.0
 	var edge_alpha: float = 0.0
@@ -954,8 +954,8 @@ func update_timing_ring_proximity(
 		var accent_color: Color = Color(telegraph_profile.get("accent_color", threat_color.lightened(0.18)))
 		var warning_bias: float = max(float(telegraph_profile.get("warning_bias", 1.0)), 0.84)
 		var ring_t_base: float = float(telegraph_profile.get("ring_thickness_base", 1.0))
-		outer_width = 2.8 * ring_t_base
-		perfect_width = 4.6 * ring_t_base
+		outer_width = 2.0 * ring_t_base
+		perfect_width = 3.2 * ring_t_base
 
 		if p >= approach_start and p < outer_entry:
 			var t: float = clamp(((p - approach_start) / (outer_entry - approach_start)) * warning_bias, 0.0, 1.0)
@@ -973,10 +973,10 @@ func update_timing_ring_proximity(
 			fill_color = Color(threat_color.r, threat_color.g, threat_color.b, receiver_alpha)
 
 			if p >= perfect_entry and p <= perfect_exit:
-				perfect_color = accent_color.lightened(0.26)
-				perfect_guide_color = accent_color.lightened(0.42)
-				perfect_width = 5.4
-				perfect_guide_width = 3.4
+				perfect_color = accent_color.lightened(0.20)
+				perfect_guide_color = accent_color.lightened(0.28)
+				perfect_width = 4.0
+				perfect_guide_width = 2.2
 				receiver_alpha = 0.36
 				receiver_glow_alpha = 0.24
 				beat_color = accent_color.lightened(0.34)
@@ -986,8 +986,8 @@ func update_timing_ring_proximity(
 			if edge_distance <= COMBAT_FEEL_CONTENT.EDGE_STATE_WIDTH:
 				var edge_t: float = 1.0 - clamp(edge_distance / COMBAT_FEEL_CONTENT.EDGE_STATE_WIDTH, 0.0, 1.0)
 				edge_alpha = 0.20 + (0.30 * edge_t)
-				outer_width = lerp(outer_width, 4.0, edge_t)
-				good_guide_width = lerp(good_guide_width, 2.8, edge_t)
+				outer_width = lerp(outer_width, 2.8, edge_t)
+				good_guide_width = lerp(good_guide_width, 1.8, edge_t)
 
 	receiver_alpha = minf(receiver_alpha + beat_pulse, 0.52)
 	fill_color.a = receiver_alpha
@@ -999,7 +999,7 @@ func update_timing_ring_proximity(
 			"aggression":
 				var aggression_color: Color = UI_STYLE.get_tendency_surge_color("aggression")
 				perfect_color = perfect_color.lerp(Color(aggression_color.r, aggression_color.g, aggression_color.b, perfect_color.a), surge_wf * 0.28)
-				perfect_width = minf(perfect_width + surge_wf * 0.8, 7.0)
+				perfect_width = minf(perfect_width + surge_wf * 0.6, 4.8)
 			"cadence":
 				var cadence_color: Color = UI_STYLE.get_tendency_surge_color("cadence")
 				beat_color = beat_color.lerp(Color(cadence_color.r, cadence_color.g, cadence_color.b, beat_color.a), surge_wf * 0.42)
@@ -1024,7 +1024,7 @@ func update_timing_ring_proximity(
 	perfect_ring.default_color = perfect_color
 	perfect_ring.width = perfect_width
 	if good_inner_guide != null and good_outer_guide != null:
-		good_inner_guide.default_color = Color(good_guide_color.r, good_guide_color.g, good_guide_color.b, minf(good_guide_color.a, 0.46))
+		good_inner_guide.default_color = Color(good_guide_color.r, good_guide_color.g, good_guide_color.b, minf(good_guide_color.a, 0.30))
 		good_outer_guide.default_color = good_inner_guide.default_color
 		good_inner_guide.width = good_guide_width
 		good_outer_guide.width = good_guide_width
@@ -1091,7 +1091,12 @@ func build_arena_visuals(
 		lane_strip.stretch_mode = TextureRect.STRETCH_SCALE
 
 		var ribbon_grad := Gradient.new()
-		ribbon_grad.colors = [Color(1.0, 1.0, 1.0, 0.42), Color(1.0, 1.0, 1.0, 1.0), Color(1.0, 1.0, 1.0, 0.42)]
+		# Keep lane guidance legible without the old white slab look.
+		ribbon_grad.colors = [
+			Color(0.10, 0.12, 0.14, 0.10),
+			Color(0.18, 0.22, 0.28, 0.24),
+			Color(0.10, 0.12, 0.14, 0.10)
+		]
 		ribbon_grad.offsets = [0.0, 0.5, 1.0]
 		
 		var ribbon_tex := GradientTexture2D.new()
@@ -1118,7 +1123,8 @@ void fragment() {
 	float drift = sin((uv.y * 10.0) + (TIME + time_offset) * 20.0) * shudder_intensity * 0.05;
 	uv.x += drift;
 	vec4 color = texture(TEXTURE, uv);
-	color.rgb = mix(color.rgb, vec3(1.0), shudder_intensity * 0.4); // Flash on impact
+	// Flash only nudges value now; avoid full white bars during hits.
+	color.rgb = mix(color.rgb, color.rgb * 1.15, shudder_intensity * 0.18);
 	COLOR = color;
 }
 """
@@ -1132,23 +1138,24 @@ void fragment() {
 		substrate_rhythm.name = "SubstrateRhythm"
 		substrate_rhythm.set_anchors_preset(Control.PRESET_FULL_RECT)
 		substrate_rhythm.texture = _get_shared_noise_tex()
-		substrate_rhythm.modulate = Color(1.0, 1.0, 1.0, 0.12)
+		substrate_rhythm.modulate = Color(0.45, 0.50, 0.56, 0.08)
 		substrate_rhythm.stretch_mode = TextureRect.STRETCH_TILE
 		lane_strip.add_child(substrate_rhythm)
 
-		lane_strip.modulate = Color(lane_color.r, lane_color.g, lane_color.b, COMBAT_FEEL_CONTENT.LANE_IDLE_ALPHA)
+		var tuned_lane_alpha: float = minf(COMBAT_FEEL_CONTENT.LANE_IDLE_ALPHA, 0.34)
+		lane_strip.modulate = Color(lane_color.r, lane_color.g, lane_color.b, tuned_lane_alpha)
 		lane_group.add_child(lane_strip)
 		lane_strips[lane] = lane_strip
 
 		var strip_top := ColorRect.new()
 		strip_top.size = Vector2(lane_strip.size.x, 1.0)
-		strip_top.color = Color(lane_color.r, lane_color.g, lane_color.b, 0.12)
+		strip_top.color = Color(lane_color.r, lane_color.g, lane_color.b, 0.06)
 		lane_strip.add_child(strip_top)
 
 		var strip_bottom := ColorRect.new()
 		strip_bottom.size = Vector2(lane_strip.size.x, 1.0)
 		strip_bottom.position = Vector2(0.0, lane_strip.size.y - 1.0)
-		strip_bottom.color = Color(lane_color.r, lane_color.g, lane_color.b, 0.12)
+		strip_bottom.color = Color(lane_color.r, lane_color.g, lane_color.b, 0.06)
 		lane_strip.add_child(strip_bottom)
 
 		var focal_root := Node2D.new()
@@ -1161,7 +1168,7 @@ void fragment() {
 	for enemy_id in all_enemies_by_id.keys():
 		var enemy: Dictionary = all_enemies_by_id[enemy_id]
 		var lane_enemy: int = int(enemy.get("lane", 0))
-		var marker_size_enemy: float = 58.0 if is_boss_encounter else 36.0
+		var marker_size_enemy: float = 43.0 if is_boss_encounter else 27.0
 		var marker_data: Dictionary
 
 		if enemy_markers_by_id.has(enemy_id):
@@ -1258,7 +1265,7 @@ func _build_enemy_marker(
 	var enemy_type: String = String(enemy.get("type", ""))
 	var tags_value: Variant = enemy.get("behaviour_tags", [])
 	var is_tagged_elite: bool = tags_value is Array and (tags_value as Array).has("elite")
-	var is_boss_marker: bool = marker_size >= 60.0 or enemy_type == "sovereign"
+	var is_boss_marker: bool = marker_size >= 40.0 or enemy_type == "sovereign"
 	var is_elite_marker: bool = is_boss_marker or grade_id == "alpha" or is_tagged_elite
 	var marker_root := Node2D.new()
 	marker_root.name = "Enemy_%d" % enemy_id
@@ -1331,7 +1338,8 @@ func _build_enemy_marker(
 				var marker_modulate: Color = Color(render.get("marker_modulate", base_color.darkened(0.4)))
 				sprite.modulate = _tune_enemy_silhouette_color(marker_modulate, base_color)
 				sprite.modulate.a = 1.0
-				sprite.scale = Vector2(render.get("scale", 0.052), render.get("scale", 0.052)) * (marker_size / 42.0)
+				var silhouette_mult: float = 0.74
+				sprite.scale = Vector2(render.get("scale", 0.052), render.get("scale", 0.052)) * (marker_size / 42.0) * silhouette_mult
 				sprite.position = Vector2(0.0, -2.0)
 				marker_root.add_child(sprite)
 				marker_root.move_child(sprite, 3)
@@ -1341,7 +1349,7 @@ func _build_enemy_marker(
 	var hp_track := ColorRect.new()
 	hp_track.name = "HpTrack"
 	hp_track.size = Vector2(readout_width, hp_bar_height)
-	hp_track.position = Vector2(-readout_width * 0.5, marker_half + 7.0)
+	hp_track.position = Vector2(-readout_width * 0.5, marker_half + 6.0)
 	hp_track.color = Color(0.03, 0.02, 0.02, 0.88)
 	marker_root.add_child(hp_track)
 
@@ -1355,7 +1363,7 @@ func _build_enemy_marker(
 	var hp_label := Label.new()
 	hp_label.name = "HpLabel"
 	hp_label.text = "HP %.0f/%.0f" % [float(enemy.get("hp", 0.0)), float(enemy.get("hp", 0.0))]
-	hp_label.position = Vector2(-readout_width * 0.5, marker_half + 12.0)
+	hp_label.position = Vector2(-readout_width * 0.5, marker_half + 10.0)
 	hp_label.size = Vector2(readout_width, 16.0)
 	hp_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hp_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -1367,7 +1375,7 @@ func _build_enemy_marker(
 	var threat_label := Label.new()
 	threat_label.name = "ThreatLabel"
 	threat_label.text = grade_label_text
-	threat_label.position = Vector2(-readout_width * 0.5, -marker_half - (23.0 if is_boss_marker else 19.0))
+	threat_label.position = Vector2(-readout_width * 0.5, -marker_half - (20.0 if is_boss_marker else 16.0))
 	threat_label.size = Vector2(readout_width, 17.0)
 	threat_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	threat_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER

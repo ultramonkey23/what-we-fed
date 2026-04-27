@@ -52,7 +52,7 @@ const SHOT_MODIFIER_TEXTURES: Dictionary = {
 }
 const DEFAULT_SHOT_MODIFIER_PATH: String = "res://assets/sprites/shot1.png"
 # Maps the 32x32 sprite to ~24×12 world footprint (slightly larger for readability).
-const SHOT_BASE_SCALE: Vector2 = Vector2(0.82, 0.41)
+const SHOT_BASE_SCALE: Vector2 = Vector2(0.61, 0.31)
 const DEFAULT_PROJECTILE_COLOR: Color = Color(0.95, 0.58, 0.22, 1.0)
 const DEFAULT_REFLECT_COLOR: Color = Color(0.55, 1.0, 0.78, 1.0)
 
@@ -629,6 +629,15 @@ func _build_telegraph_profile(source: Dictionary) -> Dictionary:
 
 	for key in source.keys():
 		profile[key] = source[key]
+
+	# Strong visual scale-down for on-field threats (gameplay radii unchanged).
+	const THREAT_VISUAL_MULT: float = 0.72
+	profile["body_base_scale"] = profile["body_base_scale"] * THREAT_VISUAL_MULT
+	profile["glow_base_scale"] = profile["glow_base_scale"] * THREAT_VISUAL_MULT
+	profile["core_size"] = profile["core_size"] * THREAT_VISUAL_MULT
+	profile["trail_width"] = float(profile["trail_width"]) * 0.85
+	profile["trail_pressure_width"] = float(profile["trail_pressure_width"]) * 0.85
+
 	return profile
 
 

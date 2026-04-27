@@ -441,6 +441,10 @@ func _exit_tree() -> void:
 		EventBus.tier_changed.disconnect(_on_tier_changed)
 	if EventBus.quig_narrative_triggered.is_connected(_on_quig_narrative_triggered):
 		EventBus.quig_narrative_triggered.disconnect(_on_quig_narrative_triggered)
+	
+	if _victory_reward_director != null and is_instance_valid(_victory_reward_director):
+		if _victory_reward_director.has_method("reset"):
+			_victory_reward_director.reset()
 
 
 func _initialize_systems() -> void:
@@ -2768,7 +2772,8 @@ func _build_quig_anchor() -> void:
 			_timing_debug_label.size = Vector2(240.0, 24.0)
 			_timing_debug_label.add_theme_font_size_override("font_size", 13)
 			_timing_debug_label.modulate = UI_STYLE.get_quality_feedback_color("idle")
-			_timing_debug_label.visible = true
+			# Keep debug builds visually clean unless explicitly enabled.
+			_timing_debug_label.visible = false
 			ui_layer.add_child(_timing_debug_label)
 
 	_quig_anchor_label = Label.new()
@@ -3291,6 +3296,8 @@ func _setup_lane_manager() -> void:
 
 
 func _setup_player_combat() -> void:
+	# Keep player silhouette above timing sigil visuals for readability.
+	player_combat.z_index = 25
 	if player_combat.has_method("setup"):
 		player_combat.call("setup", lane_manager, combat_meter)
 

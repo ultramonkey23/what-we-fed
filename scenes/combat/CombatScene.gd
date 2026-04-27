@@ -85,7 +85,7 @@ var _run_director: Node = null
 var _victory_reward_director: Node = null
 var _vessel_modifier_director: Node = null
 var _base_time_scale: float = 1.0
-var _ring_highlight_timers: Array[float] = [0.0, 0.0, 0.0, 0.0]
+var _ring_highlight_timers: Array[float] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 var _surge_window_tendency: String = ""
 var _surge_window_timer: float = 0.0
 var _tempo_state_family: StringName = COMBAT_FEEL_CONTENT.TEMPO_NONE
@@ -928,7 +928,7 @@ func _connect_signals() -> void:
 
 func _process(delta: float) -> void:
 	_update_timers(delta)
-	_update_presentation_layers()
+	_update_presentation_layers(delta)
 	_update_performance_systems(delta)
 	_update_song_logic(delta)
 	_update_boss_race(delta)
@@ -1227,31 +1227,29 @@ func _rehydrate_song_pressure_after_reward() -> void:
 func _resolve_song_empty_lane_near_player() -> int:
 	if lane_manager == null:
 		return 2 # East fallback
-		
+
 	var player_lane: int = _get_player_focus_lane()
-	
+	var total_lanes: int = int(lane_manager.THREAT_COUNT)
+
 	# Priority 1: Current lane if empty
 	if lane_manager.call("is_lane_empty", player_lane):
 		return player_lane
-		
-	# Priority 2: Adjacent cardinal lanes
-	var adjacents: Array = []
-	if player_lane == 0 or player_lane == 1: # North/South
-		adjacents = [2, 3] # East/West
-	else: # East/West
-		adjacents = [0, 1] # North/South
-		
-	for adj in adjacents:
-		if lane_manager.call("is_lane_empty", adj):
-			return adj
-			
+
+	# Priority 2: Immediate adjacent lanes (8-way circle)
+	var left_adj: int = (player_lane - 1 + total_lanes) % total_lanes
+	var right_adj: int = (player_lane + 1) % total_lanes
+
+	if lane_manager.call("is_lane_empty", left_adj):
+		return left_adj
+	if lane_manager.call("is_lane_empty", right_adj):
+		return right_adj
+
 	# Priority 3: Any empty lane
-	for i in range(lane_manager.THREAT_COUNT if lane_manager else 4):
+	for i in range(total_lanes):
 		if lane_manager.call("is_lane_empty", i):
 			return i
-			
-	return player_lane # Fallback to player lane if everything is full (will be handled by queue/stall logic)
 
+	return player_lane # Fallback to player lane if everything is full
 
 func _get_player_focus_lane() -> int:
 	if player_combat == null:
@@ -1358,15 +1356,15 @@ func _current_void_elapsed_seconds() -> float:
 
 
 
-func _update_presentation_layers() -> void:
+func _update_presentation_layers(delta: float) -> void:
 	if _combat_visual_rig != null and is_instance_valid(_combat_visual_rig) and lane_manager != null:
 		_combat_visual_rig.global_position = lane_manager.call("get_player_pos")
 		if player_combat != null and player_combat.has_method("sync_presentation_facing_with_lane_manager"):
 			player_combat.call("sync_presentation_facing_with_lane_manager", lane_manager)
 	if _timing_circle_container != null:
-		_update_timing_ring_proximity()
+		_update_timing_ring_proximity(delta)
 		if _presentation_runtime != null and player_combat != null:
-			_presentation_runtime.tick_sigil_recovery(player_combat, get_process_delta_time())
+			_presentation_runtime.tick_sigil_recovery(player_combat, delta)
 	if _lane_marker_container != null:
 		_update_lane_visual_states()
 	if _enemy_marker_container != null:
@@ -1558,7 +1556,7 @@ func _update_boss_race(delta: float) -> void:
 		_update_boss_presence(delta)
 
 
-func _update_timing_ring_proximity() -> void:
+func _update_timing_ring_proximity(delta: float) -> void:
 	_presentation_controller.update_timing_ring_proximity(
 		_active_encounter,
 		lane_manager,
@@ -1567,7 +1565,8 @@ func _update_timing_ring_proximity() -> void:
 		_timing_rings_cache,
 		_ring_highlight_timers,
 		_surge_window_timer,
-		_surge_window_tendency
+		_surge_window_tendency,
+		delta
 	)
 
 
@@ -2985,7 +2984,7 @@ func _create_upgrade_overlay() -> void:
 	var gap: float = 32.0
 	var start_x: float = (1040.0 - (card_w * 3 + gap * 2)) * 0.5
 
-	for i in range(lane_manager.THREAT_COUNT if lane_manager else 4):
+	for i in range(3):
 		var card := ColorRect.new()
 		card.name = "UpgradeCard_%d" % i
 		card.position = Vector2(start_x + i * (card_w + gap), 110.0)
@@ -4930,9 +4929,10 @@ func _show_upgrade_choices() -> void:
 	_hide_reward_overlay()
 	_awaiting_upgrade_choice = true
 	_pending_upgrades = _performance_reward_director.call("get_upgrade_choices", 3)
-	
-	for i in range(lane_manager.THREAT_COUNT if lane_manager else 4):
+
+	for i in range(3):
 		var card := _upgrade_card_nodes[i] as ColorRect
+
 		if i < _pending_upgrades.size():
 			var up: Dictionary = _pending_upgrades[i]
 			card.visible = true

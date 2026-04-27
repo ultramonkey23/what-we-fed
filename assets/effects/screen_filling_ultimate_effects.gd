@@ -79,7 +79,7 @@ func trigger_world_shattering_explosion():
 
 func create_concentric_explosion_waves():
 	# Multiple waves expanding from center to cover entire screen
-	var center = get_viewport().get_visible_rect().size / 2
+	var center = get_viewport().get_visible_rect().size / 2.0
 	var max_radius = max(center.x, center.y) * 1.5
 	
 	for i in range(8):
@@ -141,7 +141,7 @@ func create_screen_particle_cascade():
 
 func create_layer_particle_cascade(layer: Node2D):
 	var cascade_particles = GPUParticles2D.new()
-	cascade_particles.position = get_viewport().get_visible_rect().size / 2
+	cascade_particles.position = get_viewport().get_visible_rect().size / 2.0
 	cascade_particles.amount = 1000
 	cascade_particles.lifetime = 3.0
 	cascade_particles.emitting = true
@@ -260,7 +260,7 @@ func activate_screen_warping():
 func create_transformation_helix():
 	# Screen-spanning DNA helix effect
 	var screen_size = get_viewport().get_visible_rect().size
-	var center = screen_size / 2
+	var center = screen_size / 2.0
 	
 	var helix = Line2D.new()
 	helix.width = 8.0
@@ -339,10 +339,10 @@ func trigger_cosmic_power_surge():
 func create_cosmic_energy_waves():
 	var screen_size = get_viewport().get_visible_rect().size
 	var edges = [
-		Vector2(0, screen_size.y / 2),           # Left edge
-		Vector2(screen_size.x, screen_size.y / 2), # Right edge
-		Vector2(screen_size.x / 2, 0),           # Top edge
-		Vector2(screen_size.x / 2, screen_size.y)  # Bottom edge
+		Vector2(0, screen_size.y / 2.0),           # Left edge
+		Vector2(screen_size.x, screen_size.y / 2.0), # Right edge
+		Vector2(screen_size.x / 2.0, 0),           # Top edge
+		Vector2(screen_size.x / 2.0, screen_size.y)  # Bottom edge
 	]
 	
 	for i in range(edges.size()):
@@ -394,7 +394,7 @@ func activate_universe_effects():
 
 func create_star_field_explosion():
 	var star_field = GPUParticles2D.new()
-	star_field.position = get_viewport().get_visible_rect().size / 2
+	star_field.position = get_viewport().get_visible_rect().size / 2.0
 	star_field.amount = 2000
 	star_field.lifetime = 4.0
 	star_field.emitting = true
@@ -468,8 +468,8 @@ func create_void_consumption():
 	for i in range(12):
 		var angle = (i / 12.0) * TAU
 		var edge_pos = Vector2(
-			screen_size.x / 2 + cos(angle) * max(screen_size.x, screen_size.y),
-			screen_size.y / 2 + sin(angle) * max(screen_size.x, screen_size.y)
+			screen_size.x / 2.0 + cos(angle) * max(screen_size.x, screen_size.y),
+			screen_size.y / 2.0 + sin(angle) * max(screen_size.x, screen_size.y)
 		)
 		void_waves.append(edge_pos)
 	
@@ -522,7 +522,7 @@ func activate_void_consumption():
 
 func create_void_particle_field():
 	var void_field = GPUParticles2D.new()
-	void_field.position = get_viewport().get_visible_rect().size / 2
+	void_field.position = get_viewport().get_visible_rect().size / 2.0
 	void_field.amount = 1500
 	void_field.lifetime = 4.0
 	void_field.emitting = true

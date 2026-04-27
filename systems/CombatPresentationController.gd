@@ -8,6 +8,7 @@ const HUD_PANEL_ART = preload("res://systems/HUDPanelArt.gd")
 const PLAYER_SIGIL_OUTER_RADIUS: float = 100.0
 const PLAYER_SIGIL_INNER_RADIUS: float = 70.0
 const PLAYER_SIGIL_CORE_RADIUS: float = 22.0
+const SIGIL_FOLLOW_LERP: float = 0.12 # Subtle follow speed
 
 var _active_bg_env: Dictionary = {}
 var _shared_noise_tex: NoiseTexture2D = null
@@ -800,7 +801,8 @@ func update_timing_ring_proximity(
 	timing_rings_cache: Array[Dictionary],
 	ring_highlight_timers: Array[float],
 	surge_window_timer: float,
-	surge_window_tendency: String
+	surge_window_tendency: String,
+	delta: float
 ) -> void:
 	var biome: Dictionary = active_encounter.get("biome", {})
 	var ring_palette: Dictionary = UI_STYLE.get_combat_ring_palette()
@@ -853,7 +855,9 @@ func update_timing_ring_proximity(
 	var perfect_outer_guide: Line2D = cache.get("perfect_outer", null) as Line2D
 
 	if player_combat != null:
-		root.position = player_combat.position
+		# PREMIUM: Smooth Sigil Follow
+		# The rings now gracefully drift toward the player instead of snapping 1:1.
+		root.position = root.position.lerp(player_combat.position, SIGIL_FOLLOW_LERP * (delta * 60.0))
 		
 		# Bone-Ink beat spine (cardinal_arms): indicate active focus lane.
 		if cardinal_arms != null and lane_manager != null:
@@ -863,11 +867,17 @@ func update_timing_ring_proximity(
 			focus_lane = clampi(focus_lane, 0, lane_manager.THREAT_COUNT - 1 if lane_manager else 3)
 			
 			var active_child_idx: int = -1
+			# Standard 8-way indices: 0=N, 1=NE, 2=E, 3=SE, 4=S, 5=SW, 6=W, 7=NW
+			# CardinalArms indices: 0=E, 1=S, 2=W, 3=N
 			match focus_lane:
-				0: active_child_idx = 3 # North (up)
-				1: active_child_idx = 1 # South (down)
-				2: active_child_idx = 0 # East (right)
-				3: active_child_idx = 2 # West (left)
+				0: active_child_idx = 3 # North
+				1: active_child_idx = 3 if randf() > 0.5 else 0 # NE (N or E)
+				2: active_child_idx = 0 # East
+				3: active_child_idx = 0 if randf() > 0.5 else 1 # SE (E or S)
+				4: active_child_idx = 1 # South
+				5: active_child_idx = 1 if randf() > 0.5 else 2 # SW (S or W)
+				6: active_child_idx = 2 # West
+				7: active_child_idx = 2 if randf() > 0.5 else 3 # NW (W or N)
 			
 			var dt: float = 0.15
 			var target_color_base: Color = active_color

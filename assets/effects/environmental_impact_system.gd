@@ -253,7 +253,7 @@ func apply_stage_4_changes():
 func create_world_transformation_effects(_radius: float):
 	# Spectacular world transformation visual effects
 	var transform_particles = GPUParticles2D.new()
-	transform_particles.position = get_viewport().get_visible_rect().size / 2
+	transform_particles.position = get_viewport().get_visible_rect().size / 2.0
 	transform_particles.amount = 800
 	transform_particles.lifetime = 5.0
 	transform_particles.emitting = true

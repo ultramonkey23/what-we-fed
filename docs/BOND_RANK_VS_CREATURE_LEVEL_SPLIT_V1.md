@@ -9,7 +9,7 @@
   3. MASTER CANON CORRECTION PATCH V1
   4. CREATURE ECONOMY DOCTRINE V1
 - This file defines a hard lane split between Bond Rank and Creature Level.
-- This file does not replace timing/lane combat doctrine or world consequence canon.
+- This file does not replace beat-feel combat field doctrine or world consequence canon.
 
 ## Confirmed Shared Foundation
 

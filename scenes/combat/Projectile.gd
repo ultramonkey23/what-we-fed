@@ -333,6 +333,19 @@ func resolve(result: String) -> void:
 	timer.timeout.connect(queue_free)
 
 
+func evaluate_proximity_timing(attacker_pos: Vector2) -> String:
+	if is_resolved or is_reflected:
+		return "already_resolved"
+		
+	var dist: float = global_position.distance_to(attacker_pos)
+	if dist <= COMBAT_FEEL_CONTENT.RING_PERFECT_RADIUS + 12.0:
+		return "perfect"
+	if dist <= COMBAT_FEEL_CONTENT.RING_OUTER_RADIUS + 35.0:
+		return "good"
+		
+	return "miss"
+
+
 func _process_incoming_song_synced(delta: float) -> void:
 	if conductor_ref != null and target_beat_time > 0.0:
 		# ABSOLUTE SONG SYNC: 
@@ -380,9 +393,14 @@ func _process_incoming_song_synced(delta: float) -> void:
 		_reported_hit_zone = true
 		reached_hit_zone.emit(self)
 
-	if not _reported_player_contact and _reported_hit_zone and position.distance_to(player_pos) <= PLAYER_CONTACT_RADIUS:
-		_reported_player_contact = true
-		player_contact.emit(self)
+	if not _reported_player_contact:
+		var actual_player_pos: Vector2 = player_pos
+		if player_ref != null and is_instance_valid(player_ref):
+			actual_player_pos = player_ref.global_position
+			
+		if global_position.distance_to(actual_player_pos) <= PLAYER_CONTACT_RADIUS:
+			_reported_player_contact = true
+			player_contact.emit(self)
 
 	_update_visual_state(false)
 

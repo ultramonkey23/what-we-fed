@@ -715,7 +715,6 @@ func _refresh_active_support_panel() -> void:
 		_hub_name.text = String(c.get("display_name", "Unknown"))
 		_hub_identity.text = _identity_line(c, species_id)
 		
-		var player_dna: float = GameState.get_dna(species_id)
 		_hub_dna_stat.text = PRESENTATION_TEXT.dna_status_line(species_id)
 		
 		var role: Dictionary = COMBAT_DATA.get_support_role(species_id)
@@ -825,7 +824,7 @@ func _build_archive_vitals(canvas: CanvasLayer) -> void:
 	var row_h = 24.0
 	
 	for i in range(stats.size()):
-		var col = i / 3
+		var col = floori(i / 3.0)
 		var row = i % 3
 		var s_data = stats[i]
 		var s_key = s_data[0]

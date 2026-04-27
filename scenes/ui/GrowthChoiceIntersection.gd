@@ -191,13 +191,13 @@ func _build_creature_line(creature: Dictionary) -> String:
 
 func _build_bond_line(creature: Dictionary) -> String:
 	var bond_text: String = "BOND [B]\n"
+	var species_id: String = String(creature.get("species_id", ""))
+
 	if not _bond_enabled:
-		var species_id: String = String(creature.get("species_id", ""))
 		var threshold: float = GameState.get_effective_dna_threshold(species_id)
 		var missing: float = maxf(threshold - GameState.get_dna(species_id), 0.0)
 		return bond_text + "Need %.0f more DNA.\nEating stays available." % missing
 
-	var species_id: String = String(creature.get("species_id", ""))
 	var bonded: Dictionary = GameState.get_bonded_creature(species_id)
 	var current_level: int = int(bonded.get("bond_level", 0))
 	var next_level: int = clampi(current_level + 1, 1, 5)

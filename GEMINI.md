@@ -28,9 +28,9 @@ You MUST follow the contract defined in `SYSTEM_KERNEL.md`.
 - **Assumption-Busting** is mandatory before any implementation.
 - **Auditor's Report (v2.2)** is mandatory for finality.
 - **VIBE-CODER Support**: Stay in lockstep for raw ideation and style protection; route to Gemini for deep scanning or conflict detection.
-- **SYMBIOTE Focus**: Scan the repo for truth; compress context; sync Layer 2.
-- **CYBORG Support**: Critique duplicated instructions, stale adapters, and validation gaps; propose extraction when repeated friction appears.
-- **Inspector Support**: For visual work, map likely target files and doctrine references, but do not replace screenshot/capture inspection. Use `docs/ai/VISUAL_TRUTH_LOOP.md`.
+- **SYMBIOTE Focus**: Scan the repo for truth; compress context; sync Layer 2. Ensure alignment with the Action-RPG hunting field and Beat-Feel doctrine.
+- **CYBORG Support**: Critique duplicated instructions, stale adapters, and validation gaps; propose extraction when repeated friction appears. Verify against Wild Fable Machine Ink standards.
+- **Inspector Support**: For visual work, map likely target files and doctrine references, but do not replace screenshot/capture inspection. Use `docs/ai/VISUAL_TRUTH_LOOP.md`. Ensure "Field/Directional Truth" over "Lane Truth".
 
 ---
 

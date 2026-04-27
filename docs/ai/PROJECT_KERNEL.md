@@ -8,18 +8,18 @@ This is the project's pulse. Use this as the default context nucleus for all V2 
 - **Protagonist**: The **Living Codex** (Vessel of the Black Signal).
     - **Origin**: A real-world person who chose "Entry" before death.
     - **Rebirth**: The player becomes a diegetic "System" (The Gamer/Slime style) that extracts traits and reshapes flesh.
-- **Genre**: Surreal, System-Horror RPG Roguelite with Rhythm-Action Combat.
-- **Signature Expression**: Centered, four-cardinal timing combat; enemies and projectiles pressure North/South/East/West lanes toward the player, and the player focuses a direction before answering with attack/parry/dodge/ultimate.
+- **Genre**: Creature-Horror Hunting Roguelite with Survivor-like Pressure and Action-RPG Beat-Feel.
+- **Signature Expression**: The Vessel is the active combat anchor (movement, dodge, parry, attack timing, positioning, and ultimate triggers). Creatures are bonded class modifiers/supports providing passives, auto-actions, and ranged pressure. Combat occurs in a freer action-RPG hunting field where timing truth is felt through the beat, not locked to a grid.
 - **Shorthand**: **Combat-Clean, Management-Rich** (The Honed Edge and The Grafted Growth).
-- **Aesthetic**: **Kinetic Surrealism** (Ito spirals + Chainsaw violence + Kaiju scale).
+- **Aesthetic**: **Wild Fable Machine Ink** (AI-organic source material + Procedural readability + Pixel discipline).
 
 ---
 
 ## 1. The Skill-Flow Matrix (The "Pulse" of Progression)
-To maintain "Timing Honesty" while scaling "Management-Rich" power:
-- **Song Complexity (The Floor)**: Increases note density, BPM, and syncopation.
-- **Character Mitigation (The Ceiling)**: Grafts and **Trait Synergies** allow "Mitigation" (turning a "Miss" into a "Weak Hit" or triggering "System-Lit" counters).
-- **The Tension**: Higher complexity REQUIRES deeper "Management-Rich" theory-crafting.
+To maintain "Beat-Feel" while scaling "Management-Rich" power:
+- **Survivor Pressure (The Floor)**: Increases enemy density, projectile complexity, and spatial threat patterns.
+- **Character Mitigation (The Ceiling)**: Grafts, **Trait Synergies**, and Creature Supports allow "Mitigation" (turning a "Hit" into a "Glance" or triggering "System-Lit" counters).
+- **The Tension**: Higher pressure REQUIRES deeper "Management-Rich" theory-crafting and buildcraft.
 
 ---
 

@@ -27,14 +27,14 @@ Core operating rules:
 1. Do not pretend to have fresh repo truth.
 2. Separate confirmed repo truth from design direction and Lockbox ideas.
 3. Protect current playable momentum.
-4. Combat direction is now action-RPG hunting combat with beat-feel, not strict rhythm combat and not strict lane combat.
+4. Combat direction is now action-RPG hunting combat with beat-feel, not strict rhythm/lane combat. Combat field is freer; lanes are hidden scaffolding if they exist.
 5. Player attacks and enemy attacks must feel on beat.
 6. Parry, dodge, movement, creature support, RPG modifiers, and enemy pressure should remain responsive and gamey.
 7. Lanes are no longer sacred. They may survive only as hidden timing/threat scaffolding if they help readability.
 8. The player is the Vessel; creatures are bonded class modifiers, supports, passives, auto-actions, ranged pressure sources, and meta-progression loadout pieces.
 9. The world begins alive, safer, strange, and uncorrupted; horror comes from what feeding, bonding, ritual, Blight, Omen, and escalation do to it.
 10. The Spire is the horizon goal and should visually approach and mutate with world state.
-11. Art direction is Wild Fable Ink first, with Bonecut Ink as a later/corrupted/high-pressure layer.
+11. Art direction is Wild Fable Machine Ink first, with Bonecut Ink as a later/corrupted/high-pressure layer.
 12. Procedural visuals should compose controlled pieces, not generate uncontrolled noise.
 13. No Lockbox item becomes implementation without repo audit, a precise handoff, validation, and a correctly formatted agent report.
 14. No full Lockbox output unless explicitly requested.
@@ -231,9 +231,9 @@ The Spire starts beautiful, ancient, and mysterious — not obviously evil.
 
 ## Style Doctrine
 
-WHAT WE FED uses **Wild Fable Ink** as the core visual identity: hand-drawn folklore creature art with readable silhouettes, strange natural beauty, mythic texture, and world-state mutation layers.
+WHAT WE FED uses **Wild Fable Machine Ink** as the core visual identity: AI-generated organic source material (creatures, portraits, world mood) unified by computer-generated procedural effects, readable combat UI, ritual geometry, pixel-art treatment, and palette discipline.
 
-**Bonecut Ink** is not the default. Bonecut Ink is a later/corrupted/high-pressure treatment.
+**Bonecut Ink** is not the default. Bonecut Ink is a later/corrupted treatment inside the Wild Fable Machine Ink pipeline.
 
 ---
 
@@ -272,7 +272,7 @@ WHAT WE FED uses **Wild Fable Ink** as the core visual identity: hand-drawn folk
 
 ## Phase 4 — Art identity and UI foundation
 
-20. Wild Fable Ink Core Style
+20. Wild Fable Machine Ink Core Style
 21. Silhouette-First Creature Pipeline
 22. Ritual Card UI
 23. Mood-Layer Palette System
@@ -855,7 +855,7 @@ Do not create a full stat sheet immediately. Do not reward boring repetitive spa
 ## 20. LOCKBOX CARD
 
 ### Name:
-Wild Fable Ink Core Style
+Wild Fable Machine Ink Core Style
 
 ### Goal:
 Create a unified art style that can be beautiful, strange, readable, ancient, and eventually corrupted without becoming generic grimdark.

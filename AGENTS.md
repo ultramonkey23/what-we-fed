@@ -3,10 +3,10 @@
 This is the canonical entrypoint for all AI Agents, governed by **Creator Authority**.
 
 ## Project Identity: BLACK SIGNAL
-WHAT WE FED is a dark, stylish, predatory rhythm-combat experience. It is **authored**, not generic.
-- **Tone**: Premium Menace, Manga Monstrosity, Black Signal.
-- **Mechanics**: Timing Truth, Cardinal Lanes, Species-Specific DNA Economy, Bond vs Eat tension.
-- **Philosophy**: Start Weak, Become Feared. Comprehension in management, Urgency in combat.
+WHAT WE FED is a creature-horror hunting roguelite with survivor-like pressure and action-RPG beat-feel. It is **authored**, not generic.
+- **Tone**: Premium Menace, Manga Monstrosity, Wild Fable Machine Ink.
+- **Mechanics**: Beat-Feel, Action-RPG Hunting, Species-Specific DNA Economy, Bond vs Eat tension.
+- **Philosophy**: Start Weak, Become Feared. Vessel as combat anchor, Creatures as loadout modifiers.
 
 ## Authority Order
 1. **Locked Core (Creator Intent)**: The highest authority. Never drift from core gameplay truth.
@@ -41,10 +41,10 @@ Interpret short, stylish commands as high-signal intent:
 Specialists are high-leverage tools in the BRAIN's lanes.
 - **Vibe Coder (SIGNAL)**: The lockstep co-creator. Identity guardian. Extracts signal from vibe, rejects generic drift, and sharpens the project's predatory soul.
 - **Architect (BRAIN)**: The orchestrator. System design, sequence authority, and Handoff Compiler lead. Ensures structural integrity and "Start Weak, Become Feared" progression.
-- **Auditor (CYBORG)**: The critic. Verification, self-upgrading, and Build Doctor lead. Brutally audits logic, types, and performance against Timing Truth.
+- **Auditor (CYBORG)**: The critic. Verification, self-upgrading, and Build Doctor lead. Brutally audits logic, types, and performance against Beat-Feel and Project Kernels.
 - **Scout (SYMBIOTE)**: The mapper. Interconnectivity, deep repo scanning, and Snapshot Generator lead. Finds the truth hidden in the files.
 - **Surgeon (ALFRED)**: The hand. Surgical GDScript mutation, usability, and smooth handoffs. Mutates the repo with precision and zero waste.
-- **Inspector (VISUALS)**: The eye. Visual truth, aesthetic alignment, and HUD readability. Ensures "Manga Monstrosity" and "Premium Menace" compliance.
+- **Inspector (VISUALS)**: The eye. Visual truth, aesthetic alignment, and HUD readability. Ensures "Wild Fable Machine Ink" and "Premium Menace" compliance.
 - **Crash Hunter (VOID)**: The ghost. Specialized in hunting race conditions, memory leaks, and runtime anomalies that threaten Combat Honesty.
 
 ---
@@ -85,10 +85,10 @@ When handing off to INSPECTOR, include this block. If a value is unavailable, wr
 - **Combat Tier**: [stirring | hunting | rampage | apex | sovereign | unknown]
 - **Resonance Tier**: [song profile tier/id or unknown]
 - **Song Context**: [song_id, section_id, beat_index, beat_quality, intensity]
-- **Lane Context**: [active/focused cardinal lane, source/threat lane, cardinal spawn/hit-zone positions if known]
+- **Field Context**: [active/focused cardinal direction, source/threat direction, cardinal spawn/hit-zone positions if known]
 - **Support Context**: [active bonded species, support charge, support effect id if relevant]
 - **Active Buffs/Mutations**: [ids or count]
-- **Expected Visual Contract**: [specific doctrine check: lane floor visible, support blue/teal, enemy hot, shell not slab]
+- **Expected Visual Contract**: [specific doctrine check: directional threats visible, support blue/teal, enemy hot, shell not slab, Wild Fable Machine Ink compliance]
 ```
 
 ---

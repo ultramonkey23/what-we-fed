@@ -8,8 +8,8 @@ Use this first to reduce prompt/token weight. Load deeper docs only when trigger
 - Bonded creatures and class modifiers are identity-bearing systems, not flavor swaps.
 - Bond, Eat, and Lair choices create persistent run/world consequences.
 - Combat must keep beat-feel pressure and honest timing response.
-- Threat direction must stay readable in cardinal lanes (N/S/E/W pressure clarity).
-- Presentation must preserve Wild Fable Ink tone: stylish menace, readable action, no sludge.
+- Threat direction must stay readable in cardinal directions (N/S/E/W pressure clarity).
+- Presentation must preserve Wild Fable Machine Ink tone: stylish menace, readable action, no sludge.
 - World memory and the approach toward the Spire must remain legible and cumulative.
 - Core fantasy remains: start weak, become feared.
 

@@ -25,7 +25,7 @@ Smallest Safe Task:
 Do-Not-Break:
 - Preserve vessel identity, bonded creature/class meaning, bond/eat/lair permanence.
 - Preserve beat-feel combat timing and readable threat direction.
-- Preserve Wild Fable Ink readability/menace tone.
+- Preserve Wild Fable Machine Ink readability/menace tone.
 - Do not edit protected systems unless explicitly required and approved.
 - Do not claim runtime validation without running.
 

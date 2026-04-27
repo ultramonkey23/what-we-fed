@@ -7,7 +7,7 @@
 ## 2. The Great UI Split: Urgency vs Comprehension
 
 - **Combat HUD = Urgency**:
-    - Prioritize survival-critical info: Timing, Lanes, Health, Combo, Stamina.
+    - Prioritize survival-critical info: Timing, Directional Threats, Health, Combo, Stamina.
     - Stripped down, edge-aligned, non-distracting.
     - No build-teaching during motion.
 - **Management Screens = Comprehension**:
@@ -19,17 +19,17 @@
 - Use thin, edge-aligned "shells" for UI. Avoid solid opaque "slabs."
 
 ## 4. Information Hierarchy
-1. **Timing & Lane Threats**: Highest priority.
+1. **Timing & Directional Threats**: Highest priority.
 2. **Combat State**: (Health, Combo, Stamina). Visible but secondary.
 3. **Reward & Support**: (DNA gains, Bond triggers). Edge-aligned.
 
 ## 5. VFX Discipline
 - VFX must be "punchy" but "short."
-- No screen-shake that makes a lane unreadable.
+- No screen-shake that makes a direction unreadable.
 
 ## 6. Support Readability
 - Bonded support actions use **Cooler/Blue/Teal**.
 - Enemy threats use **Hot/Red/Orange**.
 
 ## 7. Verification
-- If you can't see the lane floor highlights clearly during an intense phase, the HUD has failed.
+- If you can't see the directional threat indicators clearly during an intense phase, the HUD has failed.

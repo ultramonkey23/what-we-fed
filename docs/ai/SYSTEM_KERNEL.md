@@ -18,8 +18,8 @@ The project operates through a five-lobe functional stack. Every lobe has a form
 1. **User / Creator Intent**: Highest authority. Determines what the project should become.
 2. **Current Repo Truth (Layer 2)**: Defines what currently exists in implementation. Used to ground decisions in current reality. Overrules older documentation if they conflict.
 3. **Current Live-Build Truth**: Defines what is currently live and working in the build.
-4. **Evolving Spine (Layer 3)**: Defines the currently accepted direction of evolution, design specs, and modular systems.
-5. **Older Canon / Source Docs (Layer 1)**: Identity anchors (Timing Truth, DNA Economy, Bond vs Eat). Useful memory and guidance; may be softened, restructured, retired, or replaced when stale. Note: The 3-lane horizontal combat system is now considered Older Canon; the Evolving Spine (Layer 3) is centered, 4-direction timing combat (`COMBAT_REDESIGN_V1.md`).
+4. **Evolving Spine (Layer 3)**: Defines the currently accepted direction of evolution, design specs, and modular systems. Note: Previous lane-locked systems are now considered Older Canon; the Evolving Spine is an action-RPG hunting field with beat-feel.
+5. **Older Canon / Source Docs (Layer 1)**: Identity anchors (Timing Truth, DNA Economy, Bond vs Eat). Useful memory and guidance; may be softened, restructured, retired, or replaced when stale.
 
 **Authority Order**: User Intent > Repo Truth > Live-Build Truth > Evolving Spine > Older Canon / Source Docs.
 
@@ -56,7 +56,7 @@ Every substantial task must conclude with this report block:
 - **Evidence Type**: Runtime-Verified | Static-Only | Speculative
 - **Self-Critique Results**:
   - [ ] Assumption-Busted (Verified Layer 2 Live Truth)
-  - [ ] Identity Anchor Integrity (Timing/Lanes/DNA)
+  - [ ] Identity Anchor Integrity (Timing/DNA/Beat-Feel)
   - [ ] Anti-Sludge (Combat-Clean/HUD-Minimal)
   - [ ] GDScript 2.0 Compliance (Typing/Signals/EventBus)
   - [ ] Signal Tracing (Emitted AND connected)
@@ -79,7 +79,7 @@ Capture/audit workflow: `docs/ai/VISUAL_TRUTH_LOOP.md`.
 - Moment ID: the gameplay event being judged.
 - Scene, viewport size, camera zoom, and camera offset.
 - Combat tier and song/resonance context when in combat.
-- Lane context: active/focused cardinal lane, source/threat lane, and cardinal spawn/hit-zone positions when available.
+- Field context: active/focused cardinal direction, source/threat direction, and cardinal spawn/hit-zone positions when available.
 - Support context when bonded support/VFX are visible.
 - Expected visual contract from `HUD_READABILITY_DOCTRINE.md`.
 
@@ -92,7 +92,7 @@ The Inspector must emit a machine-readable receipt before ALFRED mutates visuals
 - **No Vague Benefits**: Never justify changes with "better architecture" without a specific functional gain.
 - **No Hallucinations**: If a test wasn't run, report it as "Static-Only" or "Speculative."
 - **No Flattening**: Do not replace unique project traits with generic roguelite/RPG tropes.
-- **Timing Integrity**: No frame-dependent logic; respect `SongConductor`.
-- **Lane Readability**: Do not obscure cardinal threat lanes (N, S, E, W) with visual effects.
+- **Timing Integrity**: No frame-dependent logic; respect `SongConductor` and Beat-Feel.
+- **Field/Directional Readability**: Do not obscure cardinal threat directions (N, S, E, W) with visual effects.
 - **Input Responsiveness**: Respect the 0.14s Action Buffer; no "eaten" inputs during recovery.
 - **Start Weak, Become Feared**: Maintain the kinetic progression fantasy.

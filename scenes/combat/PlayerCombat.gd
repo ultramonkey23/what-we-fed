@@ -10,7 +10,7 @@ const PLAYER_DAMAGE_TO_TIMED_RATIO: float = 0.68
 const LATE_ATTACK_PUNISH_RATIO: float = 0.18
 const GOOD_PARRY_REFLECT_MULT: float = 1.2
 const PERFECT_PARRY_REFLECT_MULT: float = 2.0
-const IDLE_ATTACK_DAMAGE_RATIO: float = 0.14
+const IDLE_ATTACK_DAMAGE_RATIO: float = 0.35
 
 # Recovery / anti-spam tuning.
 const BASIC_ATTACK_RECOVERY: float = 0.28
@@ -46,20 +46,18 @@ const PARRY_IMAGE_DURATION: float = 0.22
 const HURT_IMAGE_DURATION: float = 0.30
 
 # Cardinal focus rules.
-# The player stays centered; direction input chooses the incoming lane focus that
-# the next verb resolves against. current_lane remains the transient action lane
-# for legacy event and motion compatibility.
 const LANE_NORTH: int = 0
-const LANE_SOUTH: int = 1
+const LANE_NORTH_EAST: int = 1
 const LANE_EAST: int = 2
-const LANE_WEST: int = 3
+const LANE_SOUTH_EAST: int = 3
+const LANE_SOUTH: int = 4
+const LANE_SOUTH_WEST: int = 5
+const LANE_WEST: int = 6
+const LANE_NORTH_WEST: int = 7
 const DEFAULT_FOCUS_LANE: int = LANE_EAST
 
 # Neutral stance rules.
-# NEUTRAL_LANE is a core design rule: the player always returns here after every action.
-# All action tweens return to this lane's Y position via _play_world_motion.
-# Do not remove the return-to-center snap without updating every action state function.
-const NEUTRAL_LANE: int = 1
+const NEUTRAL_LANE: int = 1 # Legacy reference, usually ignored in free movement
 const ATTACK_WORLD_X_OFFSET: float = 38.0
 const PARRY_WORLD_X_OFFSET: float = -14.0
 const DODGE_WORLD_X_OFFSET: float = -28.0
@@ -99,6 +97,14 @@ var chain_bypass_available: bool = false
 var chain_bypass_timer: float = 0.0
 var combat_enabled: bool = true
 
+# Free Movement Tuning
+const MOVEMENT_SPEED: float = 240.0
+const FOCUS_SNAP_THRESHOLD: float = 0.2 # Minimum joystick deflection to change focus
+
+var free_position: Vector2 = Vector2.ZERO
+var _facing_direction: Vector2 = Vector2.RIGHT
+var movement_enabled: bool = true
+
 var _sprite_pose_tween: Tween = null
 var _world_motion_tween: Tween = null
 
@@ -117,6 +123,7 @@ var active_focus_lane: int = DEFAULT_FOCUS_LANE
 
 func _ready() -> void:
 	sprite.visible = false  # hide placeholder ColorRect; Sprite2D takes over
+	free_position = global_position
 	_setup_player_sprite()
 	_setup_energy_aura()
 	_return_to_neutral_state(true)
@@ -128,6 +135,9 @@ func _exit_tree() -> void:
 
 
 func _process(delta: float) -> void:
+	if movement_enabled and combat_enabled:
+		_handle_free_movement(delta)
+
 	if action_lock_timer > 0.0:
 		action_lock_timer = max(action_lock_timer - delta, 0.0)
 		if action_lock_timer <= 0.0:
@@ -164,12 +174,6 @@ func _process(delta: float) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	var focus_lane: int = _get_focus_lane_from_event(event)
-	if focus_lane >= 0:
-		_set_active_focus_lane(focus_lane)
-		get_viewport().set_input_as_handled()
-		return
-
 	var action_type: String = _get_combat_action_from_event(event)
 	if action_type.is_empty():
 		return
@@ -191,14 +195,13 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _get_target_direction() -> int:
-	var held_focus: int = _get_held_focus_lane()
-	if held_focus >= 0:
-		_set_active_focus_lane(held_focus, false)
-	return active_focus_lane
+	# Returns a lane index for visual/HUD purposes based on facing, 
+	# but does not dictate combat resolution.
+	return _get_lane_from_vector(_facing_direction)
 
 
 func get_active_focus_lane() -> int:
-	return active_focus_lane
+	return _get_target_direction()
 
 
 func debug_force_focus_and_action(lane: int, action_type: String) -> bool:
@@ -206,49 +209,19 @@ func debug_force_focus_and_action(lane: int, action_type: String) -> bool:
 		return false
 	if lane_manager == null or combat_meter == null:
 		return false
-	_set_active_focus_lane(lane)
-	return _handle_directional_action(active_focus_lane, action_type)
+	# For debug, we temporarily force the facing to the lane's direction
+	var angle: float = (float(lane) / 8.0) * TAU - PI/2.0
+	_facing_direction = Vector2(cos(angle), sin(angle))
+	return _handle_directional_action(lane, action_type)
 
 
 func _set_active_focus_lane(lane: int, show_ring_feedback: bool = true) -> void:
-	lane = clampi(lane, 0, lane_manager.THREAT_COUNT - 1 if lane_manager != null else 3)
+	lane = clampi(lane, 0, lane_manager.THREAT_COUNT - 1 if lane_manager != null else 7)
 	if active_focus_lane == lane:
 		return
 	active_focus_lane = lane
 	if show_ring_feedback:
 		EventBus.emit_signal("timing_ring_pressed", active_focus_lane)
-
-
-func _get_focus_lane_from_event(event: InputEvent) -> int:
-	if _event_action_pressed(event, "lane_focus_north") or _event_action_pressed(event, "mod_up"):
-		return LANE_NORTH
-	if _event_action_pressed(event, "lane_focus_south") or _event_action_pressed(event, "mod_down"):
-		return LANE_SOUTH
-	if _event_action_pressed(event, "lane_focus_west") or _event_action_pressed(event, "mod_left"):
-		return LANE_WEST
-	if _event_action_pressed(event, "lane_focus_east") or _event_action_pressed(event, "mod_right"):
-		return LANE_EAST
-	return -1
-
-
-func _get_held_focus_lane() -> int:
-	if _is_action_pressed("lane_focus_north") or _is_action_pressed("mod_up"):
-		return LANE_NORTH
-	if _is_action_pressed("lane_focus_south") or _is_action_pressed("mod_down"):
-		return LANE_SOUTH
-	if _is_action_pressed("lane_focus_west") or _is_action_pressed("mod_left"):
-		return LANE_WEST
-	if _is_action_pressed("lane_focus_east") or _is_action_pressed("mod_right"):
-		return LANE_EAST
-	return -1
-
-
-func _event_action_pressed(event: InputEvent, action_name: StringName) -> bool:
-	return InputMap.has_action(action_name) and event.is_action_pressed(action_name)
-
-
-func _is_action_pressed(action_name: StringName) -> bool:
-	return InputMap.has_action(action_name) and Input.is_action_pressed(action_name)
 
 
 func _get_combat_action_from_event(event: InputEvent) -> String:
@@ -263,39 +236,41 @@ func _get_combat_action_from_event(event: InputEvent) -> String:
 	return ""
 
 
-func _handle_directional_action(target_dir: int, action_type: String) -> bool:
-	target_dir = clampi(target_dir, 0, lane_manager.THREAT_COUNT - 1 if lane_manager != null else 3)
+func _handle_directional_action(_legacy_input_dir: int, action_type: String) -> bool:
+	# RESOLUTION TRUTH: Combat targets are now resolved by proximity and facing.
+	var target_context: Dictionary = _get_best_target_context()
+	var resolved_lane: int = int(target_context.get("lane", _get_target_direction()))
 
 	var immediate_reject: String = _get_immediate_rejection_reason(action_type)
 	if not immediate_reject.is_empty():
-		_emit_input_report(action_type, target_dir, false, false, immediate_reject)
+		_emit_input_report(action_type, resolved_lane, false, false, immediate_reject)
 		_emit_rejected_input_feedback(action_type, immediate_reject)
 		return false
 
 	if not _can_accept_action():
-		_buffer_action(action_type, target_dir, "locked")
+		_buffer_action(action_type, resolved_lane, "locked")
 		return true
 
 	_consume_chain_bypass_if_needed()
-	EventBus.emit_signal("timing_ring_pressed", target_dir)
+	EventBus.emit_signal("timing_ring_pressed", resolved_lane)
 	
 	match action_type:
 		"attack":
-			_select_action_lane(target_dir)
-			_emit_input_report(action_type, target_dir, true, false, "accepted")
-			_try_attack()
+			_select_action_lane(resolved_lane)
+			_emit_input_report(action_type, resolved_lane, true, false, "accepted")
+			_try_attack(target_context)
 		"parry":
-			_select_action_lane(target_dir)
-			_emit_input_report(action_type, target_dir, true, false, "accepted")
-			_try_parry()
+			_select_action_lane(resolved_lane)
+			_emit_input_report(action_type, resolved_lane, true, false, "accepted")
+			_try_parry(target_context)
 		"dodge":
-			_emit_input_report(action_type, target_dir, true, false, "accepted")
-			_try_dodge_radial(target_dir)
+			_emit_input_report(action_type, resolved_lane, true, false, "accepted")
+			_try_dodge_radial(resolved_lane)
 		"ultimate":
-			_emit_input_report(action_type, target_dir, true, false, "accepted")
+			_emit_input_report(action_type, resolved_lane, true, false, "accepted")
 			_try_ultimate()
 		_:
-			_emit_input_report(action_type, target_dir, false, false, "unknown_action")
+			_emit_input_report(action_type, resolved_lane, false, false, "unknown_action")
 			return false
 	return true
 
@@ -541,6 +516,96 @@ func _can_accept_action() -> bool:
 	return action_lock_timer <= 0.0
 
 
+func _handle_free_movement(delta: float) -> void:
+	var input_vector: Vector2 = Input.get_vector("mod_left", "mod_right", "mod_up", "mod_down")
+	
+	if input_vector.length() > 0.0:
+		# Update position
+		free_position += input_vector * MOVEMENT_SPEED * delta
+		global_position = free_position
+		
+		# Update facing direction (continuous 360-degree aim)
+		_facing_direction = input_vector.normalized()
+		
+		# Update focus lane only for HUD/visual scaffolding if input is strong enough
+		if input_vector.length() > FOCUS_SNAP_THRESHOLD:
+			var target_lane: int = _get_lane_from_vector(input_vector)
+			_set_active_focus_lane(target_lane, false) # No ring feedback every frame
+
+
+func _get_best_target_context() -> Dictionary:
+	if lane_manager == null:
+		return {}
+
+	var best_target: Dictionary = {}
+	var closest_dist: float = 9999.0
+	var min_dot: float = 0.2 # Generous ±78 degree cone
+	var max_range: float = 450.0 # Interaction range
+	var center_pos: Vector2 = lane_manager.call("get_player_pos")
+	
+	# 1. Check all active projectiles first (high priority)
+	for lane_id in range(8):
+		var projectile = lane_manager.call("get_projectile", lane_id)
+		if projectile != null and is_instance_valid(projectile) and not bool(projectile.get("is_resolved")):
+			var to_target: Vector2 = projectile.global_position - free_position
+			var dist: float = to_target.length()
+			if dist <= max_range:
+				var dot: float = _facing_direction.dot(to_target.normalized())
+				if dot >= min_dot:
+					if dist < closest_dist:
+						closest_dist = dist
+						best_target = {
+							"type": "projectile",
+							"ref": projectile,
+							"lane": lane_id,
+							"distance": dist
+						}
+
+	if not best_target.is_empty():
+		return best_target
+
+	# 2. Check all active enemies (including orbiting ones)
+	var enemies: Dictionary = lane_manager.call("get_all_enemies")
+	
+	for id in enemies.keys():
+		var enemy = enemies[id]
+		if float(enemy.get("hp", 0.0)) <= 0.0:
+			continue
+			
+		var target_pos: Vector2 = lane_manager.call("get_enemy_pos", id)
+		var to_target: Vector2 = target_pos - free_position
+		var dist: float = to_target.length()
+		
+		if dist <= max_range:
+			var dot: float = _facing_direction.dot(to_target.normalized())
+			if dot >= min_dot:
+				if dist < closest_dist:
+					closest_dist = dist
+					var enemy_lane = int(enemy.get("lane", -1))
+					if enemy_lane == -1:
+						enemy_lane = _get_lane_from_vector(target_pos - center_pos)
+					
+					best_target = {
+						"type": "enemy",
+						"ref": id,
+						"lane": enemy_lane,
+						"distance": dist
+					}
+						
+	return best_target
+
+func _get_lane_from_vector(dir: Vector2) -> int:
+	if dir.length_squared() < 0.01:
+		return active_focus_lane
+	
+	var angle: float = dir.angle() # -PI to PI
+	# Map angle to 0..7 index, where 0 is North (-PI/2)
+	# Sector size is TAU/8 (45 degrees)
+	var sector: float = TAU / 8.0
+	# Offset so sector 0 is centered on -PI/2
+	var norm_angle: float = fposmod(angle + PI/2.0 + sector/2.0, TAU)
+	return int(floor(norm_angle / sector)) % 8
+
 func _consume_chain_bypass_if_needed() -> void:
 	if chain_bypass_available:
 		chain_bypass_available = false
@@ -568,42 +633,41 @@ func _select_action_lane(target_lane: int) -> void:
 		EventBus.emit_signal("player_teleported", previous_lane, current_lane)
 
 
-func _try_attack() -> void:
-	_play_attack_state(current_lane)
+func _try_attack(target_context: Dictionary) -> void:
+	var target_lane: int = int(target_context.get("lane", current_lane))
+	_play_attack_state(target_lane)
 
-	var projectile: Node2D = lane_manager.call("get_projectile", current_lane)
 	var combo_mult: float = float(combat_meter.call("damage_multiplier")) if combat_meter else 1.0
 
 	if parry_followup_active:
-		_fire_parry_followup(combo_mult)
+		_fire_parry_followup(combo_mult, target_context)
 		return
 
-	if not is_instance_valid(projectile):
-		_idle_attack(combo_mult)
-		return
+	if target_context.get("type") == "projectile":
+		var projectile = target_context.get("ref")
+		var quality: String = String(projectile.call("evaluate_proximity_timing", global_position))
+		match quality:
+			"good", "perfect":
+				_resolve_timed_attack(projectile, combo_mult, quality)
+			"early":
+				_resolve_early_attack(target_lane)
+			"late":
+				_resolve_late_attack(projectile, target_lane)
+			"miss":
+				_idle_attack(combo_mult, target_context)
+			_:
+				_idle_attack(combo_mult, target_context)
+	else:
+		_idle_attack(combo_mult, target_context)
 
-	var quality: String = String(projectile.call("evaluate_attack_timing"))
 
-	match quality:
-		"good", "perfect":
-			_resolve_timed_attack(projectile, combo_mult, quality)
-		"early":
-			_resolve_early_attack()
-		"late":
-			_resolve_late_attack(projectile)
-		"miss":
-			_idle_attack(combo_mult)
-		_:
-			_idle_attack(combo_mult)
+func _try_parry(target_context: Dictionary) -> void:
+	var target_lane: int = int(target_context.get("lane", current_lane))
+	_play_parry_state(target_lane)
 
-
-func _try_parry() -> void:
-	_play_parry_state(current_lane)
-
-	var projectile: Node2D = lane_manager.call("get_projectile", current_lane)
-	if not is_instance_valid(projectile):
+	if target_context.get("type") != "projectile":
 		combat_meter.call("record_bad_timing")
-		_clear_mastery_context("failed_parry", current_lane)
+		_clear_mastery_context("failed_parry", target_lane)
 		_flash_sprite_color(Color(0.82, 0.24, 0.28, 1.0), 0.12)
 		EventBus.emit_signal("proc_feedback_requested", "EMPTY PARRY", Color(1.0, 0.45, 0.45, 1.0))
 		EventBus.emit_signal("screen_flash", Color(1.0, 0.2, 0.2, 0.06), 0.04)
@@ -617,11 +681,13 @@ func _try_parry() -> void:
 	if not combat_meter.call("spend_stamina_for_parry"):
 		return
 
-	var quality: String = String(projectile.call("evaluate_parry_timing"))
+	# Proximity-Based Combat Truth
+	var projectile = target_context.get("ref")
+	var quality: String = String(projectile.call("evaluate_proximity_timing", global_position))
 
 	if quality != "good" and quality != "perfect":
 		combat_meter.call("record_bad_timing")
-		_clear_mastery_context("failed_parry", current_lane)
+		_clear_mastery_context("failed_parry", target_lane)
 		EventBus.emit_signal("screen_flash", Color(1.0, 0.2, 0.2, 0.08), 0.05)
 		_lock_action(FAILED_PARRY_RECOVERY, "failed_parry")
 		return
@@ -651,30 +717,29 @@ func _try_parry() -> void:
 				
 			var expose_all: float = _run_growth.get_mutation_bonus("expose_all_on_perfect_parry")
 			if expose_all > 0.0:
-				for ex_lane in range(lane_manager.THREAT_COUNT if lane_manager else 4):
+				for ex_lane in range(8):
 					lane_manager.call("apply_status", ex_lane, "expose", {"duration": expose_all})
 				_run_growth.consume_mutation_charges("expose_all_on_perfect_parry", 1)
 		
 		var pale_all: float = _run_growth.get_mutation_bonus("pale_on_parry")
 		if pale_all > 0.0:
-			for pa_lane in range(lane_manager.THREAT_COUNT if lane_manager else 4):
+			for pa_lane in range(8):
 				lane_manager.call("apply_status", pa_lane, "pale", {})
 			_run_growth.consume_mutation_charges("pale_on_parry", 1)
 
 	var reflect_damage: float = float(projectile.get("damage")) * reflect_mult * combo_mult * (1.0 + _get_parry_reflect_bonus())
 
 	projectile.call("reflect_to_enemy", reflect_damage)
-	lane_manager.call("clear_slot", current_lane)
+	lane_manager.call("clear_slot", target_lane)
 	combat_meter.call("record_parry", quality)
 	combat_meter.call("record_phrase_action", quality)
 	_show_parry_image(quality)
-	_emit_mastery_context("parry", current_lane, quality, beat)
+	_emit_mastery_context("parry", target_lane, quality, beat)
 
-	# Trigger the new counter-warp v1 automatically on projectile parry.
-	# This consolidates parry and counter into one aggressive motion.
-	_trigger_parry_counter_warp(current_lane, reflect_damage, quality)
+	# Consolidate parry/counter into one flow
+	_trigger_parry_counter_warp(target_lane, reflect_damage, quality)
 
-	EventBus.emit_signal("player_parried", current_lane, quality, reflect_damage)
+	EventBus.emit_signal("player_parried", target_lane, quality, reflect_damage)
 
 	if quality == "perfect":
 		_flash_sprite_color(Color(0.55, 1.0, 0.72, 1.0), 0.14)
@@ -787,12 +852,19 @@ func _try_ultimate() -> void:
 	_lock_action(ULTIMATE_RECOVERY, "ultimate")
 
 
-func _idle_attack(combo_mult: float) -> void:
+func _idle_attack(combo_mult: float, target_context: Dictionary = {}) -> void:
+	var target_lane: int = int(target_context.get("lane", current_lane))
 	var idle_damage: float = (GameState.get_attack_damage() * IDLE_ATTACK_DAMAGE_RATIO) * combo_mult
-	lane_manager.call("damage_enemy", current_lane, idle_damage)
+	
+	if target_context.get("type") == "enemy":
+		var enemy_id = int(target_context.get("ref", -1))
+		lane_manager.call("damage_enemy_by_id", enemy_id, idle_damage)
+	else:
+		lane_manager.call("damage_enemy", target_lane, idle_damage)
+		
 	combat_meter.call("record_attack")
-	_clear_mastery_context("idle_attack", current_lane)
-	EventBus.emit_signal("player_attacked", current_lane, idle_damage, false)
+	_clear_mastery_context("idle_attack", target_lane)
+	EventBus.emit_signal("player_attacked", target_lane, idle_damage, false)
 	EventBus.emit_signal("screen_flash", Color(0.85, 0.85, 0.85, 0.04), 0.03)
 
 	_lock_action(BASIC_ATTACK_RECOVERY, "idle_attack")
@@ -843,16 +915,24 @@ func _resolve_timed_attack(projectile, combo_mult: float, quality: String) -> vo
 	var timed_damage: float = ((float(projectile.get("damage")) * TIMED_ATTACK_DAMAGE_RATIO) + (base_atk * PLAYER_DAMAGE_TO_TIMED_RATIO)) * combo_mult * (1.0 + phrase_bonus) * beat_mult * growth_mult * GameState.stat_adaptability + _get_timed_damage_bonus() + mutation_bonus
 	var recovery: float = TIMED_ATTACK_RECOVERY
 
+	var target_lane: int = int(projectile.get("lane"))
+	var target_enemy_id_raw = projectile.get("enemy_id")
+	var target_enemy_id: int = int(target_enemy_id_raw) if target_enemy_id_raw != null else -1
 
 	projectile.call("resolve", "attack_%s" % quality)
-	lane_manager.call("clear_slot", current_lane)
-	lane_manager.call("damage_enemy", current_lane, timed_damage)
+	lane_manager.call("clear_slot", target_lane)
+	
+	if target_enemy_id != -1:
+		lane_manager.call("damage_enemy_by_id", target_enemy_id, timed_damage)
+	else:
+		lane_manager.call("damage_enemy", target_lane, timed_damage)
+
 	combat_meter.call("record_timed_attack")
 	combat_meter.call("record_phrase_action", quality)
-	_emit_mastery_context("timed_attack", current_lane, quality, beat)
+	_emit_mastery_context("timed_attack", target_lane, quality, beat)
 
-	EventBus.emit_signal("player_attacked", current_lane, timed_damage, true)
-	EventBus.emit_signal("timed_attack_resolved", current_lane, quality, timed_damage)
+	EventBus.emit_signal("player_attacked", target_lane, timed_damage, true)
+	EventBus.emit_signal("timed_attack_resolved", target_lane, quality, timed_damage)
 
 	if quality == "perfect":
 		_flash_sprite_color(Color(1.0, 0.75, 0.25, 1.0), 0.12)
@@ -871,7 +951,7 @@ func _resolve_timed_attack(projectile, combo_mult: float, quality: String) -> vo
 	_lock_action(recovery, "timed_attack")
 
 
-func _resolve_early_attack() -> void:
+func _resolve_early_attack(target_lane: int) -> void:
 	var armor_chance: float = clamp(GameState.stat_adaptability - 1.0, 0.0, 0.85)
 	if randf() < armor_chance:
 		# Combo Armor triggered: do not call record_bad_timing
@@ -879,39 +959,58 @@ func _resolve_early_attack() -> void:
 	else:
 		combat_meter.call("record_bad_timing")
 		
-	_clear_mastery_context("early_attack", current_lane)
-	EventBus.emit_signal("attack_timing_early_resolved", current_lane)
+	_clear_mastery_context("early_attack", target_lane)
+	EventBus.emit_signal("attack_timing_early_resolved", target_lane)
 	EventBus.emit_signal("screen_flash", Color(1.0, 0.15, 0.15, 0.05), 0.04)
 	chain_bypass_available = false
 	chain_bypass_timer = 0.0
 	_lock_action(EARLY_ATTACK_RECOVERY, "early_attack")
 
 
-func _resolve_late_attack(projectile: Node) -> void:
-	var punish_damage: float = float(projectile.get("damage")) * LATE_ATTACK_PUNISH_RATIO
-	_take_damage(punish_damage, current_lane)
+func _resolve_late_attack(projectile: Node, target_lane: int) -> void:
+	# Late attack means the projectile has already hit or is very close.
+	# We still allow it to resolve but with a heavy punish.
+	var combo_mult: float = float(combat_meter.call("damage_multiplier"))
+	var punish_damage: float = (GameState.get_attack_damage() * LATE_ATTACK_PUNISH_RATIO) * combo_mult
 	
+	projectile.call("resolve", "attack_late")
+	lane_manager.call("clear_slot", target_lane)
+	
+	var target_enemy_id_raw = projectile.get("enemy_id")
+	var target_enemy_id: int = int(target_enemy_id_raw) if target_enemy_id_raw != null else -1
+	
+	if target_enemy_id != -1:
+		lane_manager.call("damage_enemy_by_id", target_enemy_id, punish_damage)
+	else:
+		lane_manager.call("damage_enemy", target_lane, punish_damage)
+
 	var armor_chance: float = clamp(GameState.stat_adaptability - 1.0, 0.0, 0.85)
 	if randf() < armor_chance:
-		# Combo Armor triggered
 		EventBus.emit_signal("proc_feedback_requested", "FORM ARMOR", Color(0.42, 0.85, 0.72, 1.0))
 	else:
 		combat_meter.call("record_bad_timing")
-		
-	_clear_mastery_context("late_attack", current_lane)
+
+	_clear_mastery_context("late_attack", target_lane)
 	EventBus.emit_signal("screen_flash", Color(1.0, 0.15, 0.15, 0.10), 0.06)
 	chain_bypass_available = false
 	chain_bypass_timer = 0.0
 	_lock_action(LATE_ATTACK_RECOVERY, "late_attack")
 
 
-func _fire_parry_followup(combo_mult: float) -> void:
-	_play_attack_state(current_lane)
+func _fire_parry_followup(combo_mult: float, target_context: Dictionary) -> void:
+	var target_lane: int = int(target_context.get("lane", current_lane))
+	_play_attack_state(target_lane)
 
 	var followup_damage: float = max(parry_followup_damage, GameState.get_attack_damage()) * combo_mult
-	lane_manager.call("damage_enemy", current_lane, followup_damage)
+	
+	if target_context.get("type") == "enemy":
+		var enemy_id = int(target_context.get("ref", -1))
+		lane_manager.call("damage_enemy_by_id", enemy_id, followup_damage)
+	else:
+		lane_manager.call("damage_enemy", target_lane, followup_damage)
+		
 	combat_meter.call("record_lane_read")
-	EventBus.emit_signal("player_attacked", current_lane, followup_damage, true)
+	EventBus.emit_signal("player_attacked", target_lane, followup_damage, true)
 	EventBus.emit_signal("screen_flash", Color(1.0, 0.95, 0.65, 0.08), 0.05)
 	_emit_slowmo_context("parry_followup")
 
@@ -1055,22 +1154,18 @@ func _get_timed_damage_bonus() -> float:
 
 
 func _neutral_world_position() -> Vector2:
-	if lane_manager == null:
-		return Vector2.ZERO
-
-	return lane_manager.get_player_pos()
+	return free_position
 
 
 func _action_world_position(target_dir: int, reach_distance: float) -> Vector2:
 	if lane_manager == null:
-		return Vector2.ZERO
+		return free_position
 
 	var center: Vector2 = lane_manager.get_player_pos()
 	var threat_pos: Vector2 = lane_manager.get_threat_hit_zone_pos(target_dir)
 	var dir_vec: Vector2 = (threat_pos - center).normalized()
-	
-	return center + dir_vec * reach_distance
 
+	return free_position + dir_vec * reach_distance
 
 func _setup_player_sprite() -> void:
 	# Load textures; fall back gracefully if any file is missing.
@@ -1138,9 +1233,13 @@ func _apply_sprite_facing(direction: int) -> void:
 		return
 	if _combat_visual_rig != null and is_instance_valid(_combat_visual_rig):
 		return
+		
+	# Mapping 8 directions: N, NE, E, SE, S, SW, W, NW (0-7)
 	match direction:
-		2: _player_sprite.flip_h = false  # East — face right
-		3: _player_sprite.flip_h = true   # West — face left
+		1, 2, 3: 
+			_player_sprite.flip_h = false  # East-ish — face right
+		5, 6, 7: 
+			_player_sprite.flip_h = true   # West-ish — face left
 
 
 func _setup_ground_shadow() -> void:
@@ -1239,7 +1338,7 @@ func _return_to_neutral_state(immediate: bool = false) -> void:
 	var neutral_s: Vector2 = NEUTRAL_SPRITE_SCALE * (PLAYER_SPRITE_SCALE_BASE if _player_sprite != null else 1.0)
 
 	if immediate:
-		position = _neutral_world_position()
+		global_position = _neutral_world_position()
 		vis_node.position = NEUTRAL_SPRITE_POSITION
 		vis_node.scale = neutral_s
 		return
@@ -1318,21 +1417,22 @@ func _play_world_motion(action_position: Vector2, return_position: Vector2, push
 	if _world_motion_tween != null:
 		_world_motion_tween.kill()
 
-	# Capture the lane this action is being performed from. The callback uses this
-	# to guard against snapping current_lane to neutral if a chain-bypass action has
-	# already moved the player to a different lane while this tween was in flight.
+	# Capture acting state
 	var acting_lane: int = current_lane
+	movement_enabled = false # Disable free movement during action lunges
 
 	_world_motion_tween = create_tween()
 	if push_time > 0.0:
-		_world_motion_tween.tween_property(self, "position", action_position, push_time) \
+		_world_motion_tween.tween_property(self, "global_position", action_position, push_time) \
 			.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CIRC)
 	else:
-		position = action_position
+		global_position = action_position
 
-	_world_motion_tween.tween_property(self, "position", return_position, return_time) \
+	_world_motion_tween.tween_property(self, "global_position", return_position, return_time) \
 		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
 	_world_motion_tween.tween_callback(func() -> void:
+		movement_enabled = true # Re-enable free movement
+		global_position = free_position # Snap back to the underlying free_position
 		if current_lane != acting_lane:
 			return
 		current_lane = NEUTRAL_LANE

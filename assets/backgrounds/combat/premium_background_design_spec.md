@@ -34,7 +34,8 @@ _Note:_ Elsewhere in this spec, **Early / Mid / Late** game describes **narrativ
 
 ### Core combat-space rules
 - The **center combat corridor** must remain the **quietest and most readable** region.
-- The **floor/substrate** must visibly support a **three-lane combat shell**.
+- The **floor/substrate** must visibly support a **directional action-RPG hunting field**.
+- Background elements must not obscure **cardinal threat directions (N, S, E, W)**.
 - **Tall silhouettes**, **hard vertical props**, or **contrast spikes** must stay **out of the main combat read band**.
 - The **same horizon line**, **floor angle**, and **landmark anchors** must remain **consistent** across Base / Pressure / Apex states.
 - The scene should feel like **one place escalating**, not three different places.

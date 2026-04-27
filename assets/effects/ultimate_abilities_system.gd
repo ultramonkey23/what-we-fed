@@ -152,7 +152,7 @@ func cause_environmental_cataclysm():
 
 func create_destruction_waves():
 	# Multiple waves of destruction emanating from center
-	var center = get_viewport().get_visible_rect().size / 2
+	var center = get_viewport().get_visible_rect().size / 2.0
 	
 	for i in range(5):
 		var wave_timer = i * 0.3
@@ -229,7 +229,7 @@ func create_dna_helix_visual():
 	helix.default_color = UI_STYLE.get_manga_color("bond_teal")
 	
 	# Create helix pattern
-	var center = get_viewport().get_visible_rect().size / 2
+	var center = get_viewport().get_visible_rect().size / 2.0
 	var radius = 200.0
 	var points = []
 	
@@ -298,7 +298,7 @@ func reveal_ultimate_form():
 
 func create_ultimate_aura():
 	var aura = GPUParticles2D.new()
-	aura.position = get_viewport().get_visible_rect().size / 2
+	aura.position = get_viewport().get_visible_rect().size / 2.0
 	aura.amount = 600
 	aura.lifetime = 5.0
 	aura.emitting = true

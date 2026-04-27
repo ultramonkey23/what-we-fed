@@ -18,7 +18,7 @@ Each creature lineage in the **Living Codex** now possesses a unique **System-Li
 
 ## 3. THE KAIJU ASCENSION (Godzilla Scale)
 - Progression now leads toward **Ascension Milestones**.
-- At max Bond Rank and Trait Depth, a creature can undergo "Ascension," drastically increasing its visual scale and changing the rhythm combat lanes into a "Godzilla-scale" encounter (macro-pressure).
+- At max Bond Rank and Trait Depth, a creature can undergo "Ascension," drastically increasing its visual scale and transforming the combat field into a "Godzilla-scale" apex encounter (macro-pressure).
 
 ## 4. ANTI-DRIFT RULES
 - Do not let Traits become "Stat Sludge." Each Trait must have a unique, mechanical effect.

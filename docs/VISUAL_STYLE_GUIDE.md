@@ -10,16 +10,22 @@ This guide defines the premium visual direction for "What We Fed" art upgrades, 
 ### Primary Aesthetic DNA
 - **Dark & Oppressive**: High contrast, shadow-heavy environments
 - **Premium Menace**: Clean, sharp edges with atmospheric depth
+- **Wild Fable Machine Ink**: AI-generated imagery as organic source material (creatures, portraits, mutations) + Computer-generated procedural art for readable effects, UI frames, and indicators.
 - **Biological Horror**: Organic, mutated forms with readable silhouettes
 - **Ascendant Power**: Visual escalation from weak prey to feared predator
 - **Stylish & Cool**: Influenced by Solo Leveling, Digimon evolution, MHA silhouettes
-- **Manga Monstrosity**: Ink-heavy contrast, dramatic framing, and aggressive silhouette clarity
+- **Manga Monstrosity**: Ink-heavy contrast, dramatic framing, and aggressive silhouette clarity unified by pixel-art treatment and palette discipline.
 
 ### Manga + Cool Monster Cohesion Rules
 - **Ink Contrast First**: Major panels and labels should read against near-black ink foundations before accent colors are introduced.
 - **Monster Intent Readability**: Bond/Eat, threat states, and apex moments must be visually distinct in less than a second.
 - **Accent Discipline**: Use ember, mutation magenta, and bond teal as role-based accents, not ambient noise.
-- **Readable Drama**: Add punch with sharp highlights and outline-heavy typography, but never hide timing/lane truth.
+- **Readable Drama**: Add punch with sharp highlights and outline-heavy typography, but never hide field/directional truth.
+- **Wild Fable Machine Ink Doctrine**:
+    - No AI image is used raw.
+    - No procedural effect may hide combat truth.
+    - No asset is accepted until it reads clearly at gameplay scale.
+    - Bonecut Ink is not the default style; it is a later/corrupted treatment inside the Wild Fable Machine Ink pipeline.
 - **Single Source Styling**: Route style choices through `systems/UIStyle.gd` semantic roles; avoid ad hoc inline scene styling.
 
 ### Manga Monster Token Families

@@ -19,7 +19,7 @@ const PARRY_PERFECT_MIN: float = 0.98
 const PARRY_PERFECT_MAX: float = 1.02
 const PARRY_GOOD_MAX: float = 1.04
 const BOUNCE_SPEED_MULT: float = 2.0
-const PLAYER_CONTACT_PROGRESS: float = 1.12
+const PLAYER_CONTACT_RADIUS: float = 38.0
 
 # Duck-typing flag for LaneManager.clear_slot() guard.
 const is_melee_approach: bool = true
@@ -30,9 +30,23 @@ var damage: float = 12.0
 var speed: float = 80.0
 var reflected_damage: float = 0.0  # Projectile interface compat
 var telegraph_profile: Dictionary = {}
+var player_ref: Node2D = null
 
 var is_resolved: bool = false
-var is_reflected: bool = false  # Projectile interface compat
+var is_reflected: bool = false # Projectile interface compat
+
+func evaluate_proximity_timing(attacker_pos: Vector2) -> String:
+	if is_resolved or _state == "bouncing":
+		return "miss"
+
+	var dist: float = global_position.distance_to(attacker_pos)
+	if dist <= 25.0: # Melee is closer-range than projectiles
+		return "perfect"
+	if dist <= 50.0:
+		return "good"
+
+	return "miss"
+
 
 var progress: float = 0.0
 var _state: String = "approaching"
@@ -115,7 +129,8 @@ func setup(
 	start_pos: Vector2,
 	target_hit_zone_pos: Vector2,
 	target_player_pos: Vector2,
-	_melee_telegraph_profile: Dictionary = {}
+	_melee_telegraph_profile: Dictionary = {},
+	target_player_ref: Node2D = null
 ) -> void:
 	lane = melee_lane
 	enemy_id = melee_enemy_id
@@ -124,6 +139,7 @@ func setup(
 	_spawn_pos = start_pos
 	_hit_zone_pos = target_hit_zone_pos
 	_player_pos = target_player_pos
+	player_ref = target_player_ref
 
 	_initial_dist = start_pos.distance_to(target_player_pos)
 	_hit_zone_dist = _hit_zone_pos.distance_to(target_player_pos)
@@ -165,10 +181,15 @@ func _process_approach(delta: float) -> void:
 		_reported_hit_zone = true
 		reached_hit_zone.emit(self)
 
-	if not _reported_player_contact and progress >= PLAYER_CONTACT_PROGRESS:
-		_reported_player_contact = true
-		player_contact.emit(self)
-		_start_bounce()
+	if not _reported_player_contact:
+		var actual_player_pos: Vector2 = _player_pos
+		if player_ref != null and is_instance_valid(player_ref):
+			actual_player_pos = player_ref.global_position
+			
+		if global_position.distance_to(actual_player_pos) <= PLAYER_CONTACT_RADIUS:
+			_reported_player_contact = true
+			player_contact.emit(self)
+			_start_bounce()
 
 
 func _process_bounce(delta: float) -> void:

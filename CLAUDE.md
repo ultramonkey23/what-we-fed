@@ -11,12 +11,12 @@ Claude Code starts here. Keep this file short; load procedures through `.claude/
 6. Dream scope: deferred until explicitly pulled forward.
 
 ## Locked Core
-Protect timing truth, readable pressure, readable support, combat honesty, bond vs eat meaning, DNA as species-specific predation economy, realtime song-run flow, behavior-shaped growth, and "start weak, become feared." Do not drift into generic survivor, generic collector, generic roguelite soup, rhythm gimmick, spreadsheet sludge, or pretty unreadable action clutter.
+Protect beat-feel, directional threat readability, readable support, combat honesty, bond vs eat meaning, DNA as species-specific predation economy, survivor-like pressure, behavior-shaped growth, and "start weak, become feared." Do not drift into generic survivor, generic collector, generic roguelite soup, rhythm gimmick, spreadsheet sludge, or pretty unreadable action clutter.
 
 ## Current Working Truth
 - Godot project and git root are this directory.
 - Live flow: `TitleScreen -> LairScene -> RouteScene -> CombatScene`.
-- Combat is active and timing-driven; current runtime ownership is in `scenes/combat/CombatScene.gd`, `PlayerCombat.gd`, `LaneManager.gd`, `systems/CombatMeter.gd`, and `systems/SongConductor.gd`.
+- Combat is active and action-driven with beat-feel; current runtime ownership is in `scenes/combat/CombatScene.gd`, `PlayerCombat.gd`, directional threat management, `systems/CombatMeter.gd`, and `systems/SongConductor.gd`.
 - Creature-specific DNA drops, bond/eat, bonded support, realtime tendency growth, song pressure, and queued reward shell are already live.
 - Ranch is deferred. Performance reward depth, score/kill payoff, HUD readability, authored pressure, and coherent validation are current bottlenecks.
 

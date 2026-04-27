@@ -8,7 +8,7 @@ WHAT WE FED is a dark RPG roguelite: **combat-clean, management-rich**.
 # 1. Operational Loop Split
 
 - **Pre-run (Strategy)**: Planning, bonded creature/collar selection, loadout/equipment review.
-- **In-level Combat (Urgency)**: Pressure-first, readable lane combat, stripped HUD, minimal interruption.
+- **In-level Combat (Urgency)**: Pressure-first, readable action-RPG hunting field with beat-feel, stripped HUD, minimal interruption.
 - **Between-level Management (Comprehension)**: Management-rich breathing room for loot/artifact/collar decisions and build-shaping.
 - **Return to Combat**: Restore urgency quickly; keep admin logic out of active lane flow.
 

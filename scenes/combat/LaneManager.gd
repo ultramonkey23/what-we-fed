@@ -1,14 +1,14 @@
 extends Node
 
-const THREAT_COUNT: int = 4
+const THREAT_COUNT: int = 8
 # fire_stagger is the wait between firing successive directions in a single cycle.
 # Wider = each lane projectile arrives as a distinct timed event.
 # Tighter = projectiles arrive in a cluster, reading the whole lane set at once.
 # Must stay >= MIN_IMPACT_SEPARATION to avoid the second lane being blocked
 # by the proximity check. Use set_fire_stagger() to change it at runtime.
-var fire_stagger: float = 0.45
-var cycle_interval: float = 2.2
-var attack_authority_budget: int = THREAT_COUNT
+var fire_stagger: float = 0.38
+var cycle_interval: float = 2.0
+var attack_authority_budget: int = 4
 
 const SPAWN_DISTANCE_RATIO: float = 0.42
 const HIT_ZONE_DISTANCE: float = 110.0
@@ -48,12 +48,12 @@ var _threat_hit_zone_positions: Array[Vector2] = []
 
 var _projectile_scene: PackedScene = null
 var _melee_approach_script: Script = null
-var _projectile_slots: Array = [null, null, null, null]
+var _projectile_slots: Array = [null, null, null, null, null, null, null, null]
 var _enemies: Dictionary = {} # enemy_id -> Dictionary (Population)
-var _strikers: Array[int] = [-1, -1, -1, -1] # enemy_id per direction (N, S, E, W)
+var _strikers: Array[int] = [-1, -1, -1, -1, -1, -1, -1, -1] # enemy_id per direction
 var _orbiting_enemy_ids: Array[int] = [] # Ordered for fair authority
-var _lane_authority_debt: Array[float] = [0.0, 0.0, 0.0, 0.0]
-var _lane_last_fired_cycle: Array[int] = [-999, -999, -999, -999]
+var _lane_authority_debt: Array[float] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+var _lane_last_fired_cycle: Array[int] = [-999, -999, -999, -999, -999, -999, -999, -999]
 var _fire_cycle_index: int = 0
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
@@ -79,7 +79,7 @@ var _cycle_task_id: int = 0
 
 
 func setup_layout(viewport_size: Vector2) -> void:
-	# Computes the 4 cardinal threat positions centered on the screen.
+	# Computes the 8 cardinal and intercardinal threat positions centered on the screen.
 	var safe_size: Vector2 = viewport_size
 	if safe_size.x < 10.0 or safe_size.y < 10.0:
 		safe_size = Vector2(1280.0, 720.0) # Fallback to HD default
@@ -91,15 +91,11 @@ func setup_layout(viewport_size: Vector2) -> void:
 	_threat_hit_zone_positions.clear()
 
 	var spawn_dist: float = safe_size.y * SPAWN_DISTANCE_RATIO	
-	# Mapping: 0=N, 1=S, 2=E, 3=W
-	var directions = [
-		Vector2(0, -1), # North
-		Vector2(0, 1),  # South
-		Vector2(1, 0),  # East
-		Vector2(-1, 0)  # West
-	]
 	
-	for dir in directions:
+	# Mapping 8 directions: N, NE, E, SE, S, SW, W, NW
+	for i in range(THREAT_COUNT):
+		var angle: float = (float(i) / float(THREAT_COUNT)) * TAU - PI/2.0
+		var dir: Vector2 = Vector2(cos(angle), sin(angle))
 		_threat_spawn_positions.append(_center_pos + dir * spawn_dist)
 		_threat_hit_zone_positions.append(_center_pos + dir * HIT_ZONE_DISTANCE)
 
@@ -138,7 +134,7 @@ func start_combat(enemy_data: Array) -> void:
 	stop()
 
 	_enemies.clear()
-	_strikers = [-1, -1, -1, -1]
+	_strikers = [-1, -1, -1, -1, -1, -1, -1, -1]
 	_orbiting_enemy_ids.clear()
 	_orbit_angles.clear()
 	_orbit_radius_offsets.clear()
@@ -463,7 +459,7 @@ func stop() -> void:
 	_enemy_statuses.clear()
 	_reset_attack_authority_state()
 	_enemies.clear()
-	_strikers = [-1, -1, -1, -1]
+	_strikers = [-1, -1, -1, -1, -1, -1, -1, -1]
 	_orbiting_enemy_ids.clear()
 	_orbit_angles.clear()
 	_orbit_radius_offsets.clear()
@@ -706,6 +702,10 @@ func _fire_melee_lane(lane: int, enemy: Dictionary, id: int) -> bool:
 	var melee_damage: float = float(enemy.get("damage", 14.0)) * _punish_damage_mult
 	var approach_speed: float = float(enemy.get("approach_speed", 80.0))
 
+	var player_combat: Node2D = null
+	if combat_scene != null:
+		player_combat = combat_scene.get_node_or_null("PlayerCombat") as Node2D
+
 	combat_scene.add_child(melee)
 	melee.call("setup",
 		lane,
@@ -715,7 +715,8 @@ func _fire_melee_lane(lane: int, enemy: Dictionary, id: int) -> bool:
 		get_threat_spawn_pos(lane),
 		get_threat_hit_zone_pos(lane),
 		get_player_pos(),
-		{}
+		{},
+		player_combat
 	)
 
 	melee.connect("resolved", _on_projectile_resolved.bind(lane))
@@ -844,8 +845,8 @@ func _assign_striker_visual_offset(id: int, lane: int) -> void:
 
 
 func _reset_attack_authority_state() -> void:
-	_lane_authority_debt = [0.0, 0.0, 0.0, 0.0]
-	_lane_last_fired_cycle = [-999, -999, -999, -999]
+	_lane_authority_debt = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+	_lane_last_fired_cycle = [-999, -999, -999, -999, -999, -999, -999, -999]
 	_fire_cycle_index = 0
 
 

@@ -498,7 +498,7 @@ static func _calculate_max_threats(pattern: String, level_number: int, phase_ind
 			base_threats = 6
 	
 	# Level scaling
-	base_threats += int(level_number / 3)
+	base_threats += int(level_number / 3.0)
 	
 	return min(base_threats, 8)
 

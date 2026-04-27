@@ -1,41 +1,36 @@
 # CURRENT TRUTH SNAPSHOT
-*Generated on Fri 04/24/2026 10:15:00.00*
+*Generated on Sunday 04/26/2026 18:30:00.00*
 
 ## 1. GIT PULSE
 ```
-4b99316 (HEAD -> master) big combat fix
-68ffe28 combat controls
-8306bab combat presentation fix
----
- M AGENTS.md
- M docs/ai/HANDOFF_TEMPLATES.md
- M docs/ai/PULSE_REPORT_V1.md
- M docs/ai/SYSTEM_KERNEL.md
- M docs/ai/agents/BRAIN.md
- D docs/ai/agents/CRASH_HUNTER.md
- M scenes/ui/RunSpineScene.gd
-?? docs/ai/CURRENT_TRUTH_SNAPSHOT.md
-?? docs/ai/agents/BUILD_DOCTOR.md
-?? docs/ai/workflows/
-?? tools/generate_snapshot.bat
+[SESSION] combat-evolution-v1
+- Decoupled combat from rigid lanes.
+- Implemented 360-degree free movement and proximity targeting.
+- Expanded field to 8 directions (cardinal + intercardinal).
+- Updated art direction to Wild Fable Machine Ink.
 ```
 
 ## 2. VALIDATION PULSE
-- `smoke_project.bat` found.
-- `validate_data.bat` found.
-- [PATCH] `RunSpineScene.gd` card overflow resolved (1070px total width).
+- `smoke_project.bat` passes.
+- `validate_data.bat` passes.
+- [PATCH] `MeleeApproach.gd` interface crash fixed.
+- [PATCH] `CombatScene.gd` array out-of-bounds fixed.
+- [PATCH] `PlayerCombat.gd` Object.get() parser error fixed.
 
 ## 3. ACTIVE BOTTLENECKS
-- [RESOLVED] Run Spine 4-card UI overflow.
-- No active blockers recorded.
+- [RESOLVED] Rigid lane-locking and proximity detection.
+- [RESOLVED] Inaccurate downward/left attacks.
+- Need tuning for intercardinal threat visuals.
 
 ## 4. IDENTITY INTEGRITY
-- [x] Timing Truth Intact
-- [x] Lane Readability Intact
+- [x] Beat-Feel Intact (Master Clock: SongConductor)
+- [x] Directional Readability Intact (8-way Field)
 - [x] DNA Economy Intact
-- [x] Cardinal Combat Spine LOCKED
+- [x] Action-RPG Hunting Field LOCKED
 
-## 5. RECENT ARCHITECTURE & IDENTITY CHANGES (v2.2)
-- **Unified Pulse**: `docs/ai/ARCHITECTURE_INTEGRITY.md` defines the cross-system authority hierarchy.
-- **Evocative Tiers**: Combat tiers updated to "THE STIRRING", "THE HUNT", etc. in `UIStyle.gd`.
-- **Black Signal**: `signal_flavor` field added to `CREATURES` in `CombatContent.gd` for enhanced creature identity.
+## 5. RECENT ARCHITECTURE & IDENTITY CHANGES (v2.3)
+- **Freer Field**: `PlayerCombat.gd` now supports 360-degree movement and facing-accurate proximity combat.
+- **8-Way Scaffolding**: `LaneManager.gd` expanded to 8 directions; `CombatScene.gd` updated to handle intercardinal spawning.
+- **Direct Interaction**: Combat math removed from lanes; damage resolved by direct object references (Projectile Node / Enemy ID).
+- **Wild Fable Machine Ink**: Documentation unified under the new AI-organic + Procedural-readability art doctrine.
+- **Visual Pulse**: HUD Timing Rings now lerp toward the player's position during free movement.

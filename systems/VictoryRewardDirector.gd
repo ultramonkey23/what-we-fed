@@ -70,11 +70,15 @@ func resolve_choice(choice_id: String) -> bool:
 		var updated_creature: Dictionary = GameState.add_bonded_creature(_pending_creature)
 		if GameState.has_method("register_growth_choice"):
 			GameState.register_growth_choice("bond")
+		var threshold: float = GameState.get_effective_dna_threshold(species_id)
+		GameState.spend_dna(species_id, threshold)
 		EventBus.emit_signal("creature_bonded", updated_creature)
 	else:
 		var _absorbed: Dictionary = GameState.absorb_creature_type(_pending_creature)
 		if GameState.has_method("register_growth_choice"):
 			GameState.register_growth_choice("eat")
+		var eat_threshold: float = GameState.get_effective_dna_threshold(species_id)
+		GameState.spend_dna(species_id, eat_threshold)
 		EventBus.emit_signal("creature_eaten", _pending_creature)
 
 	emit_signal("choice_resolved", choice_id, _pending_creature)

@@ -44,3 +44,12 @@ func get_tempo_snapshot() -> Dictionary:
 		"counts": tempo_counts.duplicate(true),
 		"recent_events": tempo_events.duplicate(true)
 	}
+
+
+func reset_profile_progression() -> void:
+	for fate_id in WORLD_FATE_IDS:
+		channels[fate_id] = 0.0
+	dominant_fate = "unclaimed"
+	stain_fates = PackedStringArray()
+	last_snapshot = {}
+	reset_run_trackers()

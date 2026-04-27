@@ -34,6 +34,7 @@ var base_difficulty_modifiers: Dictionary = {}
 var _song_rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
 func initialize_run(region: String, dev_harness_request: Dictionary = {}) -> void:
+	_test_collar_mechanics()
 	region_id = region if not region.is_empty() else "feeding_hollow"
 	in_void = false
 	
@@ -191,3 +192,34 @@ func prepare_path_context_for_level(level_idx: int) -> void:
 	var node: Dictionary = PATH_RUN_PLAN.get_level_node(GameState.run_path_plan, level_idx)
 	# Mock objects for director compatibility if needed, but PathRunPlan mostly needs references.
 	active_path_context = PATH_RUN_PLAN.apply_node_effects(node, self, null, null, false)
+
+func _test_collar_mechanics() -> void:
+	print("--- TEST SUPPORT COLLAR MECHANICS ---")
+	var og_collar = GameState.get("equipped_collar_id")
+	GameState.set("equipped_collar_id", "iron_doctrine")
+	var collar_data = GameState.call("get_equipped_collar")
+	print("Equipped Collar: ", collar_data.get("title", ""))
+	
+	var ctx: Dictionary = {
+		"species_id": "ashclaw",
+		"lane": 0,
+		"effect_id": "ashclaw_strike",
+		"combo_mult": 1.0,
+		"bond_mult": 1.0,
+		"surge_mult": 1.0,
+		"combat_meter": null,
+		"game_state": GameState
+	}
+	
+	var CollarDirector = preload("res://systems/CollarDirector.gd").new()
+	ctx = CollarDirector.apply_to_support_context(ctx, GameState)
+	
+	print("Collar Mod Output: ", ctx.get("collar_mod", {}))
+	print("New Surge Mult: ", ctx.get("surge_mult", 1.0))
+	if float(ctx.get("surge_mult", 1.0)) > 1.0:
+		print("Test Passed: Support Impact Mult successfully applied!")
+	else:
+		print("Test Failed: Surge mult not increased.")
+		
+	GameState.set("equipped_collar_id", og_collar)
+	print("--- TEST END ---")

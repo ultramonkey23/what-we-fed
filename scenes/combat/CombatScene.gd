@@ -27,7 +27,6 @@ const PRESENTATION_TEXT = preload("res://data/PresentationTextContent.gd")
 const AUDIO_CONTENT = preload("res://data/AudioContent.gd")
 const SONG_LIBRARY_CONTENT = preload("res://data/SongLibraryContent.gd")
 const SONG_COMBAT_PROFILE_CONTENT = preload("res://data/SongCombatProfileContent.gd")
-const GROWTH_CONTENT = preload("res://data/RunGrowthContent.gd")
 const ROUTE_CONTENT = preload("res://data/RouteContent.gd")
 const RUN_PACING_CONTENT = preload("res://data/RunPacingContent.gd")
 const TRICKY_SONGMAP = preload("res://data/song_maps/tricky_songmap.gd")
@@ -47,7 +46,6 @@ const DIFFICULTY_MODIFIER_DIRECTOR = preload("res://systems/DifficultyModifierDi
 const SUPPORT_EFFECT_RESOLVER = preload("res://systems/SupportEffectResolver.gd")
 const COLLAR_DIRECTOR = preload("res://systems/CollarDirector.gd")
 const PATH_RUN_PLAN = preload("res://systems/PathRunPlan.gd")
-const POTENTIAL_GATE = preload("res://systems/PotentialGate.gd")
 const DEBUG_TRACE = preload("res://systems/DebugTrace.gd")
 const VESSEL_MODIFIER_DIRECTOR = preload("res://systems/VesselModifierDirector.gd")
 
@@ -71,11 +69,6 @@ const BOND_REMNANT_IDLE_HFRAMES: int = 6
 const BOND_REMNANT_IDLE_VFRAMES: int = 4
 const BOND_REMNANT_IDLE_FRAME_DURATION: float = 0.10
 const SONG_REWARD_STALL_GUARD_SECONDS: float = 0.75
-const SONG_RESERVE_REFRESH_INTERVAL: float = 0.35
-const SONG_RESERVE_MAX: int = 6
-const SONG_RESERVE_MARKER_SIZE: float = 30.0
-const SONG_RESERVE_MARKER_X_OFFSET: float = 96.0
-const SONG_RESERVE_MARKER_X_STEP: float = 44.0
 const REWARD_RUNTIME_NONE: StringName = &"none"
 const REWARD_RUNTIME_SONG_LIVE: StringName = &"song_live"
 
@@ -3984,9 +3977,10 @@ func _offer_song_phase_reward(reward_pool: Array) -> void:
 	var creature: Dictionary = COMBAT_CONTENT.get_creature(creature_id)
 	if creature.is_empty():
 		return
-	_between_level_growth_queue.append(creature.duplicate(true))
+	_live_reward_queue.append(creature.duplicate(true))
 	_between_level_growth_stored_this_level = true
-	_show_feedback("HUNT STORED  •  %s" % str(creature.get("display_name", "CREATURE")).to_upper(), Color(0.80, 0.88, 0.72, 1.0), 0.24)
+	_show_feedback("HUNT OFFERED  •  %s" % str(creature.get("display_name", "CREATURE")).to_upper(), Color(0.80, 0.88, 0.72, 1.0), 0.24)
+	_show_next_live_reward_offer()
 
 
 func _resume_song_after_reward() -> void:
@@ -4362,6 +4356,10 @@ func _start_mini_run() -> void:
 		Callable(self, "_stop_boss_music"),
 		Callable(self, "_clear_mastery_context_cache")
 	)
+
+	if GameState.is_intro_bond_choice_pending():
+		get_tree().change_scene_to_file("res://scenes/ui/IntroBondChoiceScene.tscn")
+		return
 
 	_run_director.initialize_run(str(GameState.active_region.get("id", "feeding_hollow")), _dev_harness_request)
 
@@ -5427,8 +5425,8 @@ func _show_end_stats() -> void:
 	_end_stats_label.visible = true
 
 
-func _on_style_changed(_score: float, tier: String) -> void:
-	_hud_presenter.refresh_style(tier)
+func _on_style_changed(_score: float, _tier: String) -> void:
+	pass
 
 
 func _on_dna_gained(_species_id: String, _amount: float, _total: float) -> void:
@@ -5477,12 +5475,11 @@ func _on_dna_routing_changed(route_id: String, label: String) -> void:
 		_run_spine_surface.call("refresh_prep_summary")
 
 
-func _on_stamina_changed(current: float, maximum: float) -> void:
-	_hud_presenter.refresh_stamina(current, maximum)
+func _on_stamina_changed(_current: float, _maximum: float) -> void:
+	pass
 
 
 func _on_player_took_damage(amount: float, source_lane: int) -> void:
-	_hud_presenter.refresh_hp(GameState.player_hp, GameState.player_max_hp)
 	if _escalation_director != null:
 		_escalation_director.notify_player_hp_changed(GameState.get_hp_percent())
 		_escalation_director.notify_player_took_damage(amount, source_lane)
@@ -5500,7 +5497,6 @@ func _on_player_took_damage(amount: float, source_lane: int) -> void:
 
 
 func _on_player_healed(_amount: float) -> void:
-	_hud_presenter.refresh_hp(GameState.player_hp, GameState.player_max_hp)
 	if _escalation_director != null:
 		_escalation_director.notify_player_hp_changed(GameState.get_hp_percent())
 	_show_feedback("MEND", Color(0.70, 0.96, 0.84, 1.0), 0.26)
@@ -6305,7 +6301,9 @@ func _refresh_quig_ui_state() -> void:
 func _on_vessel_shifted(class_data: Dictionary) -> void:
 	if class_data.is_empty():
 		return
-		
+	if _presentation_controller == null or not is_instance_valid(_presentation_controller):
+		return
+
 	var vibe_color: Color = class_data.get("vibe_color", Color.WHITE)
 	_presentation_controller.refresh_vessel_vibe(class_data, _timing_rings_cache)
 	
@@ -6686,7 +6684,6 @@ func _build_support_mastery_context(effect_id: String, lane: int) -> Dictionary:
 
 
 func _on_bonded_support_triggered(species_id: String, lane: int, effect_id: String) -> void:
-	var _support_role: Dictionary = COMBAT_CONTENT.get_support_role(species_id)
 	var combo_mult: float = float(combat_meter.call("damage_multiplier"))
 	var active_creature: Dictionary = GameState.get_active_bonded_creature()
 	@warning_ignore("static_called_on_instance")
@@ -6735,11 +6732,33 @@ func _on_bonded_support_triggered(species_id: String, lane: int, effect_id: Stri
 			"combat_meter": combat_meter,
 			"game_state": GameState
 		}
-		if _collar_director != null:
-			ctx = _collar_director.apply_to_support_context(ctx, GameState)
-			var collar_mod: Dictionary = Dictionary(ctx.get("collar_mod", {}))
-			if collar_mod.has("redirected_lane"):
-				support_enemy_id = _get_enemy_id_for_lane(int(ctx.get("lane", lane)))
+		
+		var collar_data: Dictionary = GameState.get_equipped_collar()
+		var collar_mod: Dictionary = {}
+		if not collar_data.is_empty():
+			var mod: Dictionary = Dictionary(collar_data.get("mod", {}))
+			collar_mod = mod.duplicate(true)
+			collar_mod["feedback_text"] = String(collar_data.get("title", "COLLAR")).to_upper()
+			collar_mod["satisfied"] = true
+			
+			if mod.has("support_impact_mult"):
+				ctx["surge_mult"] = float(ctx.get("surge_mult", 1.0)) * float(mod["support_impact_mult"])
+			
+			if mod.has("stamina_cost_mult"):
+				var cost: float = 25.0 * float(mod["stamina_cost_mult"])
+				if combat_meter != null:
+					var current_stamina: float = float(combat_meter.get("stamina"))
+					if current_stamina >= cost:
+						combat_meter.set("stamina", max(current_stamina - cost, 0.0))
+						EventBus.emit_signal("stamina_changed", combat_meter.get("stamina"), combat_meter.get("stamina_max"))
+					else:
+						collar_mod["satisfied"] = false
+						collar_mod["suppress_support"] = true
+		
+		ctx["collar_mod"] = collar_mod
+		
+		if collar_mod.has("redirected_lane"):
+			support_enemy_id = _get_enemy_id_for_lane(int(ctx.get("lane", lane)))
 		_support_resolver.resolve(ctx)
 
 	_presentation_runtime.apply_impact_profile(support_profile, lane, support_enemy_id)

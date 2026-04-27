@@ -28,8 +28,12 @@ const BOSS_STATE_OPENING: String = "Phase I  |  Hold line"
 const BOSS_STATE_FINAL: String = "Unleashed  |  No shelter"
 const TITLE_SUBTITLE: String = "The hollow keeps what it learns."
 const TITLE_PROMPT: String = "Press any key to begin entry"
-const TITLE_HINT: String = "H - controls"
+const TITLE_HINT: String = "H — controls  |  Ctrl+Shift+N — new profile"
 const TITLE_HELP_HEADER: String = "How to survive"
+const INTRO_BOND_HEADER: String = "FIRST BOND"
+const INTRO_BOND_SUBTITLE: String = "This cycle opens with one creature bound to you before the hollow. Choose the mouth that walks beside you."
+const INTRO_BOND_HINT: String = "1 / 2 / 3 — select  |  ENTER — swear the bond"
+const INTRO_BOND_NEED_SELECTION: String = "Select a bond before you descend."
 const LAIR_SUBTITLE: String = "Bonds persist between re-instantiations — flag active support, then choose your route."
 const LAIR_EMPTY: String = "No bonds kept.\nIntrude into the hollow and bring one back breathing."
 const LAIR_NOTE: String = "Selected creature enters already bonded. A stronger bond taken mid-run becomes your active support."
@@ -240,6 +244,12 @@ const QUIG_REACTIVE_LINES := {
 
 static func dna_status_line(species_id: String) -> String:
 	var current: float = GameState.get_dna(species_id)
+	
+	if GameState.is_species_ever_bonded(species_id):
+		var cost: float = float(GameState.get_lair_training_cost(species_id))
+		if cost > 0:
+			return "DNA COLLECTION: %.0f / %.0f (NEXT LEVEL)" % [current, cost]
+
 	var threshold: float = GameState.get_effective_dna_threshold(species_id)
 	var base: float = float(COMBAT_DATA.get_creature(species_id).get("dna_threshold", 0.0))
 	

@@ -63,3 +63,13 @@ func get_predation_debt(species_id: String) -> int:
 
 func increment_predation_debt(species_id: String) -> void:
 	predation_debt[species_id] = get_predation_debt(species_id) + 1
+
+
+func reset_profile_progression() -> void:
+	roster.clear()
+	lair_roster.clear()
+	active_lair_creature_id = ""
+	archive_traits.clear()
+	dna_by_species.clear()
+	predation_debt.clear()
+	_bond_order_counter = 0

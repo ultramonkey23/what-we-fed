@@ -596,23 +596,24 @@ func draw_timing_circles(
 	)
 	perfect_ring.name = "Perfect"
 
-	var beat_mark := Line2D.new()
-	beat_mark.name = "BeatMark"
-	beat_mark.default_color = Color(base_color.r, base_color.g, base_color.b, base_color.a * 0.55)
-	beat_mark.width = 1.4
-	beat_mark.add_point(Vector2(0.0, -PLAYER_SIGIL_OUTER_RADIUS + 10.0))
-	beat_mark.add_point(Vector2(0.0, PLAYER_SIGIL_OUTER_RADIUS - 10.0))
+	var cardinal_arms := _make_sigil_cardinal_arms(
+		PLAYER_SIGIL_INNER_RADIUS - 4.0,
+		PLAYER_SIGIL_OUTER_RADIUS + 6.0,
+		Color(base_color.r, base_color.g, base_color.b, 0.40),
+		1.6
+	)
+	cardinal_arms.name = "CardinalArms"
 
 	sigil_group.add_child(receiver_glow)
 	sigil_group.add_child(receiver_fill)
 	sigil_group.add_child(edge_ring)
+	sigil_group.add_child(cardinal_arms)
 	sigil_group.add_child(good_inner_guide)
 	sigil_group.add_child(good_outer_guide)
 	sigil_group.add_child(perfect_inner_guide)
 	sigil_group.add_child(perfect_outer_guide)
 	sigil_group.add_child(outer_ring)
 	sigil_group.add_child(perfect_ring)
-	sigil_group.add_child(beat_mark)
 	timing_circle_container.add_child(sigil_group)
 
 	timing_rings_cache.append({
@@ -622,7 +623,7 @@ func draw_timing_circles(
 		"fill": receiver_fill,
 		"glow": receiver_glow,
 		"edge": edge_ring,
-		"beat": beat_mark,
+		"cardinal_arms": cardinal_arms,
 		"good_inner": good_inner_guide,
 		"good_outer": good_outer_guide,
 		"perfect_inner": perfect_inner_guide,
@@ -845,7 +846,7 @@ func update_timing_ring_proximity(
 	var receiver_fill: Polygon2D = cache["fill"]
 	var receiver_glow: Polygon2D = cache["glow"]
 	var edge_ring: Line2D = cache["edge"]
-	var beat_mark: Line2D = cache["beat"]
+	var cardinal_arms: Node2D = cache.get("cardinal_arms", null) as Node2D
 	var good_inner_guide: Line2D = cache.get("good_inner", null) as Line2D
 	var good_outer_guide: Line2D = cache.get("good_outer", null) as Line2D
 	var perfect_inner_guide: Line2D = cache.get("perfect_inner", null) as Line2D
@@ -854,24 +855,51 @@ func update_timing_ring_proximity(
 	if player_combat != null:
 		root.position = player_combat.position
 		
-		# Bone-Ink beat spine: aim at active focus lane (presentation-only; GOOD/PERFECT rings unchanged).
-		if beat_mark != null and lane_manager != null:
+		# Bone-Ink beat spine (cardinal_arms): indicate active focus lane.
+		if cardinal_arms != null and lane_manager != null:
 			var focus_lane: int = 2
 			if player_combat.has_method("get_active_focus_lane"):
 				focus_lane = int(player_combat.call("get_active_focus_lane"))
 			focus_lane = clampi(focus_lane, 0, lane_manager.THREAT_COUNT - 1 if lane_manager else 3)
-			var dir_vec: Vector2 = _lane_direction(lane_manager, focus_lane)
-			if dir_vec.length_squared() > 0.0001:
-				var pos_off := Vector2.ZERO
-				var rot_off := 0.0
-				if _combat_visual_rig != null and is_instance_valid(_combat_visual_rig):
-					if _combat_visual_rig.has_method("get_sigil_bone_ink_local_offset"):
-						pos_off = _combat_visual_rig.call("get_sigil_bone_ink_local_offset")
-					if _combat_visual_rig.has_method("get_sigil_bone_ink_rotation_offset"):
-						rot_off = float(_combat_visual_rig.call("get_sigil_bone_ink_rotation_offset"))
-				beat_mark.position = pos_off
-				var aim: float = dir_vec.angle() - PI * 0.5 + rot_off
-				beat_mark.rotation = lerp_angle(beat_mark.rotation, aim, 0.18)
+			
+			var active_child_idx: int = -1
+			match focus_lane:
+				0: active_child_idx = 3 # North (up)
+				1: active_child_idx = 1 # South (down)
+				2: active_child_idx = 0 # East (right)
+				3: active_child_idx = 2 # West (left)
+			
+			var dt: float = 0.15
+			var target_color_base: Color = active_color
+			
+			for i in range(cardinal_arms.get_child_count()):
+				var fang := cardinal_arms.get_child(i) as Polygon2D
+				if fang == null: continue
+				
+				var is_active := (i == active_child_idx)
+				var beat_scale_boost: float = beat_pulse * 1.8 if is_active else 0.0
+				var target_scale := Vector2(1.35 + beat_scale_boost, 1.35 + beat_scale_boost) if is_active else Vector2(0.8, 0.8)
+				var target_alpha := clampf(0.85 + beat_pulse * 2.0, 0.0, 1.0) if is_active else 0.22
+				var target_color := target_color_base if is_active else target_color_base.darkened(0.2)
+				
+				var a: float = (float(i) / 4.0) * TAU
+				var dir := Vector2(cos(a), sin(a))
+				var target_pos := dir * (6.0 + beat_pulse * 12.0) if is_active else Vector2.ZERO
+				
+				fang.scale = fang.scale.lerp(target_scale, dt)
+				fang.modulate.a = lerp(fang.modulate.a, target_alpha, dt)
+				fang.color = fang.color.lerp(target_color, dt)
+				fang.position = fang.position.lerp(target_pos, dt)
+			
+			var pos_off := Vector2.ZERO
+			var rot_off := 0.0
+			if _combat_visual_rig != null and is_instance_valid(_combat_visual_rig):
+				if _combat_visual_rig.has_method("get_sigil_bone_ink_local_offset"):
+					pos_off = _combat_visual_rig.call("get_sigil_bone_ink_local_offset")
+				if _combat_visual_rig.has_method("get_sigil_bone_ink_rotation_offset"):
+					rot_off = float(_combat_visual_rig.call("get_sigil_bone_ink_rotation_offset"))
+			cardinal_arms.position = pos_off
+			cardinal_arms.rotation = lerp_angle(cardinal_arms.rotation, rot_off, 0.18)
 		
 	for timer in ring_highlight_timers:
 		if timer > 0.0:
@@ -980,7 +1008,6 @@ func update_timing_ring_proximity(
 	receiver_fill.color = fill_color
 	receiver_glow.color = Color(fill_color.r, fill_color.g, fill_color.b, receiver_glow_alpha)
 	edge_ring.default_color = Color(fill_color.r, fill_color.g, fill_color.b, edge_alpha)
-	beat_mark.default_color = beat_color
 
 	outer_ring.default_color = outer_color
 	outer_ring.width = outer_width

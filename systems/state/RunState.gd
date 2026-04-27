@@ -16,5 +16,14 @@ func reset_run_state() -> void:
 	path_chosen_ids.clear()
 	growth_choice_intersection_payload.clear()
 
+
+func reset_profile_progression() -> void:
+	run_number = 1
+	run_in_progress = false
+	is_in_combat = false
+	last_beat_quality = "off"
+	active_region = {}
+	reset_run_state()
+
 func is_beat_active() -> bool:
 	return last_beat_quality == "perfect" or last_beat_quality == "good"

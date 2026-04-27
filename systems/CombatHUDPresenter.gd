@@ -124,9 +124,27 @@ func bind_nodes(nodes: Dictionary) -> void:
 		EventBus.player_teleported.connect(_on_player_teleported)
 	if not EventBus.player_attacked.is_connected(_on_player_attacked):
 		EventBus.player_attacked.connect(_on_player_attacked)
+	if not EventBus.stamina_changed.is_connected(refresh_stamina):
+		EventBus.stamina_changed.connect(refresh_stamina)
+	if not EventBus.style_changed.is_connected(_on_style_changed):
+		EventBus.style_changed.connect(_on_style_changed)
+	if not EventBus.player_healed.is_connected(_on_player_health_changed_event):
+		EventBus.player_healed.connect(_on_player_health_changed_event)
+	if not EventBus.player_took_damage.is_connected(_on_player_took_damage_event):
+		EventBus.player_took_damage.connect(_on_player_took_damage_event)
 
 
 # ── Resource HUD ──────────────────────────────────────────────────────────────
+
+func _on_style_changed(_score: float, tier: String) -> void:
+	refresh_style(tier)
+
+func _on_player_health_changed_event(_amount: float) -> void:
+	# Always fetch latest from GameState to ensure accuracy
+	refresh_hp(GameState.player_hp, GameState.player_max_hp)
+
+func _on_player_took_damage_event(_amount: float, _source_lane: int) -> void:
+	refresh_hp(GameState.player_hp, GameState.player_max_hp)
 
 func refresh_hp(hp: float, max_hp: float) -> void:
 	if _hp_bar != null:
@@ -446,7 +464,7 @@ func refresh_run_build(run_growth: Node) -> void:
 		var active: Dictionary = GameState.get_active_bonded_creature()
 		if not active.is_empty():
 			var active_bond_level: int = int(active.get("bond_level", 1))
-			var level_mult: float = GameState.get_script().get_bond_level_mult(active_bond_level)
+			var level_mult: float = GameState.get_bond_level_mult(active_bond_level)
 			_bond_value_label.text = _presentation_text.format_bond_passive_short(active.get("bond_passive", {}), level_mult)
 		else:
 			_bond_value_label.text = "--"

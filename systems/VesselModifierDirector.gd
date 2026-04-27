@@ -51,8 +51,9 @@ static func build_perfect_plan(species_id: String, origin_lane: int, origin_dama
 func bind_runtime(lane_manager_ref: Node) -> void:
 	_lane_manager = lane_manager_ref
 	_connect_eventbus()
-	# Ensure we initialize state immediately
-	_refresh_active_vessel()
+	# Defer so CombatScene can finish _initialize_ui() and create _presentation_controller
+	# before vessel_shifted handlers call refresh_vessel_vibe (see CombatScene._on_vessel_shifted).
+	call_deferred("_refresh_active_vessel")
 
 
 func _connect_eventbus() -> void:

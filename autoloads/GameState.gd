@@ -16,6 +16,11 @@ var run := RunState.new()
 var collar_inventory: Array[String] = []
 var equipped_collar_id: String = ""
 
+# First-run intro: mandatory starter bond before the initial route (per profile cycle).
+var intro_bond_choice_required: bool = true
+var intro_bond_choice_completed: bool = false
+var intro_bond_selected_species_id: String = ""
+
 # API Proxies for backward compatibility
 var run_number: int:
 	get: return run.run_number
@@ -261,15 +266,23 @@ func add_bonded_creature(creature_data: Dictionary) -> Dictionary:
 	var species_id: String = String(creature_data.get("species_id", ""))
 	_bond_order_counter += 1
 
+	# Combat bonding no longer levels up the creature permanently.
+	# Lair training is the only path for permanent bond level increases.
+	# We pull the true level from lair_roster if it exists.
+	var true_level: int = 1
+	for entry in lair_roster:
+		if String(entry.get("species_id", "")) == species_id:
+			true_level = int(entry.get("bond_level", 1))
+			break
+
 	for i in range(roster.size()):
 		var creature: Dictionary = roster[i]
 		if String(creature.get("species_id", "")) == species_id:
-			var current_bond: int = int(creature.get("bond_level", 0))
-			if current_bond >= 5:
+			# Just sync level and update order; no increment here.
+			creature["bond_level"] = true_level
+			if true_level >= 5:
 				creature["is_exceptional"] = true
 				creature["variant_id"] = "exceptional_alpha"
-			else:
-				creature["bond_level"] = current_bond + 1
 			creature["bond_order"] = _bond_order_counter
 			roster[i] = creature
 			_sync_to_lair(creature)
@@ -277,9 +290,10 @@ func add_bonded_creature(creature_data: Dictionary) -> Dictionary:
 			return creature
 
 	var new_creature: Dictionary = creature_data.duplicate(true)
-	new_creature["bond_level"] = int(new_creature.get("bond_level", 1))
-	if int(new_creature["bond_level"]) <= 0:
-		new_creature["bond_level"] = 1
+	new_creature["bond_level"] = true_level
+	if true_level >= 5:
+		new_creature["is_exceptional"] = true
+		new_creature["variant_id"] = "exceptional_alpha"
 	new_creature["bond_order"] = _bond_order_counter
 
 	roster.append(new_creature)
@@ -722,6 +736,28 @@ func release_lair_creature(species_id: String) -> void:
 			break
 	if active_lair_creature_id == species_id:
 		active_lair_creature_id = ""
+
+
+func is_intro_bond_choice_pending() -> bool:
+	return intro_bond_choice_required and not intro_bond_choice_completed
+
+
+func mark_intro_bond_choice_completed(species_id: String) -> void:
+	intro_bond_selected_species_id = species_id
+	intro_bond_choice_completed = true
+
+
+func reset_profile_progression_state() -> void:
+	intro_bond_choice_required = true
+	intro_bond_choice_completed = false
+	intro_bond_selected_species_id = ""
+	collar_inventory.clear()
+	equipped_collar_id = ""
+	creatures.reset_profile_progression()
+	player.reset_to_base()
+	rewards.reset_run_state()
+	run.reset_profile_progression()
+	world_fate.reset_profile_progression()
 
 
 func reset_run_state() -> void:

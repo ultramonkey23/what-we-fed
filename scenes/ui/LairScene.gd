@@ -2,6 +2,7 @@ extends Node2D
 
 const ROUTE_SCENE_PATH: String = "res://scenes/ui/RouteScene.tscn"
 const TITLE_SCENE_PATH: String = "res://scenes/ui/TitleScreen.tscn"
+const INTRO_BOND_SCENE_PATH: String = "res://scenes/ui/IntroBondChoiceScene.tscn"
 const MAX_LAIR_DISPLAY: int = 3
 const SIDEBAR_X: float = 36.0
 const SIDEBAR_W: float = 328.0
@@ -146,6 +147,13 @@ func _unhandled_input(event: InputEvent) -> void:
 				_play_feedback("BOND DEEPENED")
 				_refresh_active_support_panel()
 				_build_creature_list(_ui_layer, GameState.lair_roster)
+			else:
+				var cost: int = GameState.get_lair_training_cost(sid)
+				var cur_bond: int = int(lair[_selected_index].get("bond_level", 1))
+				if cur_bond >= 5:
+					_play_feedback("MAX BOND REACHED")
+				elif GameState.get_dna(sid) < cost:
+					_play_feedback("NOT ENOUGH DNA (NEED %d)" % cost)
 			get_viewport().set_input_as_handled()
 			return
 
@@ -163,7 +171,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if key_event.keycode == KEY_A:
 		if _selected_index >= 0 and _selected_index < lair.size():
 			var sid: String = String(lair[_selected_index].get("species_id", ""))
-			if GameState.ascend_lair_creature(sid):
+			if GameState.request_ascension(sid):
 				_play_feedback("KAIJU ASCENSION")
 				_build_ui() # Rebuild for new visual scale
 			get_viewport().set_input_as_handled()
@@ -177,6 +185,9 @@ func _unhandled_input(event: InputEvent) -> void:
 			return
 
 	if key_event.keycode == KEY_SPACE or key_event.keycode == KEY_ENTER:
+		if GameState.is_intro_bond_choice_pending():
+			get_tree().change_scene_to_file(INTRO_BOND_SCENE_PATH)
+			return
 		GameState.run_in_progress = false
 		get_tree().change_scene_to_file(ROUTE_SCENE_PATH)
 		return

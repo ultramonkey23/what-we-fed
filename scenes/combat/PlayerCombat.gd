@@ -701,7 +701,6 @@ func _try_dodge(target_dir: int) -> void:
 
 	# In centered combat, dodge is an iframe-dash toward the threat or to the center.
 	# We snap the player toward the threat briefly and return to neutral.
-	var from_pos: Vector2 = _neutral_world_position()
 	var to_pos: Vector2 = lane_manager.get_threat_hit_zone_pos(target_dir)
 
 	EventBus.emit_signal("player_teleported", current_lane, target_dir)

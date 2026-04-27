@@ -1,6 +1,7 @@
 extends Node2D
 
 const LAIR_SCENE_PATH: String = "res://scenes/ui/LairScene.tscn"
+const INTRO_BOND_SCENE_PATH: String = "res://scenes/ui/IntroBondChoiceScene.tscn"
 const UI_STYLE = preload("res://systems/UIStyle.gd")
 const PRESENTATION_TEXT = preload("res://data/PresentationTextContent.gd")
 const TITLE_SIGIL_PATH: String = "res://assets/ui/shell/title_sigil.png"
@@ -37,12 +38,21 @@ func _unhandled_input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 		return
 
+	if key_event.keycode == KEY_N and key_event.ctrl_pressed and key_event.shift_pressed:
+		GameState.reset_profile_progression_state()
+		EventBus.emit_signal("proc_feedback_requested", "NEW PROFILE — PROGRESSION CLEARED", Color(0.72, 0.88, 1.0, 1.0))
+		get_viewport().set_input_as_handled()
+		return
+
 	if not _can_start:
 		return
 	if _controls_visible:
 		return
 
-	get_tree().change_scene_to_file(LAIR_SCENE_PATH)
+	if GameState.is_intro_bond_choice_pending():
+		get_tree().change_scene_to_file(INTRO_BOND_SCENE_PATH)
+	else:
+		get_tree().change_scene_to_file(LAIR_SCENE_PATH)
 
 
 func _toggle_controls_panel() -> void:

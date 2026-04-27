@@ -230,12 +230,20 @@ func process_dna_gain(species_id: String, amount: float) -> Dictionary:
 	GameState.add_dna(species_id, amount)
 	var effective_threshold: float = GameState.get_effective_dna_threshold(species_id)
 	var bond_ready: bool = false
-	if not GameState.is_species_bonded(species_id) and GameState.get_dna(species_id) >= effective_threshold:
+	if not GameState.is_species_ever_bonded(species_id) and GameState.get_dna(species_id) >= effective_threshold:
 		if not pending_bonds.has(species_id):
 			pending_bonds.append(species_id)
 			EventBus.proc_feedback_requested.emit("BOND READY", Color(0.60, 0.84, 1.0, 1.0))
 		bond_ready = true
 		_grant_tendency("bond", 1.0)
+	elif GameState.is_species_ever_bonded(species_id):
+		var cost: int = GameState.get_lair_training_cost(species_id)
+		var prev_dna: float = GameState.get_dna(species_id) - amount
+		if prev_dna < cost and GameState.get_dna(species_id) >= cost:
+			if not pending_bonds.has(species_id + "_upgrade"):
+				pending_bonds.append(species_id + "_upgrade")
+				EventBus.proc_feedback_requested.emit("BOND UPGRADE READY", Color(0.84, 0.98, 0.88, 1.0))
+	
 	_gain_support_charge(amount * GROWTH_CONTENT.DNA_BOND_SUPPORT_CHARGE_PER_POINT)
 	_grant_tendency("bond", amount * GROWTH_CONTENT.DNA_BOND_TENDENCY_PER_POINT)
 	return {"species_id": species_id, "amount": amount, "banked": true, "total": GameState.get_dna(species_id), "route_id": dna_routing_preference, "exp_gained": 0.0, "bond_ready": bond_ready}

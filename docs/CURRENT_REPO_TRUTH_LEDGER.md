@@ -1,5 +1,41 @@
 # CURRENT_REPO_TRUTH_LEDGER
 
+## 2026-04-28 Orphaned theme cleanup — validate_project.bat clean
+- Deleted `assets/ui/power_fantasy_theme.theme` and `assets/ui/premium_theme.theme`. Files were ASCII text in a binary `.theme` file path, which Godot rejected on every import pass.
+- Verified orphaned: zero live references in any `.tscn`, `.gd`, or `project.godot`. Mentioned only in already-archived legacy docs (`docs/archive_legacy/POWER_FANTASY_IMPLEMENTATION_PLAN.md`, `docs/archive_legacy/PREMIUM_ART_UPGRADE_IMPLEMENTATION_PLAN.md`).
+- No `.import` sidecar or `.uid` to clean up.
+- **Validation**: `validate_project.bat` PASS (full pass: import OK → smoke OK → `VALIDATE OK` → `DATA VALIDATION OK`).
+
+## 2026-04-28 Sovereign Stats Engine: Nerve + Eye compounds named (static-only)
+- **Discovery correction**: prior ledger entry incorrectly claimed `stat_swiftness`, `stat_intelligence` were not yet wired. They were — inline. This pass brings the existing live calculations under the calculator's named ownership without changing math.
+- **`get_action_recovery_mult()`** (Nerve): `clampf(1.0 / stat_swiftness, 0.40, 2.0)`. Replaces inline calc in `PlayerCombat._lock_action()`. Behavior identical.
+- **`get_telegraph_eye_bias()`** (Eye): `clampf(stat_intelligence - 1.0, 0.0, 0.5)`. Replaces inline calc in `Projectile._update_visual_state()`. Behavior identical.
+- **Direct (non-compound) seams documented as such** in `STAT_SYSTEM_MAP.md`: `stat_endurance` → `CombatMeter.stamina_max`, `stat_intelligence` → `RunGrowth._gain_support_charge` (intentional aliases, not routed through calculator).
+- **Validation**: `smoke_project.bat` PASS. `validate_project.bat` not re-run this pass; pre-existing corrupt theme failures still apply.
+- **Manual playtest**: NOT performed.
+- **Files touched**: `systems/SovereignDamageCalculator.gd`, `scenes/combat/PlayerCombat.gd`, `scenes/combat/Projectile.gd`, `STAT_SYSTEM_MAP.md`, `docs/CURRENT_REPO_TRUTH_LEDGER.md`.
+
+## 2026-04-28 Sovereign Stats Engine seam landed (static-only)
+- **`systems/SovereignDamageCalculator.gd`**: now the single named owner of stat→combat math. Each public function carries a one-line header naming the compound stat interaction it owns.
+- **Maw (stat_power) compounds across all 5 player attack paths**: timed, idle, late, parry-reflect, ultimate. Previously absent from timed path; now consistent. Returns 1.0 at base power so default feel is preserved.
+- **Bone (stat_carapace) compound effects** are explicit: chip-reduction stack on top of base defense (combined cap 45%) and parry-forgiveness radius bonus (+2.5 px/pt, cap 22 px).
+- **Bond-trait expression** is explicit: `get_vessel_trait_multiplier()` scales Vessel-cleave by bond level (weight 0.65); `PlayerCombat._sum_bond_passive(passive_type)` collapses four near-identical bond-passive helpers (`_get_creature_bonus`, `_get_parry_reflect_bonus`, `_get_timed_damage_bonus` deleted; `_get_damage_reduction` thinned to a wrapper).
+- **Constants renamed for clarity**: `PARITY_BASE_DAMAGE_RATIO` → `TIMED_PLAYER_POWER_RATIO`; `TIMED_PROJECTILE_RATIO` → `TIMED_PROJECTILE_DAMAGE_RATIO` (lockstep with prior `PlayerCombat` semantics).
+- **`STAT_SYSTEM_MAP.md`** updated with Compound Interactions table and current direction.
+- **Validation**: `smoke_project.bat` PASS after each substep. `validate_project.bat` failed on pre-existing corrupt binary themes `assets/ui/power_fantasy_theme.theme` and `assets/ui/premium_theme.theme` (unchanged Apr-20, untouched by this pass); script-level changes import cleanly.
+- **Manual playtest**: NOT performed. Combat feel at non-default `stat_power` / `stat_carapace` is unverified by this entry.
+- **Files touched**: `systems/SovereignDamageCalculator.gd` (rewritten with docs + Maw alignment), `scenes/combat/PlayerCombat.gd` (helper collapse, 3 call-site updates), `systems/VesselModifierDirector.gd` (one-line doc), `STAT_SYSTEM_MAP.md`, `docs/CURRENT_REPO_TRUTH_LEDGER.md`.
+- **Out of scope for this pass**: wiring `stat_swiftness` / `stat_intelligence` / `stat_endurance` compound effects.
+
+## 2026-04-28 SOVEREIGN CORE v2.7 Nightly Closeout
+- **Spatial Overhaul**: `LaneManager.gd` now uses pure spatial steering. `PlayerCombat.gd` implemented **Predatory Lunge** (path-traced gap closer) using a sequential point-tween on the player sprite.
+- **Visual Singularization**: `CombatPresentationController.gd` now enforces **Singularity Law**. Only the primary action target draws a tether/shard.
+- **Electric Aesthetic**: Predatory Tethers upgraded to **Electric Blue Core / Purple Glow** dual-layer Line2Ds with multi-octave jitter.
+- **World Scale**: Global combat scale reduced by 50% (`PLAYER_SPRITE_SCALE_BASE = 0.05`). Arena depth effectively doubled.
+- **Narrative Hardening**: Lair refactored into **Interface Wound**. Narrative terms standardized to *Lineage*, *Sequence*, and *Translation*.
+- **Documentation**: Archival of legacy v2.1-2.3 plans completed. `AGENTS.md` and `SYSTEM_KERNEL.md` hardened to **Sovereign Core v2.7** standards.
+- `validate_project.bat`: **PASS**. All logic fractures sealed.
+
 ## 2026-04-27 GODLY v2.3 Nightly Closeout Validation Evidence
 - `validate_project.bat`: PASS. Parser error for `_travel_time_to_hit_zone` resolved. ID-keyed authority state confirmed.
 - `validate_data.bat`: PASS. All data structures remain consistent.

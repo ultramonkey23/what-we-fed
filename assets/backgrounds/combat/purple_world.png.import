@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://b5ktb6jdfncvb"
-path="res://.godot/imported/gentle_world.png-f5c88883e840df266dd0c093ad06083b.ctex"
+uid="uid://d04eiq7utfa5b"
+path="res://.godot/imported/purple_world.png-dc8294b61f8ce8adbadf577b5dbefc7e.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/backgrounds/combat/gentle_world.png"
-dest_files=["res://.godot/imported/gentle_world.png-f5c88883e840df266dd0c093ad06083b.ctex"]
+source_file="res://assets/backgrounds/combat/purple_world.png"
+dest_files=["res://.godot/imported/purple_world.png-dc8294b61f8ce8adbadf577b5dbefc7e.ctex"]
 
 [params]
 

@@ -15,7 +15,7 @@ const LANE_THREAT_FOCUS_ALPHA: float = 0.32
 const LANE_IMMINENT_FOCUS_ALPHA: float = 0.64
 
 const FOCAL_MARKER_WIDTH: float = 2.0
-const FOCAL_MARKER_SIZE: Vector2 = Vector2(48.0, 72.0)
+const FOCAL_MARKER_SIZE: Vector2 = Vector2(24.0, 36.0) # Halved
 const FOCAL_MARKER_COLOR: Color = Color(0.92, 0.88, 0.76, 0.24)
 const FOCAL_MARKER_ACTIVE_ALPHA: float = 0.72
 
@@ -274,11 +274,15 @@ const DNA_FRAME_DURATION: float = 0.18
 
 # ─── BACKGROUND DATA ─────────────────────────────────────────────────────────
 const COMBAT_BG_PATHS: Array[String] = [
-	"res://assets/backgrounds/combat/cbg1.png",
-	"res://assets/backgrounds/combat/cbg2.png",
-	"res://assets/backgrounds/combat/cbg3.png",
+	"res://assets/backgrounds/combat/Ruins_world.png",
+	"res://assets/backgrounds/combat/arcane_world.png",
+	"res://assets/backgrounds/combat/lightlycurrupted_world.png",
+	"res://assets/backgrounds/combat/blue_world.png",
+	"res://assets/backgrounds/combat/purple_world.png",
+	"res://assets/backgrounds/combat/gentle_world.png",
+	"res://assets/backgrounds/combat/darkgentle_world.png",
 ]
-const COMBAT_BG_MODULATE: Color = Color(0.78, 0.78, 0.78, 1.0)
+const COMBAT_BG_MODULATE: Color = Color(1.0, 1.0, 1.0, 1.0)
 
 
 static func get_slowmo_preset(context_id: String, fallback: Dictionary = {}) -> Dictionary:

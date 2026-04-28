@@ -1022,7 +1022,7 @@ func _on_enemy_defeated(_enemy_id: int) -> void:
 			emit_signal("proc_feedback", "VESSEL FEEDS", Color(0.96, 0.48, 0.28, 1.0))
 
 
-func _on_timed_attack_resolved(_lane: int, quality: String, _damage: float) -> void:
+func _on_timed_attack_resolved(_lane: int, quality: String, _damage: float, _enemy_id: int) -> void:
 	# Veilstrike Chain: 3 perfect attacks in a row → charge 20
 	var chain_effect: Dictionary = get_runtime_effect("perfect_strike_chain")
 	if quality == "perfect":

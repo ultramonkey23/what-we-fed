@@ -29,6 +29,15 @@ const MM_PAPER = Color(0.96, 0.94, 0.90, 1.0)
 
 ## Full-screen menu shell: subtle vertical gradient plus a thin warm frame (matches HUD border tones).
 static func attach_shell_backdrop(root: Node2D, size: Vector2 = Vector2(1280.0, 720.0)) -> void:
+	_attach_backdrop_internal(root, size, false)
+
+
+## Interface Wound variant: higher contrast, aggressive 'Bone Ink' geometry framing.
+static func attach_wound_backdrop(root: Node2D, size: Vector2 = Vector2(1280.0, 720.0)) -> void:
+	_attach_backdrop_internal(root, size, true)
+
+
+static func _attach_backdrop_internal(root: Node2D, size: Vector2, is_wound: bool) -> void:
 	if root == null:
 		return
 
@@ -38,11 +47,18 @@ static func attach_shell_backdrop(root: Node2D, size: Vector2 = Vector2(1280.0, 
 	root.move_child(layer, 0)
 
 	var gradient := Gradient.new()
-	gradient.colors = PackedColorArray([
-		Color(0.030, 0.020, 0.040, 1.0),
-		Color(0.050, 0.030, 0.055, 1.0),
-		Color(0.090, 0.050, 0.060, 1.0)
-	])
+	if is_wound:
+		gradient.colors = PackedColorArray([
+			Color(0.010, 0.005, 0.012, 1.0), # Deep black
+			Color(0.025, 0.015, 0.030, 1.0),
+			Color(0.040, 0.020, 0.025, 1.0)
+		])
+	else:
+		gradient.colors = PackedColorArray([
+			Color(0.030, 0.020, 0.040, 1.0),
+			Color(0.050, 0.030, 0.055, 1.0),
+			Color(0.090, 0.050, 0.060, 1.0)
+		])
 	gradient.offsets = PackedFloat32Array([0.0, 0.52, 1.0])
 
 	var gt := GradientTexture2D.new()
@@ -61,7 +77,40 @@ static func attach_shell_backdrop(root: Node2D, size: Vector2 = Vector2(1280.0, 
 	bg.stretch_mode = TextureRect.STRETCH_SCALE
 	layer.add_child(bg)
 
+	# 'Wrongly Clean' Bone Ink geometry
+	if is_wound:
+		var edge_color := Color(0.96, 0.94, 0.90, 0.08) # Paper/Bone alpha
+		
+		# Top-left shard
+		var tl := Polygon2D.new()
+		tl.polygon = PackedVector2Array([
+			Vector2(0, 0),
+			Vector2(320, 0),
+			Vector2(0, 180)
+		])
+		tl.color = edge_color
+		layer.add_child(tl)
+		
+		# Bottom-right shard
+		var br := Polygon2D.new()
+		br.polygon = PackedVector2Array([
+			Vector2(size.x, size.y),
+			Vector2(size.x - 420, size.y),
+			Vector2(size.x, size.y - 240)
+		])
+		br.color = edge_color
+		layer.add_child(br)
+		
+		# Accent lines (Clean but wrong)
+		var l1 := Line2D.new()
+		l1.points = PackedVector2Array([Vector2(40, 0), Vector2(40, size.y)])
+		l1.width = 1.0
+		l1.default_color = Color(MM_BLOOD_EMBER, 0.12)
+		layer.add_child(l1)
+
 	var edge := Color(0.34, 0.26, 0.20, 0.55)
+	if is_wound: edge = Color(MM_BLOOD_EMBER, 0.22)
+	
 	var t := 2
 	var top := ColorRect.new()
 	top.color = edge
@@ -397,21 +446,21 @@ static func _shell_palette_for_role(role: String) -> Dictionary:
 			}
 		"hud_left":
 			return {
-				"bg_color": Color(0.04, 0.03, 0.06, 0.88),
-				"border_color": Color(0.60, 0.30, 0.22, 0.86),
+				"bg_color": Color(0.04, 0.03, 0.06, 0.94), # Increased alpha
+				"border_color": Color(0.60, 0.30, 0.22, 0.92),
 				"corner_radius": 9,
-				"border_width": 1,
-				"shadow_color": Color(0.04, 0.02, 0.03, 0.34),
-				"shadow_size": 2
+				"border_width": 2, # Thicker border
+				"shadow_color": Color(0.04, 0.02, 0.03, 0.45),
+				"shadow_size": 3
 			}
 		"hud_right":
 			return {
-				"bg_color": Color(0.04, 0.03, 0.07, 0.88),
-				"border_color": Color(0.60, 0.30, 0.24, 0.86),
+				"bg_color": Color(0.04, 0.03, 0.07, 0.94), # Increased alpha
+				"border_color": Color(0.60, 0.30, 0.24, 0.92),
 				"corner_radius": 9,
-				"border_width": 1,
-				"shadow_color": Color(0.05, 0.02, 0.05, 0.34),
-				"shadow_size": 2
+				"border_width": 2, # Thicker border
+				"shadow_color": Color(0.05, 0.02, 0.05, 0.45),
+				"shadow_size": 3
 			}
 		"hud_accent":
 			return {

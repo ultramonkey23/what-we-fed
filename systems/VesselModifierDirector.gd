@@ -98,7 +98,7 @@ func _refresh_active_vessel() -> void:
 			EventBus.proc_feedback_requested.emit("VESSEL SHIFT: " + _active_class_data.get("display_name", "").to_upper(), _active_class_data.get("vibe_color", Color.WHITE))
 
 
-func _on_timed_attack_resolved(lane: int, quality: String, damage: float) -> void:
+func _on_timed_attack_resolved(lane: int, quality: String, damage: float, enemy_id: int) -> void:
 	if _active_class_data.is_empty() or _lane_manager == null:
 		return
 		

@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://qmjeow2e2feh"
-path="res://.godot/imported/cbg1.png-9f8c33bb6a9c5410f92f7f969b6ca42c.ctex"
+uid="uid://de0nkitvv7ad1"
+path="res://.godot/imported/darkgentle_world.png-0d9c9ea4de1500a3c8b3b07e783f7552.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/backgrounds/combat/cbg1.png"
-dest_files=["res://.godot/imported/cbg1.png-9f8c33bb6a9c5410f92f7f969b6ca42c.ctex"]
+source_file="res://assets/backgrounds/combat/darkgentle_world.png"
+dest_files=["res://.godot/imported/darkgentle_world.png-0d9c9ea4de1500a3c8b3b07e783f7552.ctex"]
 
 [params]
 

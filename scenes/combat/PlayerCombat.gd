@@ -40,11 +40,12 @@ const PLAYER_PARRY_PATH: String = "res://assets/characters/player/combat/player_
 const PLAYER_HURT_PATH: String = "res://assets/characters/player/combat/player_hurt.png"
 
 # Attack Range Tuning
-const PLAYER_ATTACK_RANGE: float = 220.0
+const PLAYER_ATTACK_RANGE: float = 125.0
+const LUNGE_MAX_RANGE: float = PLAYER_ATTACK_RANGE * 2.2 # ~275px
 
-# Base display scale for the Sprite2D. 0.115 -> 512px image ~= 59px tall.
+# Base display scale for the Sprite2D. 0.05 -> 512px image ~= 25px tall.
 # Kept compact so the character reads as a focal point inside the timing sigil.
-const PLAYER_SPRITE_SCALE_BASE: float = 0.115
+const PLAYER_SPRITE_SCALE_BASE: float = 0.05
 # How long each temporary image holds before returning to idle (seconds).
 const ATTACK_IMAGE_DURATION: float = 0.35
 const PARRY_IMAGE_DURATION: float = 0.22
@@ -62,19 +63,19 @@ const LANE_NORTH_WEST: int = 7
 const DEFAULT_FOCUS_LANE: int = LANE_EAST
 
 # Neutral stance rules.
-const ATTACK_WORLD_X_OFFSET: float = 38.0
-const PARRY_WORLD_X_OFFSET: float = -14.0
-const DODGE_WORLD_X_OFFSET: float = -28.0
-const HIT_WORLD_X_OFFSET: float = -22.0
+const ATTACK_WORLD_X_OFFSET: float = 18.0
+const PARRY_WORLD_X_OFFSET: float = -6.0
+const DODGE_WORLD_X_OFFSET: float = -12.0
+const HIT_WORLD_X_OFFSET: float = -10.0
 
 # Sprite-local pose offsets. Neutral is centered on the logical origin so the
 # character sits inside the timing sigil. Action offsets scale proportionally
-# from the old values (~0.59× to match new 0.13 vs old 0.22 scale).
-const NEUTRAL_SPRITE_POSITION := Vector2(0.0, -18.0)
-const ATTACK_SPRITE_POSITION := Vector2(18.0, 2.0)
-const PARRY_SPRITE_POSITION := Vector2(13.0, 3.0)
-const DODGE_SPRITE_POSITION := Vector2(-4.0, 3.0)
-const HIT_SPRITE_POSITION := Vector2(-6.0, 3.0)
+# from the old values (~0.5× to match new 0.05 vs old 0.115 scale).
+const NEUTRAL_SPRITE_POSITION := Vector2(0.0, -9.0)
+const ATTACK_SPRITE_POSITION := Vector2(9.0, 1.0)
+const PARRY_SPRITE_POSITION := Vector2(6.0, 1.5)
+const DODGE_SPRITE_POSITION := Vector2(-2.0, 1.5)
+const HIT_SPRITE_POSITION := Vector2(-3.0, 1.5)
 
 const NEUTRAL_SPRITE_SCALE := Vector2(1.0, 1.0)
 const ATTACK_SPRITE_SCALE := Vector2(1.14, 0.90)
@@ -577,7 +578,8 @@ func _get_targets_in_cone() -> Dictionary:
 						"dot": dot
 					})
 
-	# 2. Enemies in cone
+	# 2. Enemies in cone (Extended for Predatory Lunge)
+	var lunge_range: float = PLAYER_ATTACK_RANGE * 2.8 # Aggressive 2.8x reach
 	var enemies: Dictionary = lane_manager.call("get_all_enemies")
 	for id in enemies.keys():
 		var enemy = enemies[id]
@@ -588,7 +590,7 @@ func _get_targets_in_cone() -> Dictionary:
 		var to_target: Vector2 = target_pos - free_position
 		var dist: float = to_target.length()
 		
-		if dist <= max_range:
+		if dist <= lunge_range:
 			var dot: float = _facing_direction.dot(to_target.normalized())
 			if dot >= min_dot:
 				var enemy_lane = int(enemy.get("lane", -1))
@@ -599,10 +601,42 @@ func _get_targets_in_cone() -> Dictionary:
 					"ref": id,
 					"lane": enemy_lane,
 					"distance": dist,
-					"dot": dot
+					"dot": dot,
+					"pos": target_pos
 				})
 						
 	return {"projectiles": found_projectiles, "enemies": found_enemies}
+
+func get_lungeable_enemies() -> Array:
+	var targets: Dictionary = _get_targets_in_cone()
+	var enemies: Array = targets.get("enemies", [])
+	
+	# Sort by aim quality (dot) descending, then mark the first one as primary.
+	enemies.sort_custom(func(a, b): return float(a.get("dot", 0.0)) > float(b.get("dot", 0.0)))
+	
+	for i in range(enemies.size()):
+		enemies[i]["is_primary"] = (i == 0)
+		
+	return enemies
+
+
+func get_primary_action_target() -> Dictionary:
+	var targets: Dictionary = _get_targets_in_cone()
+	var projectiles: Array = targets.get("projectiles", [])
+	var enemies: Array = targets.get("enemies", [])
+	
+	if not projectiles.is_empty():
+		projectiles.sort_custom(func(a, b): return float(a.get("dot", 0.0)) > float(b.get("dot", 0.0)))
+		var p = projectiles[0]
+		return { "type": "projectile", "lane": int(p.get("lane", -1)), "ref": p.ref }
+		
+	if not enemies.is_empty():
+		enemies.sort_custom(func(a, b): return float(a.get("dot", 0.0)) > float(b.get("dot", 0.0)))
+		var e = enemies[0]
+		return { "type": "enemy", "id": int(e.get("ref", -1)), "lane": int(e.get("lane", -1)), "pos": e.get("pos", Vector2.ZERO) }
+		
+	return {}
+
 
 func _get_lane_from_vector(dir: Vector2) -> int:
 	if dir.length_squared() < 0.01:
@@ -913,15 +947,41 @@ func _try_ultimate() -> void:
 func _idle_attack_on_target(target_data: Dictionary, combo_mult: float) -> void:
 	var target_lane: int = int(target_data.get("lane", -1))
 	var idle_damage: float = (GameState.get_attack_damage() * IDLE_ATTACK_DAMAGE_RATIO) * combo_mult
+	var target_pos: Vector2 = target_data.get("pos", Vector2.ZERO)
+	var enemy_id: int = int(target_data.get("ref", -1))
 	
-	if target_data.has("ref"):
-		var enemy_id = int(target_data.get("ref", -1))
+	# 1. PREDATORY LUNGE: Snap to target if far enough
+	if not target_pos.is_zero_approx() and _player_sprite != null:
+		var dist: float = target_pos.distance_to(free_position)
+		if dist > 80.0:
+			var lunge_tween := create_tween()
+			var lunge_pos: Vector2 = target_pos - (target_pos - free_position).normalized() * 45.0
+			# Violent thrust
+			lunge_tween.tween_property(_player_sprite, "global_position", lunge_pos, 0.04).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
+			# Snap back
+			lunge_tween.tween_property(_player_sprite, "position", Vector2.ZERO, 0.14).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+			
+	# 2. SOVEREIGN IMPACT: Apply spektacular feedback
+	if enemy_id != -1:
 		lane_manager.call("damage_enemy_by_id", enemy_id, idle_damage)
+		# Trigger spectacular feedback using the newly optimized runtime
+		var impact_profile: Dictionary = {
+			"shake_intensity": 1.15,
+			"shake_duration": 0.08,
+			"hitstop_scale": 0.85,
+			"hitstop_duration": 0.04,
+			"ring_width": 2.2,
+			"burst_color": Color(0.9, 0.9, 1.0, 0.75),
+			"flash_color": Color(1.0, 1.0, 1.0, 0.04),
+			"flash_duration": 0.03,
+			"sfx_cue": "timed_hit"
+		}
+		# We emit a request for the presentation controller to handle this spectacular hit
+		EventBus.emit_signal("impact_burst_requested", impact_profile, target_lane, enemy_id)
 		
 	combat_meter.call("record_attack")
 	_clear_mastery_context("idle_attack", target_lane)
 	EventBus.emit_signal("player_attacked", target_lane, idle_damage, false)
-	EventBus.emit_signal("screen_flash", Color(0.85, 0.85, 0.85, 0.04), 0.03)
 
 	_lock_action(BASIC_ATTACK_RECOVERY, "idle_attack")
 
@@ -1318,14 +1378,14 @@ func _setup_ground_shadow() -> void:
 	shadow.name = "GroundShadow"
 	shadow.z_index = -1
 	var pts := PackedVector2Array()
-	var rx := 14.0
-	var ry := 3.5
+	var rx := 8.0 # Reduced from 14
+	var ry := 2.2 # Reduced from 3.5
 	for i in range(24):
 		var a := (i / 24.0) * TAU
 		pts.append(Vector2(cos(a) * rx, sin(a) * ry))
 	shadow.polygon = pts
 	shadow.color = Color(0.0, 0.0, 0.0, 0.28)
-	shadow.position = Vector2(0.0, 6.0)
+	shadow.position = Vector2(0.0, 3.0) # Reduced from 6.0
 	add_child(shadow)
 
 

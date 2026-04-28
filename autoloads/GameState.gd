@@ -25,6 +25,12 @@ var intro_bond_selected_species_id: String = ""
 var meta_limit_breakers: int = 0
 
 
+func increment_meta_limit_breakers(achievement_id: String = "") -> void:
+	meta_limit_breakers += 1
+	EventBus.emit_signal("proc_feedback_requested", "LIMIT BREAKER SHATTERED", Color(1.0, 0.95, 0.45, 1.0))
+	EventBus.emit_signal("limit_breaker_triggered", achievement_id)
+
+
 # API Proxies for backward compatibility
 var run_number: int:
 	get: return run.run_number
@@ -142,6 +148,62 @@ var run_path_chosen_ids: PackedStringArray:
 var growth_choice_intersection_payload: Dictionary:
 	get: return run.growth_choice_intersection_payload
 	set(v): run.growth_choice_intersection_payload = v
+
+var current_encounter_index: int:
+	get: return run.current_encounter_index
+	set(v): run.current_encounter_index = v
+var encounters_before_boss: int:
+	get: return run.encounters_before_boss
+	set(v): run.encounters_before_boss = v
+var boss_ready: bool:
+	get: return run.boss_ready
+	set(v): run.boss_ready = v
+var selected_difficulty_key: String:
+	get: return run.selected_difficulty_key
+	set(v): run.selected_difficulty_key = v
+var world_state_key: String:
+	get: return run.world_state_key
+	set(v): run.world_state_key = v
+
+
+func calculate_encounters_before_boss(diff_key: String = "", ws_key: String = "") -> int:
+	var dk = diff_key if not diff_key.is_empty() else selected_difficulty_key
+	var wk = ws_key if not ws_key.is_empty() else world_state_key
+	
+	var base := 9
+	match dk:
+		"SHORT": base = 6
+		"STANDARD": base = 9
+		"DEEP": base = 12
+	
+	# Future world-state modifier hooks
+	var modifier := 0
+	match wk:
+		"LIVING": modifier = 1
+		"RITUAL_WRONG": modifier = -1
+		"OMEN_PRESSURE": modifier = -2
+	
+	return clampi(base + modifier, 5, 15)
+
+
+func start_new_run() -> void:
+	run_number += 1
+	reset_run_state()
+	run_in_progress = true
+	encounters_before_boss = calculate_encounters_before_boss()
+	EventBus.emit_signal("run_started", run_number)
+
+
+func advance_run_loop() -> void:
+	current_encounter_index += 1
+	if current_encounter_index >= encounters_before_boss:
+		boss_ready = true
+
+
+func get_next_run_scene_path() -> String:
+	# Sequence: QUIG -> (COMBAT or BOSS)
+	return "res://scenes/ui/InterludeScene.tscn"
+
 
 var world_fate_channels: Dictionary:
 	get: return world_fate.channels

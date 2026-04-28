@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://b323cunedubh"
-path="res://.godot/imported/cbg3.png-797f22d21894706bd39c5ae3ff8eb4a3.ctex"
+uid="uid://cs742o0n652jk"
+path="res://.godot/imported/Ruins_world.png-a64ed4efa543d80fa43ab871f5c99647.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/backgrounds/combat/cbg3.png"
-dest_files=["res://.godot/imported/cbg3.png-797f22d21894706bd39c5ae3ff8eb4a3.ctex"]
+source_file="res://assets/backgrounds/combat/Ruins_world.png"
+dest_files=["res://.godot/imported/Ruins_world.png-a64ed4efa543d80fa43ab871f5c99647.ctex"]
 
 [params]
 

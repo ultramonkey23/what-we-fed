@@ -136,7 +136,7 @@ func _on_enemy_damaged(_enemy_id: int, damage: float) -> void:
 	damage_dealt += damage
 
 
-func _on_timed_attack_resolved(_lane: int, quality: String, _damage: float) -> void:
+func _on_timed_attack_resolved(_lane: int, quality: String, _damage: float, _enemy_id: int) -> void:
 	if quality == "perfect":
 		perfect_attacks += 1
 		_add_score(SCORE_PERFECT_ATTACK)

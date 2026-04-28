@@ -37,7 +37,7 @@ const PARRY_GOOD_MAX: float = 1.04
 
 # Reflected projectiles travel back a little faster to feel punchy.
 const REFLECT_SPEED_MULT: float = 1.25
-const PLAYER_CONTACT_RADIUS: float = 34.0
+const PLAYER_CONTACT_RADIUS: float = 24.0 # Tightened from 34.0 for less floaty feel
 
 # Body: per-enemy art under res://assets/sprites/projectile_bodies/<species_id or type>.png (see generator).
 # Modifier: song-section preset — grayscale overlay (shot1–6) + trail/glow tuning (shot_modifier).

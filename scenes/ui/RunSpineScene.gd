@@ -204,7 +204,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				emit_signal("predation_selected", selected_index)
 			else:
 				emit_signal("upgrade_selected", selected_index)
-			get_viewport().set_input_as_handled()
+			if get_viewport(): get_viewport().set_input_as_handled()
 		return
 
 	if _awaiting_path_choice:
@@ -220,7 +220,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			var node_id: String = str(_choices[path_index].get("id", ""))
 			if not node_id.is_empty() and PATH_RUN_PLAN.validate_node_access(node_id, GameState):
 				emit_signal("path_node_selected", node_id)
-				get_viewport().set_input_as_handled()
+				if get_viewport(): get_viewport().set_input_as_handled()
 		return
 
 	if _awaiting_continue:
@@ -230,7 +230,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			or key_event.keycode == KEY_KP_ENTER
 		):
 			emit_signal("continue_requested", _advance_to_boss)
-			get_viewport().set_input_as_handled()
+			if get_viewport(): get_viewport().set_input_as_handled()
 
 
 func _build_ui() -> void:

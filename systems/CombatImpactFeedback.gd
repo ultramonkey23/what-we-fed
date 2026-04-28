@@ -22,16 +22,16 @@ static func build_timed_attack_profile(quality: String, _beat_quality: String) -
 	# SIGNAL: Cold Silver + Ink Seams
 	var profile: Dictionary = {
 		"flash_color": Color(0.8, 0.8, 0.9, 0.12),
-		"flash_duration": base_flash.get("duration", 0.04),
-		"shake_intensity": base_shake.get("intensity", 0.65),
-		"shake_duration": base_shake.get("duration", 0.06),
-		"hitstop_scale": 0.80,
-		"hitstop_duration": base_hitstop + 0.02,
-		"ring_width": 3.4,
-		"burst_color": Color(0.1, 0.1, 0.15, 0.8), # Ink Core
-		"burst_scale": base_impact.get("scale_multiplier", 1.10),
-		"enemy_push": 8.0,
-		"enemy_scale": Vector2(1.16, 0.84),
+		"flash_duration": base_flash.get("duration", 0.05),
+		"shake_intensity": 1.25, # Increased from base for better feedback
+		"shake_duration": 0.10,
+		"hitstop_scale": 0.70, # More pronounced slow-down
+		"hitstop_duration": base_hitstop + 0.04,
+		"ring_width": 3.8,
+		"burst_color": Color(0.1, 0.1, 0.15, 0.85), # Deeper Ink Core
+		"burst_scale": 1.18,
+		"enemy_push": 10.0,
+		"enemy_scale": Vector2(1.18, 0.82),
 		"sfx_cue": "timed_hit"
 	}
 
@@ -42,17 +42,17 @@ static func build_timed_attack_profile(quality: String, _beat_quality: String) -
 		var perfect_impact: Dictionary = COMBAT_FEEL_CONSTANTS.get_impact_scaling("critical_hit")
 		
 		# SIGNAL: Alert Gold + Void Ink
-		profile["flash_color"] = Color(1.0, 0.9, 0.3, 0.18)
-		profile["flash_duration"] = perfect_flash.get("duration", 0.07)
-		profile["shake_intensity"] = perfect_shake.get("intensity", 1.45)
-		profile["shake_duration"] = perfect_shake.get("duration", 0.10)
-		profile["hitstop_scale"] = 0.55
-		profile["hitstop_duration"] = perfect_hitstop + 0.04
-		profile["ring_width"] = 5.4
+		profile["flash_color"] = Color(1.0, 0.95, 0.45, 0.22)
+		profile["flash_duration"] = perfect_flash.get("duration", 0.10)
+		profile["shake_intensity"] = 2.45 # Violent shake for perfect hit
+		profile["shake_duration"] = 0.18
+		profile["hitstop_scale"] = 0.40 # Dramatic freeze
+		profile["hitstop_duration"] = 0.24 # Longer freeze for maximum punch
+		profile["ring_width"] = 6.8
 		profile["burst_color"] = Color(0.0, 0.0, 0.0, 1.0) # Pure Void Ink
-		profile["burst_scale"] = perfect_impact.get("scale_multiplier", 1.50)
-		profile["enemy_push"] = 13.0
-		profile["enemy_scale"] = Vector2(1.26, 0.74)
+		profile["burst_scale"] = 1.85
+		profile["enemy_push"] = 18.0
+		profile["enemy_scale"] = Vector2(1.35, 0.65)
 		profile["sfx_cue"] = "perfect_timed_hit"
 
 	return profile
@@ -61,29 +61,29 @@ static func build_timed_attack_profile(quality: String, _beat_quality: String) -
 static func build_parry_profile(quality: String, _beat_quality: String) -> Dictionary:
 	# SIGNAL: Signal Blue
 	var profile: Dictionary = {
-		"flash_color": Color(0.2, 0.6, 1.0, 0.1),
-		"flash_duration": 0.05,
-		"shake_intensity": 0.62,
-		"shake_duration": 0.06,
-		"hitstop_scale": 0.82,
-		"hitstop_duration": 0.08,
-		"ring_width": 3.6,
-		"burst_color": Color(0.01, 0.01, 0.02, 0.9), # Ink Seam
-		"burst_scale": 1.14,
+		"flash_color": Color(0.2, 0.6, 1.0, 0.12),
+		"flash_duration": 0.06,
+		"shake_intensity": 1.45,
+		"shake_duration": 0.12,
+		"hitstop_scale": 0.65,
+		"hitstop_duration": 0.14,
+		"ring_width": 4.2,
+		"burst_color": Color(0.01, 0.01, 0.02, 0.95), # Ink Seam
+		"burst_scale": 1.25,
 		"sfx_cue": "parry"
 	}
 
 	if quality == "perfect":
 		var perf_flash: Dictionary = COMBAT_FEEL_CONSTANTS.get_screen_flash_params("perfect_parry")
 		profile["flash_color"] = Color(1.0, 1.0, 1.0, 0.99)
-		profile["flash_duration"] = perf_flash.get("duration", 0.08)
-		profile["shake_intensity"] = 1.62 # More violent
-		profile["shake_duration"] = 0.12
-		profile["hitstop_scale"] = 0.50
-		profile["hitstop_duration"] = 0.22
-		profile["ring_width"] = 7.0
+		profile["flash_duration"] = perf_flash.get("duration", 0.12)
+		profile["shake_intensity"] = 2.85 # Violent shatter
+		profile["shake_duration"] = 0.24
+		profile["hitstop_scale"] = 0.35 # Extreme freeze
+		profile["hitstop_duration"] = 0.45 # Maximum punch for perfect parry
+		profile["ring_width"] = 8.5
 		profile["burst_color"] = Color(0.0, 0.0, 0.0, 1.0) # Void Shatter
-		profile["burst_scale"] = 1.6
+		profile["burst_scale"] = 2.4
 		profile["sfx_cue"] = "perfect_parry"
 
 	return profile

@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://vslt610rid4o"
-path="res://.godot/imported/cbg_predation_base_v1.png-53ea249efe404220e6fee608e2bb2130.ctex"
+uid="uid://dxnfn6xoqoc3e"
+path="res://.godot/imported/arcane_world.png-7dcad0eca4c771dd18bed23e00dc1ed8.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/backgrounds/combat/cbg_predation_base_v1.png"
-dest_files=["res://.godot/imported/cbg_predation_base_v1.png-53ea249efe404220e6fee608e2bb2130.ctex"]
+source_file="res://assets/backgrounds/combat/arcane_world.png"
+dest_files=["res://.godot/imported/arcane_world.png-7dcad0eca4c771dd18bed23e00dc1ed8.ctex"]
 
 [params]
 

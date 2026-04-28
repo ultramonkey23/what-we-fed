@@ -49,11 +49,25 @@ var _release_hold_current: float = 0.0
 var _is_releasing: bool = false
 var _growth_stats_ref: GrowthStats = GROWTH_STATS.new()
 
+var _translation_jitter: Node2D
+var _jitter_intensity: float = 0.0
+
 
 func _ready() -> void:
 	_sync_selection_index()
 	_archive_trait_list = GameState.archive_traits
+	
+	_translation_jitter = Node2D.new()
+	_translation_jitter.name = "TranslationJitter"
+	add_child(_translation_jitter)
+	
 	_build_ui()
+	
+	# Translation Burst: high jitter that decays to subtle 'intrusion' hum
+	_jitter_intensity = 8.0
+	var tween := create_tween()
+	tween.tween_property(self, "_jitter_intensity", 0.15, 1.4).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
+	
 	await get_tree().create_timer(0.12).timeout
 	_can_input = true
 
@@ -64,6 +78,14 @@ func _process(delta: float) -> void:
 	
 	_breath_time += delta
 	_update_breathing(_breath_time)
+	
+	# Translation Jitter: eerie intrusion offset
+	if is_instance_valid(_ui_layer) and _jitter_intensity > 0.05:
+		var offset := Vector2(
+			randf_range(-_jitter_intensity, _jitter_intensity),
+			randf_range(-_jitter_intensity, _jitter_intensity)
+		)
+		_ui_layer.offset = offset
 		
 	if _is_releasing:
 		if Input.is_key_pressed(KEY_X):
@@ -188,8 +210,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		if GameState.is_intro_bond_choice_pending():
 			get_tree().change_scene_to_file(INTRO_BOND_SCENE_PATH)
 			return
-		GameState.run_in_progress = false
-		get_tree().change_scene_to_file(ROUTE_SCENE_PATH)
+		
+		GameState.start_new_run()
+		get_tree().change_scene_to_file("res://scenes/ui/InterludeScene.tscn")
 		return
 
 	if key_event.keycode == KEY_ESCAPE:
@@ -245,13 +268,13 @@ func _build_ui() -> void:
 	if is_instance_valid(_ui_layer):
 		_ui_layer.queue_free()
 	
-	UI_STYLE.attach_shell_backdrop(self)
+	UI_STYLE.attach_wound_backdrop(self)
 
 	_ui_layer = CanvasLayer.new()
 	add_child(_ui_layer)
 
 	var header: Label = Label.new()
-	header.text = "THE LAIR" if not _archive_mode else "THE ARCHIVE"
+	header.text = "INTERFACE WOUND" if not _archive_mode else "THE ARCHIVE"
 	header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	header.size = Vector2(1280.0, 58.0)
 	header.position = Vector2(0.0, 36.0)
@@ -260,7 +283,7 @@ func _build_ui() -> void:
 	_ui_layer.add_child(header)
 
 	var sub: Label = Label.new()
-	sub.text = PRESENTATION_TEXT.LAIR_SUBTITLE if not _archive_mode else "Extracted traits can be spliced into active bonds."
+	sub.text = PRESENTATION_TEXT.LAIR_SUBTITLE if not _archive_mode else "Extracted traits can be spliced into active sequences."
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	sub.size = Vector2(920.0, 48.0)
 	sub.position = Vector2(180.0, 92.0)
@@ -331,7 +354,7 @@ func _build_den_sidebar(canvas: CanvasLayer, lair: Array) -> void:
 	canvas.add_child(den)
 
 	var blurb: Label = Label.new()
-	blurb.text = PRESENTATION_TEXT.LAIR_DEN_BLURB if not _archive_mode else "Select a trait to view its effect and splice it onto your active bond."
+	blurb.text = PRESENTATION_TEXT.LAIR_DEN_BLURB if not _archive_mode else "Select a trait to view its effect and splice it onto your active sequence."
 	blurb.position = Vector2(SIDEBAR_X + 10.0, 156.0)
 	blurb.size = Vector2(SIDEBAR_W - 20.0, 56.0)
 	blurb.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -735,7 +758,7 @@ func _refresh_active_support_panel() -> void:
 		var next_pct: int = int((stats.next_mult - 1.0) * 100.0)
 		
 		var is_ascended = bool(c.get("is_ascended", false))
-		var bond_text: String = "Bond depth %d %s · Potential %s\n" % [bond_level, "[ASCENDED]" if is_ascended else "", pot]
+		var bond_text: String = "Sequence depth %d %s · Potential %s\n" % [bond_level, "[ASCENDED]" if is_ascended else "", pot]
 		bond_text += "Current Effect: +%d%%\n" % cur_pct
 		if not stats.is_max:
 			bond_text += "Next Level: +%d%%" % next_pct
@@ -786,7 +809,7 @@ func _refresh_active_support_panel() -> void:
 		_ranch_action_release.text = PRESENTATION_TEXT.LAIR_ACTION_RELEASE_LABEL + " (+%d DNA)" % refund
 		UI_STYLE.apply_label(_ranch_action_release, "mm_choice_consume")
 		
-		_ranch_action_hint.text = "Training deepens the bond. Ascension triggers Sovereign-scale growth."
+		_ranch_action_hint.text = "Deepening the sequence hardens the Codex pattern. Ascension triggers Sovereign-scale rewrite."
 
 
 func _build_archive_vitals(canvas: CanvasLayer) -> void:

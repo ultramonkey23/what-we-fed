@@ -68,6 +68,7 @@ var _enemy_last_fired_cycle: Dictionary = {} # enemy_id -> int
 var _fire_cycle_index: int = 0
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
+var _enemy_positions: Dictionary = {} # enemy_id -> Vector2
 var _orbit_angles: Dictionary = {} # enemy_id -> float
 var _orbit_radius_offsets: Dictionary = {} # enemy_id -> float
 var _orbit_drift_accum: Dictionary = {} # enemy_id -> float
@@ -146,6 +147,7 @@ func start_combat(enemy_data: Array) -> void:
 
 	_enemies.clear()
 	_strikers.clear()
+	_enemy_positions.clear()
 	_orbiting_enemy_ids.clear()
 	_orbit_angles.clear()
 	_orbit_radius_offsets.clear()
@@ -163,6 +165,10 @@ func start_combat(enemy_data: Array) -> void:
 		# Any-angle initialization: map 8 lanes to angles, but store as dynamic striker.
 		var angle: float = (float(lane) / float(THREAT_COUNT)) * TAU - PI/2.0
 		_strikers[id] = {"angle": angle, "lane": lane}
+		
+		var spawn_dist: float = _viewport_size.y * SPAWN_DISTANCE_RATIO
+		_enemy_positions[id] = _center_pos + Vector2(cos(angle), sin(angle)) * spawn_dist
+		
 		_assign_striker_visual_offset(id, lane)
 
 	_combat_running = true
@@ -261,6 +267,10 @@ func alive_striker_count() -> int:
 
 
 func get_player_pos() -> Vector2:
+	if combat_scene != null:
+		var player = combat_scene.get_node_or_null("PlayerCombat")
+		if player != null:
+			return player.global_position
 	return _center_pos
 
 
@@ -355,12 +365,20 @@ func set_enemy(lane: int, enemy_data: Dictionary) -> void:
 		
 		_strikers[id] = {"angle": angle, "lane": lane}
 		enemy["lane"] = lane
+		
+		var spawn_dist: float = _viewport_size.y * SPAWN_DISTANCE_RATIO
+		_enemy_positions[id] = _center_pos + Vector2(cos(angle), sin(angle)) * spawn_dist
+		
 		_assign_striker_visual_offset(id, lane)
 	else:
 		_orbiting_enemy_ids.append(id)
-		_orbit_angles[id] = _rng.randf_range(0.0, TAU)
+		var angle: float = _rng.randf_range(0.0, TAU)
+		_orbit_angles[id] = angle
 		_orbit_radius_offsets[id] = _rng.randf_range(-28.0, 28.0)
 		enemy["lane"] = -1
+		
+		var radius: float = (_viewport_size.y * SPAWN_DISTANCE_RATIO) + float(_orbit_radius_offsets[id])
+		_enemy_positions[id] = _center_pos + Vector2(cos(angle), sin(angle)) * radius
 	
 	if _song_mode:
 		if not _combat_running:
@@ -427,6 +445,7 @@ func _handle_enemy_defeat(id: int) -> void:
 		_active_projectiles.erase(id)
 	
 	_strikers.erase(id)
+	_enemy_positions.erase(id)
 	_orbiting_enemy_ids.erase(id)
 	_orbit_angles.erase(id)
 	_orbit_radius_offsets.erase(id)
@@ -463,6 +482,7 @@ func stop() -> void:
 	_reset_attack_authority_state()
 	_enemies.clear()
 	_strikers.clear()
+	_enemy_positions.clear()
 	_orbiting_enemy_ids.clear()
 	_orbit_angles.clear()
 	_orbit_radius_offsets.clear()
@@ -477,16 +497,58 @@ func stop() -> void:
 
 
 func _process(delta: float) -> void:
-	# 1. Update Orbit Positions
-	for id in _orbiting_enemy_ids:
-		var current_angle: float = float(_orbit_angles[id]) if _orbit_angles.has(id) else 0.0
-		_orbit_angles[id] = wrapf(current_angle + _orbit_speed * delta, 0.0, TAU)
+	var player_pos: Vector2 = get_player_pos()
+	var base_radius: float = _viewport_size.y * SPAWN_DISTANCE_RATIO
+	
+	# 1. Update all enemy positions using Spatial Steering
+	for id in _enemies:
+		if not _enemy_positions.has(id):
+			continue
+			
+		var pos: Vector2 = _enemy_positions[id]
+		var to_player: Vector2 = player_pos - pos
+		var dist: float = to_player.length()
 		
-		# Predatory Drifting: radius oscillates subtly to feel more "alive"
-		var drift: float = float(_orbit_drift_accum[id]) if _orbit_drift_accum.has(id) else 0.0
-		_orbit_drift_accum[id] = drift + delta * 0.4
-		var base_offset: float = float(_orbit_radius_offsets[id]) if _orbit_radius_offsets.has(id) else 0.0
-		_orbit_radius_offsets[id] = base_offset + sin(_orbit_drift_accum[id]) * 0.15
+		if dist < 1.0: # Prevent div by zero
+			continue
+			
+		var dir: Vector2 = to_player / dist
+		
+		# Resolve desired radius: Orbiters stay out, Strikers might lean in.
+		var target_radius: float = base_radius
+		if _orbit_radius_offsets.has(id):
+			target_radius += float(_orbit_radius_offsets[id])
+		
+		# Strikers lean in slightly when authorized to attack
+		if _strikers.has(id):
+			target_radius *= 0.85
+			
+		# Predatory Drifting (from legacy logic)
+		var drift_accum: float = float(_orbit_drift_accum.get(id, 0.0)) + delta * 0.4
+		_orbit_drift_accum[id] = drift_accum
+		target_radius += sin(drift_accum) * 12.0
+		
+		# Steering: Radial correction towards target radius
+		var radius_error: float = dist - target_radius
+		# Move towards radius (Arrival-style)
+		var radial_vel: float = radius_error * 2.5
+		
+		# Angular steering (Orbiting)
+		# We maintain a consistent orbit speed but allow it to be influenced by position
+		var tangent: Vector2 = Vector2(-dir.y, dir.x)
+		var angular_vel: float = _orbit_speed * target_radius
+		
+		# Final Velocity Integration
+		var velocity: Vector2 = (dir * radial_vel) + (tangent * angular_vel)
+		
+		# Apply movement
+		_enemy_positions[id] = pos + velocity * delta
+		
+		# Sync legacy angle for visual/scaffolding compatibility
+		var angle: float = (pos - player_pos).angle()
+		_orbit_angles[id] = angle
+		if _strikers.has(id):
+			_strikers[id]["angle"] = angle
 		
 	# 2. Tick EXPOSE duration; clear when expired.
 	var expired: Array = []
@@ -501,6 +563,10 @@ func _process(delta: float) -> void:
 		var lane = _find_lane_for_enemy(id)
 		if lane >= 0:
 			EventBus.emit_signal("enemy_status_cleared", lane)
+
+
+func apply_status(enemy_id: int, status_id: String, params: Dictionary = {}) -> void:
+	apply_status_by_id(enemy_id, status_id, params)
 
 
 func apply_status_by_id(id: int, status_id: String, params: Dictionary = {}) -> void:
@@ -639,14 +705,18 @@ func _fire_striker(id: int) -> bool:
 		telegraph_profile["shot_modifier"] = section_mod
 	telegraph_profile.erase("species_shot_modifier")
 
+	var player_pos: Vector2 = get_player_pos()
+	var spawn_pos: Vector2 = get_enemy_pos(id)
+	# hit_zone_pos is the point where the projectile enters the player's timing ring.
+	# We calculate it dynamically based on the current relative vector.
+	var dir_to_player: Vector2 = (player_pos - spawn_pos).normalized()
+	var hit_zone_pos: Vector2 = player_pos - dir_to_player * HIT_ZONE_DISTANCE
+
 	var player_combat: Node2D = null
 	if combat_scene != null:
 		player_combat = combat_scene.get_node_or_null("PlayerCombat") as Node2D
 
 	combat_scene.add_child(projectile)
-	
-	var spawn_pos: Vector2 = get_spawn_pos_for_angle(angle)
-	var hit_zone_pos: Vector2 = get_hit_zone_pos_for_angle(angle)
 	
 	projectile.setup(
 		lane,
@@ -655,7 +725,7 @@ func _fire_striker(id: int) -> bool:
 		projectile_speed,
 		spawn_pos,
 		hit_zone_pos,
-		get_player_pos(),
+		player_pos,
 		telegraph_profile,
 		player_combat
 	)
@@ -691,14 +761,16 @@ func _fire_melee_striker(id: int, enemy: Dictionary, angle: float, lane: int) ->
 	var melee_damage: float = float(enemy.get("damage", 14.0)) * _punish_damage_mult
 	var approach_speed: float = float(enemy.get("approach_speed", 80.0))
 
+	var player_pos: Vector2 = get_player_pos()
+	var spawn_pos: Vector2 = get_enemy_pos(id)
+	var dir_to_player: Vector2 = (player_pos - spawn_pos).normalized()
+	var hit_zone_pos: Vector2 = player_pos - dir_to_player * HIT_ZONE_DISTANCE
+
 	var player_combat: Node2D = null
 	if combat_scene != null:
 		player_combat = combat_scene.get_node_or_null("PlayerCombat") as Node2D
 
 	combat_scene.add_child(melee)
-	
-	var spawn_pos: Vector2 = get_spawn_pos_for_angle(angle)
-	var hit_zone_pos: Vector2 = get_hit_zone_pos_for_angle(angle)
 	
 	melee.call("setup",
 		lane,
@@ -707,7 +779,7 @@ func _fire_melee_striker(id: int, enemy: Dictionary, angle: float, lane: int) ->
 		approach_speed,
 		spawn_pos,
 		hit_zone_pos,
-		get_player_pos(),
+		player_pos,
 		{},
 		player_combat
 	)
@@ -804,6 +876,9 @@ func _pick_best_lane_for_strike(_id: int) -> int:
 	return free_lanes[_rng.randi() % free_lanes.size()]
 
 func get_enemy_pos(id: int) -> Vector2:
+	if _enemy_positions.has(id):
+		return _enemy_positions[id]
+		
 	if not _enemies.has(id):
 		return _center_pos
 		
@@ -811,12 +886,6 @@ func get_enemy_pos(id: int) -> Vector2:
 	if lane >= 0:
 		var visual_offset: Vector2 = _enemy_visual_offsets.get(id, Vector2.ZERO)
 		return get_threat_spawn_pos(lane) + visual_offset
-		
-	# If orbiting
-	if _orbit_angles.has(id):
-		var angle: float = float(_orbit_angles.get(id, 0.0))
-		var radius: float = (_viewport_size.y * SPAWN_DISTANCE_RATIO) + float(_orbit_radius_offsets.get(id, 0.0))
-		return _center_pos + Vector2(cos(angle), sin(angle)) * radius
 		
 	return _center_pos
 

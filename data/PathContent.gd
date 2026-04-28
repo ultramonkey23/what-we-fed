@@ -24,7 +24,7 @@ const NODE_ELITE_HUNT: Dictionary = {
 	"risk_modifier": {
 		"id": "frenzied_spawns",
 		"display_name": "HAUNTED",
-		"summary": "Frenzied spawns press lanes sooner.",
+		"summary": "Frenzied spawns press sectors sooner.",
 		"difficulty_modifiers": {
 			"threat_cadence": {"cycle_interval_mult": 0.94},
 			"lane_pressure": {"respawn_delay_mult": 0.86, "max_active_threats_bonus": 1}
@@ -50,9 +50,9 @@ const NODE_BOND_RITE: Dictionary = {
 	"summary": "Strengthen a kept bond and bias rewards toward support identity.",
 	"entry_cost": {"type": "dna", "species": "ashclaw", "value": 50},
 	"risk_modifier": {
-		"id": "fog_blinded_lanes",
+		"id": "fog_blinded_sectors",
 		"display_name": "FOG",
-		"summary": "Lane tells arrive under muted visibility.",
+		"summary": "Sector tells arrive under muted visibility.",
 		"difficulty_modifiers": {
 			"punish_severity": {"projectile_damage_mult": 1.06}
 		}

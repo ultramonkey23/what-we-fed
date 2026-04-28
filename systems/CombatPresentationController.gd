@@ -12,6 +12,7 @@ const SIGIL_FOLLOW_LERP: float = 0.12 # Subtle follow speed
 
 var _active_bg_env: Dictionary = {}
 var _shared_noise_tex: NoiseTexture2D = null
+var _vessel_vibe_color: Color = Color(1.0, 0.95, 0.55, 1.0) # Default Amber
 ## Optional `CombatVisualRig` (or compatible Node) parented under CombatScene for editor anchors.
 var _combat_visual_rig: Node = null
 
@@ -433,117 +434,97 @@ func draw_timing_circles(
 
 	var biome: Dictionary = active_encounter.get("biome", {})
 	var active_color: Color = biome.get("ring_active_color", Color(1.0, 0.95, 0.55, 1.0))
-	var inactive_color: Color = biome.get("ring_inactive_color", Color(0.7, 0.7, 0.8, 0.45))
 
-	var base_color: Color = active_color if player_combat != null else inactive_color
-	var hit_zone_radius: float = _lane_hit_zone_pos(lane_manager, 2, player_combat).distance_to(player_combat.position if player_combat != null else _lane_player_pos(lane_manager))
-	if hit_zone_radius <= 1.0:
-		hit_zone_radius = 110.0
-	var good_inner_radius: float = maxf(hit_zone_radius - COMBAT_FEEL_CONTENT.RING_OUTER_RADIUS, 8.0)
-	var good_outer_radius: float = hit_zone_radius + COMBAT_FEEL_CONTENT.RING_OUTER_RADIUS
-	var perfect_inner_radius: float = maxf(hit_zone_radius - COMBAT_FEEL_CONTENT.RING_PERFECT_RADIUS, 8.0)
-	var perfect_outer_radius: float = hit_zone_radius + COMBAT_FEEL_CONTENT.RING_PERFECT_RADIUS
+	# 1. CORE SIGIL: The Heartbeat (Central feedback only)
 	var sigil_group := Node2D.new()
 	sigil_group.name = "TimingRing_Core"
 	if player_combat != null:
 		sigil_group.position = player_combat.position
-
-	var receiver_glow := _make_disc_polygon(
-		PLAYER_SIGIL_OUTER_RADIUS + 18.0,
-		Color(base_color.r, base_color.g, base_color.b, 0.0)
-	)
-	receiver_glow.name = "ReceiverGlow"
-
-	var receiver_fill := _make_disc_polygon(
-		PLAYER_SIGIL_CORE_RADIUS + 16.0,
-		Color(base_color.r, base_color.g, base_color.b, 0.08)
-	)
+	
+	# Multi-layered sketched fill
+	var receiver_fill := _make_disc_polygon(PLAYER_SIGIL_CORE_RADIUS + 12.0, Color(active_color, 0.08), 2.5)
 	receiver_fill.name = "ReceiverFill"
-
-	var edge_ring := _make_anomaly_sigil_ring(
-		PLAYER_SIGIL_OUTER_RADIUS + 8.0,
-		Color(base_color.r, base_color.g, base_color.b, 0.0),
-		1.2,
-		7.0
-	)
-	edge_ring.name = "Edge"
-
-	var outer_ring := _make_anomaly_sigil_ring(
-		PLAYER_SIGIL_OUTER_RADIUS,
-		Color(base_color.r, base_color.g, base_color.b, base_color.a * 0.36),
-		2.0,
-		5.0
-	)
-	outer_ring.name = "Outer"
-
-	var good_inner_guide := _make_ring_line(
-		good_inner_radius,
-		Color(base_color.r, base_color.g, base_color.b, base_color.a * 0.18),
-		1.2
-	)
-	good_inner_guide.name = "GoodInnerGuide"
-
-	var good_outer_guide := _make_ring_line(
-		good_outer_radius,
-		Color(base_color.r, base_color.g, base_color.b, base_color.a * 0.18),
-		1.2
-	)
-	good_outer_guide.name = "GoodOuterGuide"
-
-	var perfect_inner_guide := _make_ring_line(
-		perfect_inner_radius,
-		Color(base_color.r, base_color.g, base_color.b, 0.42).lightened(0.30),
-		1.6
-	)
-	perfect_inner_guide.name = "PerfectInnerGuide"
-
-	var perfect_outer_guide := _make_ring_line(
-		perfect_outer_radius,
-		Color(base_color.r, base_color.g, base_color.b, 0.42).lightened(0.30),
-		1.6
-	)
-	perfect_outer_guide.name = "PerfectOuterGuide"
-
-	var perfect_ring := _make_anomaly_sigil_ring(
-		PLAYER_SIGIL_INNER_RADIUS,
-		base_color.lightened(0.20),
-		3.2,
-		3.0
-	)
-	perfect_ring.name = "Perfect"
-
-	var cardinal_arms := _make_sigil_cardinal_arms(
-		PLAYER_SIGIL_INNER_RADIUS - 4.0,
-		PLAYER_SIGIL_OUTER_RADIUS + 6.0,
-		Color(base_color.r, base_color.g, base_color.b, 0.24),
-		1.2
-	)
-	cardinal_arms.name = "CardinalArms"
-
-	sigil_group.add_child(receiver_glow)
 	sigil_group.add_child(receiver_fill)
-	sigil_group.add_child(edge_ring)
-	sigil_group.add_child(cardinal_arms)
-	sigil_group.add_child(good_inner_guide)
-	sigil_group.add_child(good_outer_guide)
-	sigil_group.add_child(perfect_inner_guide)
-	sigil_group.add_child(perfect_outer_guide)
-	sigil_group.add_child(outer_ring)
+	
+	var perfect_ring := _make_anomaly_sigil_ring(PLAYER_SIGIL_INNER_RADIUS, active_color.lightened(0.20), 3.2, 3.0)
+	perfect_ring.name = "Perfect"
 	sigil_group.add_child(perfect_ring)
+	
+	# Secondary outer scribble ring for depth
+	var scribble := _make_anomaly_sigil_ring(PLAYER_SIGIL_INNER_RADIUS + 8.0, Color(active_color, 0.15), 1.0, 5.0)
+	scribble.name = "Scribble"
+	sigil_group.add_child(scribble)
+	
 	timing_circle_container.add_child(sigil_group)
 
+	# 2. GRAVE RINGS (Directional Threat Indicators: 'Manga Shards')
+	for i in range(lane_manager.THREAT_COUNT if lane_manager else 8):
+		var grave_ring := Node2D.new()
+		grave_ring.name = "GraveRing_%d" % i
+		grave_ring.visible = false
+		
+		# Fragmented Bone Shards: A cluster of splinters instead of one shape
+		for j in range(3):
+			var splinter := Polygon2D.new()
+			splinter.name = "Splinter_%d" % j
+			var s_pts := PackedVector2Array([
+				Vector2(randf_range(-2, 2), randf_range(-6, -9)),
+				Vector2(randf_range(6, 9), randf_range(-2, 2)),
+				Vector2(randf_range(-2, 2), randf_range(6, 9)),
+				Vector2(randf_range(-6, -9), randf_range(-2, 2))
+			])
+			splinter.polygon = s_pts
+			splinter.color = Color(active_color, 0.15)
+			splinter.position = Vector2(randf_range(5, 15), randf_range(-10, 10))
+			grave_ring.add_child(splinter)
+			
+			var outline := Line2D.new()
+			outline.name = "Outline"
+			outline.points = s_pts
+			outline.closed = true
+			outline.width = 1.4
+			outline.default_color = Color(active_color, 0.65)
+			splinter.add_child(outline)
+		
+		# Inner Marrow (Higher contrast core)
+		var marrow := Polygon2D.new()
+		marrow.name = "Marrow"
+		marrow.polygon = PackedVector2Array([
+			Vector2(4, 0),
+			Vector2(14, -12),
+			Vector2(24, 0),
+			Vector2(14, 12)
+		])
+		marrow.color = Color.BLACK
+		marrow.color.a = 0.35
+		grave_ring.add_child(marrow)
+		
+		timing_circle_container.add_child(grave_ring)
+
+	# 3. GHOST THREADS (Visual tether from player to threat)
+	for i in range(lane_manager.THREAT_COUNT if lane_manager else 8):
+		var glow := Line2D.new()
+		glow.name = "GlowThread_%d" % i
+		glow.width = 4.5
+		glow.default_color = Color(0.6, 0.1, 0.9, 0.0) # Purple Glow, hidden
+		glow.joint_mode = Line2D.LINE_JOINT_ROUND
+		glow.begin_cap_mode = Line2D.LINE_CAP_ROUND
+		glow.end_cap_mode = Line2D.LINE_CAP_ROUND
+		timing_circle_container.add_child(glow)
+
+		var thread := Line2D.new()
+		thread.name = "GhostThread_%d" % i
+		thread.width = 1.2
+		thread.default_color = Color(active_color, 0.0) # Invisible by default
+		thread.joint_mode = Line2D.LINE_JOINT_ROUND
+		thread.begin_cap_mode = Line2D.LINE_CAP_ROUND
+		thread.end_cap_mode = Line2D.LINE_CAP_ROUND
+		timing_circle_container.add_child(thread)
+		
 	timing_rings_cache.append({
 		"root": sigil_group,
-		"outer": outer_ring,
 		"perfect": perfect_ring,
-		"fill": receiver_fill,
-		"glow": receiver_glow,
-		"edge": edge_ring,
-		"cardinal_arms": cardinal_arms,
-		"good_inner": good_inner_guide,
-		"good_outer": good_outer_guide,
-		"perfect_inner": perfect_inner_guide,
-		"perfect_outer": perfect_outer_guide
+		"fill": receiver_fill
 	})
 
 
@@ -552,6 +533,7 @@ func refresh_vessel_vibe(class_data: Dictionary, timing_rings_cache: Array[Dicti
 		return
 		
 	var vibe_color: Color = class_data.get("vibe_color", Color.WHITE)
+	_vessel_vibe_color = vibe_color
 	var style: Dictionary = class_data.get("visual_style", {})
 	var jitter: float = float(style.get("jitter", 0.0))
 	var width_mult: float = float(style.get("width_mult", 1.0))
@@ -607,14 +589,16 @@ func _make_anomaly_sigil_ring(radius: float, color: Color, width: float, jitter:
 	line.begin_cap_mode = Line2D.LINE_CAP_ROUND
 	line.end_cap_mode = Line2D.LINE_CAP_ROUND
 	var points: PackedVector2Array = PackedVector2Array()
-	for i in range(48):
-		var a: float = (float(i) / 48.0) * TAU
-		var notch: float = sin(float(i) * 2.31) * jitter
-		if i % 9 == 0:
-			notch -= jitter * 1.45
-		elif i % 7 == 0:
-			notch += jitter * 0.9
-		points.append(Vector2(cos(a), sin(a)) * (radius + notch))
+	var sides := 64
+	for i in range(sides):
+		var a: float = (float(i) / float(sides)) * TAU
+		# Multi-octave jitter for an organic, sketched feel
+		var noise: float = sin(float(i) * 2.31) * jitter
+		noise += cos(float(i) * 0.84) * (jitter * 0.5)
+		if i % 8 == 0:
+			noise -= jitter * 1.8 # Deeper notches
+		
+		points.append(Vector2(cos(a), sin(a)) * (radius + noise))
 	line.points = points
 	return line
 
@@ -681,7 +665,7 @@ func _make_sigil_cardinal_arms(inner_radius: float, outer_radius: float, color: 
 	return group
 
 
-func _make_ring_line(radius: float, color: Color, width: float) -> Line2D:
+func _make_ring_line(radius: float, color: Color, width: float, jitter: float = 0.0) -> Line2D:
 	var line := Line2D.new()
 	line.default_color = color
 	line.width = width
@@ -690,20 +674,24 @@ func _make_ring_line(radius: float, color: Color, width: float) -> Line2D:
 	line.begin_cap_mode = Line2D.LINE_CAP_ROUND
 	line.end_cap_mode = Line2D.LINE_CAP_ROUND
 	var points: PackedVector2Array = PackedVector2Array()
-	for i in range(72):
-		var a: float = (float(i) / 72.0) * TAU
-		points.append(Vector2(cos(a), sin(a)) * radius)
+	var sides := 32
+	for i in range(sides):
+		var a: float = (float(i) / float(sides)) * TAU
+		var noise := randf_range(-jitter, jitter) if jitter > 0.0 else 0.0
+		points.append(Vector2(cos(a), sin(a)) * (radius + noise))
 	line.points = points
 	return line
 
 
-func _make_disc_polygon(radius: float, color: Color) -> Polygon2D:
+func _make_disc_polygon(radius: float, color: Color, jitter: float = 0.0) -> Polygon2D:
 	var poly := Polygon2D.new()
 	poly.color = color
 	var points: PackedVector2Array = PackedVector2Array()
-	for i in range(36):
-		var a: float = (float(i) / 36.0) * TAU
-		points.append(Vector2(cos(a), sin(a)) * radius)
+	var sides := 48
+	for i in range(sides):
+		var a: float = (float(i) / float(sides)) * TAU
+		var noise := randf_range(-jitter, jitter) if jitter > 0.0 else 0.0
+		points.append(Vector2(cos(a), sin(a)) * (radius + noise))
 	poly.polygon = points
 	return poly
 
@@ -719,235 +707,149 @@ func update_timing_ring_proximity(
 	surge_window_tendency: String,
 	delta: float
 ) -> void:
+	if timing_rings_cache.is_empty() or player_combat == null:
+		return
+
 	var biome: Dictionary = active_encounter.get("biome", {})
 	var ring_palette: Dictionary = UI_STYLE.get_combat_ring_palette()
-	var active_color: Color = biome.get("ring_active_color", ring_palette.get("active", Color(1.0, 0.95, 0.55, 1.0)))
-
-	var intercept_dist: float = _lane_logical_intercept_distance(lane_manager, 2, player_combat)
-	if intercept_dist <= 0.0:
-		return
-
-	var outer_entry: float = 1.0 - COMBAT_FEEL_CONTENT.RING_OUTER_RADIUS / intercept_dist
-	var outer_exit: float = 1.0 + COMBAT_FEEL_CONTENT.RING_OUTER_RADIUS / intercept_dist
-	var perfect_entry: float = 1.0 - COMBAT_FEEL_CONTENT.RING_PERFECT_RADIUS / intercept_dist
-	var perfect_exit: float = 1.0 + COMBAT_FEEL_CONTENT.RING_PERFECT_RADIUS / intercept_dist
-	var approach_start: float = outer_entry - 0.08
-
-	# Beat pulse — brief alpha boost on all receivers each beat.
-	# Phase 0 = beat fired, decays quickly; small anticipation rise near phase 1.
-	# This gives the player a visual metronome without relying on a projectile.
-	var beat_pulse: float = 0.0
-	var bass_throb: float = 0.0
-	if song_conductor != null and is_instance_valid(song_conductor) and song_conductor.is_beat_active():
-		var bp: float = song_conductor.get_beat_phase()
-		if bp < 0.18:
-			beat_pulse = (1.0 - bp / 0.18) * 0.13
-		elif bp > 0.88:
-			beat_pulse = ((bp - 0.88) / 0.12) * 0.06
-		# V1 Reactive Layer: let the bass frequency add a secondary layer of visual throb.
-		if song_conductor.has_method("get_bass_magnitude"):
-			bass_throb = song_conductor.get_bass_magnitude() * 0.15
-
-	beat_pulse = clampf(beat_pulse + bass_throb, 0.0, 0.35)
-
-	# Pre-compute surge window fade factor once — used inside the per-lane loop.
-	var surge_wf: float = clamp(surge_window_timer / 4.0, 0.0, 1.0) if surge_window_timer > 0.0 else 0.0
-
-	if timing_rings_cache.is_empty():
-		return
+	var base_active: Color = biome.get("ring_active_color", ring_palette.get("active", Color(1.0, 0.95, 0.55, 1.0)))
+	
+	# Sovereign Pulse Blend: Prioritize player color but keep biome undertones
+	var active_color: Color = base_active.lerp(_vessel_vibe_color, 0.65).lightened(0.22)
+	active_color.a = 1.0
 
 	var cache: Dictionary = timing_rings_cache[0]
 	var root: Node2D = cache["root"]
-	var outer_ring: Line2D = cache["outer"]
-	var perfect_ring: Line2D = cache["perfect"]
 	var receiver_fill: Polygon2D = cache["fill"]
-	var receiver_glow: Polygon2D = cache["glow"]
-	var edge_ring: Line2D = cache["edge"]
-	var cardinal_arms: Node2D = cache.get("cardinal_arms", null) as Node2D
-	var good_inner_guide: Line2D = cache.get("good_inner", null) as Line2D
-	var good_outer_guide: Line2D = cache.get("good_outer", null) as Line2D
-	var perfect_inner_guide: Line2D = cache.get("perfect_inner", null) as Line2D
-	var perfect_outer_guide: Line2D = cache.get("perfect_outer", null) as Line2D
+	var perfect_ring: Line2D = cache["perfect"]
+	var scribble_ring: Line2D = root.get_node_or_null("Scribble")
 
-	if player_combat != null:
-		# PREMIUM: Smooth Sigil Follow
-		# The rings now gracefully drift toward the player instead of snapping 1:1.
-		root.position = root.position.lerp(player_combat.position, SIGIL_FOLLOW_LERP * (delta * 60.0))
+	# 1. CORE SIGIL: Heartbeat and Follow
+	root.position = root.position.lerp(player_combat.global_position, SIGIL_FOLLOW_LERP * (delta * 60.0))
+	
+	var beat_pulse: float = 0.0
+	if song_conductor != null and is_instance_valid(song_conductor) and song_conductor.is_beat_active():
+		var bp: float = song_conductor.get_beat_phase()
+		if bp < 0.18: beat_pulse = (1.0 - bp / 0.18) * 0.15
+	
+	perfect_ring.width = 3.2 + beat_pulse * 4.0
+	receiver_fill.color.a = 0.12 + beat_pulse * 0.2
+	if scribble_ring:
+		scribble_ring.width = 1.0 + beat_pulse * 6.5
+		scribble_ring.rotation += delta * 0.8 # Slow erratic spin
+
+	# 2. GRAVE SHARDS & GHOST THREADS: Directional Threat & Singular Hunt Indicator
+	var primary_target: Dictionary = {}
+	if player_combat.has_method("get_primary_action_target"):
+		primary_target = player_combat.call("get_primary_action_target")
+
+	for i in range(lane_manager.THREAT_COUNT if lane_manager else 8):
+		var grave_node: Node2D = root.get_parent().get_node_or_null("GraveRing_%d" % i)
+		var thread_node: Line2D = root.get_parent().get_node_or_null("GhostThread_%d" % i)
+		var glow_node: Line2D = root.get_parent().get_node_or_null("GlowThread_%d" % i)
 		
-		# Bone-Ink beat spine (cardinal_arms): indicate active focus lane.
-		if cardinal_arms != null and lane_manager != null:
-			var focus_lane: int = 2
-			if player_combat.has_method("get_active_focus_lane"):
-				focus_lane = int(player_combat.call("get_active_focus_lane"))
-			focus_lane = clampi(focus_lane, 0, lane_manager.THREAT_COUNT - 1 if lane_manager else 3)
-			
-			var active_child_idx: int = -1
-			# Standard 8-way indices: 0=N, 1=NE, 2=E, 3=SE, 4=S, 5=SW, 6=W, 7=NW
-			# CardinalArms indices: 0=E, 1=S, 2=W, 3=N
-			match focus_lane:
-				0: active_child_idx = 3 # North
-				1: active_child_idx = 3 if randf() > 0.5 else 0 # NE (N or E)
-				2: active_child_idx = 0 # East
-				3: active_child_idx = 0 if randf() > 0.5 else 1 # SE (E or S)
-				4: active_child_idx = 1 # South
-				5: active_child_idx = 1 if randf() > 0.5 else 2 # SW (S or W)
-				6: active_child_idx = 2 # West
-				7: active_child_idx = 2 if randf() > 0.5 else 3 # NW (W or N)
-			
-			var dt: float = 0.15
-			var target_color_base: Color = active_color
-			
-			for i in range(cardinal_arms.get_child_count()):
-				var fang := cardinal_arms.get_child(i) as Polygon2D
-				if fang == null: continue
-				
-				var is_active := (i == active_child_idx)
-				var beat_scale_boost: float = beat_pulse * 1.8 if is_active else 0.0
-				var target_scale := Vector2(1.35 + beat_scale_boost, 1.35 + beat_scale_boost) if is_active else Vector2(0.8, 0.8)
-				var target_alpha := clampf(0.85 + beat_pulse * 2.0, 0.0, 1.0) if is_active else 0.22
-				var target_color := target_color_base if is_active else target_color_base.darkened(0.2)
-				
-				var a: float = (float(i) / 4.0) * TAU
-				var dir := Vector2(cos(a), sin(a))
-				var target_pos := dir * (6.0 + beat_pulse * 12.0) if is_active else Vector2.ZERO
-				
-				fang.scale = fang.scale.lerp(target_scale, dt)
-				fang.modulate.a = lerp(fang.modulate.a, target_alpha, dt)
-				fang.color = fang.color.lerp(target_color, dt)
-				fang.position = fang.position.lerp(target_pos, dt)
-			
-			var pos_off := Vector2.ZERO
-			var rot_off := 0.0
-			if _combat_visual_rig != null and is_instance_valid(_combat_visual_rig):
-				if _combat_visual_rig.has_method("get_sigil_bone_ink_local_offset"):
-					pos_off = _combat_visual_rig.call("get_sigil_bone_ink_local_offset")
-				if _combat_visual_rig.has_method("get_sigil_bone_ink_rotation_offset"):
-					rot_off = float(_combat_visual_rig.call("get_sigil_bone_ink_rotation_offset"))
-			cardinal_arms.position = pos_off
-			cardinal_arms.rotation = lerp_angle(cardinal_arms.rotation, rot_off, 0.18)
+		# Identify if this lane has a THREAT
+		var proj = lane_manager.get_projectile(i)
+		var is_threat: bool = (proj != null and not bool(proj.get("is_resolved")))
 		
-	for timer in ring_highlight_timers:
-		if timer > 0.0:
-			return
-
-	var base_color: Color = active_color
-	var outer_color: Color = Color(base_color.r, base_color.g, base_color.b, base_color.a * 0.36)
-	var perfect_color: Color = base_color.lightened(0.20)
-	var good_guide_color: Color = Color(base_color.r, base_color.g, base_color.b, base_color.a * 0.18)
-	var perfect_guide_color: Color = Color(base_color.r, base_color.g, base_color.b, 0.42).lightened(0.30)
-	var outer_width: float = 2.0
-	var perfect_width: float = 3.2
-	var good_guide_width: float = 1.2
-	var perfect_guide_width: float = 1.6
-	var receiver_alpha: float = 0.10
-	var receiver_glow_alpha: float = 0.0
-	var edge_alpha: float = 0.0
-	var beat_color: Color = base_color.lightened(0.06)
-	var fill_color: Color = Color(base_color.r, base_color.g, base_color.b, receiver_alpha)
-	var strongest_pressure: float = -1.0
-
-	for lane in range(lane_manager.THREAT_COUNT):
-		var proj = lane_manager.get_projectile(lane)
-		if proj == null or proj.is_resolved or proj.is_reflected:
+		# Identify if this lane is the SINGULAR target the player is aiming at
+		var is_singular_target: bool = false
+		if not primary_target.is_empty():
+			if primary_target.get("type") == "projectile":
+				is_singular_target = (primary_target.get("lane", -1) == i)
+			elif primary_target.get("type") == "enemy":
+				is_singular_target = (primary_target.get("lane", -1) == i)
+		
+		# SINGULARITY LAW: Only draw the ONE active target.
+		var should_draw: bool = is_singular_target
+		
+		if not should_draw:
+			if grave_node: grave_node.visible = false
+			if thread_node: thread_node.default_color.a = 0.0
+			if glow_node: glow_node.default_color.a = 0.0
 			continue
-
-		var p: float = proj.progress
-		var pressure: float = 0.0
-		if p >= approach_start and p < outer_entry:
-			pressure = clamp((p - approach_start) / (outer_entry - approach_start), 0.0, 1.0) * 0.65
-		elif p >= outer_entry and p <= outer_exit:
-			pressure = 1.0
-			if p >= perfect_entry and p <= perfect_exit:
-				pressure = 1.25
-
-		if pressure <= strongest_pressure:
-			continue
-
-		strongest_pressure = pressure
-		var telegraph_profile: Dictionary = proj.telegraph_profile
-		var threat_color: Color = Color(telegraph_profile.get("lane_color", active_color))
-		var accent_color: Color = Color(telegraph_profile.get("accent_color", threat_color.lightened(0.18)))
-		var warning_bias: float = max(float(telegraph_profile.get("warning_bias", 1.0)), 0.84)
-		var ring_t_base: float = float(telegraph_profile.get("ring_thickness_base", 1.0))
-		outer_width = 2.0 * ring_t_base
-		perfect_width = 3.2 * ring_t_base
-
-		if p >= approach_start and p < outer_entry:
-			var t: float = clamp(((p - approach_start) / (outer_entry - approach_start)) * warning_bias, 0.0, 1.0)
-			outer_color = outer_color.lerp(threat_color, t)
-			receiver_alpha = lerp(0.10, 0.18, t)
-			receiver_glow_alpha = lerp(0.0, 0.10, t)
-			beat_color = beat_color.lerp(accent_color, t * 0.55)
-			fill_color = Color(threat_color.r, threat_color.g, threat_color.b, receiver_alpha)
-		elif p >= outer_entry and p <= outer_exit:
-			outer_color = threat_color.lightened(0.08)
-			good_guide_color = threat_color.lightened(0.06)
-			receiver_alpha = 0.24
-			receiver_glow_alpha = 0.18
-			beat_color = accent_color.lightened(0.18)
-			fill_color = Color(threat_color.r, threat_color.g, threat_color.b, receiver_alpha)
-
-			if p >= perfect_entry and p <= perfect_exit:
-				perfect_color = accent_color.lightened(0.20)
-				perfect_guide_color = accent_color.lightened(0.28)
-				perfect_width = 4.0
-				perfect_guide_width = 2.2
-				receiver_alpha = 0.36
-				receiver_glow_alpha = 0.24
-				beat_color = accent_color.lightened(0.34)
-				fill_color = Color(threat_color.r, threat_color.g, threat_color.b, receiver_alpha)
-
-			var edge_distance: float = min(abs(p - outer_entry), abs(p - outer_exit))
-			if edge_distance <= COMBAT_FEEL_CONTENT.EDGE_STATE_WIDTH:
-				var edge_t: float = 1.0 - clamp(edge_distance / COMBAT_FEEL_CONTENT.EDGE_STATE_WIDTH, 0.0, 1.0)
-				edge_alpha = 0.20 + (0.30 * edge_t)
-				outer_width = lerp(outer_width, 2.8, edge_t)
-				good_guide_width = lerp(good_guide_width, 1.8, edge_t)
-
-	receiver_alpha = minf(receiver_alpha + beat_pulse, 0.52)
-	fill_color.a = receiver_alpha
-	if beat_pulse > 0.03:
-		beat_color = beat_color.lerp(active_color.lightened(0.38), beat_pulse / 0.13)
-
-	if surge_wf > 0.0:
-		match surge_window_tendency:
-			"aggression":
-				var aggression_color: Color = UI_STYLE.get_tendency_surge_color("aggression")
-				perfect_color = perfect_color.lerp(Color(aggression_color.r, aggression_color.g, aggression_color.b, perfect_color.a), surge_wf * 0.28)
-				perfect_width = minf(perfect_width + surge_wf * 0.6, 4.8)
-			"cadence":
-				var cadence_color: Color = UI_STYLE.get_tendency_surge_color("cadence")
-				beat_color = beat_color.lerp(Color(cadence_color.r, cadence_color.g, cadence_color.b, beat_color.a), surge_wf * 0.42)
-				receiver_alpha = minf(receiver_alpha + surge_wf * 0.04, 0.52)
-			"guard":
-				receiver_alpha = minf(receiver_alpha + surge_wf * 0.04, 0.52)
-			"bond":
-				var bond_color: Color = UI_STYLE.get_tendency_surge_color("bond")
-				beat_color = beat_color.lerp(Color(bond_color.r, bond_color.g, bond_color.b, beat_color.a), surge_wf * 0.38)
-				receiver_alpha = minf(receiver_alpha + surge_wf * 0.03, 0.52)
-
-	fill_color.a = receiver_alpha
-	if surge_wf > 0.0 and surge_window_tendency == "guard":
-		var guard_color: Color = UI_STYLE.get_tendency_surge_color("guard")
-		fill_color = fill_color.lerp(Color(guard_color.r, guard_color.g, guard_color.b, receiver_alpha), surge_wf * 0.20)
-	receiver_fill.color = fill_color
-	receiver_glow.color = Color(fill_color.r, fill_color.g, fill_color.b, receiver_glow_alpha)
-	edge_ring.default_color = Color(fill_color.r, fill_color.g, fill_color.b, edge_alpha)
-
-	outer_ring.default_color = outer_color
-	outer_ring.width = outer_width
-	perfect_ring.default_color = perfect_color
-	perfect_ring.width = perfect_width
-	if good_inner_guide != null and good_outer_guide != null:
-		good_inner_guide.default_color = Color(good_guide_color.r, good_guide_color.g, good_guide_color.b, minf(good_guide_color.a, 0.30))
-		good_outer_guide.default_color = good_inner_guide.default_color
-		good_inner_guide.width = good_guide_width
-		good_outer_guide.width = good_guide_width
-	if perfect_inner_guide != null and perfect_outer_guide != null:
-		perfect_inner_guide.default_color = Color(perfect_guide_color.r, perfect_guide_color.g, perfect_guide_color.b, 0.74)
-		perfect_outer_guide.default_color = perfect_inner_guide.default_color
-		perfect_inner_guide.width = perfect_guide_width
-		perfect_outer_guide.width = perfect_guide_width
+			
+		var player_pos: Vector2 = player_combat.global_position
+		var target_pos: Vector2 = Vector2.ZERO
+		var target_color: Color = Color(0.2, 0.85, 1.0, 1.0) # Electric Blue Core
+		var glow_color: Color = Color(0.6, 0.1, 0.9, 1.0)   # Purple Glow
+		var ring_radius: float = 110.0
+		
+		if is_threat:
+			var threat_id: int = int(proj.enemy_id)
+			target_pos = lane_manager.get_enemy_pos(threat_id)
+		else:
+			target_pos = Vector2(primary_target.get("pos", player_pos))
+			ring_radius = 124.0
+			
+		var dir_to_target: Vector2 = (target_pos - player_pos).normalized()
+		
+		# Position Grave Shard
+		if grave_node:
+			grave_node.visible = true
+			grave_node.position = player_pos + dir_to_target * ring_radius
+			grave_node.rotation = dir_to_target.angle()
+			
+			var marrow: Polygon2D = grave_node.get_node_or_null("Marrow")
+			var alpha_base: float = 0.52 + beat_pulse * 0.35
+			var urgency_scale: float = 1.0
+			if is_threat:
+				var p: float = proj.progress
+				urgency_scale = 1.0 + clampf((p - 0.7) / 0.3, 0.0, 1.0) * 0.5
+			
+			# Handle Splinter cluster
+			for j in range(3):
+				var splinter: Polygon2D = grave_node.get_node_or_null("Splinter_%d" % j)
+				if splinter:
+					splinter.color = Color(glow_color if not is_threat else target_color, alpha_base * 0.4)
+					var outline: Line2D = splinter.get_node_or_null("Outline")
+					if outline:
+						outline.default_color = target_color
+						outline.width = 1.0 + beat_pulse * 1.2
+					
+					# Splinter Jitter & Orbit
+					var drift_angle := delta * 2.0 + float(j) * 2.1
+					var drift := Vector2(cos(drift_angle), sin(drift_angle)) * 2.0
+					splinter.position += drift * delta
+					splinter.scale = Vector2.ONE * (urgency_scale * 0.5 + beat_pulse * 0.08)
+					
+			grave_node.scale = Vector2.ONE * (1.0 + beat_pulse * 0.15)
+			if marrow: 
+				marrow.color = glow_color if not is_threat else target_color
+				marrow.color.a = 0.4 + beat_pulse * 0.4
+					
+		# Update Predatory Tether (Dual-Layer Electric Pulse)
+		if thread_node and glow_node:
+			var p: float = proj.progress if is_threat else 1.0
+			var urgency_mult: float = 1.0 + (clampf((p - 0.5) / 0.5, 0.0, 1.0) * 1.5) if is_threat else 1.0
+			
+			var thread_alpha: float = (0.45 + beat_pulse * 0.4) * urgency_mult
+			var glow_alpha: float = (0.22 + beat_pulse * 0.45) * urgency_mult
+			
+			thread_node.default_color = Color(target_color, thread_alpha)
+			glow_node.default_color = Color(glow_color, glow_alpha)
+			
+			thread_node.width = (1.4 + beat_pulse * 1.5) * urgency_mult
+			glow_node.width = (4.5 + beat_pulse * 5.0) * urgency_mult
+			
+			# GENERATE NERVE POINTS (Electric Crackle)
+			var start := player_pos + dir_to_target * 18.0
+			var end := target_pos - dir_to_target * 24.0
+			var pts := PackedVector2Array()
+			var segments := 6
+			for j in range(segments + 1):
+				var t_lerp: float = float(j) / float(segments)
+				var p_base := start.lerp(end, t_lerp)
+				if j > 0 and j < segments:
+					# Progress-based jitter amplification
+					var jitter_amount: float = (5.0 + beat_pulse * 24.0) * urgency_mult
+					var offset := Vector2(randf_range(-1.0, 1.0), randf_range(-1.0, 1.0)).normalized() * jitter_amount
+					pts.append(p_base + offset)
+				else:
+					pts.append(p_base)
+			
+			thread_node.points = pts
+			glow_node.points = pts
 
 
 func build_arena_visuals(
@@ -1084,7 +986,7 @@ void fragment() {
 	for enemy_id in all_enemies_by_id.keys():
 		var enemy: Dictionary = all_enemies_by_id[enemy_id]
 		var lane_enemy: int = int(enemy.get("lane", 0))
-		var marker_size_enemy: float = 43.0 if is_boss_encounter else 27.0
+		var marker_size_enemy: float = 22.0 if is_boss_encounter else 14.0
 		var marker_data: Dictionary
 
 		if enemy_markers_by_id.has(enemy_id):
@@ -1188,6 +1090,21 @@ func _build_enemy_marker(
 	var marker_root := Node2D.new()
 	marker_root.name = "Enemy_%d" % enemy_id
 	marker_root.position = _lane_enemy_pos(lane_manager, lane, player_node)
+
+	# GROUND SHADOW: Ground the smaller enemy marker
+	var shadow := Polygon2D.new()
+	shadow.name = "Shadow"
+	shadow.z_index = -1
+	var s_pts := PackedVector2Array()
+	var rx := marker_half * 0.8
+	var ry := marker_half * 0.25
+	for i in range(16):
+		var a := (float(i) / 16.0) * TAU
+		s_pts.append(Vector2(cos(a) * rx, sin(a) * ry))
+	shadow.polygon = s_pts
+	shadow.color = Color(0.0, 0.0, 0.0, 0.22)
+	shadow.position = Vector2(0, marker_half * 0.75)
+	marker_root.add_child(shadow)
 
 	var frame := ColorRect.new()
 	frame.name = "Frame"

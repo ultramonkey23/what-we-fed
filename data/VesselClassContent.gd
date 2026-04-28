@@ -15,7 +15,7 @@ const CLASSES: Dictionary = {
 			"aura_pulse_speed": 2.4,
 			"aura_alpha": 0.25
 		},
-		"description": "Perfect hits create a blood-ember cleave in adjacent lanes.",
+		"description": "Perfect hits create a blood-ember cleave in adjacent sectors.",
 		"attack_modifier": {
 			"on_quality": "perfect",
 			"effect_id": "vessel_cleave",
@@ -72,7 +72,7 @@ const CLASSES: Dictionary = {
 			"aura_pulse_speed": 4.0,
 			"aura_alpha": 0.3
 		},
-		"description": "Successful lane switches emit an electric pulse that interrupts enemies.",
+		"description": "Successful sector switches emit an electric pulse that interrupts enemies.",
 		"movement_modifier": {
 			"effect_id": "vessel_pulse",
 			"stun_duration": 0.5

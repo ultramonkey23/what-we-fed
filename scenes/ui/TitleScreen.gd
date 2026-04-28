@@ -146,16 +146,17 @@ func _build_ui() -> void:
 
 	var controls_text: String = (
 		PRESENTATION_TEXT.TITLE_HELP_HEADER + "\n\n"
-		+ "A / S / D               Attack lane 1 / 2 / 3\n"
-		+ "Left Arrow + A/S/D      Parry incoming attack\n"
-		+ "Right Arrow + A/S/D     Dodge to adjacent lane\n"
-		+ "R                       Ultimate attack\n"
+		+ "WASD / ARROWS          Free Movement & Aim\n"
+		+ "SPACE / LEFT CLICK     Extract / Attack Sector\n"
+		+ "Z / RIGHT CLICK        Stitch / Parry Sector\n"
+		+ "SHIFT                  Evasion / Dodge\n"
+		+ "C / R                  Ultimate Collapse\n"
+		+ "X / F                  Creature Support\n"
 		+ "\n"
-		+ "- During live offers -\n"
-		+ "B / E                   Bond or Eat live claim\n"
-		+ "N                       Pass live claim\n"
-		+ "R                       Re-instantiate pattern\n"
-		+ "T                       Recall to Lair"
+		+ "- Management -\n"
+		+ "B / E                  Bond or Eat (Claim Offer)\n"
+		+ "N                      Pass (Reject Offer)\n"
+		+ "T                      Recall to Lair"
 	)
 
 	var controls_label: Label = Label.new()

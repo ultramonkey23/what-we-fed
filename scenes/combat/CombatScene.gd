@@ -373,8 +373,9 @@ func _exit_tree() -> void:
 		EventBus.vessel_shifted.disconnect(_on_vessel_shifted)
 	if EventBus.proc_feedback_requested.is_connected(_on_proc_feedback_requested):
 		EventBus.proc_feedback_requested.disconnect(_on_proc_feedback_requested)
-	if lane_manager != null and is_instance_valid(lane_manager) and EventBus.enemy_status_applied_requested.is_connected(lane_manager.apply_status):
-		EventBus.enemy_status_applied_requested.disconnect(lane_manager.apply_status)
+	if lane_manager != null and is_instance_valid(lane_manager) and lane_manager.has_method("apply_status"):
+		if EventBus.enemy_status_applied_requested.is_connected(lane_manager.apply_status):
+			EventBus.enemy_status_applied_requested.disconnect(lane_manager.apply_status)
 	if EventBus.ultimate_power_granted.is_connected(_on_ultimate_power_granted):
 		EventBus.ultimate_power_granted.disconnect(_on_ultimate_power_granted)
 	
@@ -951,7 +952,9 @@ func _process(delta: float) -> void:
 func _update_timers(delta: float) -> void:
 	_update_tempo_state()
 
-	for i in range(lane_manager.THREAT_COUNT if lane_manager else 4):
+	# Vectorized timer updates for performance
+	var threat_count: int = lane_manager.THREAT_COUNT if lane_manager else 4
+	for i in range(threat_count):
 		if _ring_highlight_timers[i] > 0.0:
 			_ring_highlight_timers[i] = max(_ring_highlight_timers[i] - delta, 0.0)
 	
@@ -959,9 +962,10 @@ func _update_timers(delta: float) -> void:
 		_surge_window_timer = max(_surge_window_timer - delta, 0.0)
 		if _surge_window_timer <= 0.0:
 			_surge_window_tendency = ""
-	
+
 	if _victory_reward_director != null:
-		_victory_reward_director.process_tick(_resolve_void_timer_delta(delta))
+		var v_delta: float = _resolve_void_timer_delta(delta)
+		_victory_reward_director.process_tick(v_delta)
 		if _victory_reward_director.is_awaiting_choice():
 			_refresh_live_reward_shell()
 			if _victory_reward_director.get_pending_creature().is_empty():
@@ -2893,6 +2897,7 @@ func _setup_presentation_runtime() -> void:
 		ui_layer,
 		_enemy_markers_by_id,
 		_ring_highlight_timers,
+		_battlefield_panel,
 		_bg_sprite
 	)
 
@@ -3224,6 +3229,7 @@ func _connect_eventbus() -> void:
 	EventBus.combat_ended.connect(_on_combat_ended)
 	EventBus.enemy_damaged.connect(_on_enemy_damaged)
 	EventBus.enemy_defeated.connect(_on_enemy_defeated)
+	EventBus.enemy_defeated.connect(_presentation_runtime.on_enemy_defeated)
 	EventBus.dna_lock_denied.connect(_on_dna_lock_denied)
 	EventBus.proc_feedback_requested.connect(_on_proc_feedback_requested)
 	EventBus.ultimate_power_granted.connect(_on_ultimate_power_granted)
@@ -3253,6 +3259,7 @@ func _connect_eventbus() -> void:
 	EventBus.bonded_support_triggered.connect(_on_bonded_support_triggered)
 	EventBus.dna_gained.connect(_on_dna_gained)
 	EventBus.mastery_context_updated.connect(_on_mastery_context_updated)
+	EventBus.impact_burst_requested.connect(_presentation_runtime.apply_impact_profile)
 	EventBus.enemy_status_applied.connect(_on_enemy_status_applied)
 	EventBus.enemy_status_cleared.connect(_on_enemy_status_cleared)
 	EventBus.phrase_milestone.connect(_on_phrase_milestone)
@@ -3852,10 +3859,10 @@ func _on_run_spine_management_action_requested(action_id: String, payload: Dicti
 func _on_run_spine_continue_requested(advance_to_boss: bool) -> void:
 	if advance_to_boss:
 		_hide_run_spine_surface()
-		_trigger_boss_final_movement()
+		get_tree().change_scene_to_file("res://scenes/ui/InterludeScene.tscn")
 	else:
 		_hide_run_spine_surface()
-		_advance_to_next_regular_level()
+		get_tree().change_scene_to_file("res://scenes/ui/InterludeScene.tscn")
 
 
 func _prepare_path_context_for_level(level_index: int) -> void:
@@ -4961,6 +4968,8 @@ func _advance_to_next_stage() -> void:
 	if _is_boss_encounter:
 		_finish_run(true)
 	else:
+		GameState.advance_run_loop()
+		
 		# Keep between-level routing inside the run spine surface when available.
 		# RouteScene remains a pre-run screen; mid-run path choice stays in-combat.
 		var can_present_run_spine: bool = (
@@ -4972,14 +4981,14 @@ func _advance_to_next_stage() -> void:
 		)
 		if can_present_run_spine:
 			_pending_upgrades.clear()
-			_run_spine_surface.call("present_level_completion", _pending_upgrades, _run_growth, false)
+			_run_spine_surface.call("present_level_completion", _pending_upgrades, _run_growth, GameState.boss_ready)
 			if not _try_present_predation_after_run_spine():
 				_try_present_path_choice_after_run_spine()
 			_show_feedback("STAGE COMPLETE", Color(0.85, 0.95, 0.75, 1.0), 0.52)
 			controls_label.text = ""
 			return
-		# Fallback guard: if the spine surface is unavailable, preserve legacy routing.
-		get_tree().change_scene_to_file("res://scenes/ui/RouteScene.tscn")
+		# Fallback guard: if the spine surface is unavailable, use the new loop interlude.
+		get_tree().change_scene_to_file("res://scenes/ui/InterludeScene.tscn")
 
 
 func _finish_run(victory: bool) -> void:

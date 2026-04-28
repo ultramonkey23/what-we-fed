@@ -49,7 +49,7 @@ func _on_player_parried(_lane: int, quality: String, _damage: float) -> void:
 		_trigger_line("timing", "perfect_parry")
 
 
-func _on_timed_attack_resolved(_lane: int, quality: String, _damage: float) -> void:
+func _on_timed_attack_resolved(_lane: int, quality: String, _damage: float, _enemy_id: int) -> void:
 	if quality == "perfect":
 		_trigger_line("timing", "perfect_timed_attack")
 

@@ -2,6 +2,7 @@ extends Node2D
 class_name Projectile
 
 const COMBAT_FEEL_CONTENT = preload("res://data/CombatFeelContent.gd")
+const SOVEREIGN_DAMAGE_CALCULATOR = preload("res://systems/SovereignDamageCalculator.gd")
 
 signal reached_hit_zone(projectile)
 signal player_contact(projectile)
@@ -462,9 +463,7 @@ func _update_visual_state(reflected: bool) -> void:
 		base_color = _reflected_body_color()
 
 	var pressure_start: float = float(telegraph_profile.get("pressure_start", 0.72))
-	# Eye (Intelligence) makes telegraphs start earlier
-	var eye_bias: float = clamp(GameState.stat_intelligence - 1.0, 0.0, 0.5)
-	pressure_start = max(0.1, pressure_start - eye_bias)
+	pressure_start = max(0.1, pressure_start - SOVEREIGN_DAMAGE_CALCULATOR.get_telegraph_eye_bias())
 	
 	var pressure_gain: float = max(float(telegraph_profile.get("pressure_gain", 1.0)), 0.6)
 	var pressure: float = 0.85 if reflected else clamp(((progress - pressure_start) / (1.0 - pressure_start)) * pressure_gain, 0.0, 1.0)

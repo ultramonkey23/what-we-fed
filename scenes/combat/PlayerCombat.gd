@@ -3,14 +3,11 @@ extends Node2D
 @onready var sprite: ColorRect = $Sprite
 const COMBAT_FEEL_CONSTANTS = preload("res://data/CombatFeelConstants.gd")
 const COMBAT_FEEL_CONTENT = preload("res://data/CombatFeelContent.gd")
+const SOVEREIGN_DAMAGE_CALCULATOR = preload("res://systems/SovereignDamageCalculator.gd")
 
 # Combat result tuning.
-const TIMED_ATTACK_DAMAGE_RATIO: float = 0.5
-const PLAYER_DAMAGE_TO_TIMED_RATIO: float = 0.68
-const LATE_ATTACK_PUNISH_RATIO: float = 0.18
 const GOOD_PARRY_REFLECT_MULT: float = 1.2
 const PERFECT_PARRY_REFLECT_MULT: float = 2.0
-const IDLE_ATTACK_DAMAGE_RATIO: float = 0.35
 
 # Recovery / anti-spam tuning.
 const BASIC_ATTACK_RECOVERY: float = 0.45
@@ -453,6 +450,23 @@ func _get_beat_quality() -> String:
 	return String(_song_conductor.get_beat_quality())
 
 
+func _evaluate_projectile_timing_with_forgiveness(projectile: Node) -> String:
+	var base_quality: String = String(projectile.call("evaluate_proximity_timing", global_position))
+	if base_quality != "miss":
+		return base_quality
+	var hit_zone_raw: Variant = projectile.get("hit_zone_pos")
+	if typeof(hit_zone_raw) != TYPE_VECTOR2:
+		return base_quality
+	var hit_zone_pos: Vector2 = hit_zone_raw
+	if hit_zone_pos == Vector2.ZERO:
+		return base_quality
+	var distance_to_hit_zone: float = global_position.distance_to(hit_zone_pos)
+	var bonus_radius: float = SOVEREIGN_DAMAGE_CALCULATOR.get_parry_forgiveness_radius_bonus()
+	if distance_to_hit_zone <= COMBAT_FEEL_CONTENT.RING_OUTER_RADIUS + bonus_radius:
+		return "good"
+	return base_quality
+
+
 func _get_phrase_window() -> String:
 	if combat_meter == null:
 		return ""
@@ -664,7 +678,7 @@ func _grant_chain_bypass() -> void:
 
 
 func _lock_action(duration: float, state: String) -> void:
-	var nerve_mult: float = clampf(1.0 / maxf(GameState.stat_swiftness, 0.1), 0.40, 2.0)
+	var nerve_mult: float = SOVEREIGN_DAMAGE_CALCULATOR.get_action_recovery_mult()
 	action_lock_timer = max(duration * nerve_mult, 0.0)
 	current_action_state = state
 	
@@ -700,7 +714,7 @@ func _try_attack(targets: Dictionary) -> void:
 		projectiles.sort_custom(func(a, b): return a.dot > b.dot)
 		var p_data = projectiles[0]
 		var projectile = p_data.ref
-		var quality: String = String(projectile.call("evaluate_proximity_timing", global_position))
+		var quality: String = _evaluate_projectile_timing_with_forgiveness(projectile)
 		
 		match quality:
 			"good", "perfect":
@@ -751,7 +765,7 @@ func _try_parry(targets: Dictionary) -> void:
 	projectiles.sort_custom(func(a, b): return a.dot > b.dot)
 	var p_data = projectiles[0]
 	var projectile = p_data.ref
-	var quality: String = String(projectile.call("evaluate_proximity_timing", global_position))
+	var quality: String = _evaluate_projectile_timing_with_forgiveness(projectile)
 	var target_lane: int = int(p_data.lane)
 
 	if quality != "good" and quality != "perfect":
@@ -798,7 +812,12 @@ func _try_parry(targets: Dictionary) -> void:
 				lane_manager.call("apply_status_by_id", id, "pale", {})
 			_run_growth.consume_mutation_charges("pale_on_parry", 1)
 
-	var reflect_damage: float = float(projectile.get("damage")) * reflect_mult * combo_mult * (1.0 + _get_parry_reflect_bonus())
+	var reflect_damage: float = SOVEREIGN_DAMAGE_CALCULATOR.get_parry_reflect_damage(
+		float(projectile.get("damage")),
+		reflect_mult,
+		combo_mult,
+		_sum_bond_passive("parry_reflect_mult")
+	)
 	var enemy_id_raw = projectile.get("enemy_id")
 	var enemy_id: int = int(enemy_id_raw) if enemy_id_raw != null else -1
 
@@ -916,15 +935,7 @@ func _try_ultimate() -> void:
 	if multiplier <= 0.0:
 		return
 
-	# Beat bonus: on-beat perfect adds +20% damage to the ultimate.
-	var beat_mult: float = 1.0
-	if beat == "perfect":
-		beat_mult = 1.20
-	elif beat == "good":
-		beat_mult = 1.10
-
-	var total_damage: float = GameState.get_attack_damage() * multiplier * beat_mult * GameState.stat_adaptability
-	total_damage += _get_creature_bonus()
+	var total_damage: float = SOVEREIGN_DAMAGE_CALCULATOR.get_ultimate_damage(multiplier, beat, _sum_bond_passive("damage_on_ultimate"))
 
 	var all_enemies: Dictionary = lane_manager.call("get_all_enemies")
 	for id in all_enemies.keys():
@@ -946,7 +957,7 @@ func _try_ultimate() -> void:
 
 func _idle_attack_on_target(target_data: Dictionary, combo_mult: float) -> void:
 	var target_lane: int = int(target_data.get("lane", -1))
-	var idle_damage: float = (GameState.get_attack_damage() * IDLE_ATTACK_DAMAGE_RATIO) * combo_mult
+	var idle_damage: float = SOVEREIGN_DAMAGE_CALCULATOR.get_idle_attack_damage(combo_mult)
 	var target_pos: Vector2 = target_data.get("pos", Vector2.ZERO)
 	var enemy_id: int = int(target_data.get("ref", -1))
 	
@@ -990,13 +1001,6 @@ func _resolve_timed_attack(projectile, combo_mult: float, quality: String) -> vo
 	var beat: String = _get_beat_quality()
 	var phrase_bonus: float = float(combat_meter.call("get_phrase_bonus"))
 
-	# Beat bonus damage: +35% on perfect-quality + on-beat-perfect, +15% on on-beat-good.
-	var beat_mult: float = 1.0
-	if quality == "perfect" and beat == "perfect":
-		beat_mult = 1.35
-	elif beat == "perfect" or beat == "good":
-		beat_mult = 1.15
-
 	# Growth multiplier: aggression adds flat % to all timed hits;
 	# cadence adds additional flat % to good and perfect hits only.
 	# Resolve through RunGrowth's public effect bridge so legacy compatibility
@@ -1017,10 +1021,6 @@ func _resolve_timed_attack(projectile, combo_mult: float, quality: String) -> vo
 				cad_effect = Dictionary(_run_growth.call("get_runtime_effect", "good_timed_bonus_damage"))
 			growth_mult += float(cad_effect.get("value", 0.0))
 
-	# Player attack damage (base + absorbed) now cashes out directly in timed attacks.
-	# combine the "reflected" projectile damage with a portion of the player's own power.
-	var base_atk: float = GameState.get_attack_damage()
-
 	# Mutation Pass: Timed Damage
 	var mutation_bonus: float = 0.0
 	if _run_growth != null:
@@ -1028,7 +1028,16 @@ func _resolve_timed_attack(projectile, combo_mult: float, quality: String) -> vo
 		if mutation_bonus > 0.0:
 			_run_growth.consume_mutation_charges("timed_damage_flat", 1, {"quality": quality})
 
-	var timed_damage: float = ((float(projectile.get("damage")) * TIMED_ATTACK_DAMAGE_RATIO) + (base_atk * PLAYER_DAMAGE_TO_TIMED_RATIO)) * combo_mult * (1.0 + phrase_bonus) * beat_mult * growth_mult * GameState.stat_adaptability + _get_timed_damage_bonus() + mutation_bonus
+	var timed_damage: float = SOVEREIGN_DAMAGE_CALCULATOR.get_timed_attack_damage(
+		float(projectile.get("damage")),
+		combo_mult,
+		phrase_bonus,
+		quality,
+		beat,
+		growth_mult,
+		_sum_bond_passive("timed_damage_flat"),
+		mutation_bonus
+	)
 	var recovery: float = TIMED_ATTACK_RECOVERY
 
 	var target_lane: int = int(projectile.get("lane"))
@@ -1084,7 +1093,7 @@ func _resolve_late_attack(projectile: Node, target_lane: int) -> void:
 	# Late attack means the projectile has already hit or is very close.
 	# We still allow it to resolve but with a heavy punish.
 	var combo_mult: float = float(combat_meter.call("damage_multiplier"))
-	var punish_damage: float = (GameState.get_attack_damage() * LATE_ATTACK_PUNISH_RATIO) * combo_mult
+	var punish_damage: float = SOVEREIGN_DAMAGE_CALCULATOR.get_late_attack_damage(combo_mult)
 	
 	projectile.call("resolve", "attack_late")
 	lane_manager.call("clear_slot", target_lane)
@@ -1208,7 +1217,11 @@ func _take_damage(amount: float, source_lane: int) -> void:
 					EventBus.emit_signal("player_healed", healed)
 				_run_growth.consume_mutation_charges("heal_on_hit_taken", 1)
 
-	amount = amount * (1.0 - _get_damage_reduction()) * (1.0 - surge_dr)
+	amount = SOVEREIGN_DAMAGE_CALCULATOR.get_incoming_damage_after_reduction(
+		amount,
+		_get_damage_reduction(),
+		surge_dr
+	)
 	GameState.player_hp = max(GameState.player_hp - amount, 0.0)
 	_flash_sprite_color(Color(1.0, 0.25, 0.25, 1.0), 0.18)
 	combat_meter.call("break_phrase")
@@ -1220,49 +1233,21 @@ func _take_damage(amount: float, source_lane: int) -> void:
 		EventBus.emit_signal("combat_ended", false)
 
 
-func _get_creature_bonus() -> float:
-	# Sums damage_on_ultimate from all bonded creatures, scaled by bond level.
+func _sum_bond_passive(passive_type: String) -> float:
+	# Bond-trait expression: bonded creature passives of the given type sum, each scaled by bond level mult.
 	var total: float = 0.0
 	for creature in GameState.roster:
 		var passive: Dictionary = creature.get("bond_passive", {})
-		if passive.get("type", "") == "damage_on_ultimate":
+		if passive.get("type", "") == passive_type:
 			var mult: float = GameState.get_bond_level_mult(int(creature.get("bond_level", 1)))
 			total += float(passive.get("value", 0.0)) * mult
 	return total
 
 
 func _get_damage_reduction() -> float:
-	# Sums damage_reduction_pct from all bonded creatures, scaled by bond level.
-	# Live run defense shares this seam so survivability stays concrete and bounded.
-	var total: float = GameState.get_defense_damage_reduction()
-	for creature in GameState.roster:
-		var passive: Dictionary = creature.get("bond_passive", {})
-		if passive.get("type", "") == "damage_reduction_pct":
-			var mult: float = GameState.get_bond_level_mult(int(creature.get("bond_level", 1)))
-			total += float(passive.get("value", 0.0)) * mult
+	# Live-run defense + bonded damage_reduction_pct passives, capped at COMBINED_DAMAGE_REDUCTION_CAP.
+	var total: float = GameState.get_defense_damage_reduction() + _sum_bond_passive("damage_reduction_pct")
 	return min(total, GameState.COMBINED_DAMAGE_REDUCTION_CAP)
-
-
-func _get_parry_reflect_bonus() -> float:
-	# Sums parry_reflect_mult from all bonded creatures (e.g. Veilskin +0.40), scaled by bond level.
-	var total: float = 0.0
-	for creature in GameState.roster:
-		var passive: Dictionary = creature.get("bond_passive", {})
-		if passive.get("type", "") == "parry_reflect_mult":
-			var mult: float = GameState.get_bond_level_mult(int(creature.get("bond_level", 1)))
-			total += float(passive.get("value", 0.0)) * mult
-	return total
-
-
-func _get_timed_damage_bonus() -> float:
-	# Sums timed_damage_flat from all bonded creatures (e.g. Thornback +3), scaled by bond level.
-	var total: float = 0.0
-	for creature in GameState.roster:
-		var passive: Dictionary = creature.get("bond_passive", {})
-		if passive.get("type", "") == "timed_damage_flat":
-			var mult: float = GameState.get_bond_level_mult(int(creature.get("bond_level", 1)))
-			total += float(passive.get("value", 0.0)) * mult
-	return total
 
 
 func _neutral_world_position() -> Vector2:

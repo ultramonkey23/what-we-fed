@@ -5,6 +5,7 @@ extends Node
 # Provides both static calculation methods and a runtime instance for signal-driven effects.
 
 const VESSEL_CLASS_CONTENT = preload("res://data/VesselClassContent.gd")
+const SOVEREIGN_DAMAGE_CALCULATOR = preload("res://systems/SovereignDamageCalculator.gd")
 
 var _active_class_data: Dictionary = {}
 var _lane_manager: Node = null
@@ -30,7 +31,9 @@ static func build_perfect_plan(species_id: String, origin_lane: int, origin_dama
 	if mod.is_empty() or mod.get("effect_id", "") != "vessel_cleave":
 		return {}
 		
-	var mult: float = float(mod.get("adjacent_damage_mult", 0.4))
+	# Bond-trait expression: cleave damage scales with the species's bond level (weighted via Sovereign Stats Engine).
+	var bond_scaled_trait_mult: float = SOVEREIGN_DAMAGE_CALCULATOR.get_vessel_trait_multiplier(species_id)
+	var mult: float = float(mod.get("adjacent_damage_mult", 0.4)) * bond_scaled_trait_mult
 	var targets: Array = []
 	for adj in [origin_lane - 1, origin_lane + 1]:
 		if adj >= 0 and adj < 4:

@@ -1,5 +1,15 @@
 # CURRENT_REPO_TRUTH_LEDGER
 
+## 2026-04-28 AI Architecture Evolution: Sovereign Core Consolidation (static-only)
+- **Consolidation**: Doctrine sprawl in `docs/ai/` reduced from 50+ overlapping files to 4 canonical pillars: `SOVEREIGN_CORE.md`, `ARCHETYPES.md`, `REPO_TRUTH_PROTOCOL.md`, and `REPORT_CONTRACT.md`.
+- **Roster Tightening**: `.claude/agents/` established as the single canonical home for agent definitions. 13 agents (7 archetypes + 6 specialists) updated to align with Sovereign Core protocols.
+- **Specialist Addition**: `shader-surgeon` added to the canonical roster to manage Manga Monstrosity visuals and performance.
+- **Entrypoint Simplification**: `CLAUDE.md`, `AGENTS.md`, and `GEMINI.md` rewritten as lean, progressive-disclosure entrypoints pointing to the new doctrine.
+- **Archival**: 15+ legacy files and 2 directories (`docs/ai/agents/`, `docs/ai/ROLE_PACKS/`) moved to `docs/ai/archive_legacy/` to eliminate doctrine duplication.
+- **Sovereign Protocols (v2.7)**: Mandated Pre-Flight Signal Grep, Silent Council, Strict Sequential Mutation, Micro-Validation, and Manga Monstrosity Filter across all agent roles.
+- **Validation**: `git status` and `grep` sweep confirmed zero stale links to archived files in core entrypoints. All new doctrine files are grounded in the "Black Signal" identity.
+- **Files touched**: 13 files in `.claude/agents/`, `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, `docs/ai/README.md`, `docs/ai/SOVEREIGN_CORE.md`, `docs/ai/ARCHETYPES.md`, `docs/ai/REPO_TRUTH_PROTOCOL.md`, `docs/ai/REPORT_CONTRACT.md`, `docs/ai/archive_legacy/README.md`, `docs/CURRENT_REPO_TRUTH_LEDGER.md`.
+
 ## 2026-04-28 Orphaned theme cleanup — validate_project.bat clean
 - Deleted `assets/ui/power_fantasy_theme.theme` and `assets/ui/premium_theme.theme`. Files were ASCII text in a binary `.theme` file path, which Godot rejected on every import pass.
 - Verified orphaned: zero live references in any `.tscn`, `.gd`, or `project.godot`. Mentioned only in already-archived legacy docs (`docs/archive_legacy/POWER_FANTASY_IMPLEMENTATION_PLAN.md`, `docs/archive_legacy/PREMIUM_ART_UPGRADE_IMPLEMENTATION_PLAN.md`).

@@ -939,6 +939,66 @@ const ENCOUNTERS := {
 }
 
 
+const CREATURE_CLASS_PROFILES := {
+	"ashclaw": {
+		"class_name": "GLASS CANNON",
+		"stat_modifiers": {
+			"stat_power": 2.0,
+			"stat_carapace": -0.5
+		}
+	},
+	"hushcoil": {
+		"class_name": "TANK",
+		"stat_modifiers": {
+			"stat_carapace": 1.5,
+			"stat_endurance": 5.0
+		}
+	},
+	"gruvek": {
+		"class_name": "SURVIVOR",
+		"stat_modifiers": {
+			"stat_vitality": 15.0,
+			"stat_luck": 0.02
+		}
+	},
+	"gorefane": {
+		"class_name": "DUELIST",
+		"stat_modifiers": {
+			"stat_swiftness": 0.05,
+			"stat_adaptability": 0.05
+		}
+	},
+	"thornback": {
+		"class_name": "TACTICIAN",
+		"stat_modifiers": {
+			"stat_power": 1.5,
+			"stat_intelligence": 0.05
+		}
+	},
+	"bond_remnant": {
+		"class_name": "PURE",
+		"stat_modifiers": {
+			"stat_potential": 0.05,
+			"stat_vitality": 10.0
+		}
+	},
+	"stalker": {
+		"class_name": "ASSASSIN",
+		"stat_modifiers": {
+			"stat_swiftness": 0.06,
+			"stat_power": 2.0
+		}
+	},
+	"knellspine": {
+		"class_name": "WARLOCK",
+		"stat_modifiers": {
+			"stat_carapace": 1.0,
+			"stat_intelligence": 0.06
+		}
+	}
+}
+
+
 static func get_biome(biome_id: String) -> Dictionary:
 	match biome_id:
 		"feeding_hollow":

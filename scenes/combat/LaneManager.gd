@@ -206,14 +206,29 @@ func _on_song_beat_pulse(_beat_index: int, _intensity: float, _quality: String) 
 			EventBus.emit_signal("enemy_status_cleared", lane)
 
 
-func get_projectile(lane: int):
-	# Legacy lookup: find the projectile for the enemy in this lane.
+func get_projectile(lane: int) -> Node:
+	# VISUAL LOOKUP ONLY: Find the projectile currently associated with this spawn sector.
 	for id in _active_projectiles:
 		var striker = _strikers.get(id, {})
 		if int(striker.get("lane", -1)) == lane:
 			var projectile = _active_projectiles[id]
 			if is_instance_valid(projectile):
 				return projectile
+	return null
+
+
+func get_enemy(lane: int) -> Dictionary:
+	# VISUAL LOOKUP ONLY: Find the enemy currently associated with this spawn sector.
+	for id in _strikers:
+		if int(_strikers[id].get("lane", -1)) == lane:
+			return _enemies.get(id, {})
+	return {}
+
+
+func get_projectile_by_id(id: int) -> Node:
+	var projectile = _active_projectiles.get(id)
+	if is_instance_valid(projectile):
+		return projectile
 	return null
 
 
@@ -224,14 +239,25 @@ func is_lane_empty(lane: int) -> bool:
 	return true
 
 
-func clear_slot(lane: int) -> void:
-	# In the dynamic system, slots are cleared when projectiles resolve via their callbacks.
-	# We maintain this for legacy cleanup calls that might still exist.
-	var projectile = get_projectile(lane)
-	if projectile != null:
-		var id = projectile.get("enemy_id")
-		if id != null:
-			_active_projectiles.erase(int(id))
+func get_enemy_by_id(id: int) -> Dictionary:
+	return _enemies.get(id, {})
+
+
+func get_all_enemies() -> Dictionary:
+	return _enemies
+
+
+func alive_count() -> int:
+	var total: int = 0
+	for id in _enemies:
+		var enemy = _enemies[id]
+		if enemy.has("hp") and float(enemy["hp"]) > 0.0:
+			total += 1
+	return total
+
+
+func alive_striker_count() -> int:
+	return _strikers.size()
 
 
 func get_player_pos() -> Vector2:
@@ -344,17 +370,6 @@ func set_enemy(lane: int, enemy_data: Dictionary) -> void:
 			_run_fire_cycle(_cycle_task_id)
 
 
-func damage_enemy(lane: int, amount: float) -> void:
-	# Applies damage to a lane's active enemy. Supports legacy lane lookup.
-	if lane < 0 or lane >= THREAT_COUNT:
-		return
-	
-	for id in _strikers:
-		if int(_strikers[id].get("lane", -1)) == lane:
-			damage_enemy_by_id(id, amount)
-			return
-
-
 func damage_enemy_by_id(id: int, amount: float) -> void:
 	# Applies damage to an enemy by ID and handles defeat.
 	var enemy = _enemies.get(id, {})
@@ -426,33 +441,6 @@ func _handle_enemy_defeat(id: int) -> void:
 			EventBus.emit_signal("combat_ended", true)
 
 
-func get_enemy(lane: int) -> Dictionary:
-	if lane < 0 or lane >= THREAT_COUNT:
-		return {}
-	
-	for id in _strikers:
-		if int(_strikers[id].get("lane", -1)) == lane:
-			return _enemies.get(id, {})
-	return {}
-
-
-func get_all_enemies() -> Dictionary:
-	return _enemies
-
-
-func alive_count() -> int:
-	var total: int = 0
-	for id in _enemies:
-		var enemy = _enemies[id]
-		if enemy.has("hp") and float(enemy["hp"]) > 0.0:
-			total += 1
-	return total
-
-
-func alive_striker_count() -> int:
-	return _strikers.size()
-
-
 func _find_lane_for_enemy(id: int) -> int:
 	var striker = _strikers.get(id, {})
 	return int(striker.get("lane", -1))
@@ -515,17 +503,6 @@ func _process(delta: float) -> void:
 			EventBus.emit_signal("enemy_status_cleared", lane)
 
 
-func apply_status(lane: int, status_id: String, params: Dictionary = {}) -> void:
-	# Applies a combat status to the enemy in the given lane.
-	if lane < 0 or lane >= THREAT_COUNT:
-		return
-	
-	for id in _strikers:
-		if int(_strikers[id].get("lane", -1)) == lane:
-			apply_status_by_id(id, status_id, params)
-			return
-
-
 func apply_status_by_id(id: int, status_id: String, params: Dictionary = {}) -> void:
 	var enemy: Dictionary = _enemies.get(id, {})
 	if enemy.is_empty() or float(enemy.get("hp", 0.0)) <= 0.0:
@@ -560,24 +537,6 @@ func apply_status_by_id(id: int, status_id: String, params: Dictionary = {}) -> 
 	var lane = _find_lane_for_enemy(id)
 	if lane >= 0:
 		EventBus.emit_signal("enemy_status_applied", lane, status_id, params)
-
-
-func get_enemy_status_id(lane: int) -> String:
-	if lane < 0 or lane >= THREAT_COUNT: return ""
-	
-	for id in _strikers:
-		if int(_strikers[id].get("lane", -1)) == lane:
-			if not _enemy_statuses.has(id):
-				return ""
-			return String(_enemy_statuses[id].get("id", ""))
-	return ""
-
-
-func get_enemy_status(lane: int) -> Dictionary:
-	for id in _strikers:
-		if int(_strikers[id].get("lane", -1)) == lane:
-			return _enemy_statuses.get(id, {})
-	return {}
 
 
 func _get_status_damage_mult_by_id(id: int) -> float:

@@ -329,12 +329,12 @@ func _on_enemy_defeated(_enemy_id: int) -> void:
 	_grant_tendency("aggression", 1.0)
 
 
-func _on_timed_attack_resolved(lane: int, quality: String, _damage: float) -> void:
+func _on_timed_attack_resolved(lane: int, quality: String, _damage: float, enemy_id: int) -> void:
 	_grant_exp(GROWTH_CONTENT.EXP_TIMED_ATTACK)
 	_gain_support_charge(GROWTH_CONTENT.CHARGE_TIMED_ATTACK)
 
 	var rend_charges: float = get_mutation_bonus("rend_on_hit", {"quality": quality})
-	if rend_charges > 0.0:
+	if rend_charges > 0.0 and enemy_id != -1:
 		EventBus.enemy_status_applied_requested.emit(lane, "rend", {"charges": int(rend_charges)})
 		consume_mutation_charges("rend_on_hit", 1, {"quality": quality})
 	var heal_val: float = get_mutation_bonus("heal_on_hit", {"quality": quality})
@@ -545,27 +545,41 @@ func _apply_real_time_growth_pulse() -> void:
 func _resolve_tendency_level_up(id: String, lvl: int) -> Dictionary:
 	var out: Dictionary = GROWTH_CONTENT.TENDENCY_LEVEL_UP_OUTCOMES.get(id, {})
 	if out.is_empty(): return {}
-	var changes: Array[Dictionary] = []
-	var creature: Dictionary = GameState.get_active_bonded_creature()
-	var weights: Dictionary = {"stat_potential": 10}
-	if not creature.is_empty():
-		weights = {
-			"stat_vitality": 2, "stat_power": 2, "stat_carapace": 2, 
-			"stat_endurance": 2, "stat_swiftness": 2, "stat_luck": 2, 
-			"stat_potential": 2, "stat_intelligence": 2, "stat_adaptability": 2
-		}
 	
-	var keys: Array = weights.keys(); var total: int = 0
-	for v in weights.values(): total += int(v)
-	for i in range(4):
-		var roll: int = randi() % total; var cur: int = 0
-		for sid in keys:
-			cur += int(weights[sid])
-			if roll < cur: var gain: Dictionary = _apply_surge_stat_gain(sid); if not gain.is_empty(): changes.append(gain); break
+	var changes: Array[Dictionary] = []
+	
+	# RESOLUTION TRUTH: Deterministic Behavior-Shaped Growth.
+	# We no longer roll random dice. Your playstyle (Tendency) dictates your stats.
+	match id:
+		"aggression":
+			changes.append(_apply_surge_stat_gain("stat_power"))
+			changes.append(_apply_level_up_effect({"type": "base_damage_flat", "value": 1.5}, lvl))
+		"guard":
+			changes.append(_apply_surge_stat_gain("stat_carapace"))
+			changes.append(_apply_level_up_effect({"type": "defense_flat", "value": 1.0}, lvl))
+		"cadence":
+			changes.append(_apply_surge_stat_gain("stat_swiftness"))
+			changes.append(_apply_surge_stat_gain("stat_intelligence"))
+		"bond":
+			changes.append(_apply_surge_stat_gain("stat_potential"))
+			changes.append(_apply_surge_stat_gain("stat_vitality"))
+	
+	# Every level up also grants a small bump to Adaptability to keep the curve smooth.
+	changes.append(_apply_surge_stat_gain("stat_adaptability"))
+
 	for eff in out.get("effects", []):
 		var applied: Dictionary = _apply_level_up_effect(eff, lvl)
 		if not applied.is_empty(): changes.append(applied)
-	var res: Dictionary = {"level": level, "tendency_id": id, "tendency_level": lvl, "title": String(out.get("title", id.to_upper())), "readout_label": String(out.get("readout_label", id.capitalize())), "changes": changes, "snapshot": get_growth_snapshot()}
+		
+	var res: Dictionary = {
+		"level": level, 
+		"tendency_id": id, 
+		"tendency_level": lvl, 
+		"title": String(out.get("title", id.to_upper())), 
+		"readout_label": String(out.get("readout_label", id.capitalize())), 
+		"changes": changes, 
+		"snapshot": get_growth_snapshot()
+	}
 	res["summary"] = PRESENTATION_TEXT.tendency_level_up_summary(res)
 	return res
 
@@ -573,15 +587,37 @@ func _resolve_tendency_level_up(id: String, lvl: int) -> Dictionary:
 func _apply_surge_stat_gain(sid: String) -> Dictionary:
 	var label: String = sid.replace("stat_", "").to_upper(); var val: float = 0.0
 	match sid:
-		"stat_vitality": val = 10.0; GameState.stat_vitality += val; var h: float = _refresh_primary_combat_stats(val); if h > 0.0: EventBus.player_healed.emit(h)
-		"stat_power": val = 2.0; GameState.stat_power += val; _refresh_primary_combat_stats(0.0)
-		"stat_carapace": val = 1.0; GameState.stat_carapace += val; _refresh_primary_combat_stats(0.0)
-		"stat_endurance": val = 15.0; GameState.stat_endurance += val
-		"stat_swiftness": val = 0.04; GameState.stat_swiftness += val
-		"stat_luck": val = 0.02; GameState.stat_luck += val
-		"stat_potential": val = 0.05; GameState.stat_potential += val
-		"stat_intelligence": val = 0.06; GameState.stat_intelligence += val
-		"stat_adaptability": val = 0.04; GameState.stat_adaptability += val
+		"stat_vitality": 
+			val = 10.0
+			GameState.stat_vitality += val
+			var h: float = _refresh_primary_combat_stats(val)
+			if h > 0.0: EventBus.player_healed.emit(h)
+		"stat_power": 
+			val = 2.0
+			GameState.stat_power += val
+			_refresh_primary_combat_stats(0.0)
+		"stat_carapace": 
+			val = 1.0
+			GameState.stat_carapace += val
+			_refresh_primary_combat_stats(0.0)
+		"stat_endurance": 
+			val = 15.0
+			GameState.stat_endurance += val
+		"stat_swiftness": 
+			val = 0.04
+			GameState.stat_swiftness += val
+		"stat_luck": 
+			val = 0.02
+			GameState.stat_luck += val
+		"stat_potential": 
+			val = 0.05
+			GameState.stat_potential += val
+		"stat_intelligence": 
+			val = 0.06
+			GameState.stat_intelligence += val
+		"stat_adaptability": 
+			val = 0.04
+			GameState.stat_adaptability += val
 		_: return {}
 	return {"type": sid, "applied_value": val, "label": label}
 

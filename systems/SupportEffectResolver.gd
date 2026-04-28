@@ -52,17 +52,20 @@ func resolve(ctx: Dictionary) -> void:
 			if cadence_surge:
 				strike_damage *= 1.35
 				expose_time += 1.0
-			lane_manager.damage_enemy(lane, strike_damage)
-			lane_manager.apply_status(lane, "expose", {"duration": expose_time})
+			
+			var enemies: Array = ctx.get("targets", {}).get("enemies", [])
+			if not enemies.is_empty():
+				for e_data in enemies:
+					lane_manager.call("damage_enemy_by_id", int(e_data.ref), strike_damage)
+					lane_manager.call("apply_status_by_id", int(e_data.ref), "expose", {"duration": expose_time})
+					if cadence_surge:
+						lane_manager.call("apply_status_by_id", int(e_data.ref), "rend", {"charges": rend_charges + 1})
 			
 			if cadence_surge:
-				lane_manager.apply_status(lane, "rend", {"charges": rend_charges + 1})
 				feedback_requested.emit("ASHCLAW SURGE", Color(1.0, 0.58, 0.18, 1.0), 0.46)
 			elif mastery == "flow_state":
-				lane_manager.apply_status(lane, "rend", {"charges": rend_charges - 1})
 				feedback_requested.emit("ASHCLAW REND", Color(1.0, 0.52, 0.22, 1.0), 0.44)
 			elif mastery == "in_pocket":
-				lane_manager.apply_status(lane, "rend", {"charges": 1})
 				feedback_requested.emit("ASHCLAW TEARS", Color(0.98, 0.56, 0.30, 1.0), 0.40)
 			else:
 				feedback_requested.emit(String(support_role.get("feedback_text", "ASHCLAW")), Color(0.95, 0.60, 0.42, 1.0), 0.36)
@@ -106,11 +109,13 @@ func resolve(ctx: Dictionary) -> void:
 			var gorge_damage: float = float(support_role.get("effect_value", 10.0)) * combo_mult * bond_mult * surge_mult
 			if cadence_surge:
 				gorge_damage *= 1.18
-			for check_lane in range(lane_manager.THREAT_COUNT):
-				lane_manager.damage_enemy(check_lane, gorge_damage)
-				var surviving: Dictionary = lane_manager.get_enemy(check_lane)
-				if surviving.has("hp") and float(surviving["hp"]) > 0.0:
-					lane_manager.apply_status(check_lane, "gorge_mark", {})
+			
+			var all_enemies: Dictionary = lane_manager.call("get_all_enemies")
+			for id in all_enemies.keys():
+				lane_manager.call("damage_enemy_by_id", id, gorge_damage)
+				var surviving: Dictionary = lane_manager.call("get_enemy_by_id", id)
+				if not surviving.is_empty() and float(surviving.get("hp", 0.0)) > 0.0:
+					lane_manager.call("apply_status_by_id", id, "gorge_mark", {})
 					
 			if cadence_surge:
 				heal_requested.emit(6.0 * bond_mult * surge_mult)
@@ -127,26 +132,30 @@ func resolve(ctx: Dictionary) -> void:
 			var phase_damage: float = float(support_role.get("effect_value", 12.0)) * bond_mult * surge_mult
 			if cadence_surge:
 				phase_damage *= 1.20
-			lane_manager.damage_enemy(lane, phase_damage)
+			
+			var enemies: Array = ctx.get("targets", {}).get("enemies", [])
+			if not enemies.is_empty():
+				for e_data in enemies:
+					lane_manager.call("damage_enemy_by_id", int(e_data.ref), phase_damage)
+					lane_manager.call("apply_status_by_id", int(e_data.ref), "pale", {})
 			
 			var stamina_amount: float = 25.0
 			var phase_text: String = String(support_role.get("feedback_text", "PHASE"))
 			if cadence_surge:
 				for pale_lane in range(lane_manager.THREAT_COUNT):
-					lane_manager.apply_status(pale_lane, "pale", {})
+					var id: int = _find_enemy_id_in_lane(lane_manager, pale_lane)
+					if id != -1: lane_manager.call("apply_status_by_id", id, "pale", {})
 				stamina_amount = 40.0
 				phase_text = "VEIL CASCADE"
 			elif mastery == "flow_state":
 				for pale_lane in range(lane_manager.THREAT_COUNT):
-					lane_manager.apply_status(pale_lane, "pale", {})
+					var id: int = _find_enemy_id_in_lane(lane_manager, pale_lane)
+					if id != -1: lane_manager.call("apply_status_by_id", id, "pale", {})
 				stamina_amount = 35.0
 				phase_text = "FULL PHASE"
 			elif mastery == "in_pocket":
-				lane_manager.apply_status(lane, "pale", {})
 				stamina_amount = 32.0
 				phase_text = "CLEAN PHASE"
-			else:
-				lane_manager.apply_status(lane, "pale", {})
 				
 			stamina_requested.emit(stamina_amount)
 			feedback_requested.emit(phase_text, Color(0.78, 0.92, 1.0, 1.0), 0.36)
@@ -159,17 +168,24 @@ func resolve(ctx: Dictionary) -> void:
 			var peal_damage: float = float(support_role.get("effect_value", 8.0)) * combo_mult * bond_mult * surge_mult
 			var charge_return: float = 18.0
 			var peal_text: String = String(support_role.get("feedback_text", "PEAL"))
+			
+			var enemies: Array = ctx.get("targets", {}).get("enemies", [])
+			if not enemies.is_empty():
+				for e_data in enemies:
+					lane_manager.call("damage_enemy_by_id", int(e_data.ref), peal_damage)
+					if cadence_surge:
+						lane_manager.call("apply_status_by_id", int(e_data.ref), "expose", {"duration": 3.0})
+					elif mastery == "flow_state":
+						lane_manager.call("apply_status_by_id", int(e_data.ref), "expose", {"duration": 2.5})
+
 			if cadence_surge:
 				peal_damage *= 1.25
 				charge_return = 28.0
-				lane_manager.apply_status(lane, "expose", {"duration": 3.0})
 				peal_text = "SURGE PEAL"
 			elif mastery == "flow_state":
 				charge_return = 24.0
-				lane_manager.apply_status(lane, "expose", {"duration": 2.5})
 				peal_text = "DEEP PEAL"
 			
-			lane_manager.damage_enemy(lane, peal_damage)
 			support_charge_requested.emit(charge_return)
 				
 			feedback_requested.emit(peal_text, Color(0.98, 0.82, 0.34, 1.0), 0.34)
@@ -182,7 +198,8 @@ func resolve(ctx: Dictionary) -> void:
 			var ward_stamina: float = 18.0
 			var ward_text: String = String(support_role.get("feedback_text", "WARD"))
 			for pale_lane in range(lane_manager.THREAT_COUNT):
-				lane_manager.apply_status(pale_lane, "pale", {})
+				var id: int = _find_enemy_id_in_lane(lane_manager, pale_lane)
+				if id != -1: lane_manager.call("apply_status_by_id", id, "pale", {})
 			if cadence_surge:
 				ward_heal *= 1.5
 				ward_stamina = 32.0
@@ -211,11 +228,12 @@ func resolve(ctx: Dictionary) -> void:
 			elif mastery == "flow_state":
 				maul_charges = 2
 				maul_text = "RIP MAUL"
-			for check_lane in range(lane_manager.THREAT_COUNT):
-				lane_manager.damage_enemy(check_lane, maul_damage)
-				var maul_enemy: Dictionary = lane_manager.get_enemy(check_lane)
-				if maul_enemy.has("hp") and float(maul_enemy["hp"]) > 0.0:
-					lane_manager.apply_status(check_lane, "rend", {"charges": maul_charges})
+			
+			var enemies: Array = ctx.get("targets", {}).get("enemies", [])
+			if not enemies.is_empty():
+				for e_data in enemies:
+					lane_manager.call("damage_enemy_by_id", int(e_data.ref), maul_damage)
+					lane_manager.call("apply_status_by_id", int(e_data.ref), "rend", {"charges": maul_charges})
 					
 			feedback_requested.emit(maul_text, Color(0.96, 0.44, 0.20, 1.0), 0.40)
 			for check_lane in range(lane_manager.THREAT_COUNT):
@@ -226,15 +244,24 @@ func resolve(ctx: Dictionary) -> void:
 		"hushcoil_lull":
 			var lull_damage: float = float(support_role.get("effect_value", 7.0)) * combo_mult * bond_mult * surge_mult
 			var lull_text: String = String(support_role.get("feedback_text", "LULL"))
-			lane_manager.damage_enemy(lane, lull_damage)
+			
+			var enemies: Array = ctx.get("targets", {}).get("enemies", [])
+			if not enemies.is_empty():
+				for e_data in enemies:
+					lane_manager.call("damage_enemy_by_id", int(e_data.ref), lull_damage)
+					if cadence_surge:
+						lane_manager.call("apply_status_by_id", int(e_data.ref), "expose", {"duration": 3.0})
+					elif mastery == "flow_state":
+						lane_manager.call("apply_status_by_id", int(e_data.ref), "expose", {"duration": 2.5})
+
 			for pale_lane in range(lane_manager.THREAT_COUNT):
-				lane_manager.apply_status(pale_lane, "pale", {})
+				var id: int = _find_enemy_id_in_lane(lane_manager, pale_lane)
+				if id != -1: lane_manager.call("apply_status_by_id", id, "pale", {})
+
 			if cadence_surge:
-				lane_manager.apply_status(lane, "expose", {"duration": 3.0})
 				stamina_requested.emit(18.0)
 				lull_text = "DEAD LULL"
 			elif mastery == "flow_state":
-				lane_manager.apply_status(lane, "expose", {"duration": 2.5})
 				lull_text = "DEEP LULL"
 				
 			feedback_requested.emit(lull_text, Color(0.72, 0.82, 0.98, 1.0), 0.34)
@@ -247,7 +274,6 @@ func resolve(ctx: Dictionary) -> void:
 			var rend_damage: float = float(support_role.get("effect_value", 20.0)) * combo_mult * bond_mult * surge_mult
 			if cadence_surge:
 				rend_damage *= 1.25
-			lane_manager.damage_enemy(lane, rend_damage)
 			
 			var mastery_charges: int = rend_charges
 			var rend_text: String = String(support_role.get("feedback_text", "REND"))
@@ -264,8 +290,13 @@ func resolve(ctx: Dictionary) -> void:
 				mastery_charges = rend_charges + 1
 				rend_text = "DEEP REND"
 				rend_color = Color(0.98, 0.78, 0.32, 1.0)
+			
+			var enemies: Array = ctx.get("targets", {}).get("enemies", [])
+			if not enemies.is_empty():
+				for e_data in enemies:
+					lane_manager.call("damage_enemy_by_id", int(e_data.ref), rend_damage)
+					lane_manager.call("apply_status_by_id", int(e_data.ref), "rend", {"charges": mastery_charges})
 				
-			lane_manager.apply_status(lane, "rend", {"charges": mastery_charges})
 			feedback_requested.emit(rend_text, rend_color, 0.36)
 			highlight_ring_requested.emit(lane, Color(0.94, 0.72, 0.34, 1.0), 7.5)
 			intervention_requested.emit(species_id, lane, Color(0.96, 0.75, 0.38, 0.78))
@@ -278,18 +309,21 @@ func resolve(ctx: Dictionary) -> void:
 			if cadence_surge:
 				cold_damage *= 1.22
 				cold_expose_time += 1.0
-			lane_manager.damage_enemy(lane, cold_damage)
-			lane_manager.apply_status(lane, "expose", {"duration": cold_expose_time})
+			
+			var enemies: Array = ctx.get("targets", {}).get("enemies", [])
+			if not enemies.is_empty():
+				for e_data in enemies:
+					lane_manager.call("damage_enemy_by_id", int(e_data.ref), cold_damage)
+					lane_manager.call("apply_status_by_id", int(e_data.ref), "expose", {"duration": cold_expose_time})
+					if mastery == "flow_state":
+						lane_manager.call("apply_status_by_id", int(e_data.ref), "pale", {})
 			
 			if cadence_surge:
 				for cold_lane: int in range(4):
-					if cold_lane != lane:
-						lane_manager.apply_status(cold_lane, "pale", {})
+					var id: int = _find_enemy_id_in_lane(lane_manager, cold_lane)
+					if id != -1: lane_manager.call("apply_status_by_id", id, "pale", {})
 				cold_text = "COLD CASCADE"
 				feedback_requested.emit(cold_text, Color(0.72, 0.94, 1.0, 1.0), 0.42)
-			elif mastery == "flow_state":
-				lane_manager.apply_status(lane, "pale", {})
-				feedback_requested.emit("COLD SEAM", Color(0.76, 0.96, 1.0, 1.0), 0.36)
 			else:
 				feedback_requested.emit(cold_text, Color(0.80, 0.94, 1.0, 1.0), 0.32)
 			
@@ -310,10 +344,11 @@ func resolve(ctx: Dictionary) -> void:
 				silt_text = "DEEP DRAG"
 			
 			heal_requested.emit(silt_heal)
-			for silt_lane: int in range(4):
-				var silt_enemy: Dictionary = lane_manager.get_enemy(silt_lane)
-				if silt_enemy.has("hp") and float(silt_enemy["hp"]) > 0.0:
-					lane_manager.apply_status(silt_lane, "rend", {"charges": silt_charges})
+			
+			var enemies: Array = ctx.get("targets", {}).get("enemies", [])
+			if not enemies.is_empty():
+				for e_data in enemies:
+					lane_manager.call("apply_status_by_id", int(e_data.ref), "rend", {"charges": silt_charges})
 			
 			if cadence_surge:
 				feedback_requested.emit(silt_text, Color(0.44, 0.84, 0.66, 1.0), 0.42)
@@ -331,7 +366,6 @@ func resolve(ctx: Dictionary) -> void:
 func _apply_collar_behavior(ctx: Dictionary, collar_mod: Dictionary) -> void:
 	if collar_mod.is_empty():
 		return
-	var lane: int = int(ctx.get("lane", -1))
 	var lane_manager: Node = ctx.get("lane_manager")
 	var satisfied: bool = bool(collar_mod.get("satisfied", false))
 	var text: String = String(collar_mod.get("feedback_text", "COLLAR"))
@@ -357,10 +391,17 @@ func _apply_collar_behavior(ctx: Dictionary, collar_mod: Dictionary) -> void:
 		support_charge_requested.emit(charge_amount)
 
 	var status_id: String = String(collar_mod.get("status_on_success", ""))
-	if not status_id.is_empty() and lane_manager != null and lane >= 0:
-		lane_manager.apply_status(lane, status_id, {})
+	if not status_id.is_empty() and lane_manager != null:
+		var enemies: Array = ctx.get("targets", {}).get("enemies", [])
+		for e_data in enemies:
+			lane_manager.call("apply_status_by_id", int(e_data.ref), status_id, {})
 
 	feedback_requested.emit(text, Color(0.72, 0.88, 1.0, 1.0), 0.32)
+
+
+func _find_enemy_id_in_lane(lane_manager: Node, lane: int) -> int:
+	var enemy: Dictionary = lane_manager.call("get_enemy", lane)
+	return int(enemy.get("id", -1)) if not enemy.is_empty() else -1
 
 
 func build_mastery_context(

@@ -21,6 +21,10 @@ var intro_bond_choice_required: bool = true
 var intro_bond_choice_completed: bool = false
 var intro_bond_selected_species_id: String = ""
 
+# PERSISTENT META STATS
+var meta_limit_breakers: int = 0
+
+
 # API Proxies for backward compatibility
 var run_number: int:
 	get: return run.run_number
@@ -328,6 +332,18 @@ func _sync_to_lair(creature: Dictionary) -> void:
 
 func is_species_ever_bonded(species_id: String) -> bool:
 	return creatures.is_species_ever_bonded(species_id)
+
+
+func get_total_bond_level() -> int:
+	var total: int = 0
+	for entry in lair_roster:
+		total += int(entry.get("bond_level", 1))
+	return total
+
+
+func get_codex_level_cap() -> int:
+	# Starts at 100, raised by Limit Breaker achievements, capped at 10,000.
+	return min(100 + (meta_limit_breakers * 100), 10000)
 
 
 func get_creature_predation_debt(species_id: String) -> int:
@@ -753,6 +769,7 @@ func reset_profile_progression_state() -> void:
 	intro_bond_selected_species_id = ""
 	collar_inventory.clear()
 	equipped_collar_id = ""
+	meta_limit_breakers = 0
 	creatures.reset_profile_progression()
 	player.reset_to_base()
 	rewards.reset_run_state()
@@ -761,11 +778,36 @@ func reset_profile_progression_state() -> void:
 
 
 func reset_run_state() -> void:
+	# 1. Reset per-run components
 	player.reset_to_base()
 	rewards.reset_run_state()
 	creatures.reset_run_state()
 	run.reset_run_state()
 
+	# 2. RESOLUTION TRUTH: Data-Driven Creature Classes & Meta-Potential.
+	# We pull 'Class' profiles from CombatContent. Every permanent bonded creature 
+	# applies its specific stat package, scaled by meta-potential.
+	var meta_pot: float = player.stat_potential
+	
+	for entry in lair_roster:
+		var species: String = String(entry.get("species_id", ""))
+		var level: int = int(entry.get("bond_level", 1))
+		var bonus_mult: float = float(level) * meta_pot
+		
+		var profile: Dictionary = COMBAT_CONTENT.CREATURE_CLASS_PROFILES.get(species, {})
+		var mods: Dictionary = profile.get("stat_modifiers", {})
+		
+		for stat_id in mods.keys():
+			if stat_id in player:
+				var mod_val: float = float(mods[stat_id]) * bonus_mult
+				player.set(stat_id, player.get(stat_id) + mod_val)
+
+	# 3. Finalization: Safety clamp and initial refresh.
+	player.stat_carapace = max(player.stat_carapace, 0.0)
+	player.max_hp = player.stat_vitality
+	player.base_damage = player.stat_power
+	player.defense = player.stat_carapace
+	
 	var modifier: Dictionary = active_region.get("modifier", {})
 	match modifier.get("type", ""):
 		"attack_bonus": player_base_damage += float(modifier.get("value", 0.0))

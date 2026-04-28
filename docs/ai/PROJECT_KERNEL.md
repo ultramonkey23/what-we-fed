@@ -1,33 +1,31 @@
-# WHAT WE FED — THE BLACK SIGNAL KERNEL (v2.1 "The Hybrid Pulse")
+# WHAT WE FED — THE BLACK SIGNAL KERNEL (v2.2 "The Sentient Codex")
 
 This is the project's pulse. Use this as the default context nucleus for all V2 Agents.
 
 ---
 
-## Identity: The System-Lit Predator
+## Identity: The Sentient System-Lit Predator
 - **Protagonist**: The **Living Codex** (Vessel of the Black Signal).
-    - **Origin**: A real-world person who chose "Entry" before death.
-    - **Rebirth**: The player becomes a diegetic "System" (The Gamer/Slime style) that extracts traits and reshapes flesh.
-- **Genre**: Creature-Horror Hunting Roguelite with Survivor-like Pressure and Action-RPG Beat-Feel.
-- **Signature Expression**: The Vessel is the active combat anchor (movement, dodge, parry, attack timing, positioning, and ultimate triggers). Creatures are bonded class modifiers/supports providing passives, auto-actions, and ranged pressure. Combat occurs in a freer action-RPG hunting field where timing truth is felt through the beat, not locked to a grid.
-- **Shorthand**: **Combat-Clean, Management-Rich** (The Honed Edge and The Grafted Growth).
-- **Aesthetic**: **Wild Fable Machine Ink** (AI-organic source material + Procedural readability + Pixel discipline).
+    - **Identity**: You are not a human; you are a cosmic "System" (Slime/Gamer style) that chose "Entry" to reshape a dying world.
+    - **Rebirth**: Progression is diegetic **Trait Extraction**. Every level up is an evolution of your unknowable code.
+- **Genre**: Cosmic-Horror Action-RPG with "Silver Age" Marvel Scale and Manga Impact.
+- **Signature Expression**: Full **Spatial 360 Interaction**. Snapping is legacy. The player swings an Energy Blade whose visual reach is the mechanical truth. Combat is a sequence of **Manga Impact Frames**—hit-stop and heavy shake are the heartbeat of the System.
+- **Shorthand**: **Combat-Spatial, Management-Rich** (The Extracted Edge and The Codex Growth).
+- **Aesthetic**: **Wild Fable Machine Ink** (AI-organic Lovecraftian horrors + Marvel Splash-Page Feedback).
 
 ---
 
 ## 1. The Skill-Flow Matrix (The "Pulse" of Progression)
-To maintain "Beat-Feel" while scaling "Management-Rich" power:
-- **Survivor Pressure (The Floor)**: Increases enemy density, projectile complexity, and spatial threat patterns.
-- **Character Mitigation (The Ceiling)**: Grafts, **Trait Synergies**, and Creature Supports allow "Mitigation" (turning a "Hit" into a "Glance" or triggering "System-Lit" counters).
-- **The Tension**: Higher pressure REQUIRES deeper "Management-Rich" theory-crafting and buildcraft.
+- **Codex Ceiling**: The System scales to **Level 10,000**.
+- **Limit Breakers**: Meta-achievements that shatter the evolutionary cap (Base 100).
+- **Creature Classes**: Permanent Lair Bonds aren't just pets; they are **Character Classes** that modify your starting run stats (e.g., Ashclaw = Glass Cannon).
 
 ---
 
 ## 2. Meta-Loop Truth (The World Resonance)
-The world is not just a backdrop; it is a reactive biomechanical response to the player's philosophy of power.
-- **World Fate**: Every choice (Bond/Eat) and performance milestone shifts the **Dominant Fate** (Predatory, Mythic, Technocratic, Haunted).
-- **Lair Resonance**: The current Dominant Fate grants passive perks in the Lair (e.g., DNA discounts, starting support charge), shaping the player's capacity to prepare.
-- **Creature Ascension**: The peak of bonding. A Level 5 bond can "Ascend" to Sovereign status only when the world resonates with its specific affinity, unlocking permanent **Mastery Traits**.
+- **World Fate**: A reactive biomechanical response to the System's presence.
+- **System Persistence**: Only **Potential** and **Luck** survive the run reset. All other stats are sacrificial fodder for the next extraction cycle.
+- **The Stitch**: You "eat" to extract. Bonding is a tactical compromise; Eating is pure System evolution.
 
 ---
 

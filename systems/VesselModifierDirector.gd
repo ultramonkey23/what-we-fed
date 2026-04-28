@@ -166,5 +166,7 @@ func _apply_vessel_effect(mod: Dictionary, context: Dictionary) -> void:
 			var to_lane: int = int(context.get("to", -1))
 			var stun_dur: float = float(mod.get("stun_duration", 0.5))
 			if to_lane >= 0 and _lane_manager != null:
-				_lane_manager.apply_status(to_lane, "slow", {"duration": stun_dur})
+				var enemy: Dictionary = _lane_manager.call("get_enemy", to_lane)
+				if not enemy.is_empty():
+					_lane_manager.call("apply_status_by_id", int(enemy.get("id", -1)), "slow", {"duration": stun_dur})
 				EventBus.play_sfx.emit("static_pulse")

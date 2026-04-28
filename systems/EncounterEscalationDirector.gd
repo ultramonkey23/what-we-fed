@@ -227,12 +227,13 @@ func _seed_initial_phase_enemies(phase: Dictionary) -> void:
 
 	var empty_lanes: Array = []
 	for lane in range(lane_manager.THREAT_COUNT):
-		if lane_manager.get_enemy(lane).is_empty() or float(lane_manager.get_enemy(lane).get("hp", 0.0)) <= 0.0:
+		if lane_manager.call("is_lane_empty", lane):
 			empty_lanes.append(lane)
 
-	var player_lane: int = player_combat.current_lane if player_combat != null else 1
-	if player_combat != null and player_combat.has_method("get_active_focus_lane"):
-		player_lane = int(player_combat.call("get_active_focus_lane"))
+	var player_lane: int = 1 # Default fallback
+	if player_combat != null:
+		if player_combat.has_method("get_active_focus_lane"):
+			player_lane = int(player_combat.call("get_active_focus_lane"))
 	var ordered_lanes: Array = ENCOUNTER_IDENTITY_RUNTIME.order_empty_lanes(
 		_region_id,
 		phase,
@@ -368,7 +369,7 @@ func _pick_best_empty_lane(exclude_lane: int) -> int:
 	var empty_lanes: Array = []
 	var any_empty_lanes: Array = []
 	for lane in range(lane_manager.THREAT_COUNT):
-		if lane_manager.get_enemy(lane).is_empty() or float(lane_manager.get_enemy(lane).get("hp", 0.0)) <= 0.0:
+		if lane_manager.call("is_lane_empty", lane):
 			any_empty_lanes.append(lane)
 			if lane != exclude_lane:
 				empty_lanes.append(lane)
@@ -397,15 +398,10 @@ func _request_spawn(lane: int) -> bool:
 	_emit_ecology_state_if_changed()
 	return true
 
-func _on_timed_attack_resolved(_lane: int, quality: String, _damage: float) -> void:
-	# Store the most recent quality for the enemy in this lane.
-	if lane_manager == null or not is_instance_valid(lane_manager):
-		return
-	var enemy: Dictionary = lane_manager.get_enemy(_lane)
-	if not enemy.is_empty():
-		var id: int = int(enemy.get("id", -1))
-		if id != -1:
-			_last_hit_quality_by_enemy[id] = quality
+func _on_timed_attack_resolved(_lane: int, quality: String, _damage: float, enemy_id: int) -> void:
+	# Store the most recent quality for the specific enemy ID.
+	if enemy_id != -1:
+		_last_hit_quality_by_enemy[enemy_id] = quality
 
 func _can_schedule_spawn(phase: Dictionary, enemy: Dictionary) -> bool:
 	if lane_manager == null or not is_instance_valid(lane_manager):
@@ -604,11 +600,13 @@ func _resolve_current_pressure_points() -> float:
 	if lane_manager == null or not is_instance_valid(lane_manager):
 		return 0.0
 	var total: float = 0.0
-	for lane in range(lane_manager.THREAT_COUNT):
-		var enemy: Dictionary = lane_manager.get_enemy(lane)
+	var all_enemies: Dictionary = lane_manager.call("get_all_enemies")
+	for id in all_enemies.keys():
+		var enemy: Dictionary = all_enemies[id]
 		if not enemy.is_empty() and float(enemy.get("hp", 0.0)) > 0.0:
 			total += _estimate_enemy_pressure_points(enemy) * 0.52
-		var projectile = lane_manager.get_projectile(lane)
+			
+		var projectile = lane_manager.call("get_projectile_by_id", id)
 		if projectile != null:
 			var projectile_damage: float = float(projectile.get("damage"))
 			var projectile_speed: float = float(projectile.get("speed"))

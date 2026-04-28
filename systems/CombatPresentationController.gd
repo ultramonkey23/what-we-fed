@@ -80,11 +80,7 @@ func setup_visuals(
 	background: ColorRect,
 	flash_overlay: ColorRect,
 	bg_sprite: Control,
-	battlefield_panel: Control,
-	battlefield_left_shade: Control,
-	battlefield_right_shade: Control,
-	battlefield_top_trim: Control,
-	battlefield_bottom_trim: Control
+	battlefield_panel: Control
 ) -> Dictionary:
 	background.z_index = -10
 	background.color = UI_STYLE.get_manga_color("ink_black")
@@ -102,83 +98,6 @@ func setup_visuals(
 	battlefield_panel.z_index = -7
 	host.add_child(battlefield_panel)
 
-	# PREMIUM: Replacing flat shades with ink-bleed gradients for high-contrast framing
-	var ink_color := Color(0.02, 0.02, 0.03, 0.45)
-	
-	battlefield_left_shade = TextureRect.new()
-	battlefield_left_shade.name = "BattlefieldLeftShade"
-	battlefield_left_shade.position = Vector2(field_rect.position.x + 6.0, field_rect.position.y + 20.0)
-	battlefield_left_shade.size = Vector2(120.0, field_rect.size.y - 40.0)
-	battlefield_left_shade.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	battlefield_left_shade.stretch_mode = TextureRect.STRETCH_SCALE
-	battlefield_left_shade.z_index = -5
-	
-	var left_grad := Gradient.new()
-	left_grad.colors = [ink_color, Color(ink_color.r, ink_color.g, ink_color.b, 0.0)]
-	left_grad.offsets = [0.0, 1.0]
-	var left_tex := GradientTexture2D.new()
-	left_tex.gradient = left_grad
-	left_tex.fill_from = Vector2(0.0, 0.5)
-	left_tex.fill_to = Vector2(1.0, 0.5)
-	battlefield_left_shade.texture = left_tex
-	host.add_child(battlefield_left_shade)
-
-	battlefield_right_shade = TextureRect.new()
-	battlefield_right_shade.name = "BattlefieldRightShade"
-	battlefield_right_shade.position = Vector2(field_rect.end.x - 126.0, field_rect.position.y + 20.0)
-	battlefield_right_shade.size = Vector2(120.0, field_rect.size.y - 40.0)
-	battlefield_right_shade.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	battlefield_right_shade.stretch_mode = TextureRect.STRETCH_SCALE
-	battlefield_right_shade.z_index = -5
-	
-	var right_grad := Gradient.new()
-	right_grad.colors = [Color(ink_color.r, ink_color.g, ink_color.b, 0.0), ink_color]
-	right_grad.offsets = [0.0, 1.0]
-	var right_tex := GradientTexture2D.new()
-	right_tex.gradient = right_grad
-	right_tex.fill_from = Vector2(0.0, 0.5)
-	right_tex.fill_to = Vector2(1.0, 0.5)
-	battlefield_right_shade.texture = right_tex
-	host.add_child(battlefield_right_shade)
-
-	battlefield_top_trim = TextureRect.new()
-	battlefield_top_trim.name = "BattlefieldTopTrim"
-	battlefield_top_trim.position = field_rect.position + Vector2(76.0, 8.0)
-	battlefield_top_trim.size = Vector2(field_rect.size.x - 152.0, 4.0)
-	battlefield_top_trim.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	battlefield_top_trim.stretch_mode = TextureRect.STRETCH_SCALE
-	var top_trim_color: Color = UI_STYLE.get_manga_color("alert_gold")
-	
-	var top_grad := Gradient.new()
-	top_grad.colors = [Color(top_trim_color.r, top_trim_color.g, top_trim_color.b, 0.0), Color(top_trim_color.r, top_trim_color.g, top_trim_color.b, 0.28), Color(top_trim_color.r, top_trim_color.g, top_trim_color.b, 0.0)]
-	top_grad.offsets = [0.0, 0.5, 1.0]
-	var top_tex := GradientTexture2D.new()
-	top_tex.gradient = top_grad
-	top_tex.fill_from = Vector2(0.0, 0.5)
-	top_tex.fill_to = Vector2(1.0, 0.5)
-	battlefield_top_trim.texture = top_tex
-	battlefield_top_trim.z_index = -5
-	host.add_child(battlefield_top_trim)
-
-	battlefield_bottom_trim = TextureRect.new()
-	battlefield_bottom_trim.name = "BattlefieldBottomTrim"
-	battlefield_bottom_trim.position = Vector2(field_rect.position.x + 96.0, field_rect.end.y - 10.0)
-	battlefield_bottom_trim.size = Vector2(field_rect.size.x - 192.0, 3.0)
-	battlefield_bottom_trim.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	battlefield_bottom_trim.stretch_mode = TextureRect.STRETCH_SCALE
-	var bottom_trim_color: Color = UI_STYLE.get_manga_color("blood_ember")
-	
-	var bot_grad := Gradient.new()
-	bot_grad.colors = [Color(bottom_trim_color.r, bottom_trim_color.g, bottom_trim_color.b, 0.0), Color(bottom_trim_color.r, bottom_trim_color.g, bottom_trim_color.b, 0.22), Color(bottom_trim_color.r, bottom_trim_color.g, bottom_trim_color.b, 0.0)]
-	bot_grad.offsets = [0.0, 0.5, 1.0]
-	var bot_tex := GradientTexture2D.new()
-	bot_tex.gradient = bot_grad
-	bot_tex.fill_from = Vector2(0.0, 0.5)
-	bot_tex.fill_to = Vector2(1.0, 0.5)
-	battlefield_bottom_trim.texture = bot_tex
-	battlefield_bottom_trim.z_index = -5
-	host.add_child(battlefield_bottom_trim)
-
 	flash_overlay.color = Color(1.0, 1.0, 1.0, 0.0)
 	flash_overlay.z_index = 100
 	flash_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -186,11 +105,7 @@ func setup_visuals(
 	sync_fullscreen_underlay_controls(host, background, flash_overlay, bg_sprite)
 	return {
 		"bg_sprite": bg_sprite,
-		"battlefield_panel": battlefield_panel,
-		"battlefield_left_shade": battlefield_left_shade,
-		"battlefield_right_shade": battlefield_right_shade,
-		"battlefield_top_trim": battlefield_top_trim,
-		"battlefield_bottom_trim": battlefield_bottom_trim
+		"battlefield_panel": battlefield_panel
 	}
 
 

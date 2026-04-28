@@ -198,7 +198,8 @@ func _combat_metadata(combat_meter: Node, player_combat: Node) -> Dictionary:
 		combo_count = int(_get_object_property(combat_meter, "combo_count", -1))
 		style_score = float(_get_object_property(combat_meter, "style_score", -1.0))
 	var active_lane: int = -1
-	active_lane = int(_get_object_property(player_combat, "current_lane", -1))
+	if player_combat != null and player_combat.has_method("get_active_focus_lane"):
+		active_lane = int(player_combat.call("get_active_focus_lane"))
 	return {"tier": tier, "combo_count": combo_count, "style_score": style_score, "active_lane": active_lane}
 
 
@@ -236,7 +237,8 @@ func _lane_metadata(lane_manager: Node, player_combat: Node, context: Dictionary
 				"hit_zone": hit_pos
 			})
 	var active_lane: int = -1
-	active_lane = int(_get_object_property(player_combat, "current_lane", -1))
+	if player_combat != null and player_combat.has_method("get_active_focus_lane"):
+		active_lane = int(player_combat.call("get_active_focus_lane"))
 	return {
 		"active": active_lane,
 		"source": int(context.get("source_lane", context.get("lane", _last_damage_lane))),

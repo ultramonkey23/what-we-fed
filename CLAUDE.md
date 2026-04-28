@@ -11,14 +11,14 @@ Claude Code starts here. Keep this file short; load procedures through `.claude/
 6. Dream scope: deferred until explicitly pulled forward.
 
 ## Locked Core
-Protect beat-feel, directional threat readability, readable support, combat honesty, bond vs eat meaning, DNA as species-specific predation economy, survivor-like pressure, behavior-shaped growth, and "start weak, become feared." Do not drift into generic survivor, generic collector, generic roguelite soup, rhythm gimmick, spreadsheet sludge, or pretty unreadable action clutter.
+Protect the **Living Codex** identity: the player is a sentient System that extracts traits. Maintain **Manga Framing** (high-impact hit-stop/shake) and **Cosmic Horror** weirdness. Ensure **Spatial Purity**: lanes are strictly spawn anchors; all mechanical interaction (Attack, Parry, Support, Ultimate) is 360-degree spatial or ID-authoritative. Protect the **DNA Economy** (predation-based) and **Deterministic Growth** (playstyle dictates stats). 
 
 ## Current Working Truth
-- Godot project and git root are this directory.
-- Live flow: `TitleScreen -> LairScene -> RouteScene -> CombatScene`.
-- Combat is active and action-driven with beat-feel; current runtime ownership is in `scenes/combat/CombatScene.gd`, `PlayerCombat.gd`, directional threat management, `systems/CombatMeter.gd`, and `systems/SongConductor.gd`.
-- Creature-specific DNA drops, bond/eat, bonded support, realtime tendency growth, song pressure, and queued reward shell are already live.
-- Ranch is deferred. Performance reward depth, score/kill payoff, HUD readability, authored pressure, and coherent validation are current bottlenecks.
+- Godot 4.6 project. Live flow: `TitleScreen -> Lair -> Route -> Combat`.
+- **Combat is 100% Spatial Action-RPG**: Snapping is removed. The **Energy Sword** defines mechanical reach (220.0 units).
+- **The System**: Codex Level (10,000 ceiling, meta-cap at 100) and Creature Classes (stat packages) are live.
+- **Feedback**: Global "Juice" orchestrated by `CombatFeedbackDirector` (hit-stop, heavy shake).
+- **State**: `potential` and `luck` are Meta-Stats; all others reset per run but are modified by permanent Lair Bonds.
 
 ## Agent Routing
 - **VIBE-CODER** co-creates: ideation, style sharpening, identity protection, signal extraction.

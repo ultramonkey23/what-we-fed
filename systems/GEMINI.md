@@ -3,48 +3,38 @@
 ## THE AUTHORITY HIERARCHY
 All system design must adhere to the project's authority hierarchy:
 1. **User / Creator Intent**: Highest authority.
-2. **Current Repo Truth (Layer 2)**: EventBus signals and current `GameState` schema.
-3. **Older Canon / Source Docs (Layer 1)**: DNA economy, Bond vs Eat tension, and Reward Ecology lanes. Useful memory and guidance.
+2. **Current Repo Truth (Layer 2)**: Sentient System identity, Deterministic Growth, Creature Classes.
+3. **Older Canon / Source Docs (Layer 1)**: DNA economy, Bond vs Eat tension. Useful memory.
 
-## System Philosophy: Management-Rich
-Systems should be decoupled and modular, favoring composition over deep inheritance.
-- **Management-Rich**: While combat is clean, between-level and pre-run screens must be information-dense and strategic. Provide detailed comparisons for loot, grafts, artifacts, and collars.
-- **Comprehension > Urgency**: Outside active combat, the player should have all the data needed to make complex build decisions.
-- **Display Law**: **Combat HUD = Urgency** (live action) | **Management Screens = Comprehension** (detailed strategy).
+## System Philosophy: The Sentient Codex
+The player is the **Living Codex**, a cosmic System that extracts traits. Growth is not a choice; it is diegetic evolution.
+
+- **Deterministic Extraction**: Growth is behavior-shaped but outcome-certain. Aggression MUST grant Power. Guard MUST grant Carapace. No RNG stat sludge.
+- **Creature Classes**: Permanent Lair Bonds act as the System's "Grafted Classes," granting unique starting stat modifiers (Loot Lane).
+- **Meta-Ceiling**: The Codex scales to **Level 10,000**.
+- **Management-Rich**: Pre-run screens must show the specific "Extraction Math" for each creature and tendency level.
 
 ## Reward Ecology: Lane Separation
-To prevent "stat sludge," all progression systems must strictly adhere to distinct Reward Ecology lanes:
-1. **Loot / Gear**: Shapes the hunter (Biological trophies, organs, grafts).
-2. **Artifacts / Relics**: Shape the run (Rare, transformative, synergy-rich).
-3. **DNA**: The species relationship economy earned from actual kills.
-4. **Bond / Eat**: The core identity split (relational vs predatory).
-5. **Collars**: Shape bonded creature support behavior.
-6. **Tendencies**: Behavior-shaped growth spine.
+1. **Loot / Classes**: Character class modifiers (Lair Bonds).
+2. **Artifacts / Relics**: Shape the run.
+3. **DNA**: The extraction currency.
+4. **Bond / Eat**: Relational compromise vs Pure System Evolution.
+5. **Collars**: Support behaviors.
+6. **Tendencies**: The primary extraction spine.
 
-## Growth & Economy
-- **Behavior-Shaped Growth**: Growth should reflect how the player plays (predation vs bonding), not just generic level-up choices.
-- **DNA Integrity**: DNA is the currency of evolution. Protect the predation economy.
-- **Support Logic**: Bonded creatures provide "Support." This should be readable and reliable, not random noise.
-
-## State Management
-- **Persistence**: `GameState.gd` is the only place for long-term data (Roster, DNA totals, Region unlocks).
-- **Run Local**: `RunGrowth.gd` and `systems/RunStats.gd` own the current run's state.
-- **Cleanup**: Ensure run-local state is properly reset when a run ends or a new one begins.
-
-## Presentation Logic
-- **UI Style**: Use `systems/UIStyle.gd` for consistent colors, fonts, and "teeth."
-- **HUD Performance**: Reward readouts and combo meters must be responsive but non-distracting.
-- **Modular HUD**: Keep presentation logic (`CombatPresentationRuntime.gd`) separate from combat mechanics.
+## Meta-State Management
+- **Persistence**: Only **Potential** and **Luck** survive the run reset.
+- **Limit Breakers**: Persistent achievement trackers that raise the Codex evolutionary cap (Base 100).
+- **Run Local**: All other stats reset but are modified by the permanent Lair Bonds at start-of-run.
 
 ## Implementation Rules
-- **Signals**: Always prefer `EventBus.emit_signal()` over direct node references across systems.
-- **Growth Effects**: Add new growth logic to `systems/RunGrowth.gd` and define data in `data/RunGrowthContent.gd`.
-- **Meter Logic**: `systems/CombatMeter.gd` owns Combo/Ultimate/Stamina. Do not fragment this logic.
+- **Growth Effects**: Add deterministic mappings to `systems/RunGrowth.gd`.
+- **Classes**: Define class packages in `data/CombatContent.gd`.
+- **Leveling**: Use the linear infinite scaling formula in `ProgressionManager.gd`.
 
 ## Validation Checklist (Systems-Specific)
-- [ ] Are signals disconnected properly at exit?
-- [ ] Does `GameState` save/load correctly?
-- [ ] Does the "Bond vs Eat" tension remain balanced?
-- [ ] Does every new reward fit a specific Reward Ecology lane?
-- [ ] Is "Management-Rich" detail preserved in UI screens?
+- [ ] Is leveling deterministic (Playstyle -> Predicted Stat)?
+- [ ] Does `GameState` correctly apply Class modifiers at run start?
+- [ ] Does `Potential` correctly amplify the Class bonuses?
+- [ ] Do only `Potential` and `Luck` persist after death?
 - [ ] Did you verify with `smoke_project.bat`?

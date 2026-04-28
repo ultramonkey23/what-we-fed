@@ -153,10 +153,6 @@ var _dna_shell: ColorRect = null
 var _dna_emblem: TextureRect = null
 var _dna_slot_labels: Array[Label] = []
 var _battlefield_panel: Control = null
-var _battlefield_left_shade: Control = null
-var _battlefield_right_shade: Control = null
-var _battlefield_top_trim: Control = null
-var _battlefield_bottom_trim: Control = null
 var _bg_sprite: Control = null
 var _bonded_creature_sprite: Sprite2D = null
 var _bonded_creature_species: String = ""
@@ -1272,7 +1268,7 @@ func _get_player_focus_lane() -> int:
 		return 2
 	if player_combat.has_method("get_active_focus_lane"):
 		return int(player_combat.call("get_active_focus_lane"))
-	return int(player_combat.get("current_lane"))
+	return 2 # Fallback to East
 
 
 func _lane_cardinal_token(lane: int) -> String:
@@ -1735,30 +1731,10 @@ func _setup_visuals() -> void:
 		background,
 		flash_overlay,
 		_bg_sprite,
-		_battlefield_panel,
-		_battlefield_left_shade,
-		_battlefield_right_shade,
-		_battlefield_top_trim,
-		_battlefield_bottom_trim
+		_battlefield_panel
 	)
 	_bg_sprite = refs.get("bg_sprite")
 	_battlefield_panel = refs.get("battlefield_panel")
-	_battlefield_left_shade = refs.get("battlefield_left_shade")
-	_battlefield_right_shade = refs.get("battlefield_right_shade")
-	_battlefield_top_trim = refs.get("battlefield_top_trim")
-	_battlefield_bottom_trim = refs.get("battlefield_bottom_trim")
-	_clear_legacy_visual_clutter()
-
-
-func _clear_legacy_visual_clutter() -> void:
-	# Keep the authored combat field clean now that direction and spacing are owned by CombatVisualRig.
-	for node in [_battlefield_left_shade, _battlefield_right_shade, _battlefield_top_trim, _battlefield_bottom_trim]:
-		if node != null and is_instance_valid(node):
-			node.queue_free()
-	_battlefield_left_shade = null
-	_battlefield_right_shade = null
-	_battlefield_top_trim = null
-	_battlefield_bottom_trim = null
 
 
 func _sync_fullscreen_underlay_controls() -> void:
@@ -3251,7 +3227,7 @@ func _connect_eventbus() -> void:
 	EventBus.dna_lock_denied.connect(_on_dna_lock_denied)
 	EventBus.proc_feedback_requested.connect(_on_proc_feedback_requested)
 	EventBus.ultimate_power_granted.connect(_on_ultimate_power_granted)
-	EventBus.enemy_status_applied_requested.connect(lane_manager.apply_status)
+	EventBus.enemy_status_applied_requested.connect(_on_enemy_status_applied_requested)
 	EventBus.screen_flash.connect(_presentation_runtime.on_screen_flash)
 	EventBus.screen_shake.connect(_presentation_runtime.on_screen_shake)
 	EventBus.ui_shake.connect(_presentation_runtime.on_ui_shake)
@@ -5564,7 +5540,8 @@ func _on_enemy_damaged(enemy_id: int, damage: float) -> void:
 	if lane >= 0:
 		var max_hp: float = float(_enemy_max_hp.get(enemy_id, 0))
 		if max_hp > 0.0:
-			var current_hp: float = float(lane_manager.get_enemy(lane).get("hp", 0))
+			var enemy_data: Dictionary = lane_manager.call("get_enemy_by_id", enemy_id)
+			var current_hp: float = float(enemy_data.get("hp", 0))
 			if current_hp / max_hp <= ENEMY_LOW_HP_THRESHOLD:
 				var marker_data = _enemy_markers_by_id.get(enemy_id, null)
 				if marker_data != null:
@@ -5703,6 +5680,17 @@ func _on_proc_feedback_requested(text: String, color: Color) -> void:
 func _on_ultimate_power_granted(amount: float) -> void:
 	if combat_meter != null and combat_meter.has_method("gain_ultimate_power"):
 		combat_meter.call("gain_ultimate_power", amount)
+
+
+func _on_boss_damaged(id: int, damage: float, is_threshold_impact: bool) -> void:
+	pass # Handling moved to dedicated boss sub-logic
+
+
+func _on_enemy_status_applied_requested(lane: int, status_id: String, params: Dictionary) -> void:
+	if lane_manager == null: return
+	var enemy_id: int = _get_enemy_id_for_lane(lane)
+	if enemy_id != -1:
+		lane_manager.call("apply_status_by_id", enemy_id, status_id, params)
 
 
 func _on_enemy_defeated(enemy_id: int) -> void:
@@ -5971,12 +5959,11 @@ func _on_player_attacked(lane: int, _damage: float, was_timed: bool) -> void:
 		_flash_meter_shell(Color(0.16, 0.16, 0.17, 0.94), 0.08)
 
 
-func _on_timed_attack_resolved(lane: int, quality: String, damage: float) -> void:
+func _on_timed_attack_resolved(lane: int, quality: String, damage: float, enemy_id: int) -> void:
 	var flat_bonus_effect: Dictionary = _get_growth_effect("timed_attack_bonus_flat")
 	var beat_quality: String = _get_beat_quality_for_action()
-	var enemy_id: int = _get_enemy_id_for_lane(lane)
-	if not flat_bonus_effect.is_empty():
-		lane_manager.damage_enemy(lane, float(flat_bonus_effect.get("value", 0.0)))
+	if not flat_bonus_effect.is_empty() and enemy_id != -1:
+		lane_manager.call("damage_enemy_by_id", enemy_id, float(flat_bonus_effect.get("value", 0.0)))
 		_presentation_runtime.spawn_attack_silhouette_to_lane(lane, Color(0.98, 0.70, 0.34, 0.30), 8.0, 0.08, 0.94)
 
 	if quality == "perfect":
@@ -6013,7 +6000,9 @@ func _try_apply_vessel_modifier_on_perfect(origin_lane: int, origin_damage: floa
 	var silhouette_color: Color = plan.get("silhouette_color", Color(1.0, 1.0, 1.0, 0.30))
 	for target_variant in targets:
 		var target_lane: int = int(target_variant)
-		lane_manager.damage_enemy(target_lane, cleave_damage)
+		var enemy_id: int = _get_enemy_id_for_lane(target_lane)
+		if enemy_id != -1:
+			lane_manager.call("damage_enemy_by_id", enemy_id, cleave_damage)
 		_presentation_runtime.spawn_attack_silhouette_to_lane(target_lane, silhouette_color, 7.0, 0.08, 0.92)
 	_show_feedback(
 		String(plan.get("label", "")),
@@ -6670,6 +6659,7 @@ func _on_bonded_support_triggered(species_id: String, lane: int, effect_id: Stri
 		var ctx: Dictionary = {
 			"species_id": species_id,
 			"lane": lane,
+			"targets": player_combat.call("_get_targets_in_cone") if player_combat != null else {},
 			"effect_id": effect_id,
 			"combo_mult": combo_mult,
 			"bond_mult": bond_mult,

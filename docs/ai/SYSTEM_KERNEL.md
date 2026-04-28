@@ -26,15 +26,13 @@ The project operates through a five-lobe functional stack. Every lobe has a form
 ---
 
 ## 3. OPERATING LAWS
-- **Assumption-Busting**: You MUST verify Layer 2 (Live Code) before proposing any mutation.
-- **Blast Radius Analysis (BRA)**: Classify tasks before Spec:
-    - **Tier 0**: Docs/Naming.
-    - **Tier 1**: Local logic (one script).
-    - **Tier 2**: Systemic (Signals/EventBus/Data).
-    - **Tier 3**: Core (Touches orchestration kernels or identity-anchor contracts).
+- **Spatial Purity (ARPG Rule)**: Snapping is banned. No mechanical interaction (Damage/Status) may rely on lane indices. Interactions must use **Enemy IDs** or **Spatial Area** checks.
+- **Manga Framing (Impact Rule)**: Combat is a sequence of high-intensity frames. Hyperbolic feedback—**Hit-Stop** (time scale reduction) and **Heavy Shake**—is mandatory on perfect impact.
+- **The Sentient System (Extraction Rule)**: Growth is diegetic "Trait Extraction" (Slime/Gamer). Leveling up must be **Deterministic** (Aggression = Power, etc.). No RNG stat sludge.
+- **Meta-Persistence**: Only **Potential** and **Luck** survive the run reset.
 - **Combat-Clean**: No active-combat menu-sludge or interruptions.
 - **Management-Rich**: Maximize strategic detail in pre-run/between-level screens.
-- **Display Law**: Combat HUD = Urgency | Management Screens = Comprehension.
+- **Display Law**: Combat HUD = Urgency | Management Screens = Comprehension. Lanes are strictly **Visual Spawn Sectors**.
 
 ---
 

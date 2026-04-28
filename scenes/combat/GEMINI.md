@@ -3,41 +3,35 @@
 ## THE AUTHORITY HIERARCHY
 All combat design must adhere to the project's authority hierarchy:
 1. **User / Creator Intent**: Highest authority.
-2. **Current Repo Truth (Layer 2)**: Active `SongConductor` signals, input buffering, and state transitions.
-3. **Older Canon / Source Docs (Layer 1)**: Timing honesty, lane integrity, and 1:1 input response. Useful memory and guidance; now considered secondary to Action-RPG beat-feel.
+2. **Current Repo Truth (Layer 2)**: 360-degree spatial interaction, ID-authoritative resolution.
+3. **Older Canon / Source Docs (Layer 1)**: Rigid lane-snapping and grid-based interaction. **RETIRED**.
 
-## Combat Soul: Combat-Clean
-Combat in WHAT WE FED is about **beat-feel** and **directional threat clarity**. Every player action must feel responsive and every enemy presence must be readable.
+## Combat Soul: Spatial Action-RPG
+Combat in WHAT WE FED is a freer hunting field. The **Living Codex** (player) interacts with physical entities in 3D space, not UI slots.
 
-- **Combat HUD = Urgency**: The live HUD must be stripped to the absolute essentials. If it doesn't help the player survive the next 200ms, it doesn't belong on screen during combat.
-- **No Menu Sludge**: Never interrupt the active song flow with management popups or pause-heavy choice menus **during active in-level combat**.
-- **Management Screens = Comprehension**: Push loot review, artifact choice, and detailed build decisions to the between-level or pre-run state where high-information density is encouraged.
-- **Combat-Clean, Management-Rich**: The game is fast and pressure-first during levels, but thoughtful and strategic between them.
-
-## Combat Field Rules
-- **Action-RPG Hunting**: Combat is a freer field; enemies and projectiles focus on threat direction rather than rigid lanes.
-- **Visual Priority**: Directional threat indicators and incoming threats must never be obscured by "cool" VFX.
-- **Spawn Logic**: `CombatScene.gd` or dedicated threat managers own the cadence of arrival.
+- **Spatial Purity**: No mechanical interaction may rely on lane indices. Attacks, Parries, and Supports sweep the world spatially.
+- **Lanes = Spawn Anchors**: Lane integers (0-7) are strictly for visual routing (HUD rings) and designating where an entity *arrives* on the battlefield.
+- **Manga Impact Framing**: Every successful "Perfect" action must freeze the world (Hit-Stop) and shake the camera (Splash-Page weight).
+- **Honest Range**: Mechanical reach must match visual asset size (e.g. Energy Sword = 220.0 units).
 
 ## Timing Truth & Beat-Feel
-- **Master Clock**: `SongConductor.gd` is the source of truth for beats and timing.
-- **Beat-Feel**: Player attacks and enemy attacks must feel on beat, but player agency remains active and responsive (movement, dodge, parry).
-- **Feedback**: Visual/Audio feedback must occur at the exact moment of resolution and snap to the nearest beat when appropriate for impact feel.
+- **Master Clock**: `SongConductor.gd` remains the heartbeat.
+- **Juice**: `CombatFeedbackDirector` orchestrates all hyperbolic feedback.
+- **Urgency**: HUD rings map spawn-sector pressure.
 
 ## Implementation Rules
-- **Player Actions**: Modify `PlayerCombat.gd` for input handling, damage calculation, and state (Attack/Parry/Dodge/Positioning).
-- **Enemy Behavior**: Modify specific creature scripts for encounter logic and directional pressure.
-- **Feedback Layer**: Use `systems/CombatImpactFeedback.gd` for impact effects. Keep it lean and ensure combat truth is never hidden.
-- **UI/HUD**: `systems/CombatPresentationRuntime.gd` owns the live HUD. Clarity is king.
+- **Player Actions**: `PlayerCombat.gd` handles spatial 360 aim and AoE resolution.
+- **Enemy Behavior**: ID-authoritative damage and status.
+- **Decoupling**: Never fallback to lane-damage if a spatial swing misses. Whiffs are honest.
 
 ## Validation Checklist (Combat-Specific)
-- [ ] Does the player still have active combat control (Movement/Timing)?
-- [ ] Are directional threats clearly distinguishable (N/S/E/W)?
-- [ ] Does the `SongConductor` beat signal remain accurate and felt?
+- [ ] Is interaction 100% ID or Spatial (No `damage_enemy(lane)`)?
+- [ ] Does the Energy Sword's visual reach match the targeting `max_range`?
+- [ ] Does "Perfect" impact trigger the `CombatFeedbackDirector`?
+- [ ] Is the 360-degree facing stable (no flipping sprite mirroring)?
 - [ ] Did you test with `debug_harness.bat`?
-- [ ] Is **combat-clean active song combat** preserved (no menu sludge/repeated interruption)?
 
 ## Anti-Drift: Combat
-- **NO** screen-filling particle explosions that hide the threat directions.
-- **NO** mid-song stop-start that breaks realtime combat flow.
-- **Combat HUD = urgency** (minimalist). **Management screens = comprehension** (deferred to between-level state).
+- **NO** returning to lane-snapping interaction.
+- **NO** "magical" damage to empty lanes.
+- **NO** desyncing visual reach from mechanical range.

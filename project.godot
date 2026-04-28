@@ -20,6 +20,7 @@ config/icon="res://icon.svg"
 EventBus="*res://autoloads/EventBus.gd"
 GameState="*res://autoloads/GameState.gd"
 DevHarness="*res://autoloads/DevHarness.gd"
+CombatFeedbackDirector="*res://autoloads/CombatFeedbackDirector.gd"
 
 [display]
 

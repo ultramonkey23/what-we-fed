@@ -25,13 +25,14 @@ var stat_adaptability: float = 1.0     # Form: Timed Attack & Combo Armor Mult
 
 
 func reset_to_base() -> void:
+	# PERSISTENT TRUTH: Only Potential and Luck are Meta-Stats. 
+	# They are preserved during this reset to allow for meta-progression impact.
+	
 	stat_vitality = BASE_MAX_HP
 	stat_power = BASE_DAMAGE
 	stat_carapace = BASE_DEFENSE
 	stat_endurance = 100.0
 	stat_swiftness = 1.0
-	stat_luck = 1.0
-	stat_potential = 1.0
 	stat_intelligence = 1.0
 	stat_adaptability = 1.0
 	

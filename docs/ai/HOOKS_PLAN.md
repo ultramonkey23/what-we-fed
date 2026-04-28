@@ -11,7 +11,7 @@ Every terminal AI session MUST begin by grounding in these files:
 
 ## 2. The "One Best Next Move" Workflow
 Before starting any Level 3+ (Feature) or Level 4 (Content) task:
-1. Use `NEXT_MOVE_ROUTER.md` to classify the bottleneck.
+1. Use `SOVEREIGN_CORE.md` to classify the bottleneck.
 2. State the "One Best Move" and "What Should Wait."
 3. Propose a **Surgical Plan** (text-only) and wait for a Directive.
 

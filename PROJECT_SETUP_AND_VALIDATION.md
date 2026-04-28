@@ -3,8 +3,8 @@
 Practical setup and validation commands for this repo.
 
 For startup context, read first:
-- `docs/ai/PROJECT_KERNEL.md`
-- `docs/ai/CONTEXT_EXPANSION_MAP.md`
+- `docs/ai/SOVEREIGN_CORE.md`
+- `docs/ai/REPO_TRUTH_PROTOCOL.md`
 - `docs/ai/VIBE_CODING_QUICKSTART.md`
 
 Truth layering reminder:

@@ -16,7 +16,7 @@ Task: Fresh repo audit — [DESCRIBE SCOPE, e.g. "combat system" or "full docs/a
 Repo truth source: Current files in repo. No assumptions from prior sessions.
 
 Files to inspect:
-- [list starting files, e.g. AGENTS.md, CLAUDE.md, docs/ai/SYSTEM_KERNEL.md]
+- [list starting files, e.g. AGENTS.md, CLAUDE.md, docs/ai/SOVEREIGN_CORE.md]
 - Then expand as needed based on what you find.
 
 Files allowed to change: NONE. Read only.

@@ -1,55 +1,46 @@
-# CLAUDE.md - WHAT WE FED
+# CLAUDE.md — WHAT WE FED (v2.7)
 
-Claude Code starts here. Keep this file short; load procedures through `.claude/skills/` and route specialist work through `.claude/agents/`.
+This is the lean entrypoint for Claude Code. Follow the **Sovereign Core** protocol.
 
-## Authority
-1. Creator authority: the user is final.
-2. Repo truth: current implementation reality.
-3. Current live-build truth: what actually boots and plays now.
-4. Evolving spine: accepted near-term direction.
-5. Older canon/source docs: useful memory, never allowed to fight stronger truth.
-6. Dream scope: deferred until explicitly pulled forward.
+## 1. PROJECT SOUL (Black Signal)
+- **Identity**: You are the **Living Codex**, an invasive system extracting patterns.
+- **Tone**: Premium Menace, Manga Monstrosity, Bone Ink.
+- **Combat**: 360-degree Action-RPG beat-feel. No lane-snapping.
+- **Economy**: DNA is species-specific predation currency. Bond vs Eat.
+- **Goal**: Start weak, become feared.
 
-## Locked Core
-Protect the **Living Codex** identity: the player is a sentient System that extracts traits. Maintain **Manga Framing** (high-impact hit-stop/shake) and **Cosmic Horror** weirdness. Ensure **Spatial Purity**: lanes are strictly spawn anchors; all mechanical interaction (Attack, Parry, Support, Ultimate) is 360-degree spatial or ID-authoritative. Protect the **DNA Economy** (predation-based) and **Deterministic Growth** (playstyle dictates stats). 
+## 2. THE 5 SOVEREIGN LAWS
+1. **Pre-Flight Signal Grep**: Map consumers before changing providers.
+2. **The Silent Council**: Internalize viewpoints; output unified verdicts.
+3. **Strict Sequential Mutation**: No parallel edits to single files.
+4. **Micro-Validation**: Run `validate_project.bat` incrementally.
+5. **Manga Monstrosity Filter**: Use diegetic terminology (Lineage, Sequence, Intrusion).
 
-## Current Working Truth
-- Godot 4.6 project. Live flow: `TitleScreen -> Lair -> Route -> Combat`.
-- **Combat is 100% Spatial Action-RPG**: Snapping is removed. The **Energy Sword** defines mechanical reach (220.0 units).
-- **The System**: Codex Level (10,000 ceiling, meta-cap at 100) and Creature Classes (stat packages) are live.
-- **Feedback**: Global "Juice" orchestrated by `CombatFeedbackDirector` (hit-stop, heavy shake).
-- **State**: `potential` and `luck` are Meta-Stats; all others reset per run but are modified by permanent Lair Bonds.
+## 3. AUTHORITY ORDER
+1. **Creator Intent** > 2. **Sovereign Protocols** > 3. **Repo Truth** > 4. **Evolving Spine**.
 
-## Agent Routing
-- **VIBE-CODER** co-creates: ideation, style sharpening, identity protection, signal extraction.
-- **BRAIN** decides: strategy, scope, authority conflicts, best next move.
-- **SYMBIOTE** connects: repo truth scans, dependency maps, stale-doc reconciliation.
-- **CYBORG** upgrades/extracts: validation, hardening, maintainability, workflow infrastructure.
-- **ALFRED** simplifies: surgical implementation, bug fixes, usability, handoffs.
+## 4. CANONICAL DOCTRINE (Read first)
+- [docs/ai/SOVEREIGN_CORE.md](docs/ai/SOVEREIGN_CORE.md) — Authority, 5 Laws, Validation, Routing.
+- [docs/ai/ARCHETYPES.md](docs/ai/ARCHETYPES.md) — The 7 Archetypes and Specialists.
+- [docs/ai/REPO_TRUTH_PROTOCOL.md](docs/ai/REPO_TRUTH_PROTOCOL.md) — Stale-truth, Ledger, Protection.
+- [docs/ai/REPORT_CONTRACT.md](docs/ai/REPORT_CONTRACT.md) — Reporting template and scoring.
 
-Future prompts should name the best-fit agent explicitly. If the prompt does not, select one before acting and state the routing briefly.
+## 5. SPECIALIST ROUTING
+- **SIGNAL**: Tone, narrative, identity.
+- **BRAIN**: Orchestration, architecture authority.
+- **AUDITOR**: Safety, audit, regression, infrastructure.
+- **SURGEON**: Execution, surgical mutation, precision.
+- **VISUALS**: UI/UX, aesthetic alignment, readability.
+- **VOID**: Crash hunting, smoke tests, performance.
+- **SCOUT**: Mapping, connectivity, repo truth discovery.
 
-## Validation Commands
-Run from repo root:
-- `smoke_project.bat`: fast headless boot check.
-- `validate_data.bat`: content/data integrity audit.
-- `validate_project.bat`: import pass, smoke boot, and data audit.
-- `debug_harness.bat`: dev-only combat harness.
-- `run_project.bat`: interactive game launch.
+*See ARCHETYPES.md for full specialist descriptions and file pointers.*
 
-Do not claim gameplay feel validation from smoke/validate alone. State exactly what was and was not run.
+## 6. VALIDATION COMMANDS
+- `smoke_project.bat`: Fast headless boot check.
+- `validate_data.bat`: Content/data integrity audit.
+- `validate_project.bat`: Full pass (Import + Smoke + Data).
+- `run_project.bat`: Interactive game launch.
 
-## Load-On-Demand Context
-- Shared multi-AI contract: `docs/ai/MULTI_AI_OPERATING_LAYER.md`
-- Workflow and validation details: `PROJECT_SETUP_AND_VALIDATION.md`
-- System ownership map: `REPO_SYSTEM_MAP.md`
-- Current spine: `docs/GAME_SPINE.md`, `docs/NEXT_PHASE_PLAN.md`
-- Deep AI doctrine: `docs/ai/SYSTEM_KERNEL.md`, `docs/ai/PROJECT_KERNEL.md`
-- Visual evidence loop: `docs/ai/VISUAL_TRUTH_LOOP.md`
-- Bounded improvement workflow: `docs/ai/GODLY_WORKFLOW.md`
-- Signal flow reference: `docs/ai/SIGNAL_MAP.md`
-
-Default behavior: inspect real files first, identify the bottleneck, choose one bounded fix, preserve working behavior, validate honestly, and report compactly.
-
-## AI Control Plane
-Before repo work, read `docs/ai/AI_CONTROL_PLANE.md` and follow the relevant routing/report/validation contract.
+## 7. OPERATING RULE
+Inspect real files first, choose one bounded move, preserve working behavior, and end every intervention with the **Auditor's Report (v2.5)**.

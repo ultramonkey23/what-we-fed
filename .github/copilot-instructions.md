@@ -13,9 +13,9 @@ Creator authority comes first:
 
 Default read order:
 0. `docs/ai/TERMINAL_AI_BOOTSTRAP.md` (Terminal and tool fast-load)
-1. `docs/ai/MULTI_AI_OPERATING_LAYER.md` (Shared multi-AI contract)
-2. `docs/ai/SYSTEM_KERNEL.md` (The Unified Pulse)
-3. `docs/ai/PROJECT_KERNEL.md` (Project Identity)
+1. `docs/ai/SOVEREIGN_CORE.md` (Sovereign Core protocol)
+2. `docs/ai/REPO_TRUTH_PROTOCOL.md` (Truth rules)
+3. `docs/ai/ARCHETYPES.md` (Role definitions)
 4. `AGENTS.md` (Entrypoint)
 
 ## THE BRAIN ORCHESTRATOR

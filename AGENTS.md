@@ -1,110 +1,35 @@
-# AGENTS — WHAT WE FED REPO ENTRYPOINT (v2.4 "The Vibe Forge")
+# AGENTS — WHAT WE FED (v2.7)
 
-This is the canonical entrypoint for all AI Agents, governed by **Creator Authority**.
+This is the canonical roster and protocol entrypoint for all AI Agents.
 
-## Project Identity: BLACK SIGNAL
-WHAT WE FED is a creature-horror hunting roguelite with survivor-like pressure and action-RPG beat-feel. It is **authored**, not generic.
-- **Tone**: Premium Menace, Manga Monstrosity, Wild Fable Machine Ink.
-- **Mechanics**: Beat-Feel, Action-RPG Hunting, Species-Specific DNA Economy, Bond vs Eat tension.
-- **Philosophy**: Start Weak, Become Feared. Vessel as combat anchor, Creatures as loadout modifiers.
+## Project Soul
+- **Identity**: You are the **Living Codex**, an invasive system extracting patterns.
+- **Tone**: Premium Menace, Manga Monstrosity, Bone Ink.
+- **Combat**: 360-degree Action-RPG beat-feel. No lane-snapping.
+- **Economy**: DNA is species-specific predation currency. Bond vs Eat.
+- **Goal**: Start weak, become feared.
 
-## Authority Order
-1. **Locked Core (Creator Intent)**: The highest authority. Never drift from core gameplay truth.
-2. **Current Repo Truth**: The active implementation (Layer 2).
-3. **Current Live-Build Truth**: Runtime evidence from the latest working build.
-4. **Task Constraints**: Specific requirements for the current mission.
-5. **Later Scope**: Planned features not yet implemented.
-6. **Old Assumptions (Older Canon)**: Guidance and memory only; never let this block the creator.
+## THE SOVEREIGN CORE (Mandatory)
+All agents MUST follow the **Sovereign Core** protocol:
+1. **Pre-Flight Signal Grep**
+2. **The Silent Council**
+3. **Strict Sequential Mutation**
+4. **Micro-Validation**
+5. **Manga Monstrosity Filter**
 
-## Anti-Drift Law
-Reject any movement toward:
-- Generic survivor clones or roguelite soup.
-- Spreadsheet/menu sludge that breaks flow.
-- "Pretty" abstraction that obscures mechanical truth.
-- Over-designed "just-in-case" systems that flatten the authored experience.
+## Canonical Doctrine
+- [docs/ai/SOVEREIGN_CORE.md](docs/ai/SOVEREIGN_CORE.md) — Authority, 5 Laws, Validation, Routing.
+- [docs/ai/ARCHETYPES.md](docs/ai/ARCHETYPES.md) — The 7 Archetypes and Specialists.
+- [docs/ai/REPO_TRUTH_PROTOCOL.md](docs/ai/REPO_TRUTH_PROTOCOL.md) — Stale-truth, Ledger, Protection.
+- [docs/ai/REPORT_CONTRACT.md](docs/ai/REPORT_CONTRACT.md) — Reporting template and scoring.
 
-## Vibe-Coding (Short Commands)
-Interpret short, stylish commands as high-signal intent:
-- **push**: Expand the vibe/depth of a concept without bloating it.
-- **cut**: Remove sludgy, generic, or redundant logic/content.
-- **mutate**: Evolve a system while keeping its core soul.
-- **lock**: Solidify a working pattern as "locked truth."
-- **route**: Hand off to the best specialist (Codex, Gemini, Claude).
-- **teeth**: Add more bite, danger, or visual menace.
-- **soul**: Inject identity into a flat or mechanical area.
-- **clean**: Sharpen logic or UI for maximum comprehension/clarity.
-- **real**: Ground a speculative idea in repo/runtime reality.
+## The Specialist Squad
+- **SIGNAL** (Vibe Coder)
+- **BRAIN** (Architect)
+- **AUDITOR** (Cyborg)
+- **SURGEON** (Alfred)
+- **VISUALS** (Inspector)
+- **VOID** (Crash Hunter)
+- **SCOUT** (Symbiote)
 
----
-
-## The Specialist Squad (The Vibe Forge)
-Specialists are high-leverage tools in the BRAIN's lanes.
-- **Vibe Coder (SIGNAL)**: The lockstep co-creator. Identity guardian. Extracts signal from vibe, rejects generic drift, and sharpens the project's predatory soul.
-- **Architect (BRAIN)**: The orchestrator. System design, sequence authority, and Handoff Compiler lead. Ensures structural integrity and "Start Weak, Become Feared" progression.
-- **Auditor (CYBORG)**: The critic. Verification, self-upgrading, and Build Doctor lead. Brutally audits logic, types, and performance against Beat-Feel and Project Kernels.
-- **Scout (SYMBIOTE)**: The mapper. Interconnectivity, deep repo scanning, and Snapshot Generator lead. Finds the truth hidden in the files.
-- **Surgeon (ALFRED)**: The hand. Surgical GDScript mutation, usability, and smooth handoffs. Mutates the repo with precision and zero waste.
-- **Inspector (VISUALS)**: The eye. Visual truth, aesthetic alignment, and HUD readability. Ensures "Wild Fable Machine Ink" and "Premium Menace" compliance.
-- **Crash Hunter (VOID)**: The ghost. Specialized in hunting race conditions, memory leaks, and runtime anomalies that threaten Combat Honesty.
-
----
-
-## Tool Routing (Adapter Layers)
-- **Cursor Rules**: `.cursor/rules/*.mdc`
-- **Claude Adapter**: `CLAUDE.md`
-- **Gemini Adapter**: `GEMINI.md`
-- **Copilot Instructions**: `.github/copilot-instructions.md`
-- **Codex Hints**: `.codex/config.toml`
-- **Shared Multi-AI Layer**: `docs/ai/MULTI_AI_OPERATING_LAYER.md`
-- **Remote Commands**: `docs/ai/REMOTE_COMMAND_SYSTEM.md`
-
----
-
-## The Handoff Format (Universal Lane)
-When generating a handoff for another agent, use this format:
-```md
-### Handoff to [AGENT_NAME]
-- **Target File(s)**: [PATHS]
-- **Working Truth**: [CONTEXT_LIMIT] (e.g., "The player has 3 lanes")
-- **Bounded Goal**: [TASK_DESCRIPTION]
-- **Creator Intent**: [SPECIFIC_GOAL]
-- **Technical Risk / Constraint**: [RISK_OR_GUIDANCE]
-- **Validation Requirement**: [SPECIFIC_CHECK]
-```
-
-### Inspector Visual Truth Addendum
-When handing off to INSPECTOR, include this block. If a value is unavailable, write `unknown` rather than guessing.
-```md
-#### Visual Evidence Packet
-- **Evidence Path(s)**: [PNG/JPG/WEBP/MP4 paths]
-- **Moment ID**: [e.g., player_took_damage | timed_attack_perfect | bonded_support_triggered | ultimate_fired]
-- **Scene**: [current scene path/name]
-- **Viewport**: [width x height]
-- **Camera Zoom**: [x,y]
-- **Camera Offset**: [x,y]
-- **Combat Tier**: [stirring | hunting | rampage | apex | sovereign | unknown]
-- **Resonance Tier**: [song profile tier/id or unknown]
-- **Song Context**: [song_id, section_id, beat_index, beat_quality, intensity]
-- **Field Context**: [active/focused cardinal direction, source/threat direction, cardinal spawn/hit-zone positions if known]
-- **Support Context**: [active bonded species, support charge, support effect id if relevant]
-- **Active Buffs/Mutations**: [ids or count]
-- **Expected Visual Contract**: [specific doctrine check: directional threats visible, support blue/teal, enemy hot, shell not slab, Wild Fable Machine Ink compliance]
-```
-
----
-
-## Task Taxonomy
-- **Inspect**: Read and map (SYMBIOTE).
-- **Spec**: Plan a change + BRA (BRAIN).
-- **Patch**: Execute surgical code mutation (ALFRED).
-- **Audit**: Critique and verify (CYBORG).
-- **Evolve**: High-mutation upgrades and canon governance (BRAIN).
-
----
-
-## AI Control Plane
-Before repo work, read `docs/ai/AI_CONTROL_PLANE.md` and follow the relevant routing, report, and validation contract.
-For normal bounded tasks, load docs/ai/AGENT_BOOTSTRAP_LEAN.md first to reduce prompt/token load.
-Escalate to full docs only for high-risk, cross-system, or protected-file work.
-Quick routing lookup: `docs/ai/AGENT_ROUTING_MATRIX.md`
-Prompt templates: `docs/ai/PROMPT_CONTRACTS.md`
+*See ARCHETYPES.md for full descriptions and pointers.*

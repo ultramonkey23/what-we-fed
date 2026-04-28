@@ -24,7 +24,7 @@ When starting a task, state your budget and guardrails:
 
 ## 2. The Shared Validation Block (The Reporting Law)
 
-At the completion of any task (Inspect, Spec, Patch, Validate, or Evolve), you MUST provide the **Auditor's Report (v2.2)** as defined in `docs/ai/SYSTEM_KERNEL.md`.
+At the completion of any task (Inspect, Spec, Patch, Validate, or Evolve), you MUST provide the **Auditor's Report (v2.5)** as defined in `docs/ai/REPORT_CONTRACT.md`.
 
 This report is the canonical standard for all AI tools in the repo.
 

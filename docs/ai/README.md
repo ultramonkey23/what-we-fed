@@ -1,17 +1,15 @@
-# WHAT WE FED AI Docs Hub
+# WHAT WE FED — AI DOCTRINE
+The Sovereign Core architecture.
 
-This is the token-light entrypoint for repo-side AI work.
-Use it to route quickly, then load only the minimum required docs.
+## Canonical Doctrine
+- [SOVEREIGN_CORE.md](SOVEREIGN_CORE.md) — Authority, 5 Laws, Validation, Routing.
+- [ARCHETYPES.md](ARCHETYPES.md) — The 7 Archetypes and Specialists.
+- [REPO_TRUTH_PROTOCOL.md](REPO_TRUTH_PROTOCOL.md) — Stale-truth, Ledger, Protection.
+- [REPORT_CONTRACT.md](REPORT_CONTRACT.md) — Reporting template and scoring.
 
-## Quick Routing
-- Normal bounded task -> `docs/ai/AGENT_BOOTSTRAP_LEAN.md`
-- Coding mission prompt -> `docs/ai/LEAN_AGENT_MISSION_TEMPLATE.md`
-- High-risk or protected-file work -> `docs/ai/PROTECTED_SYSTEMS.md`, then `docs/ai/AI_CONTROL_PLANE.md` and `docs/ai/SYSTEM_KERNEL.md`
-- Architecture, refactor, or cross-system diagnosis -> `docs/ai/SYSTEM_KERNEL.md`, `docs/ai/AI_CONTROL_PLANE.md`, `REPO_SYSTEM_MAP.md`, `docs/ai/AGENT_ROUTING_MATRIX.md`
-- Report ingestion and quality gate -> `docs/ai/REPORT_INGESTION_GATE.md`, `docs/ai/AGENT_REPORT_SCORECARD.md`
+## Technical Guides
+- [GDSCRIPT_ENGINEERING_RULES.md](GDSCRIPT_ENGINEERING_RULES.md)
+- [SIGNAL_MAP.md](SIGNAL_MAP.md)
+- [PROTECTED_SYSTEMS.md](PROTECTED_SYSTEMS.md)
 
-## Load Escalation Rule
-Start lean, then escalate only when a trigger exists (protected systems, stale truth, cross-system blast radius, or visual/readability judgment).
-
-Primary bootstrap for most tasks:
-- `docs/ai/AGENT_BOOTSTRAP_LEAN.md`
+*Refer to the /archive_legacy directory for superseded documentation.*

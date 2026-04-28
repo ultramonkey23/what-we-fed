@@ -5,7 +5,7 @@ alwaysApply: true
 
 # WHAT WE FED Guardrails
 
-- Preserve project identity from `docs/ai/PROJECT_KERNEL.md`.
+- Preserve project identity from `docs/ai/SOVEREIGN_CORE.md`.
 - Do not widen into ranch, world-state, kaiju, or unrelated gameplay scope unless explicitly requested.
 - Do not reintroduce stale pause-era assumptions.
 

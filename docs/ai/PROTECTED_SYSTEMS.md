@@ -35,5 +35,5 @@ PROTECTED EDIT PREFLIGHT
 - Intended files to change: [paths]
 - Files/systems not touching: [paths/systems]
 - Validation expectation: [Level 2 static | Level 3 runtime | Level 4 playtest + commands]
-- Stop condition / escalation trigger: [stale truth, cross-system blast radius, unclear owner, or contract conflict -> stop and escalate via AI_CONTROL_PLANE + SYSTEM_KERNEL]
+- Stop condition / escalation trigger: [stale truth, cross-system blast radius, unclear owner, or contract conflict -> stop and escalate via SOVEREIGN_CORE]
 ```

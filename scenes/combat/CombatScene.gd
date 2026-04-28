@@ -6859,7 +6859,10 @@ func _spawn_support_intervention(species_id: String, lane: int, tint: Color) -> 
 	
 	var support_art: String = COMBAT_CONTENT.get_creature_art_path(species_id, "support", growth_stage)
 	if not support_art.is_empty():
-		_presentation_runtime.spawn_creature_intervention(lane, support_art, tint)
+		if is_instance_valid(_presentation_runtime) and _presentation_runtime.has_method("spawn_creature_intervention"):
+			_presentation_runtime.spawn_creature_intervention(lane, support_art, tint)
+		elif is_instance_valid(_presentation_runtime) and _presentation_runtime.has_method("spawn_attack_silhouette_to_lane"):
+			_presentation_runtime.spawn_attack_silhouette_to_lane(lane, tint, 16.0, 0.14, 1.18)
 	else:
 		_presentation_runtime.spawn_attack_silhouette_to_lane(lane, tint, 16.0, 0.14, 1.18)
 

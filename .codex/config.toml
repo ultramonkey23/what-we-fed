@@ -2,13 +2,13 @@
 
 [project]
 terminal_ai_bootstrap_doc = "docs/ai/TERMINAL_AI_BOOTSTRAP.md"
-multi_ai_operating_layer_doc = "docs/ai/MULTI_AI_OPERATING_LAYER.md"
-kernel_doc = "docs/ai/SYSTEM_KERNEL.md"
-project_kernel_doc = "docs/ai/PROJECT_KERNEL.md"
+multi_ai_operating_layer_doc = "docs/ai/SOVEREIGN_CORE.md"
+kernel_doc = "docs/ai/SOVEREIGN_CORE.md"
+project_kernel_doc = "docs/ai/SOVEREIGN_CORE.md"
 agents_entrypoint_doc = "AGENTS.md"
 entrypoint_doc = "PROJECT_SETUP_AND_VALIDATION.md"
 system_map_doc = "REPO_SYSTEM_MAP.md"
-context_expansion_doc = "docs/ai/CONTEXT_EXPANSION_MAP.md"
+context_expansion_doc = "docs/ai/REPO_TRUTH_PROTOCOL.md"
 visual_truth_loop_doc = "docs/ai/VISUAL_TRUTH_LOOP.md"
 godly_workflow_doc = "docs/ai/GODLY_WORKFLOW.md"
 signal_map_doc = "docs/ai/SIGNAL_MAP.md"

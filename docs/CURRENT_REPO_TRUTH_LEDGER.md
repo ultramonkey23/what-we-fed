@@ -1,5 +1,12 @@
 # CURRENT_REPO_TRUTH_LEDGER
 
+## 2026-04-28 GODLY v2.3 Medium-Evolution Pass: Aesthetic, Action, and Growth Persistence
+- **Aesthetic Integration**: `CombatFeedbackDirector.gd` updated to use "Manga Monstrosity" visual cues (`COLOR_BLOOD_EMBER`, `COLOR_BONE_WHITE`, `COLOR_INK_BLACK`) and aggressive hit-stop/shake for parries and ultimates.
+- **Action Locking Optimization**: Removed redundant and conflicting timer-based `_is_invincible` logic in `PlayerCombat.gd` in favor of a clean delta-decremented `dodge_invuln_timer` within `_process`, increasing dodging reliability.
+- **Persistent Growth & Stats**: Elevated `RunGrowth` and `RunStats` to Autoloads to preserve player level and data across multiple encounters within a run. Prevented mid-run resetting by refining `CombatRunDirector.initialize_run` to check `GameState.run_in_progress` before emitting `run_started`.
+- **Reward Flow UI Fix**: `CombatScene._refresh_hud_snapshot` was patched to forcefully invoke `CombatHUDPresenter.set_exp_text(level, current_exp, exp_to_next)` on mid-run load, resolving the visual bug where the player's level appeared to reset after every reward.
+- **Validation**: `smoke_project.bat` PASS. `validate_project.bat` PASS (data structure, scripts, and runtime initialization verified).
+
 ## 2026-04-28 AI Architecture Evolution: Sovereign Core Consolidation (static-only)
 - **Consolidation**: Doctrine sprawl in `docs/ai/` reduced from 50+ overlapping files to 4 canonical pillars: `SOVEREIGN_CORE.md`, `ARCHETYPES.md`, `REPO_TRUTH_PROTOCOL.md`, and `REPORT_CONTRACT.md`.
 - **Roster Tightening**: `.claude/agents/` established as the single canonical home for agent definitions. 13 agents (7 archetypes + 6 specialists) updated to align with Sovereign Core protocols.

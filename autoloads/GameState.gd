@@ -164,6 +164,9 @@ var selected_difficulty_key: String:
 var world_state_key: String:
 	get: return run.world_state_key
 	set(v): run.world_state_key = v
+var regular_level_playlist: Array:
+	get: return run.regular_level_playlist
+	set(v): run.regular_level_playlist = v
 
 
 func calculate_encounters_before_boss(diff_key: String = "", ws_key: String = "") -> int:

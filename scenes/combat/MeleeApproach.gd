@@ -302,11 +302,15 @@ func _update_visuals() -> void:
 func _apply_lane_color(l: int) -> void:
 	var colors: Array[Color] = [
 		Color(0.65, 0.15, 0.88, 0.92),  # 0 = North: deep violet
-		Color(0.15, 0.80, 0.44, 0.92),  # 1 = South: predatory green
-		Color(0.92, 0.30, 0.08, 0.92),  # 2 = East:  threat orange-red
-		Color(0.10, 0.48, 0.92, 0.92)   # 3 = West:  cold blue
+		Color(0.85, 0.88, 0.15, 0.92),  # 1 = NE: venom yellow
+		Color(0.15, 0.80, 0.44, 0.92),  # 2 = East: predatory green
+		Color(0.15, 0.85, 0.88, 0.92),  # 3 = SE: cyan
+		Color(0.92, 0.30, 0.08, 0.92),  # 4 = South: threat orange-red
+		Color(0.88, 0.15, 0.50, 0.92),  # 5 = SW: hot pink
+		Color(0.10, 0.48, 0.92, 0.92),  # 6 = West: cold blue
+		Color(0.48, 0.10, 0.92, 0.92)   # 7 = NW: indigo
 	]
-	var col: Color = colors[clampi(l, 0, colors.size() - 1)]
+	var col: Color = colors[posmod(l, colors.size())]
 	_base_color = col
 	if _body != null:
 		_body.color = col

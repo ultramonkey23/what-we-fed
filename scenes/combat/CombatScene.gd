@@ -954,7 +954,7 @@ func _update_timers(delta: float) -> void:
 	_update_tempo_state()
 
 	# Vectorized timer updates for performance
-	var threat_count: int = lane_manager.THREAT_COUNT if lane_manager else 4
+	var threat_count: int = lane_manager.THREAT_COUNT if lane_manager else 8
 	for i in range(threat_count):
 		if _ring_highlight_timers[i] > 0.0:
 			_ring_highlight_timers[i] = max(_ring_highlight_timers[i] - delta, 0.0)
@@ -1277,18 +1277,16 @@ func _get_player_focus_lane() -> int:
 
 
 func _lane_cardinal_token(lane: int) -> String:
-	# Matches PlayerCombat cardinal lanes: N / S / E / W.
-	match clampi(lane, 0, 3):
-		0:
-			return "N"
-		1:
-			return "S"
-		2:
-			return "E"
-		3:
-			return "W"
-		_:
-			return "?"
+	match lane:
+		0: return "N"
+		1: return "NE"
+		2: return "E"
+		3: return "SE"
+		4: return "S"
+		5: return "SW"
+		6: return "W"
+		7: return "NW"
+		_: return "?"
 
 
 func _song_reserve_count() -> int:
@@ -1597,7 +1595,7 @@ func _update_lane_visual_states() -> void:
 	var critical_peak: float = 0.0
 	_critical_threat_lane = -1
 
-	for lane in range(lane_manager.THREAT_COUNT if lane_manager else 4):
+	for lane in range(lane_manager.THREAT_COUNT if lane_manager else 8):
 		var intercept_dist: float = _lane_intercept_distance(lane)
 		if intercept_dist <= 0.0:
 			continue
@@ -4533,7 +4531,7 @@ func _build_debug_control_enemy(lane: int) -> Dictionary:
 
 
 func _debug_fire_control_lane(lane: int) -> bool:
-	for clear_lane in range(lane_manager.THREAT_COUNT if lane_manager != null else 4):
+	for clear_lane in range(lane_manager.THREAT_COUNT if lane_manager != null else 8):
 		var projectile = lane_manager.call("get_projectile", clear_lane)
 		if projectile != null and is_instance_valid(projectile):
 			projectile.call("resolve", "debug_reset")
@@ -4797,7 +4795,7 @@ func _start_current_phase() -> void:
 		_show_feedback(str(phase_intro_texts[_current_phase_index]), Color(0.92, 0.88, 0.74, 1.0), 0.45)
 
 	var phase_enemies: Array = phases[_current_phase_index]
-	var lane_count: int = lane_manager.THREAT_COUNT if lane_manager != null else 4
+	var lane_count: int = lane_manager.THREAT_COUNT if lane_manager != null else 8
 	var lane_array: Array = []
 	for _i in range(lane_count):
 		lane_array.append({})
@@ -5063,7 +5061,7 @@ func _show_boss_intro(boss_name: String) -> void:
 	EventBus.emit_signal("screen_flash", flash_1.color, flash_1.duration)
 	EventBus.emit_signal("screen_shake", 2.2, 0.16)
 	
-	for _intro_lane in range(lane_manager.THREAT_COUNT if lane_manager else 4):
+	for _intro_lane in range(lane_manager.THREAT_COUNT if lane_manager else 8):
 		_presentation_runtime.highlight_timing_ring(_intro_lane, Color(0.92, 0.42, 0.12, 1.0), 6.2)
 
 	_title_card.text = boss_name
@@ -5873,17 +5871,9 @@ func _lane_intercept_distance(lane: int) -> float:
 
 
 func _lane_direction_fallback(lane: int) -> Vector2:
-	match lane:
-		0:
-			return Vector2.UP
-		1:
-			return Vector2.DOWN
-		2:
-			return Vector2.RIGHT
-		3:
-			return Vector2.LEFT
-		_:
-			return Vector2.RIGHT
+	var threat_count: float = 8.0
+	var angle: float = (float(lane) / threat_count) * TAU - PI/2.0
+	return Vector2(cos(angle), sin(angle))
 
 
 func _impact_world_pos_for_enemy(enemy_id: int) -> Vector2:
@@ -5916,7 +5906,7 @@ func _enemy_is_elite_for_impact(enemy_id: int) -> bool:
 
 
 func _on_attack_timing_early_resolved(lane: int) -> void:
-	var lane_count: int = lane_manager.THREAT_COUNT if lane_manager != null else 4
+	var lane_count: int = lane_manager.THREAT_COUNT if lane_manager != null else 8
 	if lane < 0 or lane >= lane_count:
 		return
 	var fwd: Vector2 = _impact_lane_forward(lane)

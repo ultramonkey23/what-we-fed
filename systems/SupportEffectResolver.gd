@@ -159,7 +159,7 @@ func resolve(ctx: Dictionary) -> void:
 				
 			stamina_requested.emit(stamina_amount)
 			feedback_requested.emit(phase_text, Color(0.78, 0.92, 1.0, 1.0), 0.36)
-			for ring_lane in range(4):
+			for ring_lane in range(lane_manager.THREAT_COUNT if lane_manager else 8):
 				highlight_ring_requested.emit(ring_lane, Color(0.72, 0.88, 1.0, 1.0), 5.5)
 				intervention_requested.emit(species_id, ring_lane, Color(0.72, 0.88, 1.0, 0.55))
 			flash_requested.emit(Color(0.10, 0.18, 0.26, 0.92), 0.10)
@@ -212,7 +212,7 @@ func resolve(ctx: Dictionary) -> void:
 			heal_requested.emit(ward_heal)
 			stamina_requested.emit(ward_stamina)
 			feedback_requested.emit(ward_text, Color(0.78, 0.92, 0.82, 1.0), 0.34)
-			for ring_lane in range(4):
+			for ring_lane in range(lane_manager.THREAT_COUNT if lane_manager else 8):
 				highlight_ring_requested.emit(ring_lane, Color(0.78, 0.92, 0.82, 1.0), 5.4)
 				intervention_requested.emit(species_id, ring_lane, Color(0.78, 0.92, 0.82, 0.55))
 			flash_requested.emit(Color(0.12, 0.18, 0.14, 0.92), 0.10)
@@ -265,7 +265,7 @@ func resolve(ctx: Dictionary) -> void:
 				lull_text = "DEEP LULL"
 				
 			feedback_requested.emit(lull_text, Color(0.72, 0.82, 0.98, 1.0), 0.34)
-			for ring_lane in range(4):
+			for ring_lane in range(lane_manager.THREAT_COUNT if lane_manager else 8):
 				highlight_ring_requested.emit(ring_lane, Color(0.68, 0.80, 0.98, 1.0), 5.8)
 				intervention_requested.emit(species_id, ring_lane, Color(0.68, 0.80, 0.98, 0.55))
 			flash_requested.emit(Color(0.10, 0.14, 0.24, 0.92), 0.10)
@@ -319,7 +319,7 @@ func resolve(ctx: Dictionary) -> void:
 						lane_manager.call("apply_status_by_id", int(e_data.ref), "pale", {})
 			
 			if cadence_surge:
-				for cold_lane: int in range(4):
+				for cold_lane: int in range(lane_manager.THREAT_COUNT if lane_manager else 8):
 					var id: int = _find_enemy_id_in_lane(lane_manager, cold_lane)
 					if id != -1: lane_manager.call("apply_status_by_id", id, "pale", {})
 				cold_text = "COLD CASCADE"
@@ -355,7 +355,7 @@ func resolve(ctx: Dictionary) -> void:
 			else:
 				feedback_requested.emit(silt_text, Color(0.38, 0.78, 0.60, 1.0), 0.34)
 				
-			for silt_ring: int in range(4):
+			for silt_ring: int in range(lane_manager.THREAT_COUNT if lane_manager else 8):
 				highlight_ring_requested.emit(silt_ring, Color(0.36, 0.74, 0.58, 1.0), 5.2)
 				intervention_requested.emit(species_id, silt_ring, Color(0.36, 0.74, 0.58, 0.55))
 			flash_requested.emit(Color(0.06, 0.16, 0.14, 0.92), 0.10)

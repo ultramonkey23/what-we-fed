@@ -22,6 +22,8 @@ GameState="*res://autoloads/GameState.gd"
 DevHarness="*res://autoloads/DevHarness.gd"
 CombatFeedbackDirector="*res://autoloads/CombatFeedbackDirector.gd"
 AchievementDirector="*res://systems/AchievementDirector.gd"
+RunGrowth="*res://systems/RunGrowth.gd"
+RunStats="*res://systems/RunStats.gd"
 
 [display]
 

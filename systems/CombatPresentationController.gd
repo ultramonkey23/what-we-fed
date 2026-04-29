@@ -637,8 +637,8 @@ func _make_sigil_chords(radius: float, color: Color, width: float) -> Line2D:
 
 func _make_sigil_cardinal_arms(inner_radius: float, outer_radius: float, color: Color, _width: float) -> Node2D:
 	var group := Node2D.new()
-	for i in range(4):
-		var a: float = (float(i) / 4.0) * TAU
+	for i in range(8):
+		var a: float = (float(i) / 8.0) * TAU - PI/2.0
 		var dir := Vector2(cos(a), sin(a))
 		
 		# Create a stylized "fang" or "manga-ink" shard polygon
@@ -1303,17 +1303,10 @@ func _lane_direction(lane_manager: Node, lane: int, player_node: Node2D = null) 
 
 
 func _lane_direction_fallback(lane: int) -> Vector2:
-	match lane:
-		0:
-			return Vector2.UP
-		1:
-			return Vector2.DOWN
-		2:
-			return Vector2.RIGHT
-		3:
-			return Vector2.LEFT
-		_:
-			return Vector2.RIGHT
+	# Fallback to the 8-directional mathematical layout if lane_manager is absent
+	var threat_count: float = 8.0
+	var angle: float = (float(lane) / threat_count) * TAU - PI/2.0
+	return Vector2(cos(angle), sin(angle))
 
 
 func _lane_intercept_distance(lane_manager: Node, lane: int, player_node: Node2D = null) -> float:
@@ -1454,7 +1447,7 @@ func update_enemy_marker_threat_states(
 func _resolve_live_lane_for_enemy(lane_manager: Node, enemy_id: int) -> int:
 	if lane_manager == null or not lane_manager.has_method("get_enemy"):
 		return -1
-	var lane_count: int = int(lane_manager.get("THREAT_COUNT")) if "THREAT_COUNT" in lane_manager else 4
+	var lane_count: int = int(lane_manager.get("THREAT_COUNT")) if "THREAT_COUNT" in lane_manager else 8
 	for lane in range(lane_count):
 		var enemy_v: Variant = lane_manager.call("get_enemy", lane)
 		if not (enemy_v is Dictionary):

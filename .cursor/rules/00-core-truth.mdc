@@ -22,9 +22,9 @@ alwaysApply: true
 
 # Deep References
 
-- `docs/ai/MULTI_AI_OPERATING_LAYER.md`
-- `docs/ai/CONTEXT_EXPANSION_MAP.md`
-- `docs/ai/AGENT_OPERATING_SYSTEM.md`
+- `docs/ai/SOVEREIGN_CORE.md`
+- `docs/ai/REPO_TRUTH_PROTOCOL.md`
+- `docs/ai/ARCHETYPES.md`
 - `docs/ai/GODLY_WORKFLOW.md` (bounded evolution engine — load for improvement passes)
 - `docs/ai/SIGNAL_MAP.md` (EventBus signal truth — load for any signal contract work)
 ct work)

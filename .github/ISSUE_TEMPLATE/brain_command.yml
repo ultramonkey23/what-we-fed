@@ -25,8 +25,7 @@ body:
     id: blast_radius
     attributes:
       label: "Blast Radius Analysis (BRA)"
-      description: "What is the expected impact tier? (from SYSTEM_KERNEL.md)"
-      options:
+      description: "What is the expected impact tier? (from SOVEREIGN_CORE.md)"      options:
         - "Tier 0: Docs/Naming"
         - "Tier 1: Local logic (one script)"
         - "Tier 2: Systemic (Signals/EventBus/Data)"

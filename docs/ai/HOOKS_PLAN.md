@@ -7,7 +7,7 @@ Every terminal AI session MUST begin by grounding in these files:
 0. `docs/ai/TERMINAL_AI_BOOTSTRAP.md` (Fast-load contract)
 1. `AGENTS.md` (Master Contract)
 2. `PROJECT_SETUP_AND_VALIDATION.md` (Environment/Tools)
-3. `docs/ai/NEXT_MOVE_ROUTER.md` (Strategic Priority)
+3. `docs/ai/SOVEREIGN_CORE.md` (Strategic Priority)
 
 ## 2. The "One Best Next Move" Workflow
 Before starting any Level 3+ (Feature) or Level 4 (Content) task:

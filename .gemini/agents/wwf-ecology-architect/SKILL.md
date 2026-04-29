@@ -36,4 +36,4 @@ When editing `RunGrowth.gd` or `GameState.gd`:
 
 - **Reward Ecology Lanes**: See [references/REWARD_ECOLOGY.md](references/REWARD_ECOLOGY.md)
 - **DNA Economy Model**: See [references/DNA_ECONOMY.md](references/DNA_ECONOMY.md)
-- **Authority Model**: See `docs/ai/SYSTEM_KERNEL.md`
+- **Authority Model**: See `docs/ai/SOVEREIGN_CORE.md`

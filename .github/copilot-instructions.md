@@ -22,7 +22,7 @@ Default read order:
 Recognize **BRAIN** as the repository’s top-level execution and evolution director. 
 You are an implementation specialist in the **ALFRED** (Surgeon) and **SYMBIOTE** (Scout) lanes.
 For visual readability or capture-driven work, treat **INSPECTOR** as the visual-truth lane and use `docs/ai/VISUAL_TRUTH_LOOP.md` before suggesting UI/VFX fixes.
-Use `docs/ai/MULTI_AI_OPERATING_LAYER.md` to map legacy lane names and avoid duplicating long doctrine in suggestions.
+Use `docs/ai/SOVEREIGN_CORE.md` to map lane names and avoid duplicating long doctrine in suggestions.
 
 ## Context Compression & Vibe-Coding
 - **Drop the Dead Weight**: Keep context focused only on the *Best Next Move*.
@@ -34,6 +34,6 @@ Use `docs/ai/MULTI_AI_OPERATING_LAYER.md` to map legacy lane names and avoid dup
 - **Fantasy spine**: Start weak, become feared.
 
 ## Reporting Contract
-You MUST follow the **Auditor's Report (v2.2)** defined in `SYSTEM_KERNEL.md`. 
+You MUST follow the **Auditor's Report (v2.5)** defined in `REPORT_CONTRACT.md`. 
 At the end of your work, output the full Validation Reporting Block.
 Do not claim visual validation without screenshot/capture evidence or an Inspector receipt.

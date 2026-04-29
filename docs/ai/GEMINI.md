@@ -3,8 +3,8 @@
 Use this as deep-reference execution guidance, not default-load startup.
 
 Startup order:
-1. `docs/ai/PROJECT_KERNEL.md`
-2. `docs/ai/CONTEXT_EXPANSION_MAP.md`
+1. `docs/ai/SOVEREIGN_CORE.md`
+2. `docs/ai/REPO_TRUTH_PROTOCOL.md`
 3. `docs/ai/VIBE_CODING_QUICKSTART.md`
 
 Execution rules:

@@ -18,9 +18,8 @@ This file defines lightweight guardrails and validation expectations; it does no
 
 ## Escalation
 - If task touches any protected file and repo truth is stale, load:
-  - `docs/ai/AI_CONTROL_PLANE.md`
-  - `docs/ai/SYSTEM_KERNEL.md`
-  - `docs/ai/AGENT_ROUTING_MATRIX.md`
+  - `docs/ai/SOVEREIGN_CORE.md`
+  - `docs/ai/ARCHETYPES.md`
 - Prefer explicit "Static-Only" labeling when runtime was not performed.
 
 ## Protected Edit Preflight (Copy/Paste)

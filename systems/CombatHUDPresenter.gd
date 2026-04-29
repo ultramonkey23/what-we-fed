@@ -365,6 +365,7 @@ func refresh_stats(atk: float, def: float) -> void:
 # ── Support readout ──────────────────────────────────────────────────────────
 
 func refresh_support(current: float, maximum: float, active_species_id: String, run_growth: Node) -> void:
+
 	if _support_bar != null:
 		_support_bar.max_value = maxf(maximum, 0.0)
 		_support_bar.value = maxf(current, 0.0)

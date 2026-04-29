@@ -169,7 +169,7 @@ func start_combat(enemy_data: Array) -> void:
 		var spawn_dist: float = _viewport_size.y * SPAWN_DISTANCE_RATIO
 		_enemy_positions[id] = _center_pos + Vector2(cos(angle), sin(angle)) * spawn_dist
 		
-		_assign_striker_visual_offset(id, lane)
+		_assign_striker_visual_offset_for_angle(id, angle)
 
 	_combat_running = true
 	_cycle_task_id += 1
@@ -378,7 +378,7 @@ func set_enemy(lane: int, enemy_data: Dictionary) -> void:
 		var spawn_dist: float = _viewport_size.y * SPAWN_DISTANCE_RATIO
 		_enemy_positions[id] = _center_pos + Vector2(cos(angle), sin(angle)) * spawn_dist
 		
-		_assign_striker_visual_offset(id, lane)
+		_assign_striker_visual_offset_for_angle(id, angle)
 	else:
 		_orbiting_enemy_ids.append(id)
 		var angle: float = _rng.randf_range(0.0, TAU)
@@ -860,7 +860,7 @@ func _promote_orbiting_to_strikers() -> void:
 		
 		_strikers[id] = {"angle": angle, "lane": lane}
 		_enemies[id]["lane"] = lane
-		_assign_striker_visual_offset(id, lane)
+		_assign_striker_visual_offset_for_angle(id, angle)
 		
 		_orbiting_enemy_ids.remove_at(orbit_index)
 		_orbit_angles.erase(id)
@@ -899,12 +899,8 @@ func get_enemy_pos(id: int) -> Vector2:
 	return _center_pos
 
 
-func _assign_striker_visual_offset(id: int, lane: int) -> void:
-	if lane < 0 or lane >= THREAT_COUNT:
-		return
-	var radial: Vector2 = (get_threat_spawn_pos(lane) - _center_pos).normalized()
-	if radial.length_squared() < 0.1:
-		radial = Vector2.RIGHT
+func _assign_striker_visual_offset_for_angle(id: int, angle: float) -> void:
+	var radial: Vector2 = Vector2(cos(angle), sin(angle))
 	var tangent := Vector2(-radial.y, radial.x)
 	var tangent_offset: float = _rng.randf_range(-STRIKER_VISUAL_TANGENT_SPREAD, STRIKER_VISUAL_TANGENT_SPREAD)
 	var radial_offset: float = _rng.randf_range(-STRIKER_VISUAL_RADIAL_SPREAD, STRIKER_VISUAL_RADIAL_SPREAD)
@@ -967,6 +963,16 @@ func _on_melee_player_contact_id(_melee: Node2D, _id: int, _lane: int) -> void:
 	# Player damage is handled by PlayerCombat via its player_contact listener.
 	# The melee entity auto-bounces in MeleeApproach._process_approach().
 	pass
+
+
+func debug_fire_lane(lane: int) -> bool:
+	if not _combat_running:
+		return false
+	# Find first striker in this lane
+	for id in _strikers:
+		if int(_strikers[id].get("lane", -1)) == lane:
+			return _fire_striker(id)
+	return false
 
 
 func _get_enemy_status_flags(enemy: Dictionary) -> Dictionary:

@@ -4,6 +4,8 @@ extends Node2D
 # interact with it through identical calls. Difference: resolve() bounces the
 # entity back and it re-approaches until HP reaches zero.
 
+const COMBAT_FEEL_CONTENT = preload("res://data/CombatFeelContent.gd")
+
 signal reached_hit_zone(melee)
 signal player_contact(melee)
 @warning_ignore("unused_signal")
@@ -35,19 +37,6 @@ var player_ref: Node2D = null
 var is_resolved: bool = false
 var is_reflected: bool = false # Projectile interface compat
 
-func evaluate_proximity_timing(attacker_pos: Vector2) -> String:
-	if is_resolved or _state == "bouncing":
-		return "miss"
-
-	var dist: float = global_position.distance_to(attacker_pos)
-	if dist <= 25.0: # Melee is closer-range than projectiles
-		return "perfect"
-	if dist <= 50.0:
-		return "good"
-
-	return "miss"
-
-
 var progress: float = 0.0
 var _state: String = "approaching"
 var _spawn_pos: Vector2
@@ -67,6 +56,48 @@ var _aura: Line2D = null
 var _approach_tick: Line2D = null
 var _base_color: Color = Color(0.90, 0.28, 0.10, 0.92)
 var _hit_tween: Tween = null
+
+
+func evaluate_attack_timing() -> String:
+	if is_resolved or _state == "bouncing":
+		return "already_resolved"
+		
+	# SPATIAL TRUTH: Proximity to Hit Zone
+	var dist_hz: float = global_position.distance_to(_hit_zone_pos)
+	if dist_hz <= COMBAT_FEEL_CONTENT.RING_PERFECT_RADIUS:
+		return "perfect"
+	if dist_hz <= COMBAT_FEEL_CONTENT.RING_OUTER_RADIUS:
+		return "good"
+
+	# PROGRESS TRUTH: Catch-all for song sync
+	if progress < ATTACK_GOOD_MIN:
+		return "early"
+	elif progress < ATTACK_PERFECT_MIN:
+		return "good"
+	elif progress <= ATTACK_PERFECT_MAX:
+		return "perfect"
+	elif progress <= ATTACK_GOOD_MAX:
+		return "good"
+	return "miss"
+
+
+func evaluate_parry_timing() -> String:
+	return evaluate_attack_timing()
+
+
+func evaluate_proximity_timing(attacker_pos: Vector2) -> String:
+	if is_resolved or _state == "bouncing":
+		return "miss"
+
+	# CONTACT TRUTH: Absolute physical proximity check.
+	var dist: float = global_position.distance_to(attacker_pos)
+	
+	if dist <= COMBAT_FEEL_CONTENT.RING_PERFECT_RADIUS + 4.0:
+		return "perfect"
+	if dist <= COMBAT_FEEL_CONTENT.RING_OUTER_RADIUS + 12.0:
+		return "good"
+
+	return "miss"
 
 
 func _ready() -> void:
@@ -174,19 +205,22 @@ func _process(delta: float) -> void:
 func _process_approach(delta: float) -> void:
 	progress += (speed * delta) / _approach_total
 
+	var current_player_pos: Vector2 = _player_pos
+	if player_ref != null and is_instance_valid(player_ref):
+		current_player_pos = player_ref.global_position
+
 	var current_dist: float = lerpf(_initial_dist, _hit_zone_dist, progress)
-	position = _player_pos + _radial_dir * current_dist
+	position = current_player_pos + _radial_dir * current_dist
+	
+	# Update hit_zone_pos for timing checks
+	_hit_zone_pos = current_player_pos + _radial_dir * _hit_zone_dist
 
 	if not _reported_hit_zone and progress >= 1.0:
 		_reported_hit_zone = true
 		reached_hit_zone.emit(self)
 
 	if not _reported_player_contact:
-		var actual_player_pos: Vector2 = _player_pos
-		if player_ref != null and is_instance_valid(player_ref):
-			actual_player_pos = player_ref.global_position
-			
-		if global_position.distance_to(actual_player_pos) <= PLAYER_CONTACT_RADIUS:
+		if global_position.distance_to(current_player_pos) <= PLAYER_CONTACT_RADIUS:
 			_reported_player_contact = true
 			player_contact.emit(self)
 			_start_bounce()
@@ -196,41 +230,17 @@ func _process_bounce(delta: float) -> void:
 	progress -= (speed * BOUNCE_SPEED_MULT * delta) / _approach_total
 	progress = maxf(progress, 0.0)
 
+	var current_player_pos: Vector2 = _player_pos
+	if player_ref != null and is_instance_valid(player_ref):
+		current_player_pos = player_ref.global_position
+
 	var current_dist: float = lerpf(_initial_dist, _hit_zone_dist, progress)
-	position = _player_pos + _radial_dir * current_dist
+	position = current_player_pos + _radial_dir * current_dist
 
 	if progress <= 0.0:
 		_state = "approaching"
 		_reported_hit_zone = false
 		_reported_player_contact = false
-
-
-func evaluate_attack_timing() -> String:
-	if is_resolved or _state == "bouncing":
-		return "miss"
-	if progress < ATTACK_GOOD_MIN:
-		return "early"
-	elif progress < ATTACK_PERFECT_MIN:
-		return "good"
-	elif progress <= ATTACK_PERFECT_MAX:
-		return "perfect"
-	elif progress <= ATTACK_GOOD_MAX:
-		return "good"
-	return "miss"
-
-
-func evaluate_parry_timing() -> String:
-	if is_resolved or _state == "bouncing":
-		return "miss"
-	if progress < PARRY_GOOD_MIN:
-		return "early"
-	elif progress < PARRY_PERFECT_MIN:
-		return "good"
-	elif progress <= PARRY_PERFECT_MAX:
-		return "perfect"
-	elif progress <= PARRY_GOOD_MAX:
-		return "good"
-	return "miss"
 
 
 func time_until_hit_zone() -> float:

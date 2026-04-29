@@ -199,6 +199,10 @@ func get_dna_routing_label() -> String:
 	return "Body (EXP)" if dna_routing_preference == "exp" else "Pact (BOND)"
 
 
+func get_leading_tendency_id() -> String:
+	return tendencies.get_leading_id(!get_active_species_id().is_empty())
+
+
 func process_dna_gain(species_id: String, amount: float) -> Dictionary:
 	if dna_routing_preference == "exp":
 		var exp_gain: float = amount * GROWTH_CONTENT.EXP_PER_DNA_POINT

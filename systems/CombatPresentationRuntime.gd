@@ -313,7 +313,7 @@ func on_enemy_defeated(enemy_id: int) -> void:
 	_spawn_ink_splatter(pos, Color.BLACK)
 
 
-func tick_sigil_recovery(player: Node2D, delta: float) -> void:
+func tick_sigil_recovery(player: Node2D, _delta: float) -> void:
 	if not _sigil_overlay_ready:
 		_setup_sigil_visual_nodes()
 		

@@ -80,11 +80,6 @@ const COMBAT_FEEDBACK_SHELL = preload("res://scenes/ui/CombatFeedbackShell.gd")
 const IMPACT_FX_RUNTIME_SCENE: PackedScene = preload("res://systems/presentation/ImpactFxRuntime.tscn")
 const COMBAT_VISUAL_RIG_SCENE: PackedScene = preload("res://scenes/combat/CombatVisualRig.tscn")
 
-var RunGrowth: Node:
-	get: return get_node_or_null("/root/RunGrowth")
-var RunStats: Node:
-	get: return get_node_or_null("/root/RunStats")
-
 # ─── STATE VARIABLES ─────────────────────────────────────────────────────────
 var _run_director: Node = null
 var _victory_reward_director: Node = null
@@ -1406,7 +1401,7 @@ func _update_background_effects() -> void:
 	
 	# Only update tendency reaction every few frames to save performance
 	if Engine.get_process_frames() % 30 == 0:
-		var leading: String = RunGrowth._get_leading_tendency_id()
+		var leading: String = RunGrowth.get_leading_tendency_id()
 		_presentation_controller.update_background_tendency_reaction(_bg_sprite, leading)
 
 
@@ -2858,7 +2853,7 @@ func _build_dna_shell() -> void:
 
 func _refresh_hud_snapshot(score_value: int, exp_value: float, style_tier: String) -> void:
 	_hud_presenter.refresh_hp(GameState.player_hp, GameState.player_max_hp)
-	_hud_presenter.set_exp_text(int(RunGrowth.level), float(RunGrowth.current_exp), float(RunGrowth.exp_to_next))
+	_hud_presenter.set_exp_text(RunGrowth.level, float(RunGrowth.current_exp), float(RunGrowth.exp_to_next))
 	_refresh_run_build_readout()
 	_hud_presenter.refresh_combo(score_value, style_tier)
 	_hud_presenter.refresh_style(style_tier)
@@ -3573,10 +3568,10 @@ func _show_level_completion_rewards() -> void:
 	if _performance_reward_director != null and is_instance_valid(_performance_reward_director):
 		if _performance_reward_director.has_method("get_level_completion_context") and _performance_reward_director.has_method("set_level_completion_context"):
 			var completion_context: Dictionary = _performance_reward_director.call("get_level_completion_context")
-			completion_context["regular_level_index"] = int(_run_director.regular_level_index)
-			completion_context["regular_level_count"] = int(_run_director.regular_level_windows.size())
+			completion_context["regular_level_index"] = _run_director.regular_level_index
+			completion_context["regular_level_count"] = _run_director.regular_level_windows.size()
 			completion_context["power_level"] = GameState.get_power_level() if GameState.has_method("get_power_level") else 0.0
-			completion_context["growth_level"] = int(RunGrowth.get("level"))
+			completion_context["growth_level"] = RunGrowth.level if RunGrowth != null else 1
 			_performance_reward_director.call("set_level_completion_context", completion_context)
 		_pending_upgrades = _performance_reward_director.call("get_level_completion_choices", 3)
 
@@ -4502,7 +4497,7 @@ func _apply_dev_harness_pre_run_state() -> void:
 
 
 func _apply_dev_harness_post_boot_state() -> void:
-	if _dev_harness_request.is_empty():
+	if not is_inside_tree() or _dev_harness_request.is_empty():
 		return
 
 	var run_growth_state: Dictionary = _dev_harness_request.get("run_growth", {})
@@ -4643,10 +4638,9 @@ func _debug_fire_control_lane(lane: int) -> bool:
 		var projectile = lane_manager.call("get_projectile", clear_lane)
 		if projectile != null and is_instance_valid(projectile):
 			projectile.call("resolve", "debug_reset")
-			lane_manager.call("clear_slot", clear_lane)
-	if not lane_manager.has_method("_fire_lane"):
+	if not lane_manager.has_method("debug_fire_lane"):
 		return false
-	var fired_v: Variant = lane_manager.call("_fire_lane", lane)
+	var fired_v: Variant = lane_manager.call("debug_fire_lane", lane)
 	return fired_v == true
 
 
@@ -5439,23 +5433,23 @@ func _show_end_stats() -> void:
 	if _end_stats_label == null:
 		return
 
-	var kills: int = int(RunStats.get("kills"))
-	var dmg: int = int(RunStats.get("damage_dealt"))
-	var p_att: int = int(RunStats.get("perfect_attacks"))
-	var g_att: int = int(RunStats.get("good_attacks"))
-	var p_par: int = int(RunStats.get("perfect_parries"))
-	var g_par: int = int(RunStats.get("good_parries"))
-	var ult: int = int(RunStats.get("ultimates_fired"))
-	var sup: int = int(RunStats.get("support_triggers"))
-	var surges: int = int(RunStats.get("tendency_surges"))
-	var hit: int = int(RunStats.get("times_hit"))
-	var bonds: int = int(RunStats.get("bonds"))
-	var eats: int = int(RunStats.get("eats"))
-	var score: int = int(RunStats.get("run_score"))
+	var kills: int = RunStats.kills
+	var dmg: int = int(RunStats.damage_dealt)
+	var p_att: int = RunStats.perfect_attacks
+	var g_att: int = RunStats.good_attacks
+	var p_par: int = RunStats.perfect_parries
+	var g_par: int = RunStats.good_parries
+	var ult: int = RunStats.ultimates_fired
+	var sup: int = RunStats.support_triggers
+	var surges: int = RunStats.tendency_surges
+	var hit: int = RunStats.times_hit
+	var bonds: int = RunStats.bonds
+	var eats: int = RunStats.eats
+	var score: int = RunStats.run_score
 	var grade: String = RunStats.call("get_grade") if RunStats.has_method("get_grade") else "—"
 
 	var growth_level: int = 1
-	growth_level = int(RunGrowth.level)
+	growth_level = RunGrowth.level
 	var post_run_summary: String = PRESENTATION_TEXT.post_run_summary(
 		_build_post_run_summary_payload(),
 		_region_id,
@@ -5494,9 +5488,9 @@ func _on_dna_lock_denied(_species_id: String, current: float, required: float) -
 
 func _build_post_run_summary_payload() -> Dictionary:
 	return {
-		"kills": int(RunStats.get("kills")),
-		"bonds": int(RunStats.get("bonds")),
-		"eats": int(RunStats.get("eats")),
+		"kills": RunStats.kills,
+		"bonds": RunStats.bonds,
+		"eats": RunStats.eats,
 		"passes": RunStats.passes
 	}
 

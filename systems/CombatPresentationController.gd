@@ -1823,7 +1823,12 @@ func sync_compact_transient_hud_layout(
 ) -> void:
 	enforce_top_left_panel_rect(hud_top_left_panel)
 	if live_reward_shell != null and is_instance_valid(live_reward_shell):
-		var vp: Vector2 = get_viewport().get_visible_rect().size
+		var vp: Vector2 = Vector2(1280, 720)
+		if hud_top_left_panel != null and hud_top_left_panel.is_inside_tree():
+			vp = hud_top_left_panel.get_viewport_rect().size
+		else:
+			vp = Vector2(DisplayServer.window_get_size())
+			
 		live_reward_shell.position = COMBAT_FEEL_CONTENT.compact_live_reward_position_for_viewport(vp)
 		live_reward_shell.size = COMBAT_FEEL_CONTENT.compact_live_reward_size()
 	sync_message_lane_ownership(live_reward_shell, performance_hud)

@@ -92,9 +92,8 @@ var _modifier: Sprite2D
 var _core: ColorRect
 var _trail: Line2D
 var _glow: Polygon2D
-
-var _direction_vector: Vector2 = Vector2.ZERO
 var _total_distance: float = 0.0
+
 
 
 func _ready() -> void:
@@ -202,7 +201,6 @@ func setup(
 	player_ref = target_player_ref
 	position = enemy_pos
 	
-	_direction_vector = (hit_zone_pos - enemy_pos).normalized()
 	_total_distance = enemy_pos.distance_to(hit_zone_pos)
 	
 	# Radial Tracking Initialization
@@ -338,10 +336,13 @@ func evaluate_proximity_timing(attacker_pos: Vector2) -> String:
 	if is_resolved or is_reflected:
 		return "already_resolved"
 		
+	# CONTACT TRUTH: Absolute physical proximity check.
 	var dist: float = global_position.distance_to(attacker_pos)
-	if dist <= COMBAT_FEEL_CONTENT.RING_PERFECT_RADIUS + 12.0:
+	
+	# Radius-based forgiveness for close-quarters interaction
+	if dist <= COMBAT_FEEL_CONTENT.RING_PERFECT_RADIUS + 4.0:
 		return "perfect"
-	if dist <= COMBAT_FEEL_CONTENT.RING_OUTER_RADIUS + 35.0:
+	if dist <= COMBAT_FEEL_CONTENT.RING_OUTER_RADIUS + 12.0:
 		return "good"
 		
 	return "miss"
@@ -365,13 +366,15 @@ func _process_incoming_song_synced(delta: float) -> void:
 			progress = 1.0
 
 	# Projectile Doctrine: Soft Tracking logic
+	var current_player_pos: Vector2 = player_pos
+	if player_ref != null and is_instance_valid(player_ref):
+		current_player_pos = player_ref.global_position
+
 	if not _is_committed:
 		if progress >= commit_threshold:
 			_is_committed = true
-		elif player_ref != null:
-			var center: Vector2 = player_pos # Global center point
-			var player_actual: Vector2 = player_ref.global_position
-			var player_delta: Vector2 = player_actual - center
+		else:
+			var player_delta: Vector2 = current_player_pos - player_pos # relative to fixed center
 			
 			if player_delta.length() > 0.1:
 				var desired_radial_vector: Vector2 = player_delta.normalized()
@@ -385,10 +388,12 @@ func _process_incoming_song_synced(delta: float) -> void:
 			# Face the center (direction of travel)
 			rotation = _current_radial_vector.angle() + PI
 
-	# Map progress to physical position using radial model
-	var center_pt: Vector2 = player_pos
+	# Map progress to physical position using radial model relative to CURRENT player
 	var current_dist: float = lerp(_initial_distance_to_center, _hit_zone_distance_to_center, progress)
-	position = center_pt + _current_radial_vector * current_dist
+	position = current_player_pos + _current_radial_vector * current_dist
+
+	# Update hit_zone_pos for timing checks (always at current_dist 0.0 relative to player)
+	hit_zone_pos = current_player_pos + _current_radial_vector * _hit_zone_distance_to_center
 
 	if not _reported_hit_zone and progress >= 1.0:
 		_reported_hit_zone = true

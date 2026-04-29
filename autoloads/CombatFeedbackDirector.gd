@@ -30,7 +30,7 @@ func _ready() -> void:
 	if not EventBus.ultimate_fired.is_connected(_on_ultimate_fired):
 		EventBus.ultimate_fired.connect(_on_ultimate_fired)
 
-func _on_impact(lane: int, quality: String, damage: float, enemy_id: int) -> void:
+func _on_impact(_lane: int, quality: String, _damage: float, _enemy_id: int) -> void:
 	match quality:
 		"perfect":
 			trigger_hit_stop(0.04, 0.10)
@@ -42,12 +42,12 @@ func _on_impact(lane: int, quality: String, damage: float, enemy_id: int) -> voi
 		_:
 			trigger_shake(SHAKE_INTENSITY_WEAK, 0.05)
 
-func _on_player_hit(amount: float, source_lane: int) -> void:
+func _on_player_hit(_amount: float, _source_lane: int) -> void:
 	trigger_hit_stop(0.15, 0.15)
 	trigger_shake(SHAKE_INTENSITY_HEAVY, SHAKE_DURATION_LONG)
 	EventBus.emit_signal("screen_flash", COLOR_BLOOD_EMBER, 0.18)
 
-func _on_player_parried(lane: int, quality: String, reflect_damage: float) -> void:
+func _on_player_parried(_lane: int, quality: String, _reflect_damage: float) -> void:
 	if quality == "perfect":
 		trigger_hit_stop(0.02, 0.12)
 		trigger_shake(SHAKE_INTENSITY_SOVEREIGN, SHAKE_DURATION_SOVEREIGN)
@@ -56,7 +56,7 @@ func _on_player_parried(lane: int, quality: String, reflect_damage: float) -> vo
 		trigger_shake(SHAKE_INTENSITY_NORMAL, SHAKE_DURATION_LONG)
 		EventBus.emit_signal("screen_flash", COLOR_BONE_WHITE, 0.08)
 
-func _on_ultimate_fired(power: float) -> void:
+func _on_ultimate_fired(_power: float) -> void:
 	trigger_hit_stop(0.01, 0.20)
 	trigger_shake(SHAKE_INTENSITY_SOVEREIGN, SHAKE_DURATION_SOVEREIGN)
 	EventBus.emit_signal("screen_flash", COLOR_BLOOD_EMBER, 0.25)

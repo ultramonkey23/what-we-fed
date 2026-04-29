@@ -49,15 +49,7 @@ const PARRY_IMAGE_DURATION: float = 0.22
 const HURT_IMAGE_DURATION: float = 0.30
 
 # Cardinal focus rules.
-const LANE_NORTH: int = 0
-const LANE_NORTH_EAST: int = 1
-const LANE_EAST: int = 2
-const LANE_SOUTH_EAST: int = 3
-const LANE_SOUTH: int = 4
-const LANE_SOUTH_WEST: int = 5
-const LANE_WEST: int = 6
-const LANE_NORTH_WEST: int = 7
-const DEFAULT_FOCUS_LANE: int = LANE_EAST
+const DEFAULT_FOCUS_LANE: int = 2
 
 # Neutral stance rules.
 const ATTACK_WORLD_X_OFFSET: float = 18.0
@@ -118,14 +110,11 @@ var _atkeffect_tex: Texture2D = null
 var _parry_tex: Texture2D = null
 var RunGrowth: Node:
 	get: return get_node_or_null("/root/RunGrowth")
-var RunStats: Node:
-	get: return get_node_or_null("/root/RunStats")
 
 var _hurt_tex: Texture2D = null
 var _image_restore_tween: Tween = null
 var _atk_effect_pulse_tween: Tween = null
 var _input_buffer: Dictionary = {}
-var _last_input_report: Dictionary = {}
 var active_focus_lane: int = DEFAULT_FOCUS_LANE
 
 
@@ -190,19 +179,17 @@ func _unhandled_input(event: InputEvent) -> void:
 	if action_type.is_empty():
 		return
 
-	var target_dir: int = _get_target_direction()
-
 	if not combat_enabled:
-		_emit_input_report(action_type, target_dir, false, false, "combat_disabled")
+		_emit_input_report(action_type, _get_target_direction(), false, false, "combat_disabled")
 		get_viewport().set_input_as_handled()
 		return
 
 	if lane_manager == null or combat_meter == null:
-		_emit_input_report(action_type, target_dir, false, false, "missing_runtime")
+		_emit_input_report(action_type, _get_target_direction(), false, false, "missing_runtime")
 		get_viewport().set_input_as_handled()
 		return
 
-	_handle_directional_action(target_dir, action_type)
+	_handle_combat_action(action_type)
 	get_viewport().set_input_as_handled()
 
 
@@ -224,7 +211,7 @@ func debug_force_focus_and_action(lane: int, action_type: String) -> bool:
 	# For debug, we temporarily force the facing to the lane's direction
 	var angle: float = (float(lane) / 8.0) * TAU - PI/2.0
 	_facing_direction = Vector2(cos(angle), sin(angle))
-	return _handle_directional_action(lane, action_type)
+	return _handle_combat_action(action_type)
 
 
 func _set_active_focus_lane(lane: int, show_ring_feedback: bool = true) -> void:
@@ -250,7 +237,7 @@ func _get_combat_action_from_event(event: InputEvent) -> String:
 	return ""
 
 
-func _handle_directional_action(_legacy_input_dir: int, action_type: String) -> bool:
+func _handle_combat_action(action_type: String) -> bool:
 	# RESOLUTION TRUTH: True Spatial Interaction.
 	# We no longer "snap" to a target. We act exactly where aimed.
 	var targets: Dictionary = _get_targets_in_cone()
@@ -338,15 +325,6 @@ func _emit_rejected_input_feedback(action_type: String, reason: String) -> void:
 
 func _emit_input_report(action_type: String, lane: int, accepted: bool, buffered: bool, reason: String) -> void:
 	var cooldowns: Dictionary = _build_input_cooldowns()
-	_last_input_report = {
-		"action": action_type,
-		"lane": lane,
-		"accepted": accepted,
-		"buffered": buffered,
-		"reason": reason,
-		"state": current_action_state,
-		"cooldowns": cooldowns
-	}
 	EventBus.emit_signal(
 		"combat_input_resolved",
 		action_type,
@@ -370,10 +348,10 @@ func _build_input_cooldowns() -> Dictionary:
 	}
 
 
-func _try_dodge_radial(target_dir: int) -> void:
+func _try_dodge_radial(_target_dir: int) -> void:
 	# In radial combat, dodge moves the player "through" the threat or to the center.
 	# For now, we reuse _try_dodge logic but map the target_dir correctly.
-	_try_dodge(target_dir)
+	_try_dodge()
 
 func setup(new_lane_manager: Node, new_combat_meter: Node) -> void:
 	lane_manager = new_lane_manager
@@ -450,22 +428,28 @@ func _get_beat_quality() -> String:
 
 
 func _evaluate_projectile_timing_with_forgiveness(projectile: Node) -> String:
-	var base_quality: String = String(projectile.call("evaluate_proximity_timing", global_position))
-	if base_quality != "miss":
-		return base_quality
-	var hit_zone_raw: Variant = projectile.get("hit_zone_pos")
-	if typeof(hit_zone_raw) != TYPE_VECTOR2:
-		return base_quality
-	var hit_zone_pos: Vector2 = hit_zone_raw
-	if hit_zone_pos == Vector2.ZERO:
-		return base_quality
-	# FORGIVENESS TRUTH: Check if the projectile is at the hit zone boundary
-	# even if it hasn't quite reached the player's proximity circle yet.
-	var distance_to_hit_zone: float = projectile.global_position.distance_to(hit_zone_pos)
-	var bonus_radius: float = SOVEREIGN_DAMAGE_CALCULATOR.get_parry_forgiveness_radius_bonus()
-	if distance_to_hit_zone <= COMBAT_FEEL_CONTENT.RING_OUTER_RADIUS + bonus_radius:
-		return "good"
-	return base_quality
+	# TIMING TRUTH: Priority to progress-based hit-zone alignment.
+	# Target nodes (Projectile/Melee) check proximity to their Hit Zone (radius 110).
+	var quality: String = String(projectile.call("evaluate_attack_timing"))
+	
+	if quality == "miss" or quality.is_empty():
+		# Fallback: Absolute physical contact forgiveness (for lunges or close-quarters)
+		var base_proximity: String = String(projectile.call("evaluate_proximity_timing", global_position))
+		if base_proximity != "miss":
+			return base_proximity
+		
+		# Extra parry forgiveness from calculator
+		var hit_zone_raw: Variant = projectile.get("hit_zone_pos")
+		if typeof(hit_zone_raw) == TYPE_VECTOR2:
+			var hit_zone_pos: Vector2 = hit_zone_raw
+			var dist: float = projectile.global_position.distance_to(hit_zone_pos)
+			var bonus: float = SOVEREIGN_DAMAGE_CALCULATOR.get_parry_forgiveness_radius_bonus()
+			if dist <= COMBAT_FEEL_CONTENT.RING_OUTER_RADIUS + bonus:
+				return "good"
+				
+		return "miss"
+		
+	return quality
 
 
 func _get_phrase_window() -> String:
@@ -589,7 +573,9 @@ func _get_targets_in_cone() -> Dictionary:
 			if dist <= max_range:
 				var dot: float = _facing_direction.dot(to_target.normalized())
 				if dot >= min_dot:
-					var lane_id: int = int(projectile.get("lane", -1))
+					var lane_val = projectile.get("lane")
+					var lane_id: int = int(lane_val) if lane_val != null else -1
+					
 					if lane_id == -1:
 						lane_id = _get_lane_from_vector(projectile.global_position - center_pos)
 						
@@ -855,7 +841,7 @@ func _try_parry(targets: Dictionary) -> void:
 
 const DODGE_DISTANCE: float = 70.0
 
-func _try_dodge(_legacy_target_dir: int) -> void:
+func _try_dodge() -> void:
 	if not combat_meter.call("spend_stamina_for_dodge"):
 		return
 
@@ -869,7 +855,7 @@ func _try_dodge(_legacy_target_dir: int) -> void:
 	# Derive lane index for visual/signal compatibility
 	var dodge_lane: int = _get_lane_from_vector(dodge_dir_vec)
 
-	_play_dodge_state_radial(dodge_lane, to_pos)
+	_play_dodge_state_radial(to_pos)
 
 	# I-frames and masteries.
 	var beat: String = _get_beat_quality()
@@ -899,25 +885,11 @@ func _try_support_activation(target_lane: int) -> void:
 	else:
 		_lock_action(TIMED_ATTACK_RECOVERY, "support")
 
-func _play_dodge_state_radial(_target_dir: int, target_pos: Vector2) -> void:
-	_apply_sprite_facing(_target_dir)
+func _play_dodge_state_radial(target_pos: Vector2) -> void:
+	_apply_sprite_facing()
 	_spawn_dodge_afterimage()
 	_play_sprite_pose(DODGE_SPRITE_POSITION, DODGE_SPRITE_SCALE, 0.10)
-
-	# Motion toward the threat hit-zone, then remain there (Hunting Field freedom).
-	if _world_motion_tween != null:
-		_world_motion_tween.kill()
-
-	movement_enabled = false
-
-	_world_motion_tween = create_tween()
-	_world_motion_tween.tween_property(self, "global_position", target_pos, 0.10) \
-		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CIRC)
-	
-	_world_motion_tween.tween_callback(func() -> void:
-		free_position = global_position
-		movement_enabled = true
-	)
+	_play_world_motion(target_pos, 0.10)
 
 
 func _try_ultimate() -> void:
@@ -926,13 +898,7 @@ func _try_ultimate() -> void:
 
 	_show_player_image(_attack_tex, ULTIMATE_RECOVERY)
 	_play_sprite_pose(ATTACK_SPRITE_POSITION, ATTACK_SPRITE_SCALE * 1.5, 0.4) # Dramatic pose
-	var current_aim: int = _get_target_direction()
-	_play_world_motion(
-		_action_world_position(current_aim, ATTACK_WORLD_X_OFFSET * 2.0),
-		_neutral_world_position(),
-		0.1,
-		0.4
-	)
+	_play_world_motion(_action_world_position(ATTACK_WORLD_X_OFFSET * 2.0), 0.1)
 
 	var beat: String = _get_beat_quality()
 	var multiplier: float = float(combat_meter.call("consume_ultimate"))
@@ -1176,17 +1142,11 @@ func _trigger_parry_counter_warp(enemy_id: int, target_lane: int, damage: float,
 func _play_counter_warp_state() -> void:
 	# Radial warp: uses a fixed spatial reach distance based on Action-RPG aim,
 	# rather than calculating distance between hardcoded lane spawn/hit zones.
-	var current_aim: int = _get_target_direction()
 	var reach_dist: float = PLAYER_ATTACK_RANGE * 0.85
 
 	_show_attack_image()
 	_play_sprite_pose(ATTACK_SPRITE_POSITION, ATTACK_SPRITE_SCALE, 0.18)
-	_play_world_motion(
-		_action_world_position(current_aim, reach_dist),
-		_neutral_world_position(),
-		0.05,
-		0.24
-	)
+	_play_world_motion(_action_world_position(reach_dist), 0.05)
 
 
 func _take_damage(amount: float, source_lane: int) -> void:
@@ -1252,7 +1212,7 @@ func _neutral_world_position() -> Vector2:
 	return free_position
 
 
-func _action_world_position(_unused_target_dir: int, reach_distance: float) -> Vector2:
+func _action_world_position(reach_distance: float) -> Vector2:
 	# SPATIAL PURITY: Lunges follow the continuous 360-degree facing direction,
 	# rather than snapping to the centers of the visual lane sectors.
 	return free_position + _facing_direction * reach_distance
@@ -1337,7 +1297,7 @@ func _show_hurt_image() -> void:
 	_show_player_image(_hurt_tex, HURT_IMAGE_DURATION)
 
 
-func _apply_sprite_facing(_unused_direction: int) -> void:
+func _apply_sprite_facing() -> void:
 	if _player_sprite == null:
 		return
 	if _combat_visual_rig != null and is_instance_valid(_combat_visual_rig):
@@ -1455,17 +1415,12 @@ func _return_to_neutral_state(immediate: bool = false) -> void:
 	# World motion snap-back removed to allow player to own their position.
 
 
-func _play_attack_state(target_lane: int) -> void:
-	_apply_sprite_facing(target_lane)
+func _play_attack_state(_target_lane: int) -> void:
+	_apply_sprite_facing()
 	_show_attack_image()
 	_pulse_attack_effect()
 	_play_sprite_pose(ATTACK_SPRITE_POSITION, ATTACK_SPRITE_SCALE, 0.08)
-	_play_world_motion(
-		_action_world_position(target_lane, ATTACK_WORLD_X_OFFSET),
-		_neutral_world_position(),
-		0.04,
-		0.10
-	)
+	_play_world_motion(_action_world_position(ATTACK_WORLD_X_OFFSET), 0.04)
 
 
 func _pulse_attack_effect() -> void:
@@ -1503,37 +1458,22 @@ func _pulse_attack_effect() -> void:
 	)
 
 
-func _play_parry_state(target_lane: int) -> void:
-	_apply_sprite_facing(target_lane)
+func _play_parry_state(_target_lane: int) -> void:
+	_apply_sprite_facing()
 	_play_sprite_pose(PARRY_SPRITE_POSITION, PARRY_SPRITE_SCALE, 0.10)
-	_play_world_motion(
-		_action_world_position(target_lane, PARRY_WORLD_X_OFFSET),
-		_neutral_world_position(),
-		0.04,
-		0.10
-	)
+	_play_world_motion(_action_world_position(PARRY_WORLD_X_OFFSET), 0.04)
 
 
-func _play_dodge_state(target_lane: int) -> void:
+func _play_dodge_state(_target_lane: int) -> void:
 	_spawn_dodge_afterimage()
 	_play_sprite_pose(DODGE_SPRITE_POSITION, DODGE_SPRITE_SCALE, 0.10)
-	_play_world_motion(
-		_action_world_position(target_lane, DODGE_WORLD_X_OFFSET),
-		_neutral_world_position(),
-		0.05,
-		0.16
-	)
+	_play_world_motion(_action_world_position(DODGE_WORLD_X_OFFSET), 0.05)
 
 
-func _play_hit_state(target_lane: int) -> void:
-	_apply_sprite_facing(target_lane)
+func _play_hit_state(_target_lane: int) -> void:
+	_apply_sprite_facing()
 	_play_sprite_pose(HIT_SPRITE_POSITION, HIT_SPRITE_SCALE, 0.12)
-	_play_world_motion(
-		_action_world_position(target_lane, HIT_WORLD_X_OFFSET),
-		_neutral_world_position(),
-		0.02,
-		0.14
-	)
+	_play_world_motion(_action_world_position(HIT_WORLD_X_OFFSET), 0.02)
 
 
 func _play_sprite_pose(target_position: Vector2, target_scale: Vector2, return_time: float) -> void:
@@ -1557,7 +1497,7 @@ func _play_sprite_pose(target_position: Vector2, target_scale: Vector2, return_t
 		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
 
 
-func _play_world_motion(action_position: Vector2, _unused_return_position: Vector2, push_time: float, _return_time: float) -> void:
+func _play_world_motion(action_position: Vector2, push_time: float) -> void:
 	if _world_motion_tween != null:
 		_world_motion_tween.kill()
 
@@ -1612,17 +1552,12 @@ func _check_input_buffer() -> void:
 		return
 	
 	var action: String = String(_input_buffer.get("action", ""))
-	var lane: int = int(_input_buffer.get("lane", -1))
 	var time_left: float = float(_input_buffer.get("time_left", 0.0))
 	
 	_input_buffer.clear()
 	
 	if time_left > 0.0:
-		match action:
-			"attack": _handle_directional_action(lane, "attack")
-			"parry": _handle_directional_action(lane, "parry")
-			"dodge": _handle_directional_action(lane, "dodge")
-			"ultimate": _handle_directional_action(lane, "ultimate")
+		_handle_combat_action(action)
 
 
 func _clear_buffered_dodge() -> void:

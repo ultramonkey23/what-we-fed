@@ -514,7 +514,7 @@ func _emit_growth_state() -> void:
 
 
 func _emit_support_state() -> void:
-	EventBus.run_support_changed.emit(support.charge, GROWTH_CONTENT.SUPPORT_MAX)
+	EventBus.support_charge_changed.emit(support.charge, GROWTH_CONTENT.SUPPORT_MAX, get_active_species_id())
 
 
 func _emit_dna_routing_state() -> void:

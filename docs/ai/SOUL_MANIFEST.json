@@ -1,0 +1,50 @@
+{
+	"version": "3.2",
+	"name": "The Black Signal Soul",
+	"doctrine": {
+		"identity": "The Living Codex",
+		"theme": "Manga Monstrosity / Premium Menace",
+		"world_relation": "Invasive Translation"
+	},
+	"constants": {
+		"scale": {
+			"player_base": 0.05,
+			"enemy_base": 0.07,
+			"arena_zoom": 1.0
+		},
+		"timing": {
+			"action_buffer": 0.14,
+			"hit_zone_radius": 110.0,
+			"success_min": 0.94,
+			"success_max": 1.06,
+			"perfect_min": 0.98,
+			"perfect_max": 1.02
+		},
+		"combat": {
+			"lunge_range_max": 275.0,
+			"lunge_speed": 0.04,
+			"lunge_recoil": 0.14
+		},
+		"aesthetic": {
+			"electric_blue": "#33d9eb",
+			"neon_purple": "#991ae6",
+			"blood_ember": "#f26b2e",
+			"ink_black": "#030103",
+			"bone_white": "#f5f0e6",
+			"manga_jitter_max": 24.0
+		}
+	},
+	"terminology": {
+		"level": "Lineage",
+		"score": "Sequence",
+		"run": "Intrusion",
+		"loading": "Translation",
+		"hub": "Interface Wound"
+	},
+	"sacred_files": [
+		"autoloads/GameState.gd",
+		"scenes/combat/PlayerCombat.gd",
+		"systems/SongConductor.gd",
+		"docs/ai/SOVEREIGN_CORE.md"
+	]
+}

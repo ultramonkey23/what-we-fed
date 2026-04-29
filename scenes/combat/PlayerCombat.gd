@@ -147,7 +147,7 @@ func _exit_tree() -> void:
 
 
 func _process(delta: float) -> void:
-	if movement_enabled and combat_enabled:
+	if movement_enabled and combat_enabled and current_action_state != "dodge":
 		_handle_free_movement(delta)
 
 	if action_lock_timer > 0.0:
@@ -459,7 +459,9 @@ func _evaluate_projectile_timing_with_forgiveness(projectile: Node) -> String:
 	var hit_zone_pos: Vector2 = hit_zone_raw
 	if hit_zone_pos == Vector2.ZERO:
 		return base_quality
-	var distance_to_hit_zone: float = global_position.distance_to(hit_zone_pos)
+	# FORGIVENESS TRUTH: Check if the projectile is at the hit zone boundary
+	# even if it hasn't quite reached the player's proximity circle yet.
+	var distance_to_hit_zone: float = projectile.global_position.distance_to(hit_zone_pos)
 	var bonus_radius: float = SOVEREIGN_DAMAGE_CALCULATOR.get_parry_forgiveness_radius_bonus()
 	if distance_to_hit_zone <= COMBAT_FEEL_CONTENT.RING_OUTER_RADIUS + bonus_radius:
 		return "good"
@@ -575,15 +577,22 @@ func _get_targets_in_cone() -> Dictionary:
 	var max_range: float = PLAYER_ATTACK_RANGE
 	var center_pos: Vector2 = lane_manager.call("get_player_pos")
 	
-	# 1. Projectiles in cone
-	for lane_id in range(8):
-		var projectile = lane_manager.call("get_projectile", lane_id)
-		if projectile != null and is_instance_valid(projectile) and not bool(projectile.get("is_resolved")):
+	# 1. Projectiles in cone: Absolute Spatial Resolution
+	var all_projectiles: Array = []
+	if lane_manager.has_method("get_all_active_projectiles"):
+		all_projectiles = lane_manager.call("get_all_active_projectiles")
+	
+	for projectile in all_projectiles:
+		if is_instance_valid(projectile) and not bool(projectile.get("is_resolved")):
 			var to_target: Vector2 = projectile.global_position - free_position
 			var dist: float = to_target.length()
 			if dist <= max_range:
 				var dot: float = _facing_direction.dot(to_target.normalized())
 				if dot >= min_dot:
+					var lane_id: int = int(projectile.get("lane", -1))
+					if lane_id == -1:
+						lane_id = _get_lane_from_vector(projectile.global_position - center_pos)
+						
 					found_projectiles.append({
 						"ref": projectile,
 						"lane": lane_id,
@@ -818,7 +827,6 @@ func _try_parry(targets: Dictionary) -> void:
 	var enemy_id: int = int(enemy_id_raw) if enemy_id_raw != null else -1
 
 	projectile.call("reflect_to_enemy", reflect_damage)
-	lane_manager.call("clear_slot", target_lane)
 	combat_meter.call("record_parry", quality)
 	combat_meter.call("record_phrase_action", quality)
 	_show_parry_image(quality)
@@ -1003,18 +1011,14 @@ func _resolve_timed_attack(projectile, combo_mult: float, quality: String) -> vo
 	# and live surges share one authoritative source.
 	var growth_mult: float = 1.0
 	var aggr_effect: Dictionary = {}
-	if RunGrowth.has_method("get_growth_effect"):
-		aggr_effect = Dictionary(RunGrowth.call("get_growth_effect", "timed_attack_bonus_damage"))
-	elif RunGrowth.has_method("get_runtime_effect"):
+	if RunGrowth.has_method("get_runtime_effect"):
 		aggr_effect = Dictionary(RunGrowth.call("get_runtime_effect", "timed_attack_bonus_damage"))
 	
 	growth_mult += float(aggr_effect.get("value", 0.0))
 	
 	if quality == "good" or quality == "perfect":
 		var cad_effect: Dictionary = {}
-		if RunGrowth.has_method("get_growth_effect"):
-			cad_effect = Dictionary(RunGrowth.call("get_growth_effect", "good_timed_bonus_damage"))
-		elif RunGrowth.has_method("get_runtime_effect"):
+		if RunGrowth.has_method("get_runtime_effect"):
 			cad_effect = Dictionary(RunGrowth.call("get_runtime_effect", "good_timed_bonus_damage"))
 		growth_mult += float(cad_effect.get("value", 0.0))
 
@@ -1092,7 +1096,6 @@ func _resolve_late_attack(projectile: Node, target_lane: int) -> void:
 	var punish_damage: float = SOVEREIGN_DAMAGE_CALCULATOR.get_late_attack_damage(combo_mult)
 	
 	projectile.call("resolve", "attack_late")
-	lane_manager.call("clear_slot", target_lane)
 	
 	var target_enemy_id_raw = projectile.get("enemy_id")
 	var target_enemy_id: int = int(target_enemy_id_raw) if target_enemy_id_raw != null else -1
@@ -1249,15 +1252,10 @@ func _neutral_world_position() -> Vector2:
 	return free_position
 
 
-func _action_world_position(target_dir: int, reach_distance: float) -> Vector2:
-	if lane_manager == null:
-		return free_position
-
-	var center: Vector2 = lane_manager.get_player_pos()
-	var threat_pos: Vector2 = lane_manager.get_threat_hit_zone_pos(target_dir)
-	var dir_vec: Vector2 = (threat_pos - center).normalized()
-
-	return free_position + dir_vec * reach_distance
+func _action_world_position(_unused_target_dir: int, reach_distance: float) -> Vector2:
+	# SPATIAL PURITY: Lunges follow the continuous 360-degree facing direction,
+	# rather than snapping to the centers of the visual lane sectors.
+	return free_position + _facing_direction * reach_distance
 
 func _setup_player_sprite() -> void:
 	# Load textures; fall back gracefully if any file is missing.
@@ -1602,7 +1600,6 @@ func _on_projectile_player_contact(projectile: Node) -> void:
 
 	if dodge_invuln_timer > 0.0:
 		projectile.call("resolve", "dodged_through")
-		lane_manager.call("clear_slot", proj_lane)
 		EventBus.emit_signal("screen_flash", Color(0.50, 0.70, 1.0, 0.04), 0.03)
 		return
 

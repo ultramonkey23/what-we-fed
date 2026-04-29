@@ -760,8 +760,9 @@ func update_timing_ring_proximity(
 			elif primary_target.get("type") == "enemy":
 				is_singular_target = (primary_target.get("lane", -1) == i)
 		
-		# SINGULARITY LAW: Only draw the ONE active target.
-		var should_draw: bool = is_singular_target
+		# EVOLUTION: RELAXED SINGULARITY. 
+		# We show all imminent threats, but keep the primary target "High Contrast".
+		var should_draw: bool = is_threat or is_singular_target
 		
 		if not should_draw:
 			if grave_node: grave_node.visible = false
@@ -771,16 +772,27 @@ func update_timing_ring_proximity(
 			
 		var player_pos: Vector2 = player_combat.global_position
 		var target_pos: Vector2 = Vector2.ZERO
-		var target_color: Color = Color(0.2, 0.85, 1.0, 1.0) # Electric Blue Core
-		var glow_color: Color = Color(0.6, 0.1, 0.9, 1.0)   # Purple Glow
-		var ring_radius: float = 110.0
+		
+		# MAPPING TRUTH: Intercardinal vs Cardinal weights
+		var is_intercardinal: bool = (i % 2 != 0)
+		var base_target_color: Color = Color(0.2, 0.85, 1.0, 1.0) # Electric Blue
+		var base_glow_color: Color = Color(0.6, 0.1, 0.9, 1.0)   # Purple Glow
+		
+		if is_threat:
+			# Threat colors: Hot/Red/Orange for active projectiles
+			base_target_color = Color(1.0, 0.45, 0.2, 1.0) # Hot Orange
+			base_glow_color = Color(0.9, 0.1, 0.1, 1.0)    # Threat Red
+		
+		var target_color: Color = base_target_color
+		var glow_color: Color = base_glow_color
+		var ring_radius: float = 110.0 if not is_intercardinal else 102.0 # Tighter intercardinals
 		
 		if is_threat:
 			var threat_id: int = int(proj.enemy_id)
 			target_pos = lane_manager.get_enemy_pos(threat_id)
 		else:
 			target_pos = Vector2(primary_target.get("pos", player_pos))
-			ring_radius = 124.0
+			ring_radius = 124.0 if not is_intercardinal else 116.0
 			
 		var dir_to_target: Vector2 = (target_pos - player_pos).normalized()
 		
@@ -791,7 +803,9 @@ func update_timing_ring_proximity(
 			grave_node.rotation = dir_to_target.angle()
 			
 			var marrow: Polygon2D = grave_node.get_node_or_null("Marrow")
-			var alpha_base: float = 0.52 + beat_pulse * 0.35
+			var alpha_mult: float = 1.0 if is_singular_target else 0.42 # Dim non-targets
+			var alpha_base: float = (0.52 + beat_pulse * 0.35) * alpha_mult
+			
 			var urgency_scale: float = 1.0
 			if is_threat:
 				var p: float = proj.progress
@@ -801,55 +815,71 @@ func update_timing_ring_proximity(
 			for j in range(3):
 				var splinter: Polygon2D = grave_node.get_node_or_null("Splinter_%d" % j)
 				if splinter:
-					splinter.color = Color(glow_color if not is_threat else target_color, alpha_base * 0.4)
+					splinter.color = Color(glow_color, alpha_base * 0.4)
 					var outline: Line2D = splinter.get_node_or_null("Outline")
 					if outline:
 						outline.default_color = target_color
-						outline.width = 1.0 + beat_pulse * 1.2
+						outline.default_color.a = alpha_base
+						outline.width = (1.0 + beat_pulse * 1.2) * (1.2 if is_singular_target else 0.8)
 					
 					# Splinter Jitter & Orbit
 					var drift_angle := delta * 2.0 + float(j) * 2.1
 					var drift := Vector2(cos(drift_angle), sin(drift_angle)) * 2.0
 					splinter.position += drift * delta
-					splinter.scale = Vector2.ONE * (urgency_scale * 0.5 + beat_pulse * 0.08)
 					
-			grave_node.scale = Vector2.ONE * (1.0 + beat_pulse * 0.15)
+					# Intercardinal shards are "sharper" (thinner)
+					var shard_scale: float = urgency_scale * 0.5 + beat_pulse * 0.08
+					splinter.scale = Vector2(shard_scale * 1.2, shard_scale * 0.6) if is_intercardinal else Vector2(shard_scale, shard_scale)
+					
+			grave_node.scale = Vector2.ONE * (1.0 + beat_pulse * 0.15) * (1.15 if is_singular_target else 0.85)
 			if marrow: 
-				marrow.color = glow_color if not is_threat else target_color
-				marrow.color.a = 0.4 + beat_pulse * 0.4
+				marrow.color = glow_color
+				marrow.color.a = (0.4 + beat_pulse * 0.4) * alpha_mult
+				# Intercardinal marrow is thinner
+				marrow.scale = Vector2(1.2, 0.5) if is_intercardinal else Vector2.ONE
 					
 		# Update Predatory Tether (Dual-Layer Electric Pulse)
 		if thread_node and glow_node:
+			# Only draw tethers for the SINGULAR target or high-urgency threats
 			var p: float = proj.progress if is_threat else 1.0
-			var urgency_mult: float = 1.0 + (clampf((p - 0.5) / 0.5, 0.0, 1.0) * 1.5) if is_threat else 1.0
+			var is_urgent: bool = is_threat and p > 0.65
+			var tether_visible: bool = is_singular_target or is_urgent
 			
-			var thread_alpha: float = (0.45 + beat_pulse * 0.4) * urgency_mult
-			var glow_alpha: float = (0.22 + beat_pulse * 0.45) * urgency_mult
-			
-			thread_node.default_color = Color(target_color, thread_alpha)
-			glow_node.default_color = Color(glow_color, glow_alpha)
-			
-			thread_node.width = (1.4 + beat_pulse * 1.5) * urgency_mult
-			glow_node.width = (4.5 + beat_pulse * 5.0) * urgency_mult
-			
-			# GENERATE NERVE POINTS (Electric Crackle)
-			var start := player_pos + dir_to_target * 18.0
-			var end := target_pos - dir_to_target * 24.0
-			var pts := PackedVector2Array()
-			var segments := 6
-			for j in range(segments + 1):
-				var t_lerp: float = float(j) / float(segments)
-				var p_base := start.lerp(end, t_lerp)
-				if j > 0 and j < segments:
-					# Progress-based jitter amplification
-					var jitter_amount: float = (5.0 + beat_pulse * 24.0) * urgency_mult
-					var offset := Vector2(randf_range(-1.0, 1.0), randf_range(-1.0, 1.0)).normalized() * jitter_amount
-					pts.append(p_base + offset)
-				else:
-					pts.append(p_base)
-			
-			thread_node.points = pts
-			glow_node.points = pts
+			if not tether_visible:
+				thread_node.default_color.a = 0.0
+				glow_node.default_color.a = 0.0
+			else:
+				var urgency_mult: float = 1.0 + (clampf((p - 0.5) / 0.5, 0.0, 1.0) * 1.5) if is_threat else 1.2
+				var target_alpha_mult: float = 1.0 if is_singular_target else 0.6
+				
+				var thread_alpha: float = (0.45 + beat_pulse * 0.4) * urgency_mult * target_alpha_mult
+				var glow_alpha: float = (0.22 + beat_pulse * 0.45) * urgency_mult * target_alpha_mult
+				
+				thread_node.default_color = Color(target_color, thread_alpha)
+				glow_node.default_color = Color(glow_color, glow_alpha)
+				
+				thread_node.width = (1.4 + beat_pulse * 1.5) * urgency_mult * (1.0 if not is_intercardinal else 0.75)
+				glow_node.width = (4.5 + beat_pulse * 5.0) * urgency_mult * (1.0 if not is_intercardinal else 0.75)
+				
+				# GENERATE NERVE POINTS (Electric Crackle)
+				var start := player_pos + dir_to_target * 18.0
+				var end := target_pos - dir_to_target * 24.0
+				var pts := PackedVector2Array()
+				var segments := 8 if is_singular_target else 5
+				for j in range(segments + 1):
+					var t_lerp: float = float(j) / float(segments)
+					var p_base := start.lerp(end, t_lerp)
+					if j > 0 and j < segments:
+						# Progress-based jitter amplification
+						var jitter_amount: float = (5.0 + beat_pulse * 24.0) * urgency_mult
+						if is_intercardinal: jitter_amount *= 0.7 # Smoother intercardinal tethers
+						var offset := Vector2(randf_range(-1.0, 1.0), randf_range(-1.0, 1.0)).normalized() * jitter_amount
+						pts.append(p_base + offset)
+					else:
+						pts.append(p_base)
+				
+				thread_node.points = pts
+				glow_node.points = pts
 
 
 func build_arena_visuals(

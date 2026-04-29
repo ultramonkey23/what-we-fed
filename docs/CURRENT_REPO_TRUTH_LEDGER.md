@@ -1,5 +1,26 @@
 # CURRENT_REPO_TRUTH_LEDGER
 
+## 2026-04-28 AI System Hardening: Sovereign Matrix & GODLY v2.5
+- **Tool Adapter Hardening**: Fixed stale doctrine references in `.cursor/rules/`, `.clinerules`, `.codex/config.toml`, and `.github/copilot-instructions.md`. All tools are now unified under the 4 canonical Sovereign Core pillars.
+- **GODLY Evolution Engine (v2.5)**: Rewrote `GODLY_WORKFLOW.md` to streamline autonomous upgrades. Replaced the high-friction 11-doc check with a 3-step loop: Agent Council → Sequential Mutation → Micro-Validation.
+- **Agent Discovery**: Optimized `.cursorrules` (mdc) with `alwaysApply: true` for core logic, reducing prompt drift in Cursor AI.
+- **Manifest Template**: Created `docs/ai/AI_AGENT_MANIFEST_TEMPLATE.md` to provide a standardized entrypoint for commanding any AI agent (Claude, Cursor, Gemini, etc.) using the Sovereign protocol.
+- **Legacy Sweep**: Removed 700+ lines of redundant legacy logic from rule files and tool configurations.
+- **Validation**: `smoke_project.bat` PASS. `validate_project.bat` PASS. AI alignment across terminal and IDE tools verified.
+
+## 2026-04-28 Sovereign Flow Evolution: Internal Transitions & Level-Up Mastery
+- **Seamless Flow**: Replaced the clunky `InterludeScene.tscn` reload logic with an internal **Translation Overlay** in `CombatScene.gd`. This eliminates system re-instantiation between combats, maintaining the "Premium Menace" momentum.
+- **Lineage Extraction**: The transition now features a detailed **Lineage Extraction Summary**, reporting combat performance (Kills, Damage, Perfects) and real-time level gains directly in the HUD.
+- **Persistent Progression**: Fixed a critical bug in `TendencyManager.gd` where levels were wiped between combats. Split the reset logic into `reset()` (per run) and `clear_points()` (per combat) to ensure long-term power scaling.
+- **Sovereign Feedback**: Injected high-intensity visual cues for level-up moments, including time-stops, heavy screenshake, and ink-black flashes to signify pattern extraction.
+- **Validation**: `smoke_project.bat` PASS. `validate_project.bat` PASS. Flow verified as internally consistent and performance-optimized.
+
+## 2026-04-28 Legacy System Sweep: 8-Directional Flow Alignment
+- **Support Effect Resolution**: Updated `SupportEffectResolver.gd` to iterate over dynamic `THREAT_COUNT` instead of a hardcoded 4 lanes. Ensures interventions and highlights function properly in the new 8-directional setup.
+- **Visual Presentation**: Updated `CombatPresentationController.gd` fallbacks and Sigil rendering to explicitly map to 8 radial directions, fully supporting the 360-degree Action-RPG field.
+- **Combat Logic Safety**: Swept `CombatScene.gd` for legacy lane count fallbacks and replaced them with `lane_manager.THREAT_COUNT if lane_manager else 8`.
+- **Validation**: `smoke_project.bat` PASS. `validate_project.bat` PASS.
+
 ## 2026-04-28 GODLY v2.3 Medium-Evolution Pass: Aesthetic, Action, and Growth Persistence
 - **Aesthetic Integration**: `CombatFeedbackDirector.gd` updated to use "Manga Monstrosity" visual cues (`COLOR_BLOOD_EMBER`, `COLOR_BONE_WHITE`, `COLOR_INK_BLACK`) and aggressive hit-stop/shake for parries and ultimates.
 - **Action Locking Optimization**: Removed redundant and conflicting timer-based `_is_invincible` logic in `PlayerCombat.gd` in favor of a clean delta-decremented `dodge_invuln_timer` within `_process`, increasing dodging reliability.

@@ -223,12 +223,13 @@ func get_projectile(lane: int) -> Node:
 	return null
 
 
-func get_enemy(lane: int) -> Dictionary:
-	# VISUAL LOOKUP ONLY: Find the enemy currently associated with this spawn sector.
-	for id in _strikers:
-		if int(_strikers[id].get("lane", -1)) == lane:
-			return _enemies.get(id, {})
-	return {}
+func get_all_active_projectiles() -> Array[Node]:
+	var result: Array[Node] = []
+	for id in _active_projectiles:
+		var projectile = _active_projectiles[id]
+		if is_instance_valid(projectile):
+			result.append(projectile)
+	return result
 
 
 func get_projectile_by_id(id: int) -> Node:
@@ -236,6 +237,14 @@ func get_projectile_by_id(id: int) -> Node:
 	if is_instance_valid(projectile):
 		return projectile
 	return null
+
+
+func get_enemy(lane: int) -> Dictionary:
+	# VISUAL LOOKUP ONLY: Find the enemy currently associated with this spawn sector.
+	for striker_id in _strikers:
+		if int(_strikers[striker_id].get("lane", -1)) == lane:
+			return _enemies.get(striker_id, {})
+	return {}
 
 
 func is_lane_empty(lane: int) -> bool:

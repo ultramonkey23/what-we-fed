@@ -106,6 +106,13 @@ var _tempo_telemetry_counts: Dictionary = {
 	COMBAT_FEEL_CONTENT.TEMPO_VOID: 0,
 	COMBAT_FEEL_CONTENT.TEMPO_DECREE: 0
 }
+
+# ─── TRANSLATION OVERLAY ──────────────────────────────────────────────────────
+var _translation_overlay: ColorRect = null
+var _translation_header: Label = null
+var _translation_body: Label = null
+var _translation_hint: Label = null
+var _translation_can_continue: bool = false
 var _tempo_recovery_tween: Tween = null
 
 # ─── UI NODES (DYNAMICALLY CREATED) ──────────────────────────────────────────
@@ -1676,6 +1683,12 @@ func _unhandled_input(event: InputEvent) -> void:
 
 	var key_event: InputEventKey = event
 	if not key_event.pressed or key_event.echo:
+		return
+
+	if _translation_overlay != null and _translation_overlay.visible:
+		if _translation_can_continue:
+			_on_translation_continue()
+		get_viewport().set_input_as_handled()
 		return
 
 	if _is_growth_choice_active():
@@ -3400,28 +3413,30 @@ func _advance_to_next_regular_level() -> void:
 	if _song_level_transitioning:
 		return
 	_song_level_transitioning = true
-	
+
 	if _run_director != null:
+		_run_director.complete_level()
+
+		# Clear gains now that they've been presented
+		RunGrowth.call("clear_combat_gains")
+
 		_prepare_path_context_for_level(_run_director.regular_level_index)
 		var encounter_options: Dictionary = Dictionary(_active_path_context.get("encounter_options", {}))
 		if bool(encounter_options.get("is_event", false)):
-			_song_level_transitioning = false # Reset so we can transition after event
+			_song_level_transitioning = false 
 			_create_event_surface()
 			var event_type = str(encounter_options.get("event_type", "narrative"))
 			var event_id = EVENT_CONTENT.get_random_event_id_for_type(event_type)
 			_event_surface.call("present_event", event_id)
 			return
 
-	if _run_director != null:
-		_run_director.complete_level()
 	_start_regular_level(_run_director.regular_level_index, false)
-
 
 func _on_regular_level_complete() -> void:
 	if _song_boss_triggered or not _song_mode or _is_run_spine_active():
 		return
 
-	# Stop combat, pacing, and song transport before RunSpine deliberation.
+	# Stop combat, pacing, and song transport.
 	_set_song_paused(true)
 	if lane_manager != null and lane_manager.has_method("stop"):
 		lane_manager.stop()
@@ -3436,7 +3451,100 @@ func _on_regular_level_complete() -> void:
 	if RunGrowth.get("pending_bonds") is Array:
 		RunGrowth.get("pending_bonds").clear()
 	_between_level_growth_queue.clear()
-	_show_level_completion_rewards()
+	
+	_show_translation_overlay()
+
+
+func _create_translation_overlay() -> void:
+	if _translation_overlay != null: return
+	
+	_translation_overlay = ColorRect.new()
+	_translation_overlay.name = "TranslationOverlay"
+	_translation_overlay.visible = false
+	_translation_overlay.color = Color(0.01, 0.01, 0.02, 0.95)
+	_translation_overlay.anchor_right = 1.0
+	_translation_overlay.anchor_bottom = 1.0
+	_translation_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+	ui_layer.add_child(_translation_overlay)
+	
+	var panel = ColorRect.new()
+	panel.color = Color(0.05, 0.05, 0.07, 0.60)
+	panel.anchor_left = 0.5; panel.anchor_top = 0.5
+	panel.anchor_right = 0.5; panel.anchor_bottom = 0.5
+	panel.offset_left = -400.0; panel.offset_top = -240.0
+	panel.offset_right = 400.0; panel.offset_bottom = 200.0
+	UI_STYLE.apply_shell_style(panel, "mm_shell")
+	_translation_overlay.add_child(panel)
+	
+	_translation_header = Label.new()
+	_translation_header.text = "LINEAGE EXTRACTION"
+	_translation_header.position = Vector2(0, 20)
+	_translation_header.size = Vector2(800, 50)
+	UI_STYLE.apply_label(_translation_header, "mm_title", HORIZONTAL_ALIGNMENT_CENTER)
+	_translation_header.add_theme_color_override("font_color", UI_STYLE.get_manga_color("blood_ember"))
+	panel.add_child(_translation_header)
+	
+	var scroll = ScrollContainer.new()
+	scroll.position = Vector2(40, 80)
+	scroll.size = Vector2(720, 280)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	panel.add_child(scroll)
+	
+	_translation_body = Label.new()
+	_translation_body.custom_minimum_size = Vector2(720, 0)
+	_translation_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	UI_STYLE.apply_label(_translation_body, "mm_body")
+	_translation_body.add_theme_font_size_override("font_size", 13)
+	scroll.add_child(_translation_body)
+	
+	_translation_hint = Label.new()
+	_translation_hint.text = "PRESS ANY KEY TO CONTINUE"
+	_translation_hint.position = Vector2(0, 370)
+	_translation_hint.size = Vector2(800, 30)
+	UI_STYLE.apply_label(_translation_hint, "mm_hint", HORIZONTAL_ALIGNMENT_CENTER)
+	panel.add_child(_translation_hint)
+
+
+func _show_translation_overlay() -> void:
+	_create_translation_overlay()
+	
+	var lines: Array[String] = []
+	lines.append("[ FEED PERFORMANCE ]")
+	lines.append("• Marks Extracted: %d" % RunStats.combat_kills)
+	lines.append("• Damage Output: %.0f" % RunStats.combat_damage)
+	lines.append("• Perfect Syncs: %d" % RunStats.combat_perfects)
+	if RunStats.combat_hits == 0:
+		lines.append("• Vessel Integrity: UNTOUCHED (+Bonus)")
+	else:
+		lines.append("• Vessel Breaches: %d" % RunStats.combat_hits)
+	lines.append("")
+
+	var gains = RunGrowth.call("get_gains_this_combat")
+	if not gains.is_empty():
+		lines.append("[ GROWTH EVOLVED ]")
+		for gain in gains:
+			lines.append("• %s: %s" % [str(gain.get("title", "LEVEL UP")), str(gain.get("summary", ""))])
+		lines.append("")
+	
+	_translation_body.text = "\n".join(PackedStringArray(lines))
+	_translation_overlay.visible = true
+	_translation_can_continue = false
+	
+	var t = create_tween()
+	_translation_overlay.modulate.a = 0.0
+	t.tween_property(_translation_overlay, "modulate:a", 1.0, 0.25)
+	t.tween_callback(func(): _translation_can_continue = true)
+
+
+func _hide_translation_overlay() -> void:
+	if _translation_overlay:
+		_translation_overlay.visible = false
+	_translation_can_continue = false
+
+
+func _on_translation_continue() -> void:
+	_hide_translation_overlay()
+	_show_next_between_level_growth_choice()
 
 
 func _on_run_director_drop_scheduled(target_time: float) -> void:
@@ -3823,12 +3931,12 @@ func _on_run_spine_management_action_requested(action_id: String, payload: Dicti
 
 
 func _on_run_spine_continue_requested(advance_to_boss: bool) -> void:
+	_hide_run_spine_surface()
+	
 	if advance_to_boss:
-		_hide_run_spine_surface()
-		get_tree().change_scene_to_file("res://scenes/ui/InterludeScene.tscn")
+		_trigger_boss_final_movement()
 	else:
-		_hide_run_spine_surface()
-		get_tree().change_scene_to_file("res://scenes/ui/InterludeScene.tscn")
+		_advance_to_next_regular_level()
 
 
 func _prepare_path_context_for_level(level_index: int) -> void:
@@ -4966,7 +5074,7 @@ func _advance_to_next_stage() -> void:
 			controls_label.text = ""
 			return
 		# Fallback guard: if the spine surface is unavailable, use the new loop interlude.
-		get_tree().change_scene_to_file("res://scenes/ui/InterludeScene.tscn")
+		get_tree().change_scene_to_file("res://scenes/ui/TranslationScene.tscn")
 
 
 func _finish_run(victory: bool) -> void:
@@ -6116,25 +6224,34 @@ func _on_run_growth_level_resolved(result: Dictionary) -> void:
 	_refresh_run_build_readout()
 	if result.is_empty():
 		return
+	
+	# Sovereign Evolution Feedback
 	var readout_label: String = str(result.get("readout_label", ""))
 	var summary: String = str(result.get("summary", ""))
-	if readout_label.is_empty():
-		return
-	_quig_anchor_label.text = _hud_presenter.compact_hud_copy("%s - %s" % [readout_label, summary], 34)
-	_quig_anchor_label.visible = true
-	_refresh_quig_ui_state()
 	
-	if _quig_tween != null:
-		_quig_tween.kill()
+	if not readout_label.is_empty():
+		# Trigger visual impact
+		CombatFeedbackDirector.trigger_hit_stop(0.02, 0.15)
+		CombatFeedbackDirector.trigger_shake(12.0, 0.20)
+		EventBus.emit_signal("screen_flash", Color(0.12, 0.12, 0.14, 0.70), 0.15)
 		
-	_quig_tween = create_tween()
-	_quig_tween.tween_interval(COMBAT_FEEL_CONTENT.TENDENCY_ANCHOR_HOLD_TIME)
-	_quig_tween.tween_property(_quig_anchor_label, "modulate:a", 0.0, COMBAT_FEEL_CONTENT.TENDENCY_ANCHOR_FADE_TIME)
-	_quig_tween.tween_callback(func() -> void:
-		_quig_anchor_label.visible = false
-		_quig_anchor_label.modulate.a = 1.0
+		_show_feedback("%s EVOLVED" % readout_label.to_upper(), Color(0.92, 0.22, 0.22, 1.0), 1.2)
+		_quig_anchor_label.text = _hud_presenter.compact_hud_copy("%s - %s" % [readout_label, summary], 34)
+		_quig_anchor_label.visible = true
 		_refresh_quig_ui_state()
-	)
+		
+		if _quig_tween != null:
+			_quig_tween.kill()
+			
+		_quig_tween = create_tween()
+		_quig_tween.tween_interval(COMBAT_FEEL_CONTENT.TENDENCY_ANCHOR_HOLD_TIME * 1.5)
+		_quig_tween.tween_property(_quig_anchor_label, "modulate:a", 0.0, COMBAT_FEEL_CONTENT.TENDENCY_ANCHOR_FADE_TIME)
+		_quig_tween.tween_callback(func() -> void:
+			_quig_anchor_label.visible = false
+			_quig_anchor_label.modulate.a = 1.0
+			_refresh_quig_ui_state()
+		)
+
 	var snapshot: Dictionary = result.get("snapshot", {})
 	if not snapshot.is_empty():
 		_hud_presenter.refresh_hp(

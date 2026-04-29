@@ -1,0 +1,6 @@
+[gd_scene format=3 uid="uid://c6j2k4l8m5p3"]
+
+[ext_resource type="Script" path="res://scenes/ui/TranslationScene.gd" id="1_x7r2q"]
+
+[node name="TranslationScene" type="Node2D"]
+script = ExtResource("1_x7r2q")

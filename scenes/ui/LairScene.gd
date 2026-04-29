@@ -212,7 +212,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			return
 		
 		GameState.start_new_run()
-		get_tree().change_scene_to_file("res://scenes/ui/InterludeScene.tscn")
+		get_tree().change_scene_to_file("res://scenes/ui/TranslationScene.tscn")
 		return
 
 	if key_event.keycode == KEY_ESCAPE:

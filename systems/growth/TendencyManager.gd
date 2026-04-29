@@ -32,6 +32,10 @@ func reset(default_surges: Dictionary = {}) -> void:
 		"bond": float(default_surges.get("bond", 0.0))
 	}
 
+
+func clear_points() -> void:
+	points = {"aggression": 0.0, "cadence": 0.0, "guard": 0.0, "bond": 0.0}
+
 func grant_points(tendency_id: String, amount: float, potential: float) -> void:
 	if amount <= 0.0 or not points.has(tendency_id): return
 	points[tendency_id] += amount * potential

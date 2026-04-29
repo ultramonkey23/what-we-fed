@@ -204,8 +204,8 @@ func advance_run_loop() -> void:
 
 
 func get_next_run_scene_path() -> String:
-	# Sequence: QUIG -> (COMBAT or BOSS)
-	return "res://scenes/ui/InterludeScene.tscn"
+	# Sequence: COMBAT -> TRANSLATION -> SPINE (via CombatScene Overlay) -> COMBAT
+	return "res://scenes/ui/TranslationScene.tscn"
 
 
 var world_fate_channels: Dictionary:
@@ -705,8 +705,8 @@ func get_active_bonded_creature() -> Dictionary:
 	return best_creature
 
 
-func add_dna(species_id: String, amount: float) -> void:
-	creatures.add_dna(species_id, amount)
+func add_dna(species_id: String, amount: float) -> bool:
+	return creatures.add_dna(species_id, amount)
 
 
 func get_dna(species_id: String) -> float:

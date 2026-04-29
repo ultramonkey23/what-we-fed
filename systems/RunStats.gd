@@ -32,27 +32,58 @@ var eats: int = 0
 var dna_gained: float = 0.0
 var passes: int = 0
 var run_score: int = 0
+
+# Combat-specific stats (reset every encounter)
+var combat_kills: int = 0
+var combat_damage: float = 0.0
+var combat_perfects: int = 0
+var combat_hits: int = 0
+
+
 func _ready() -> void:
 	# Initial stats reset.
 	reset()
-
-	EventBus.run_started.connect(_on_run_started)
-	EventBus.enemy_defeated.connect(_on_enemy_defeated)
-	EventBus.enemy_damaged.connect(_on_enemy_damaged)
-	EventBus.timed_attack_resolved.connect(_on_timed_attack_resolved)
-	EventBus.player_parried.connect(_on_player_parried)
-	EventBus.ultimate_fired.connect(_on_ultimate_fired)
-	EventBus.bonded_support_triggered.connect(_on_bonded_support_triggered)
-	EventBus.tendency_growth_resolved.connect(_on_tendency_growth_resolved)
-	EventBus.player_took_damage.connect(_on_player_took_damage)
-	EventBus.creature_bonded.connect(_on_creature_bonded)
-	EventBus.creature_eaten.connect(_on_creature_eaten)
-	EventBus.dna_gained.connect(_on_dna_gained)
+	_connect_eventbus()
 
 
 func _exit_tree() -> void:
+	_disconnect_eventbus()
+
+
+func _connect_eventbus() -> void:
+	if not EventBus.run_started.is_connected(_on_run_started):
+		EventBus.run_started.connect(_on_run_started)
+	if not EventBus.combat_started.is_connected(_on_combat_started):
+		EventBus.combat_started.connect(_on_combat_started)
+	if not EventBus.enemy_defeated.is_connected(_on_enemy_defeated):
+		EventBus.enemy_defeated.connect(_on_enemy_defeated)
+	if not EventBus.enemy_damaged.is_connected(_on_enemy_damaged):
+		EventBus.enemy_damaged.connect(_on_enemy_damaged)
+	if not EventBus.timed_attack_resolved.is_connected(_on_timed_attack_resolved):
+		EventBus.timed_attack_resolved.connect(_on_timed_attack_resolved)
+	if not EventBus.player_parried.is_connected(_on_player_parried):
+		EventBus.player_parried.connect(_on_player_parried)
+	if not EventBus.ultimate_fired.is_connected(_on_ultimate_fired):
+		EventBus.ultimate_fired.connect(_on_ultimate_fired)
+	if not EventBus.bonded_support_triggered.is_connected(_on_bonded_support_triggered):
+		EventBus.bonded_support_triggered.connect(_on_bonded_support_triggered)
+	if not EventBus.tendency_growth_resolved.is_connected(_on_tendency_growth_resolved):
+		EventBus.tendency_growth_resolved.connect(_on_tendency_growth_resolved)
+	if not EventBus.player_took_damage.is_connected(_on_player_took_damage):
+		EventBus.player_took_damage.connect(_on_player_took_damage)
+	if not EventBus.creature_bonded.is_connected(_on_creature_bonded):
+		EventBus.creature_bonded.connect(_on_creature_bonded)
+	if not EventBus.creature_eaten.is_connected(_on_creature_eaten):
+		EventBus.creature_eaten.connect(_on_creature_eaten)
+	if not EventBus.dna_gained.is_connected(_on_dna_gained):
+		EventBus.dna_gained.connect(_on_dna_gained)
+
+
+func _disconnect_eventbus() -> void:
 	if EventBus.run_started.is_connected(_on_run_started):
 		EventBus.run_started.disconnect(_on_run_started)
+	if EventBus.combat_started.is_connected(_on_combat_started):
+		EventBus.combat_started.disconnect(_on_combat_started)
 	if EventBus.enemy_defeated.is_connected(_on_enemy_defeated):
 		EventBus.enemy_defeated.disconnect(_on_enemy_defeated)
 	if EventBus.enemy_damaged.is_connected(_on_enemy_damaged):
@@ -93,7 +124,15 @@ func reset() -> void:
 	dna_gained = 0.0
 	passes = 0
 	run_score = 0
+	reset_combat_stats()
 	emit_signal("score_changed", run_score)
+
+
+func reset_combat_stats() -> void:
+	combat_kills = 0
+	combat_damage = 0.0
+	combat_perfects = 0
+	combat_hits = 0
 
 
 func get_grade() -> String:
@@ -130,18 +169,25 @@ func _on_run_started(_run_number: int) -> void:
 	reset()
 
 
+func _on_combat_started(_enemy_data: Array) -> void:
+	reset_combat_stats()
+
+
 func _on_enemy_defeated(_enemy_id: int) -> void:
 	kills += 1
+	combat_kills += 1
 	_add_score(SCORE_KILL)
 
 
 func _on_enemy_damaged(_enemy_id: int, damage: float) -> void:
 	damage_dealt += damage
+	combat_damage += damage
 
 
 func _on_timed_attack_resolved(_lane: int, quality: String, _damage: float, _enemy_id: int) -> void:
 	if quality == "perfect":
 		perfect_attacks += 1
+		combat_perfects += 1
 		_add_score(SCORE_PERFECT_ATTACK)
 	elif quality == "good":
 		good_attacks += 1
@@ -151,6 +197,7 @@ func _on_timed_attack_resolved(_lane: int, quality: String, _damage: float, _ene
 func _on_player_parried(_lane: int, quality: String, _reflect_damage: float) -> void:
 	if quality == "perfect":
 		perfect_parries += 1
+		combat_perfects += 1
 		_add_score(SCORE_PERFECT_PARRY)
 	elif quality == "good":
 		good_parries += 1
@@ -172,8 +219,10 @@ func _on_tendency_growth_resolved(_tendency_id: String, _title: String, _summary
 	_add_score(SCORE_TENDENCY_SURGE)
 
 
-func _on_player_took_damage(_amount: float, _source_lane: int) -> void:
-	times_hit += 1
+func _on_player_took_damage(amount: float, _source_lane: int) -> void:
+	if amount > 0.0:
+		times_hit += 1
+		combat_hits += 1
 
 
 func _on_creature_bonded(_creature_data: Dictionary) -> void:

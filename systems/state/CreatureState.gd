@@ -24,9 +24,11 @@ func reset_run_state() -> void:
 				roster.append(seed_creature)
 				break
 
-func add_dna(species_id: String, amount: float) -> void:
-	if species_id.is_empty() or amount <= 0.0: return
-	dna_by_species[species_id] = float(dna_by_species.get(species_id, 0.0)) + amount
+func add_dna(species_id: String, amount: float) -> bool:
+	if species_id.is_empty() or amount <= 0.0: return false
+	var current: float = float(dna_by_species.get(species_id, 0.0))
+	dna_by_species[species_id] = current + amount
+	return (current + amount) >= 20.0 and current < 20.0
 
 func get_dna(species_id: String) -> float:
 	return float(dna_by_species.get(species_id, 0.0))

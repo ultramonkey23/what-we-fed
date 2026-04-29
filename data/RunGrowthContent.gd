@@ -1,4 +1,5 @@
 extends RefCounted
+class_name RunGrowthContent
 
 # Run Growth Content - Definitions for growth outcomes and reward lanes
 # This follows the Management-Rich mandate for strategic depth.
@@ -12,6 +13,7 @@ const DNA_BOND_SUPPORT_CHARGE_PER_POINT: float = 1.0
 
 const SUPPORT_MAX: float = 100.0
 const CHARGE_TIMED_ATTACK: float = 1.5
+const CHARGE_PHRASE_COMPLETE: float = 8.0
 const CHARGE_ENEMY_DEFEAT: float = 8.0
 const CHARGE_MASTERY_ACTION: float = 12.0
 
@@ -19,13 +21,14 @@ const GORGE_MARK_BONUS_CHARGE: float = 15.0
 
 const EXP_KILL: float = 12.0
 const EXP_TIMED_ATTACK: float = 2.0
+const EXP_PARRY: float = 3.5
+const EXP_PHRASE_COMPLETE: float = 15.0
+const EXP_EAT: float = 25.0
 const EXP_STYLE_MILESTONE: float = 25.0
 const EXP_ULTIMATE: float = 40.0
 
-# Tendency Thresholds
-const TENDENCY_LEVEL_THRESHOLD: float = 100.0
-
-const LEVEL_THRESHOLDS: Array[float] = [40.0, 92.0, 150.0]
+const EXP_PER_DNA_POINT: float = 2.0
+const DNA_AGGRESSION_TENDENCY_PER_POINT: float = 0.5
 
 # Tendency Level Up Outcomes
 # Maps tendency ID -> data for level up presentation and bonuses
@@ -83,3 +86,24 @@ const TENDENCY_LEVEL_UP_OUTCOMES: Dictionary = {
 const GLOBAL_LEVEL_UP_STATS: Array[Dictionary] = [
 	{"type": "stat_adaptability", "value": 0.04}
 ]
+
+
+static func get_surge_value(type: String) -> float:
+	match type:
+		"surge_aggression": return 0.25
+		"surge_cadence": return 0.20
+		"surge_guard": return 0.50
+		"surge_bond": return 1.0
+	return 0.0
+
+
+static func get_charge_timed_attack(quality: String) -> float:
+	if quality == "perfect": return 4.0
+	if quality == "good": return 1.5
+	return 0.5
+
+
+static func get_charge_parry(quality: String) -> float:
+	if quality == "perfect": return 12.0
+	if quality == "good": return 4.0
+	return 1.0

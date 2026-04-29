@@ -33,6 +33,9 @@ const TENDENCY_LEVEL_UP_OUTCOMES: Dictionary = {
 	"aggression": {
 		"title": "AGGRESSION SURGE",
 		"readout_label": "Ravage active",
+		"stats": [
+			{"type": "stat_power", "value": 2.0}
+		],
 		"effects": [
 			{"type": "base_damage_flat", "value": 2.0},
 			{"type": "surge_aggression", "value": 1.0} # Next hit does bonus damage
@@ -41,6 +44,10 @@ const TENDENCY_LEVEL_UP_OUTCOMES: Dictionary = {
 	"cadence": {
 		"title": "CADENCE SURGE",
 		"readout_label": "Flow active",
+		"stats": [
+			{"type": "stat_swiftness", "value": 0.04},
+			{"type": "stat_intelligence", "value": 0.06}
+		],
 		"effects": [
 			{"type": "good_timed_bonus_damage_per_level", "value": 0.05},
 			{"type": "surge_cadence", "value": 1.0} # Next timed hit has doubled mult
@@ -49,6 +56,9 @@ const TENDENCY_LEVEL_UP_OUTCOMES: Dictionary = {
 	"guard": {
 		"title": "GUARD SURGE",
 		"readout_label": "Shelter active",
+		"stats": [
+			{"type": "stat_carapace", "value": 1.0}
+		],
 		"effects": [
 			{"type": "defense_flat", "value": 1.0},
 			{"type": "surge_guard", "value": 1.0} # Next hit taken reduced by 50%
@@ -57,6 +67,10 @@ const TENDENCY_LEVEL_UP_OUTCOMES: Dictionary = {
 	"bond": {
 		"title": "BOND SURGE",
 		"readout_label": "Sync active",
+		"stats": [
+			{"type": "stat_potential", "value": 0.05},
+			{"type": "stat_vitality", "value": 10.0}
+		],
 		"effects": [
 			{"type": "support_charge_now", "value": 30.0},
 			{"type": "support_charge_gain_mult_per_level", "value": 0.12},
@@ -64,3 +78,8 @@ const TENDENCY_LEVEL_UP_OUTCOMES: Dictionary = {
 		]
 	}
 }
+
+# Global stat gains applied on every level up regardless of tendency
+const GLOBAL_LEVEL_UP_STATS: Array[Dictionary] = [
+	{"type": "stat_adaptability", "value": 0.04}
+]

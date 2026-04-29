@@ -13,6 +13,7 @@ var boss_ready: bool = false
 var selected_difficulty_key: String = "STANDARD"
 var world_state_key: String = "DEFAULT"
 
+var regular_level_playlist: Array = []
 var path_plan: Array[Dictionary] = []
 var path_chosen_ids: PackedStringArray = PackedStringArray()
 var growth_choice_intersection_payload: Dictionary = {}
@@ -20,6 +21,7 @@ var growth_choice_intersection_payload: Dictionary = {}
 func reset_run_state() -> void:
 	current_encounter_index = 0
 	boss_ready = false
+	regular_level_playlist.clear()
 	path_plan.clear()
 	path_chosen_ids.clear()
 	growth_choice_intersection_payload.clear()

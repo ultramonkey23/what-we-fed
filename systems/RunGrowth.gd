@@ -443,7 +443,8 @@ func _on_bonded_support_triggered(_species_id: String, _lane: int, _effect_id: S
 
 
 func _grant_exp(amount: float) -> void:
-	if progression.grant_exp(amount, GameState.stat_potential):
+	var levels_gained: int = progression.grant_exp(amount, GameState.stat_potential)
+	for i in range(levels_gained):
 		_apply_real_time_growth_pulse()
 	_emit_growth_state()
 
@@ -550,22 +551,12 @@ func _resolve_tendency_level_up(id: String, lvl: int) -> Dictionary:
 	
 	# RESOLUTION TRUTH: Deterministic Behavior-Shaped Growth.
 	# We no longer roll random dice. Your playstyle (Tendency) dictates your stats.
-	match id:
-		"aggression":
-			changes.append(_apply_surge_stat_gain("stat_power"))
-			changes.append(_apply_level_up_effect({"type": "base_damage_flat", "value": 1.5}, lvl))
-		"guard":
-			changes.append(_apply_surge_stat_gain("stat_carapace"))
-			changes.append(_apply_level_up_effect({"type": "defense_flat", "value": 1.0}, lvl))
-		"cadence":
-			changes.append(_apply_surge_stat_gain("stat_swiftness"))
-			changes.append(_apply_surge_stat_gain("stat_intelligence"))
-		"bond":
-			changes.append(_apply_surge_stat_gain("stat_potential"))
-			changes.append(_apply_surge_stat_gain("stat_vitality"))
+	for stat_def in out.get("stats", []):
+		changes.append(_apply_surge_stat_gain(String(stat_def.get("type", ""))))
 	
-	# Every level up also grants a small bump to Adaptability to keep the curve smooth.
-	changes.append(_apply_surge_stat_gain("stat_adaptability"))
+	# Every level up also grants global stat gains (e.g. Adaptability)
+	for global_stat in GROWTH_CONTENT.GLOBAL_LEVEL_UP_STATS:
+		changes.append(_apply_surge_stat_gain(String(global_stat.get("type", ""))))
 
 	for eff in out.get("effects", []):
 		var applied: Dictionary = _apply_level_up_effect(eff, lvl)
@@ -586,37 +577,44 @@ func _resolve_tendency_level_up(id: String, lvl: int) -> Dictionary:
 
 func _apply_surge_stat_gain(sid: String) -> Dictionary:
 	var label: String = sid.replace("stat_", "").to_upper(); var val: float = 0.0
+	
+	# Find the value in TENDENCY_LEVEL_UP_OUTCOMES or GLOBAL_LEVEL_UP_STATS
+	for tid in GROWTH_CONTENT.TENDENCY_LEVEL_UP_OUTCOMES.keys():
+		var tout = GROWTH_CONTENT.TENDENCY_LEVEL_UP_OUTCOMES[tid]
+		for sdef in tout.get("stats", []):
+			if sdef.get("type") == sid:
+				val = float(sdef.get("value", 0.0))
+				break
+		if val != 0.0: break
+	
+	if val == 0.0:
+		for gstat in GROWTH_CONTENT.GLOBAL_LEVEL_UP_STATS:
+			if gstat.get("type") == sid:
+				val = float(gstat.get("value", 0.0))
+				break
+
 	match sid:
 		"stat_vitality": 
-			val = 10.0
 			GameState.stat_vitality += val
 			var h: float = _refresh_primary_combat_stats(val)
 			if h > 0.0: EventBus.player_healed.emit(h)
 		"stat_power": 
-			val = 2.0
 			GameState.stat_power += val
 			_refresh_primary_combat_stats(0.0)
 		"stat_carapace": 
-			val = 1.0
 			GameState.stat_carapace += val
 			_refresh_primary_combat_stats(0.0)
 		"stat_endurance": 
-			val = 15.0
 			GameState.stat_endurance += val
 		"stat_swiftness": 
-			val = 0.04
 			GameState.stat_swiftness += val
 		"stat_luck": 
-			val = 0.02
 			GameState.stat_luck += val
 		"stat_potential": 
-			val = 0.05
 			GameState.stat_potential += val
 		"stat_intelligence": 
-			val = 0.06
 			GameState.stat_intelligence += val
 		"stat_adaptability": 
-			val = 0.04
 			GameState.stat_adaptability += val
 		_: return {}
 	return {"type": sid, "applied_value": val, "label": label}

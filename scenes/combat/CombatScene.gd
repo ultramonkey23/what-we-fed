@@ -80,6 +80,11 @@ const COMBAT_FEEDBACK_SHELL = preload("res://scenes/ui/CombatFeedbackShell.gd")
 const IMPACT_FX_RUNTIME_SCENE: PackedScene = preload("res://systems/presentation/ImpactFxRuntime.tscn")
 const COMBAT_VISUAL_RIG_SCENE: PackedScene = preload("res://scenes/combat/CombatVisualRig.tscn")
 
+var RunGrowth: Node:
+	get: return get_node_or_null("/root/RunGrowth")
+var RunStats: Node:
+	get: return get_node_or_null("/root/RunStats")
+
 # ─── STATE VARIABLES ─────────────────────────────────────────────────────────
 var _run_director: Node = null
 var _victory_reward_director: Node = null
@@ -236,8 +241,6 @@ var _quig_tween: Tween = null
 var _encounter_load_gen: int = 0
 var _active_encounter: Dictionary = {}
 var _current_phase_index: int = 0
-var _run_growth: Node = null
-var _run_stats: Node = null
 
 # ─── ENEMY TRACKING ──────────────────────────────────────────────────────────
 var _enemy_markers_by_id: Dictionary = {}
@@ -296,7 +299,6 @@ var _dna_anim_accum: float = 0.0
 var _dna_anim_frame: int = 0
 var _dna_pickup_flavor_cooldown: float = 0.0
 var _dna_pickup_flavor_rotation: Dictionary = {}
-var _run_passed_rewards: int = 0
 var _bonded_creature_anim_accum: float = 0.0
 
 # ─── BOSS MUSIC & HUD ────────────────────────────────────────────────────────
@@ -336,7 +338,7 @@ func _ready() -> void:
 	_initialize_run_state()
 	_connect_signals()
 	
-	_start_mini_run()
+	_start_run_engagement(not GameState.run_in_progress)
 	
 	if not _dev_harness_request.is_empty():
 		call_deferred("_apply_dev_harness_post_boot_state")
@@ -454,8 +456,6 @@ func _exit_tree() -> void:
 func _initialize_systems() -> void:
 	_setup_lane_manager()
 	_setup_player_combat()
-	_setup_run_growth()
-	_setup_run_stats()
 	_setup_performance_rewards()
 	_setup_vessel_modifier_director()
 	_setup_escalation_director()
@@ -464,6 +464,9 @@ func _initialize_systems() -> void:
 	_setup_victory_reward_director()
 	_setup_support_resolver()
 	_setup_quig_narrative()
+
+	if RunStats and RunStats.has_signal("score_changed"):
+		RunStats.score_changed.connect(_on_run_score_changed)
 
 
 func _setup_quig_narrative() -> void:
@@ -507,9 +510,8 @@ func _setup_support_resolver() -> void:
 			_refresh_run_build_readout()
 	)
 	_support_resolver.support_charge_requested.connect(func(amt):
-		if _run_growth != null and _run_growth.has_method("gain_support_charge_direct"):
-			_run_growth.call("gain_support_charge_direct", amt)
-			_refresh_run_build_readout()
+		RunGrowth.gain_support_charge_direct(amt)
+		_refresh_run_build_readout()
 	)
 	_support_resolver.highlight_ring_requested.connect(func(lane, color, duration):
 		if _presentation_runtime != null: _presentation_runtime.highlight_timing_ring(lane, color, duration)
@@ -929,7 +931,6 @@ func _initialize_run_state() -> void:
 	_combat_finished = false
 	_phase_transitioning = false
 	_run_finished = false
-	_run_passed_rewards = 0
 	_dna_pickup_flavor_cooldown = 0.0
 	_dna_pickup_flavor_rotation.clear()
 	_reset_tempo_state()
@@ -1399,8 +1400,8 @@ func _update_background_effects() -> void:
 	_presentation_controller.update_background_parallax(_bg_sprite, focus_pos, _readability_pulse_mult)
 	
 	# Only update tendency reaction every few frames to save performance
-	if Engine.get_process_frames() % 30 == 0 and _run_growth != null:
-		var leading: String = _run_growth.call("_get_leading_tendency_id")
+	if Engine.get_process_frames() % 30 == 0:
+		var leading: String = RunGrowth._get_leading_tendency_id()
 		_presentation_controller.update_background_tendency_reaction(_bg_sprite, leading)
 
 
@@ -1716,13 +1717,13 @@ func _unhandled_input(event: InputEvent) -> void:
 			return
 
 	if not _run_finished and key_event.is_action_pressed("toggle_dna_route"):
-		if _run_growth != null and is_instance_valid(_run_growth) and _run_growth.has_method("toggle_dna_routing_preference"):
-			_run_growth.call("toggle_dna_routing_preference")
+		if RunGrowth.has_method("toggle_dna_routing_preference"):
+			RunGrowth.call("toggle_dna_routing_preference")
 		return
 
 	if _run_finished:
 		if key_event.keycode == KEY_R:
-			_start_mini_run()
+			_start_run_engagement(true)
 			return
 		if key_event.keycode == KEY_T:
 			get_tree().change_scene_to_file("res://scenes/ui/LairScene.tscn")
@@ -2846,10 +2847,7 @@ func _build_dna_shell() -> void:
 
 func _refresh_hud_snapshot(score_value: int, exp_value: float, style_tier: String) -> void:
 	_hud_presenter.refresh_hp(GameState.player_hp, GameState.player_max_hp)
-	var growth_level: int = 1
-	if _run_growth != null and is_instance_valid(_run_growth):
-		growth_level = int(_run_growth.level)
-	_hud_presenter.set_exp_text(growth_level, exp_value)
+	_hud_presenter.set_exp_text(int(RunGrowth.level), float(RunGrowth.current_exp), float(RunGrowth.exp_to_next))
 	_refresh_run_build_readout()
 	_hud_presenter.refresh_combo(score_value, style_tier)
 	_hud_presenter.refresh_style(style_tier)
@@ -3088,35 +3086,6 @@ func _build_hud_contract_nodes() -> Dictionary:
 	}
 
 
-func _setup_run_growth() -> void:
-	var script: Script = load(RUN_GROWTH_SCRIPT_PATH)
-	if script == null:
-		push_error("RunGrowth script missing: " + RUN_GROWTH_SCRIPT_PATH)
-		return
-
-	_run_growth = Node.new()
-	_run_growth.name = "RunGrowth"
-	_run_growth.set_script(script)
-	add_child(_run_growth)
-	if is_instance_valid(player_combat) and player_combat.has_method("set_run_growth"):
-		player_combat.call("set_run_growth", _run_growth)
-
-
-func _setup_run_stats() -> void:
-	var script: Script = load(RUN_STATS_SCRIPT_PATH)
-	if script == null:
-		push_error("RunStats script missing: " + RUN_STATS_SCRIPT_PATH)
-		return
-
-	_run_stats = Node.new()
-	_run_stats.name = "RunStats"
-	_run_stats.set_script(script)
-	add_child(_run_stats)
-
-	if _run_stats.has_signal("score_changed"):
-		_run_stats.connect("score_changed", Callable(self, "_on_run_score_changed"))
-
-
 func _setup_performance_rewards() -> void:
 	var script: Script = load(PERFORMANCE_REWARD_DIRECTOR_SCRIPT_PATH)
 	if script == null:
@@ -3129,7 +3098,7 @@ func _setup_performance_rewards() -> void:
 	add_child(_performance_reward_director)
 
 	if _performance_reward_director.has_method("bind_runtime"):
-		_performance_reward_director.call("bind_runtime", combat_meter, _run_growth, _run_stats)
+		_performance_reward_director.call("bind_runtime", combat_meter, RunGrowth, RunStats)
 		_performance_reward_director.set("offers_enabled", false)
 		if _performance_reward_director.has_method("sync_from_reward_state"):
 			_performance_reward_director.call("sync_from_reward_state")
@@ -3466,8 +3435,8 @@ func _on_regular_level_complete() -> void:
 	_reset_pending_reward_state(true)
 	_hide_live_reward_shell()
 
-	if _run_growth != null and is_instance_valid(_run_growth) and _run_growth.get("pending_bonds") is Array:
-		_run_growth.get("pending_bonds").clear()
+	if RunGrowth.get("pending_bonds") is Array:
+		RunGrowth.get("pending_bonds").clear()
 	_between_level_growth_queue.clear()
 	_show_level_completion_rewards()
 
@@ -3501,13 +3470,13 @@ func _show_level_completion_rewards() -> void:
 			completion_context["regular_level_index"] = int(_run_director.regular_level_index)
 			completion_context["regular_level_count"] = int(_run_director.regular_level_windows.size())
 			completion_context["power_level"] = GameState.get_power_level() if GameState.has_method("get_power_level") else 0.0
-			completion_context["growth_level"] = int(_run_growth.get("level")) if _run_growth != null and is_instance_valid(_run_growth) else 1
+			completion_context["growth_level"] = int(RunGrowth.get("level"))
 			_performance_reward_director.call("set_level_completion_context", completion_context)
 		_pending_upgrades = _performance_reward_director.call("get_level_completion_choices", 3)
 
 	var advancing_to_boss: bool = _run_director.regular_level_index + 1 >= _run_director.regular_level_windows.size()
 	if _run_spine_surface != null and _run_spine_surface.has_method("present_level_completion"):
-		_run_spine_surface.call("present_level_completion", _pending_upgrades, _run_growth, advancing_to_boss)
+		_run_spine_surface.call("present_level_completion", _pending_upgrades, RunGrowth, advancing_to_boss)
 	_show_feedback("LEVEL COMPLETE", Color(0.85, 0.95, 0.75, 1.0), 0.60)
 	controls_label.text = ""
 
@@ -3552,8 +3521,7 @@ func _show_growth_choice_intersection(
 	_reward_choice_made = false
 
 	var perf_summary: Dictionary = {}
-	if _run_stats != null and is_instance_valid(_run_stats) and _run_stats.has_method("get_compact_summary"):
-		perf_summary = _run_stats.call("get_compact_summary")
+	perf_summary = RunStats.call("get_compact_summary")
 
 	_growth_choice_context = {
 		"source_flow": source_flow,
@@ -3758,7 +3726,7 @@ func _on_run_spine_predation_selected(index: int) -> void:
 	if index < 0 or index >= _pending_predation.size():
 		return
 	var choice: Dictionary = _pending_predation[index]
-	if not PREDATION_POOL.apply_choice(choice, _run_growth):
+	if not PREDATION_POOL.apply_choice(choice, RunGrowth):
 		return
 	_refresh_run_build_readout()
 	_show_feedback("PREDATION TAKEN", Color(0.88, 0.62, 0.42, 1.0), 0.55)
@@ -3811,7 +3779,7 @@ func _on_run_spine_path_node_selected(node_id: String) -> void:
 			0.65
 		)
 		return
-	PATH_RUN_PLAN.apply_node_effects(chosen_node, GameState, _run_growth, _performance_reward_director, true)
+	PATH_RUN_PLAN.apply_node_effects(chosen_node, GameState, RunGrowth, _performance_reward_director, true)
 	GameState.run_path_plan = PATH_RUN_PLAN.apply_branch_choice(GameState.run_path_plan, _pending_path_choice_level_index, node_id)
 	GameState.run_path_chosen_ids.append(node_id)
 	var chosen_name: String = node_id.replace("_", " ").to_upper()
@@ -4340,15 +4308,15 @@ func _stop_song_conductor() -> void:
 	_song_conductor = null
 
 
-func _start_mini_run() -> void:
-	# Reset transient transition state before resetting run data.
+func _start_run_engagement(is_new_run: bool) -> void:
+	# Reset transient transition state before potentially resetting run data.
 	COMBAT_TRANSITION_STATE.prepare_run_restart(
 		Callable(self, "_stop_song_conductor"),
 		Callable(self, "_stop_boss_music"),
 		Callable(self, "_clear_mastery_context_cache")
 	)
 
-	if GameState.is_intro_bond_choice_pending():
+	if is_new_run and GameState.is_intro_bond_choice_pending():
 		get_tree().change_scene_to_file("res://scenes/ui/IntroBondChoiceScene.tscn")
 		return
 
@@ -4378,7 +4346,19 @@ func _start_mini_run() -> void:
 	_growth_choice_context.clear()
 	GameState.clear_growth_choice_intersection_payload()
 	_refresh_run_build_readout()
-	_start_song_run()
+	
+	if is_new_run:
+		_start_song_run()
+	else:
+		_continue_song_run()
+
+
+func _continue_song_run() -> void:
+	_active_song_data = _run_director.get_active_song_data()
+	_active_song_profile = _run_director.get_active_song_profile()
+	_active_song_map = _run_director.get_active_song_map()
+
+	_start_regular_level(_run_director.regular_level_index, false)
 
 func _apply_dev_harness_region_override() -> void:
 	if _dev_harness_request.is_empty():
@@ -4420,8 +4400,8 @@ func _apply_dev_harness_post_boot_state() -> void:
 		return
 
 	var run_growth_state: Dictionary = _dev_harness_request.get("run_growth", {})
-	if not run_growth_state.is_empty() and _run_growth != null and is_instance_valid(_run_growth) and _run_growth.has_method("apply_debug_state"):
-		_run_growth.call("apply_debug_state", run_growth_state)
+	if not run_growth_state.is_empty() and RunGrowth.has_method("apply_debug_state"):
+		RunGrowth.call("apply_debug_state", run_growth_state)
 
 	if _dev_harness_request.has("player_hp_ratio"):
 		_debug_set_player_hp_ratio(float(_dev_harness_request.get("player_hp_ratio", 1.0)))
@@ -4981,7 +4961,7 @@ func _advance_to_next_stage() -> void:
 		)
 		if can_present_run_spine:
 			_pending_upgrades.clear()
-			_run_spine_surface.call("present_level_completion", _pending_upgrades, _run_growth, GameState.boss_ready)
+			_run_spine_surface.call("present_level_completion", _pending_upgrades, RunGrowth, GameState.boss_ready)
 			if not _try_present_predation_after_run_spine():
 				_try_present_path_choice_after_run_spine()
 			_show_feedback("STAGE COMPLETE", Color(0.85, 0.95, 0.75, 1.0), 0.52)
@@ -5002,8 +4982,7 @@ func _finish_run(victory: bool) -> void:
 	GameState.clear_growth_choice_intersection_payload()
 	GameState.run_in_progress = false
 	var tendency_snapshot: Dictionary = {}
-	if _run_growth != null and is_instance_valid(_run_growth) and _run_growth.has_method("get_tendency_snapshot"):
-		tendency_snapshot = Dictionary(_run_growth.call("get_tendency_snapshot"))
+	tendency_snapshot = Dictionary(RunGrowth.call("get_tendency_snapshot"))
 	if _is_boss_encounter:
 		GameState.register_world_boss_outcome(_resolve_world_boss_outcome_id(victory), {
 			"region_id": _region_id,
@@ -5234,7 +5213,7 @@ func _hide_reward_overlay() -> void:
 
 
 func _refresh_run_build_readout() -> void:
-	_hud_presenter.refresh_run_build(_run_growth)
+	_hud_presenter.refresh_run_build(RunGrowth)
 	_refresh_dna_hud()
 
 
@@ -5351,27 +5330,26 @@ func _on_run_score_changed(score: int) -> void:
 
 
 func _show_end_stats() -> void:
-	if _end_stats_label == null or _run_stats == null or not is_instance_valid(_run_stats):
+	if _end_stats_label == null:
 		return
 
-	var kills: int = int(_run_stats.get("kills"))
-	var dmg: int = int(_run_stats.get("damage_dealt"))
-	var p_att: int = int(_run_stats.get("perfect_attacks"))
-	var g_att: int = int(_run_stats.get("good_attacks"))
-	var p_par: int = int(_run_stats.get("perfect_parries"))
-	var g_par: int = int(_run_stats.get("good_parries"))
-	var ult: int = int(_run_stats.get("ultimates_fired"))
-	var sup: int = int(_run_stats.get("support_triggers"))
-	var surges: int = int(_run_stats.get("tendency_surges"))
-	var hit: int = int(_run_stats.get("times_hit"))
-	var bonds: int = int(_run_stats.get("bonds"))
-	var eats: int = int(_run_stats.get("eats"))
-	var score: int = int(_run_stats.get("run_score"))
-	var grade: String = _run_stats.call("get_grade") if _run_stats.has_method("get_grade") else "—"
+	var kills: int = int(RunStats.get("kills"))
+	var dmg: int = int(RunStats.get("damage_dealt"))
+	var p_att: int = int(RunStats.get("perfect_attacks"))
+	var g_att: int = int(RunStats.get("good_attacks"))
+	var p_par: int = int(RunStats.get("perfect_parries"))
+	var g_par: int = int(RunStats.get("good_parries"))
+	var ult: int = int(RunStats.get("ultimates_fired"))
+	var sup: int = int(RunStats.get("support_triggers"))
+	var surges: int = int(RunStats.get("tendency_surges"))
+	var hit: int = int(RunStats.get("times_hit"))
+	var bonds: int = int(RunStats.get("bonds"))
+	var eats: int = int(RunStats.get("eats"))
+	var score: int = int(RunStats.get("run_score"))
+	var grade: String = RunStats.call("get_grade") if RunStats.has_method("get_grade") else "—"
 
 	var growth_level: int = 1
-	if _run_growth != null and is_instance_valid(_run_growth):
-		growth_level = int(_run_growth.level)
+	growth_level = int(RunGrowth.level)
 	var post_run_summary: String = PRESENTATION_TEXT.post_run_summary(
 		_build_post_run_summary_payload(),
 		_region_id,
@@ -5383,7 +5361,7 @@ func _show_end_stats() -> void:
 		+ "Kills %d    Damage %d    Hits taken %d\n" % [kills, dmg, hit]
 		+ "Perfect %d  Good %d    Parries %d+%d\n" % [p_att, g_att, p_par, g_par]
 		+ "Ultimates %d    Support %d    Surges %d\n" % [ult, sup, surges]
-		+ "Bonded %d    Eaten %d    Passed %d    Level %d\n\n" % [bonds, eats, _run_passed_rewards, growth_level]
+		+ "Bonded %d    Eaten %d    Passed %d    Level %d\n\n" % [bonds, eats, RunStats.passes, growth_level]
 		+ post_run_summary
 	)
 	_end_stats_label.visible = true
@@ -5409,13 +5387,11 @@ func _on_dna_lock_denied(_species_id: String, current: float, required: float) -
 
 
 func _build_post_run_summary_payload() -> Dictionary:
-	if _run_stats == null or not is_instance_valid(_run_stats):
-		return {"passes": _run_passed_rewards}
 	return {
-		"kills": int(_run_stats.get("kills")),
-		"bonds": int(_run_stats.get("bonds")),
-		"eats": int(_run_stats.get("eats")),
-		"passes": _run_passed_rewards
+		"kills": int(RunStats.get("kills")),
+		"bonds": int(RunStats.get("bonds")),
+		"eats": int(RunStats.get("eats")),
+		"passes": RunStats.passes
 	}
 
 
@@ -5750,8 +5726,8 @@ func _process_dna_award(defeated_enemy: Dictionary) -> void:
 		return
 
 	var dna_result: Dictionary = {}
-	if _run_growth != null and is_instance_valid(_run_growth) and _run_growth.has_method("process_dna_gain"):
-		dna_result = _run_growth.call("process_dna_gain", dna_species, dna_amount)
+	if RunGrowth.has_method("process_dna_gain"):
+		dna_result = RunGrowth.call("process_dna_gain", dna_species, dna_amount)
 	else:
 		GameState.add_dna(dna_species, dna_amount)
 		dna_result = {"banked": true, "total": GameState.get_dna(dna_species)}
@@ -5809,8 +5785,7 @@ func _resolve_dna_pickup_state(species_id: String, dna_result: Dictionary) -> St
 	if GameState.player_max_hp > 0.0 and (GameState.player_hp / GameState.player_max_hp) <= 0.35:
 		return "low_hp"
 	var support_charge: float = 0.0
-	if _run_growth != null and is_instance_valid(_run_growth):
-		support_charge = float(_run_growth.get("support_charge"))
+	support_charge = float(RunGrowth.get("support_charge"))
 	if support_charge >= 80.0:
 		return "high_support"
 	var species_total: float = float(dna_result.get("total", GameState.get_dna(species_id)))
@@ -6317,7 +6292,7 @@ func _on_creature_bonded(creature_data: Dictionary) -> void:
 
 
 func _on_support_charge_changed(current: float, maximum: float, active_species_id: String) -> void:
-	_hud_presenter.refresh_support(current, maximum, active_species_id, _run_growth)
+	_hud_presenter.refresh_support(current, maximum, active_species_id, RunGrowth)
 	_refresh_bonded_creature_render(active_species_id)
 	_refresh_run_build_readout()
 
@@ -6327,8 +6302,8 @@ func _refresh_bonded_creature_render(active_species_id: String = "") -> void:
 		return
 
 	var species_id: String = active_species_id
-	if species_id.is_empty() and _run_growth != null and is_instance_valid(_run_growth) and _run_growth.has_method("get_active_species_id"):
-		species_id = str(_run_growth.call("get_active_species_id"))
+	if species_id.is_empty() and RunGrowth.has_method("get_active_species_id"):
+		species_id = str(RunGrowth.call("get_active_species_id"))
 
 	if species_id.is_empty():
 		_bonded_creature_species = ""
@@ -6639,8 +6614,8 @@ func _on_bonded_support_triggered(species_id: String, lane: int, effect_id: Stri
 	
 	# Bond Surge: next support trigger has doubled effectiveness.
 	var surge_mult: float = 1.0
-	if _run_growth != null and _run_growth.has_method("get_runtime_effect"):
-		var surge_effect: Dictionary = Dictionary(_run_growth.call("get_runtime_effect", "bond_trigger_mult"))
+	if RunGrowth.has_method("get_runtime_effect"):
+		var surge_effect: Dictionary = Dictionary(RunGrowth.call("get_runtime_effect", "bond_trigger_mult"))
 		surge_mult = float(surge_effect.get("value", 1.0))
 
 	if surge_mult > 1.0:
@@ -6804,8 +6779,8 @@ func _get_growth_effect(effect_type: String) -> Dictionary:
 		var performance_effect: Dictionary = _performance_reward_director.call("get_runtime_effect", effect_type)
 		if not performance_effect.is_empty():
 			return performance_effect
-	if _run_growth != null and is_instance_valid(_run_growth) and _run_growth.has_method("get_runtime_effect"):
-		var runtime_effect: Dictionary = _run_growth.call("get_runtime_effect", effect_type)
+	if RunGrowth.has_method("get_runtime_effect"):
+		var runtime_effect: Dictionary = RunGrowth.call("get_runtime_effect", effect_type)
 		if not runtime_effect.is_empty():
 			return runtime_effect
 	return {}

@@ -30,6 +30,7 @@ var times_hit: int = 0
 var bonds: int = 0
 var eats: int = 0
 var dna_gained: float = 0.0
+var passes: int = 0
 var run_score: int = 0
 func _ready() -> void:
 	# Initial stats reset.
@@ -90,6 +91,7 @@ func reset() -> void:
 	bonds = 0
 	eats = 0
 	dna_gained = 0.0
+	passes = 0
 	run_score = 0
 	emit_signal("score_changed", run_score)
 
@@ -112,7 +114,8 @@ func get_compact_summary() -> Dictionary:
 		"kills": kills,
 		"hits": times_hit,
 		"perfects": total_perfects,
-		"support_triggers": support_triggers
+		"support_triggers": support_triggers,
+		"passes": passes
 	}
 
 

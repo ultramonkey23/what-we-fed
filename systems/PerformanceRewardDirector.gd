@@ -42,6 +42,11 @@ const PARRY_STREAK_PROGRESS_BONUS: float = 12.0
 const DODGE_STREAK_PROGRESS_BONUS: float = 8.0
 const DODGE_STREAK_SUPPORT_CHARGE: float = 4.0
 const KILL_STREAK_SUPPORT_CHARGE: float = 5.0
+var RunGrowth: Node:
+	get: return get_node_or_null("/root/RunGrowth")
+var RunStats: Node:
+	get: return get_node_or_null("/root/RunStats")
+
 # Predatory Tempo Architecture v1 mapping:
 # - puncture: micro-time combat punctuation
 # - void: Suspension (slowed high-value choices under pressure)
@@ -73,8 +78,6 @@ signal proc_feedback(text: String, color: Color)
 signal pressure_bias_changed(snapshot: Dictionary)
 
 var _combat_meter: Node = null
-var _run_growth: Node = null
-var _run_stats: Node = null
 
 var _song_started: bool = false
 var _phase_index: int = -1
@@ -128,10 +131,8 @@ var _tempo_mastery_claimed_per_phase: Dictionary = {
 var _tempo_decree_event_claims: Dictionary = {}
 
 
-func bind_runtime(combat_meter_ref: Node, run_growth_ref: Node, run_stats_ref: Node = null) -> void:
+func bind_runtime(combat_meter_ref: Node, _run_growth_ref: Node = null, _run_stats_ref: Node = null) -> void:
 	_combat_meter = combat_meter_ref
-	_run_growth = run_growth_ref
-	_run_stats = run_stats_ref
 	_connect_eventbus()
 	_connect_run_stats()
 
@@ -347,8 +348,8 @@ func get_status_snapshot() -> Dictionary:
 	for reward in _claimed_rewards:
 		claimed_tags.append(String(reward.get("readout", reward.get("title", ""))))
 	var score_grade: String = "--"
-	if _run_stats != null and is_instance_valid(_run_stats) and _run_stats.has_method("get_grade"):
-		score_grade = String(_run_stats.call("get_grade"))
+	if RunStats.has_method("get_grade"):
+		score_grade = String(RunStats.call("get_grade"))
 	return {
 		"phase_index": _phase_index,
 		"run_progress": _run_progress,
@@ -372,8 +373,7 @@ func get_pressure_bias_snapshot() -> Dictionary:
 	var momentum_ratio: float = _resolve_effective_hunt_momentum_ratio()
 	var streak_ratio: float = clampf(float(maxi(_kill_streak, maxi(_perfect_strike_streak, maxi(_parry_streak, _dodge_streak)))) / float(HUNT_STREAK_SCORE_CAP), 0.0, 1.0)
 	var clean_ratio: float = 1.0
-	if _run_stats != null and is_instance_valid(_run_stats):
-		clean_ratio = 1.0 - clampf(float(_run_stats.get("times_hit")) / float(HUNT_CLEAN_HIT_SOFT_LIMIT), 0.0, 1.0)
+	clean_ratio = 1.0 - clampf(float(RunStats.get("times_hit")) / float(HUNT_CLEAN_HIT_SOFT_LIMIT), 0.0, 1.0)
 	var pressure_ratio: float = clampf(
 		momentum_ratio * HUNT_PRESSURE_SCORE_WEIGHT +
 		streak_ratio * HUNT_PRESSURE_STREAK_WEIGHT +
@@ -446,18 +446,15 @@ func _exit_tree() -> void:
 	if EventBus.bonded_support_triggered.is_connected(_on_bonded_support_triggered):
 		EventBus.bonded_support_triggered.disconnect(_on_bonded_support_triggered)
 	
-	if _run_stats != null and is_instance_valid(_run_stats):
-		if _run_stats.has_signal("score_changed") and _run_stats.score_changed.is_connected(_on_run_score_changed):
-			_run_stats.score_changed.disconnect(_on_run_score_changed)
+	if RunStats.has_signal("score_changed") and RunStats.score_changed.is_connected(_on_run_score_changed):
+		RunStats.score_changed.disconnect(_on_run_score_changed)
 
 
 func _connect_run_stats() -> void:
-	if _run_stats == null or not is_instance_valid(_run_stats):
-		return
-	if _run_stats.has_signal("score_changed") and not _run_stats.score_changed.is_connected(_on_run_score_changed):
-		_run_stats.score_changed.connect(_on_run_score_changed)
-	if _run_stats.has_method("reset"):
-		_last_run_score = int(_run_stats.get("run_score"))
+	if not RunStats.score_changed.is_connected(_on_run_score_changed):
+		RunStats.score_changed.connect(_on_run_score_changed)
+	if RunStats.has_method("reset"):
+		_last_run_score = int(RunStats.get("run_score"))
 		_refresh_run_progress()
 
 
@@ -661,16 +658,14 @@ func _has_predation_offers_available() -> bool:
 
 func _build_completion_context_with_performance_verdict() -> Dictionary:
 	var context: Dictionary = _level_completion_context.duplicate(true)
-	if _run_stats == null or not is_instance_valid(_run_stats):
-		return context
-
-	var score: int = int(_run_stats.get("run_score"))
-	var kills: int = int(_run_stats.get("kills"))
-	var hits_taken: int = int(_run_stats.get("times_hit"))
-	var perfects: int = int(_run_stats.get("perfect_attacks")) + int(_run_stats.get("perfect_parries"))
-	var support_triggers: int = int(_run_stats.get("support_triggers"))
-	var bonds: int = int(_run_stats.get("bonds"))
-	var eats: int = int(_run_stats.get("eats"))
+	
+	var score: int = int(RunStats.get("run_score"))
+	var kills: int = int(RunStats.get("kills"))
+	var hits_taken: int = int(RunStats.get("times_hit"))
+	var perfects: int = int(RunStats.get("perfect_attacks")) + int(RunStats.get("perfect_parries"))
+	var support_triggers: int = int(RunStats.get("support_triggers"))
+	var bonds: int = int(RunStats.get("bonds"))
+	var eats: int = int(RunStats.get("eats"))
 	var grade: String = _get_score_grade_for_verdict(score)
 	var clean_hunt: bool = hits_taken <= VERDICT_CLEAN_HIT_LIMIT
 
@@ -794,10 +789,9 @@ func _pick_ritual_offer(context: Dictionary) -> Dictionary:
 func _should_offer_ritual() -> bool:
 	var score_ratio: float = clampf(_run_progress / 1100.0, 0.0, 1.0)
 	var threshold: float = 0.35 - 0.20 * score_ratio
-	if _run_stats != null and is_instance_valid(_run_stats):
-		var kills: int = int(_run_stats.get("kills"))
-		if kills >= 8:
-			threshold -= 0.08
+	var kills: int = int(RunStats.get("kills"))
+	if kills >= 8:
+		threshold -= 0.08
 	var roll: float = randf()
 	return roll <= clampf(threshold, 0.10, 0.40)
 
@@ -811,8 +805,7 @@ func _score_offer(
 ) -> float:
 	var performance_score: float = clampf(_run_progress / 1200.0, 0.0, 1.0)
 	var kill_pressure: float = 0.0
-	if _run_stats != null and is_instance_valid(_run_stats):
-		kill_pressure = clampf(float(_run_stats.get("kills")) / 25.0, 0.0, 1.0)
+	kill_pressure = clampf(float(RunStats.get("kills")) / 25.0, 0.0, 1.0)
 
 	var family_affinity: float = 0.35
 	var family_bias: Array = offer_data.get("family_bias", [])
@@ -865,9 +858,9 @@ func _get_active_affinity() -> String:
 
 
 func _get_leading_tendency_id() -> String:
-	if _run_growth == null or not is_instance_valid(_run_growth) or not _run_growth.has_method("get_tendency_snapshot"):
+	if not RunGrowth.has_method("get_tendency_snapshot"):
 		return ""
-	var snapshot: Dictionary = _run_growth.call("get_tendency_snapshot")
+	var snapshot: Dictionary = RunGrowth.call("get_tendency_snapshot")
 	var points: Dictionary = snapshot.get("points", {})
 	var levels: Dictionary = snapshot.get("levels", {})
 	var best_id: String = ""
@@ -990,8 +983,8 @@ func _on_enemy_defeated(_enemy_id: int) -> void:
 	_add_hunt_momentum(HUNT_MOMENTUM_KILL_GAIN)
 	if _kill_streak > 0 and _kill_streak % 4 == 0:
 		_add_bonus_progress(KILL_STREAK_PROGRESS_BONUS)
-		if _run_growth != null and is_instance_valid(_run_growth) and _run_growth.has_method("gain_reward_support_charge"):
-			_run_growth.call("gain_reward_support_charge", KILL_STREAK_SUPPORT_CHARGE)
+		if RunGrowth.has_method("gain_reward_support_charge"):
+			RunGrowth.call("gain_reward_support_charge", KILL_STREAK_SUPPORT_CHARGE)
 		emit_signal("proc_feedback", "HUNT SURGES", Color(0.92, 0.50, 0.26, 1.0))
 
 	# Carrion Brand: 3 kills → mend + charge
@@ -1004,8 +997,8 @@ func _on_enemy_defeated(_enemy_id: int) -> void:
 			var healed: float = GameState.heal_player(float(pulse_effect.get("heal_value", 0.0)))
 			if healed > 0.0:
 				EventBus.emit_signal("player_healed", healed)
-			if _run_growth != null and is_instance_valid(_run_growth) and _run_growth.has_method("gain_reward_support_charge"):
-				_run_growth.call("gain_reward_support_charge", float(pulse_effect.get("support_charge", 0.0)))
+			if RunGrowth.has_method("gain_reward_support_charge"):
+				RunGrowth.call("gain_reward_support_charge", float(pulse_effect.get("support_charge", 0.0)))
 			emit_signal("proc_feedback", "BRAND FEEDS", Color(0.92, 0.58, 0.30, 1.0))
 	# Flayed Vessel: 5 kills → mend 8 + charge 25
 	var heavy_effect: Dictionary = get_runtime_effect("kill_chain_heavy")
@@ -1017,8 +1010,8 @@ func _on_enemy_defeated(_enemy_id: int) -> void:
 			var healed: float = GameState.heal_player(float(heavy_effect.get("heal_value", 0.0)))
 			if healed > 0.0:
 				EventBus.emit_signal("player_healed", healed)
-			if _run_growth != null and is_instance_valid(_run_growth) and _run_growth.has_method("gain_reward_support_charge"):
-				_run_growth.call("gain_reward_support_charge", float(heavy_effect.get("support_charge", 0.0)))
+			if RunGrowth.has_method("gain_reward_support_charge"):
+				RunGrowth.call("gain_reward_support_charge", float(heavy_effect.get("support_charge", 0.0)))
 			emit_signal("proc_feedback", "VESSEL FEEDS", Color(0.96, 0.48, 0.28, 1.0))
 
 
@@ -1040,8 +1033,8 @@ func _on_timed_attack_resolved(_lane: int, quality: String, _damage: float, _ene
 			var streak_required: int = int(chain_effect.get("streak_required", 3))
 			if _perfect_strike_streak >= streak_required:
 				_perfect_strike_streak = 0
-				if _run_growth != null and is_instance_valid(_run_growth) and _run_growth.has_method("gain_reward_support_charge"):
-					_run_growth.call("gain_reward_support_charge", float(chain_effect.get("support_charge", 0.0)))
+				if RunGrowth.has_method("gain_reward_support_charge"):
+					RunGrowth.call("gain_reward_support_charge", float(chain_effect.get("support_charge", 0.0)))
 				emit_signal("proc_feedback", "CHAIN FIRES", Color(0.78, 0.94, 0.62, 1.0))
 
 
@@ -1053,8 +1046,8 @@ func _on_player_parried(_lane: int, quality: String, _reflect_damage: float) -> 
 			if _parry_streak > 0 and _parry_streak % 2 == 0:
 				_add_bonus_progress(PARRY_STREAK_PROGRESS_BONUS)
 			var support_effect: Dictionary = get_runtime_effect("perfect_parry_support_charge")
-			if not support_effect.is_empty() and _run_growth != null and is_instance_valid(_run_growth) and _run_growth.has_method("gain_reward_support_charge"):
-				_run_growth.call("gain_reward_support_charge", float(support_effect.get("value", 0.0)))
+			if not support_effect.is_empty() and RunGrowth.has_method("gain_reward_support_charge"):
+				RunGrowth.call("gain_reward_support_charge", float(support_effect.get("value", 0.0)))
 				emit_signal("proc_feedback", "HOOK PRIES OPEN", Color(0.86, 0.88, 0.40, 1.0))
 		"good":
 			_parry_streak = 0
@@ -1088,8 +1081,8 @@ func _on_player_took_damage(_amount: float, _source_lane: int) -> void:
 	var wound_effect: Dictionary = get_runtime_effect("damage_to_charge")
 	if not wound_effect.is_empty() and _wound_hunger_cooldown <= 0.0:
 		_wound_hunger_cooldown = WOUND_HUNGER_COOLDOWN
-		if _run_growth != null and is_instance_valid(_run_growth) and _run_growth.has_method("gain_reward_support_charge"):
-			_run_growth.call("gain_reward_support_charge", float(wound_effect.get("value", 0.0)))
+		if RunGrowth.has_method("gain_reward_support_charge"):
+			RunGrowth.call("gain_reward_support_charge", float(wound_effect.get("value", 0.0)))
 		emit_signal("proc_feedback", "HUNGER RISES", Color(0.92, 0.40, 0.36, 1.0))
 
 
@@ -1105,8 +1098,8 @@ func notify_dodge_timing_quality(_from_lane: int, _to_lane: int, quality: String
 		_add_hunt_momentum(HUNT_MOMENTUM_DODGE_GAIN)
 		if _dodge_streak > 0 and _dodge_streak % 3 == 0:
 			_add_bonus_progress(DODGE_STREAK_PROGRESS_BONUS)
-			if _run_growth != null and is_instance_valid(_run_growth) and _run_growth.has_method("gain_reward_support_charge"):
-				_run_growth.call("gain_reward_support_charge", DODGE_STREAK_SUPPORT_CHARGE)
+			if RunGrowth.has_method("gain_reward_support_charge"):
+				RunGrowth.call("gain_reward_support_charge", DODGE_STREAK_SUPPORT_CHARGE)
 			emit_signal("proc_feedback", "SLIP FEEDS", Color(0.58, 0.80, 1.0, 1.0))
 	elif quality != "good":
 		_dodge_streak = 0
@@ -1134,8 +1127,8 @@ func _on_combat_started(_enemy_data: Array) -> void:
 	var healed: float = GameState.heal_player(float(pact_effect.get("heal_value", 0.0)))
 	if healed > 0.0:
 		EventBus.emit_signal("player_healed", healed)
-	if _run_growth != null and is_instance_valid(_run_growth) and _run_growth.has_method("gain_reward_support_charge"):
-		_run_growth.call("gain_reward_support_charge", float(pact_effect.get("support_charge", 0.0)))
+	if RunGrowth.has_method("gain_reward_support_charge"):
+		RunGrowth.call("gain_reward_support_charge", float(pact_effect.get("support_charge", 0.0)))
 	emit_signal("proc_feedback", "PACT HOLDS", Color(0.62, 0.78, 0.98, 1.0))
 
 

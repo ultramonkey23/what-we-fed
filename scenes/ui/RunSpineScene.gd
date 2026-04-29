@@ -15,11 +15,15 @@ const COLLAR_CONTENT = preload("res://data/CollarContent.gd")
 const PATH_RUN_PLAN = preload("res://systems/PathRunPlan.gd")
 
 var _choices: Array[Dictionary] = []
-var _run_growth: Node = null
 var _advance_to_boss: bool = false
 var _awaiting_upgrade_choice: bool = false
 var _awaiting_continue: bool = false
 var _awaiting_path_choice: bool = false
+var RunGrowth: Node:
+	get: return get_node_or_null("/root/RunGrowth")
+var RunStats: Node:
+	get: return get_node_or_null("/root/RunStats")
+
 ## evolution → optional predation → review (continue)
 var _shell_phase: String = "evolution"
 
@@ -47,12 +51,11 @@ func _ready() -> void:
 		_canvas.visible = false
 
 
-func present_level_completion(choices: Array[Dictionary], run_growth_ref: Node, advance_to_boss: bool) -> void:
+func present_level_completion(choices: Array[Dictionary], _rg_ref: Node, advance_to_boss: bool) -> void:
 	_shell_phase = "evolution"
 	_choices.clear()
 	for choice in choices:
 		_choices.append(choice.duplicate(true))
-	_run_growth = run_growth_ref
 	_advance_to_boss = advance_to_boss
 	_awaiting_upgrade_choice = not _choices.is_empty()
 	_awaiting_continue = _choices.is_empty()
@@ -180,8 +183,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 
 	if key_event.is_action_pressed("toggle_dna_route"):
-		if _run_growth != null and is_instance_valid(_run_growth) and _run_growth.has_method("toggle_dna_routing_preference"):
-			_run_growth.call("toggle_dna_routing_preference")
+		if RunGrowth != null and is_instance_valid(RunGrowth) and RunGrowth.has_method("toggle_dna_routing_preference"):
+			RunGrowth.call("toggle_dna_routing_preference")
 		_refresh_prep_body()
 		get_viewport().set_input_as_handled()
 		return
@@ -519,17 +522,17 @@ func _compose_run_prep_body() -> String:
 	blocks.append(hp_line)
 
 	var growth_line: String = "Growth  |  —"
-	if _run_growth != null and is_instance_valid(_run_growth):
+	if RunGrowth != null and is_instance_valid(RunGrowth):
 		growth_line = "Growth  |  level %d  |  urge %.0f / %.0f" % [
-			int(_run_growth.level),
-			float(_run_growth.current_exp),
-			float(_run_growth.exp_to_next)
+			int(RunGrowth.level),
+			float(RunGrowth.current_exp),
+			float(RunGrowth.exp_to_next)
 		]
 	blocks.append(growth_line)
 
 	var route_line: String = "DNA harvest  |  %s" % PRESENTATION_TEXT.DNA_ROUTE_BOND_LABEL
-	if _run_growth != null and is_instance_valid(_run_growth) and _run_growth.has_method("get_dna_routing_label"):
-		route_line = "DNA harvest  |  %s" % _run_growth.call("get_dna_routing_label")
+	if RunGrowth != null and is_instance_valid(RunGrowth) and RunGrowth.has_method("get_dna_routing_label"):
+		route_line = "DNA harvest  |  %s" % RunGrowth.call("get_dna_routing_label")
 	blocks.append(route_line)
 	
 	var resonance: Dictionary = GameState.get_current_resonance_perk()

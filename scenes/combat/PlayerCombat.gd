@@ -83,7 +83,6 @@ const HIT_SPRITE_SCALE := Vector2(0.94, 1.0)
 var lane_manager: Node = null
 var combat_meter: Node = null
 var _song_conductor: Node = null
-var _run_growth: Node = null
 var _sprite_color_tween: Tween = null
 
 var parry_followup_active: bool = false
@@ -105,7 +104,6 @@ const FOCUS_SNAP_THRESHOLD: float = 0.2 # Minimum joystick deflection to change 
 var free_position: Vector2 = Vector2.ZERO
 var _facing_direction: Vector2 = Vector2.DOWN # Start facing SOUTH
 var movement_enabled: bool = true
-var _is_invincible: bool = false
 
 var _sprite_pose_tween: Tween = null
 var _world_motion_tween: Tween = null
@@ -118,6 +116,11 @@ var _idle_tex: Texture2D = null
 var _attack_tex: Texture2D = null
 var _atkeffect_tex: Texture2D = null
 var _parry_tex: Texture2D = null
+var RunGrowth: Node:
+	get: return get_node_or_null("/root/RunGrowth")
+var RunStats: Node:
+	get: return get_node_or_null("/root/RunStats")
+
 var _hurt_tex: Texture2D = null
 var _image_restore_tween: Tween = null
 var _atk_effect_pulse_tween: Tween = null
@@ -416,10 +419,6 @@ func set_song_conductor(conductor: Node) -> void:
 	_song_conductor = conductor
 
 
-func set_run_growth(rg: Node) -> void:
-	_run_growth = rg
-
-
 func set_combat_visual_rig(rig: Node) -> void:
 	_combat_visual_rig = rig
 
@@ -685,9 +684,7 @@ func _lock_action(duration: float, state: String) -> void:
 	# Soulslike i-frames: handle invincibility window during the initial recovery burst.
 	if state == "dodge" or state == "timed_dodge":
 		var beat: String = _get_beat_quality()
-		var iframe_dur: float = DODGE_IFRAME_WINDOW_ON_BEAT if beat == "perfect" else DODGE_IFRAME_WINDOW
-		_is_invincible = true
-		get_tree().create_timer(iframe_dur).timeout.connect(func(): _is_invincible = false)
+		dodge_invuln_timer = DODGE_IFRAME_WINDOW_ON_BEAT if beat == "perfect" else DODGE_IFRAME_WINDOW
 
 
 func _select_action_lane(_target_lane: int) -> void:
@@ -791,26 +788,25 @@ func _try_parry(targets: Dictionary) -> void:
 		followup_window = COMBAT_FEEL_CONTENT.PARRY_FOLLOWUP_WINDOW_ON_BEAT
 
 	# Mutation Pass: Parry
-	if _run_growth != null:
-		if quality == "perfect":
-			var stamina_gain: float = _run_growth.get_mutation_bonus("stamina_on_perfect_parry")
-			if stamina_gain > 0.0:
-				combat_meter.call("restore_stamina", stamina_gain)
-				_run_growth.consume_mutation_charges("stamina_on_perfect_parry", 1)
-				
-			var expose_all: float = _run_growth.get_mutation_bonus("expose_all_on_perfect_parry")
-			if expose_all > 0.0:
-				var enemies = lane_manager.call("get_all_enemies")
-				for id in enemies.keys():
-					lane_manager.call("apply_status_by_id", id, "expose", {"duration": expose_all})
-				_run_growth.consume_mutation_charges("expose_all_on_perfect_parry", 1)
-		
-		var pale_all: float = _run_growth.get_mutation_bonus("pale_on_parry")
-		if pale_all > 0.0:
+	if quality == "perfect":
+		var stamina_gain: float = RunGrowth.get_mutation_bonus("stamina_on_perfect_parry")
+		if stamina_gain > 0.0:
+			combat_meter.call("restore_stamina", stamina_gain)
+			RunGrowth.consume_mutation_charges("stamina_on_perfect_parry", 1)
+			
+		var expose_all: float = RunGrowth.get_mutation_bonus("expose_all_on_perfect_parry")
+		if expose_all > 0.0:
 			var enemies = lane_manager.call("get_all_enemies")
 			for id in enemies.keys():
-				lane_manager.call("apply_status_by_id", id, "pale", {})
-			_run_growth.consume_mutation_charges("pale_on_parry", 1)
+				lane_manager.call("apply_status_by_id", id, "expose", {"duration": expose_all})
+			RunGrowth.consume_mutation_charges("expose_all_on_perfect_parry", 1)
+	
+	var pale_all: float = RunGrowth.get_mutation_bonus("pale_on_parry")
+	if pale_all > 0.0:
+		var enemies = lane_manager.call("get_all_enemies")
+		for id in enemies.keys():
+			lane_manager.call("apply_status_by_id", id, "pale", {})
+		RunGrowth.consume_mutation_charges("pale_on_parry", 1)
 
 	var reflect_damage: float = SOVEREIGN_DAMAGE_CALCULATOR.get_parry_reflect_damage(
 		float(projectile.get("damage")),
@@ -1006,27 +1002,27 @@ func _resolve_timed_attack(projectile, combo_mult: float, quality: String) -> vo
 	# Resolve through RunGrowth's public effect bridge so legacy compatibility
 	# and live surges share one authoritative source.
 	var growth_mult: float = 1.0
-	if _run_growth != null:
-		var aggr_effect: Dictionary = {}
-		if _run_growth.has_method("get_growth_effect"):
-			aggr_effect = Dictionary(_run_growth.call("get_growth_effect", "timed_attack_bonus_damage"))
-		elif _run_growth.has_method("get_runtime_effect"):
-			aggr_effect = Dictionary(_run_growth.call("get_runtime_effect", "timed_attack_bonus_damage"))
-		growth_mult += float(aggr_effect.get("value", 0.0))
-		if quality == "good" or quality == "perfect":
-			var cad_effect: Dictionary = {}
-			if _run_growth.has_method("get_growth_effect"):
-				cad_effect = Dictionary(_run_growth.call("get_growth_effect", "good_timed_bonus_damage"))
-			elif _run_growth.has_method("get_runtime_effect"):
-				cad_effect = Dictionary(_run_growth.call("get_runtime_effect", "good_timed_bonus_damage"))
-			growth_mult += float(cad_effect.get("value", 0.0))
+	var aggr_effect: Dictionary = {}
+	if RunGrowth.has_method("get_growth_effect"):
+		aggr_effect = Dictionary(RunGrowth.call("get_growth_effect", "timed_attack_bonus_damage"))
+	elif RunGrowth.has_method("get_runtime_effect"):
+		aggr_effect = Dictionary(RunGrowth.call("get_runtime_effect", "timed_attack_bonus_damage"))
+	
+	growth_mult += float(aggr_effect.get("value", 0.0))
+	
+	if quality == "good" or quality == "perfect":
+		var cad_effect: Dictionary = {}
+		if RunGrowth.has_method("get_growth_effect"):
+			cad_effect = Dictionary(RunGrowth.call("get_growth_effect", "good_timed_bonus_damage"))
+		elif RunGrowth.has_method("get_runtime_effect"):
+			cad_effect = Dictionary(RunGrowth.call("get_runtime_effect", "good_timed_bonus_damage"))
+		growth_mult += float(cad_effect.get("value", 0.0))
 
 	# Mutation Pass: Timed Damage
 	var mutation_bonus: float = 0.0
-	if _run_growth != null:
-		mutation_bonus = _run_growth.get_mutation_bonus("timed_damage_flat", {"quality": quality})
-		if mutation_bonus > 0.0:
-			_run_growth.consume_mutation_charges("timed_damage_flat", 1, {"quality": quality})
+	mutation_bonus = RunGrowth.get_mutation_bonus("timed_damage_flat", {"quality": quality})
+	if mutation_bonus > 0.0:
+		RunGrowth.consume_mutation_charges("timed_damage_flat", 1, {"quality": quality})
 
 	var timed_damage: float = SOVEREIGN_DAMAGE_CALCULATOR.get_timed_attack_damage(
 		float(projectile.get("damage")),
@@ -1191,7 +1187,7 @@ func _play_counter_warp_state() -> void:
 
 
 func _take_damage(amount: float, source_lane: int) -> void:
-	if _is_invincible:
+	if dodge_invuln_timer > 0.0:
 		EventBus.emit_signal("proc_feedback_requested", "DODGED", Color(0.24, 0.78, 1.0, 1.0))
 		return
 
@@ -1199,23 +1195,22 @@ func _take_damage(amount: float, source_lane: int) -> void:
 	_show_hurt_image()
 
 	var surge_dr: float = 0.0
-	if _run_growth != null and _run_growth.has_method("get_runtime_effect"):
-		var effect: Dictionary = Dictionary(_run_growth.call("get_runtime_effect", "guard_damage_reduction"))
+	if RunGrowth.has_method("get_runtime_effect"):
+		var effect: Dictionary = Dictionary(RunGrowth.call("get_runtime_effect", "guard_damage_reduction"))
 		surge_dr = float(effect.get("value", 0.0))
 
 	# Mutation Pass: Damage Taken
-	if _run_growth != null:
-		var invuln: float = _run_growth.get_mutation_bonus("invuln_hits")
-		if invuln > 0.0:
-			amount = 0.0
-			_run_growth.consume_mutation_charges("invuln_hits", 1)
-		else:
-			var mend: float = _run_growth.get_mutation_bonus("heal_on_hit_taken")
-			if mend > 0.0:
-				var healed: float = GameState.heal_player(mend)
-				if healed > 0.0:
-					EventBus.emit_signal("player_healed", healed)
-				_run_growth.consume_mutation_charges("heal_on_hit_taken", 1)
+	var invuln: float = RunGrowth.get_mutation_bonus("invuln_hits")
+	if invuln > 0.0:
+		amount = 0.0
+		RunGrowth.consume_mutation_charges("invuln_hits", 1)
+	else:
+		var mend: float = RunGrowth.get_mutation_bonus("heal_on_hit_taken")
+		if mend > 0.0:
+			var healed: float = GameState.heal_player(mend)
+			if healed > 0.0:
+				EventBus.emit_signal("player_healed", healed)
+			RunGrowth.consume_mutation_charges("heal_on_hit_taken", 1)
 
 	amount = SOVEREIGN_DAMAGE_CALCULATOR.get_incoming_damage_after_reduction(
 		amount,

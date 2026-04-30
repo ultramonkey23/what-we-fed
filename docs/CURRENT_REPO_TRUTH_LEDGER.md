@@ -1,5 +1,72 @@
 # CURRENT_REPO_TRUTH_LEDGER
 
+## 2026-04-29 Lair Comprehension Self-Review Upgrade
+- **Review Findings**: The first Lair comprehension pass had three static risks: ascension could show `Unknown Mastery` for species without explicit Mastery Trait data, failed trait splicing gave no user-facing reason, and the new detail copy could overflow the existing sidebar.
+- **Mastery Fallback**: `LairResonanceContent.get_mastery_trait()` now returns a generated lineage-specific fallback trait instead of `{}` for species without authored mastery data. This prevents empty `mastery_trait_id`/unknown copy when Ascension is otherwise legal.
+- **Blocked Splicing Feedback**: `LairScene.gd` now reports duplicate trait, missing trait, or insufficient DNA when `splice_trait_to_creature()` returns false.
+- **Sidebar Compression**: Lair Ascension and Archive detail blocks now compact to bounded line counts so the existing panel remains readable without rebuilding scene layout.
+- **Validation**: `validate_project.bat` PASS (`VALIDATE OK`, `DATA VALIDATION OK`). Manual Lair visual playtest still required.
+- **Files touched**: `data/LairResonanceContent.gd`, `scenes/ui/LairScene.gd`, `docs/CURRENT_REPO_TRUTH_LEDGER.md`.
+
+## 2026-04-29 Lair Management Comprehension: Ascension and Splicing Readout
+- **Best Outside-Combat Move Chosen**: The Lair/Run management layer was selected over further combat changes because `GAME_SPINE.md` names management-rich comprehension, Ascension, Mastery Traits, and Lair UI clarity as the active next direction.
+- **Ascension Gate Readout**: `GameState.gd` now exposes `get_ascension_status()` with cost, DNA, required World Resonance, current fate, readiness, failure reason, and Mastery Trait data. `LairScene.gd` displays this instead of a vague Ascension hint.
+- **Splicing Cost Truth**: `GameState.gd` now exposes `get_trait_splicing_cost()`, and `splice_trait_to_creature()` uses the same function. `LairScene.gd` now shows real resonance-adjusted splicing cost, duplicate-splice status, and trait synergy text.
+- **Mastery Trait Copy**: `LairResonanceContent.gd` now gives each current Mastery Trait a short gameplay-facing description so the Lair can show what Ascension promises.
+- **Validation**: `validate_project.bat` PASS (`VALIDATE OK`, `DATA VALIDATION OK`). First validation caught and fixed a missing local helper in `LairScene.gd`.
+- **Files touched**: `autoloads/GameState.gd`, `scenes/ui/LairScene.gd`, `data/LairResonanceContent.gd`, `docs/CURRENT_REPO_TRUTH_LEDGER.md`.
+
+## 2026-04-29 Second-Level Shard/Tether Rebuild Fix
+- **Node Name Collision Fix**: `CombatPresentationController.draw_timing_circles()` now removes and frees old timing-ring children immediately before rebuilding `GraveRing_*`, `GlowThread_*`, and `GhostThread_*`. The previous `queue_free()` left old nodes alive until frame end, allowing rebuilt nodes to be auto-renamed and making second-level lookups fail.
+- **Validation**: `validate_project.bat` PASS (`VALIDATE OK`, `DATA VALIDATION OK`). Manual second-level visual continuity playtest still required.
+- **Files touched**: `systems/CombatPresentationController.gd`, `docs/CURRENT_REPO_TRUTH_LEDGER.md`.
+
+## 2026-04-29 Reward Resume Tether Persistence Fix
+- **Reward Resume Lock Range**: `SovereignDamageCalculator.get_predatory_lunge_range()` now covers the post-reward striker orbit at base stats: 2.90x blade length, capped at 360 px. The blade effect remains short through `get_attack_range()`, so lock-on/lunge can reacquire after rewards without making the slash huge.
+- **Resume Ordering**: `_resume_song_combat_runtime_from_reward()` now rehydrates song pressure before restarting the LaneManager song cycle. This avoids a resumed cycle beginning from an empty/unsynced pressure state.
+- **Validation**: `validate_project.bat` PASS (`VALIDATE OK`, `DATA VALIDATION OK`). Manual reward-resume playtest still required.
+- **Files touched**: `systems/SovereignDamageCalculator.gd`, `scenes/combat/CombatScene.gd`, `STAT_SYSTEM_MAP.md`, `docs/CURRENT_REPO_TRUTH_LEDGER.md`.
+
+## 2026-04-29 Attack Lock Regression Fix: Tethers, Lunge, Attack-Only Blade
+- **Nearest-In-Range Lock Restored**: `PlayerCombat.get_attack_lock_targets()` no longer rejects enemy locks by facing cone. Enemies are eligible by stat-scaled predatory lunge reach, sorted nearest-first, so lock-on tracks the closest valid enemy instead of disappearing when the player is slightly off-angle.
+- **Short Blade, Longer Hunt**: `SovereignDamageCalculator.gd` now separates readable blade length from lunge acquisition by using 112 px base melee length, +16 per Nerve point, cap 168, with predatory lunge at 2.35x. This keeps the slash small while making the lunge mechanic usable.
+- **Attack-Only Effect**: Generic timing-ring press feedback and dodge feedback no longer spawn `player_atkeffect.png`. The blade effect is now only pulsed by attack-state code, placed along the chosen target vector, and augmented with short ember/bone spark lines.
+- **Validation**: `validate_project.bat` PASS (`VALIDATE OK`, `DATA VALIDATION OK`). Manual playtest for tether/lunge feel still required.
+- **Files touched**: `systems/SovereignDamageCalculator.gd`, `scenes/combat/PlayerCombat.gd`, `systems/CombatPresentationRuntime.gd`, `scenes/combat/CombatScene.gd`, `STAT_SYSTEM_MAP.md`, `docs/CURRENT_REPO_TRUTH_LEDGER.md`.
+
+## 2026-04-29 Stat-Gated Enemy Lock-On: Short Reach, Nearest Target, Form Tethers
+- **Short Honest Reach**: `SovereignDamageCalculator.gd` now owns stat-scaled melee reach. Superseded by the regression fix above: base blade length starts at 112 px and grows slowly with `stat_swiftness` (Nerve), capped at 168 px. Predatory lunge acquisition is a controlled multiplier of that reach instead of the previous broad 2.8x cone.
+- **Nearest Enemy Lock**: `PlayerCombat.get_attack_lock_targets()` now sorts valid enemy locks nearest-first, then precision. If no enemy is inside the stat-scaled reach cone, enemy lock-on tethers disappear.
+- **Target Cap as RPG Stat**: Simultaneous enemy hits now use `SovereignDamageCalculator.get_attack_target_cap()`: base 1 target, +1 per +0.75 `stat_adaptability` (Form), capped at 4. Attack resolution, parry follow-up cleave, and tether count share this cap.
+- **Visual Truth**: `CombatPresentationController.gd` uses the same capped enemy lock list to draw tethers. Extra tethers now mean extra enemies that the current attack can actually hit. Projectile pressure remains bone-shard-only and does not create enemy lock tethers.
+- **Documentation**: `STAT_SYSTEM_MAP.md` updated with Nerve reach and Form target-cap compound interactions.
+- **Validation**: `validate_project.bat` PASS (`VALIDATE OK`, `DATA VALIDATION OK`). Manual playtest for range feel and target-cap readability still required.
+- **Files touched**: `systems/SovereignDamageCalculator.gd`, `scenes/combat/PlayerCombat.gd`, `systems/CombatPresentationController.gd`, `STAT_SYSTEM_MAP.md`, `docs/CURRENT_REPO_TRUTH_LEDGER.md`.
+
+## 2026-04-29 Tether Regression Fix: Singular Enemy-Readable Lock-On Restored
+- **Ghost Tether Cleanup**: `CombatPresentationController.gd` no longer draws full tethers for non-primary urgent projectiles. Non-primary projectile pressure remains in bone shards only, preventing two or three stray ghost tethers from reading as false lock-ons.
+- **Enemy-Readable Anchor Restored**: Singular projectile lock-on now anchors the tether path through the firing enemy again instead of ending on the projectile body. This keeps tethers readable as enemy lock-on lines while the shards still communicate incoming projectile pressure.
+- **Enemy Target Fairness**: `PlayerCombat.gd.get_primary_action_target()` now ranks projectiles and enemies together by precision, with only a small projectile urgency bonus, so active projectiles do not automatically steal the visual lock from an accurately aimed enemy/lunge target.
+- **Validation**: `validate_project.bat` PASS (`VALIDATE OK`, `DATA VALIDATION OK`). Manual playtest for this regression fix is still required.
+- **Files touched**: `scenes/combat/PlayerCombat.gd`, `systems/CombatPresentationController.gd`, `docs/CURRENT_REPO_TRUTH_LEDGER.md`.
+
+## 2026-04-29 Combat Lock-On/Lunge Alignment: Bone Shards as Spatial Aim Truth
+- **Target Scoring**: `PlayerCombat.gd` now annotates spatial cone targets with a `precision` score derived from aim dot plus range quality. Attack/parry target selection and `get_primary_action_target()` use that score instead of raw lane/dot sorting.
+- **Projectile Lock-On Truth**: `CombatPresentationController.gd` now identifies the singular projectile target by the actual projectile node reference, not only by sector lane. Superseded by the later regression fix above: full tethers are enemy-readable lock-on lines, while projectile pressure remains in bone shards.
+- **Predatory Lunge Promotion**: Enemy attacks now perform one root-body predatory lunge toward the primary spatial target before applying cone damage. The old per-target sprite-only snapback was removed from `_idle_attack_on_target()`, reducing visual/math mismatch and making lunge a real body movement rather than decorative afterimage motion.
+- **Precision Visual Weighting**: The primary tether/shard intensity now scales modestly with the selected target precision, making strong aim locks visually firmer without cluttering non-primary threats.
+- **Validation**: `validate_project.bat` PASS (`VALIDATE OK`, `DATA VALIDATION OK`). Manual combat feel/playtest for this specific lunge/tether patch NOT performed in this turn.
+- **Files touched**: `scenes/combat/PlayerCombat.gd`, `systems/CombatPresentationController.gd`, `docs/CURRENT_REPO_TRUTH_LEDGER.md`.
+
+## 2026-04-29 Bond/Eat Logic Correction: First Bond Cost, Archived Tether, Predatory Gain
+- **Bond Cost Corrected**: `VictoryRewardDirector.gd` now charges species DNA only for the first combat Bond of a species. Once a species exists in the archive, choosing Bond in combat re-tethers/reactivates that lineage without spending DNA, matching `GameState.add_bonded_creature()` truth that combat bonding no longer levels creatures permanently.
+- **Eat Payoff Clarified**: Eat still applies the creature's absorb effect, emits `creature_eaten`, registers the Eat growth choice, and awards +12.5 species Lineage DNA as the predatory gain path.
+- **Debt Integrity Preserved**: Eating an unbonded species still routes through `GameState.absorb_creature_type()`, preserving predation debt before first Bond.
+- **Reward Copy Aligned**: Combat reward UI now distinguishes first-bond DNA cost from archived tether readiness and labels Eat as Consume with the +Lineage DNA gain visible in effect text.
+- **Focused Contract Script Added**: `tools/test_bond_eat_logic.gd` documents the expected first-bond, archived-tether, locked-bond, and eat/debt contract. Direct standalone `--script` execution hung in this workspace, matching the pre-existing `tools/test_state_persistence.gd` behavior, so it is import-validated but not runtime-executed.
+- **Validation**: `validate_project.bat` PASS after changes (`VALIDATE OK`, `DATA VALIDATION OK`). Direct standalone contract script runtime NOT validated due the Godot `--script` hang noted above.
+- **Files touched**: `systems/VictoryRewardDirector.gd`, `data/PresentationTextContent.gd`, `scenes/combat/CombatScene.gd`, `tools/test_bond_eat_logic.gd`, `docs/CURRENT_REPO_TRUTH_LEDGER.md`.
+
 ## 2026-04-28 AI System Hardening: Sovereign Matrix & GODLY v2.5
 - **Tool Adapter Hardening**: Fixed stale doctrine references in `.cursor/rules/`, `.clinerules`, `.codex/config.toml`, and `.github/copilot-instructions.md`. All tools are now unified under the 4 canonical Sovereign Core pillars.
 - **GODLY Evolution Engine (v2.5)**: Rewrote `GODLY_WORKFLOW.md` to streamline autonomous upgrades. Replaced the high-friction 11-doc check with a 3-step loop: Agent Council → Sequential Mutation → Micro-Validation.

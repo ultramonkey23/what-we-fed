@@ -22,6 +22,13 @@ const CARAPACE_PARRY_FORGIVENESS_CAP: float = 22.0
 
 const NERVE_RECOVERY_MIN_MULT: float = 0.40
 const NERVE_RECOVERY_MAX_MULT: float = 2.0
+const NERVE_ATTACK_RANGE_BASE: float = 112.0
+const NERVE_ATTACK_RANGE_PER_POINT: float = 16.0
+const NERVE_ATTACK_RANGE_CAP: float = 168.0
+const NERVE_LUNGE_RANGE_MULT: float = 2.90
+const NERVE_LUNGE_RANGE_CAP: float = 360.0
+const FORM_TARGET_CAP_STEP: float = 0.75
+const FORM_TARGET_CAP_MAX: int = 4
 const EYE_TELEGRAPH_BIAS_CAP: float = 0.5
 
 const VESSEL_BOND_TRAIT_WEIGHT: float = 0.65
@@ -109,6 +116,23 @@ static func get_parry_forgiveness_radius_bonus() -> float:
 # Nerve (stat_swiftness) → action recovery: higher swiftness shrinks lock duration. Clamped so very high or low values cannot trivialize timing.
 static func get_action_recovery_mult() -> float:
 	return clampf(1.0 / maxf(GameState.stat_swiftness, 0.1), NERVE_RECOVERY_MIN_MULT, NERVE_RECOVERY_MAX_MULT)
+
+
+# Nerve (stat_swiftness) → melee reach: starts short and grows slowly so early combat stays close and honest.
+static func get_attack_range() -> float:
+	var nerve_over_base: float = maxf(GameState.stat_swiftness - 1.0, 0.0)
+	return clampf(NERVE_ATTACK_RANGE_BASE + nerve_over_base * NERVE_ATTACK_RANGE_PER_POINT, NERVE_ATTACK_RANGE_BASE, NERVE_ATTACK_RANGE_CAP)
+
+
+# Nerve (stat_swiftness) → predatory lunge reach: a controlled extension of the actual attack range, not a separate giant cone.
+static func get_predatory_lunge_range() -> float:
+	return minf(get_attack_range() * NERVE_LUNGE_RANGE_MULT, NERVE_LUNGE_RANGE_CAP)
+
+
+# Form (stat_adaptability) → simultaneous enemy contact: base 1 target, +1 only after substantial form growth.
+static func get_attack_target_cap() -> int:
+	var form_over_base: float = maxf(GameState.stat_adaptability - 1.0, 0.0)
+	return clampi(1 + int(floor(form_over_base / FORM_TARGET_CAP_STEP)), 1, FORM_TARGET_CAP_MAX)
 
 
 # Eye (stat_intelligence) → telegraph read: pressure_start is pulled earlier (capped 0.5). Reading the beat is bought with insight.

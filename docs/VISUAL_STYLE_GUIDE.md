@@ -1,51 +1,47 @@
 # WHAT WE FED - VISUAL STYLE GUIDE
 
 ## Purpose
-This guide defines the premium visual direction for "What We Fed" art upgrades, ensuring all assets align with the game's dark creature power fantasy.
+This guide defines the active visual direction for "What We Fed" art upgrades, ensuring assets stay readable, creature-driven, and aligned with Mobile Design Truth v2.2.
 
 ---
 
 ## Core Visual Philosophy
 
 ### Primary Aesthetic DNA
-- **Dark & Oppressive**: High contrast, shadow-heavy environments
-- **Premium Menace**: Clean, sharp edges with atmospheric depth
-- **Wild Fable Machine Ink**: AI-generated imagery as organic source material (creatures, portraits, mutations) + Computer-generated procedural art for readable effects, UI frames, and indicators.
-- **Biological Horror**: Organic, mutated forms with readable silhouettes
+- **LEGENDARY PIXEL FABLE INK**: Detailed top-down pixel-art monster RPG style inspired by PS1-era JRPGs, GBA fantasy RPGs, classic creature battlers, Golden Sun-like jewel-toned shading, Pokemon-like silhouette readability, and Digimon-like evolution energy.
+- **Tone**: Wondrous, cool, mythic, strange, collectible, whimsical, slightly eerie, and legendary.
+- **Readable Creature Power**: Organic, evolving forms with clear silhouettes and gameplay-readable intent.
 - **Ascendant Power**: Visual escalation from weak prey to feared predator
-- **Stylish & Cool**: Influenced by Solo Leveling, Digimon evolution, MHA silhouettes
-- **Manga Monstrosity**: Ink-heavy contrast, dramatic framing, and aggressive silhouette clarity unified by pixel-art treatment and palette discipline.
+- **Corruption Layer**: Bone Ink / Bonecut Ink belongs to corruption, Blight, Omen, boss, high-pressure, or late-run escalation. It is not the default visual identity.
 
-### Manga + Cool Monster Cohesion Rules
-- **Ink Contrast First**: Major panels and labels should read against near-black ink foundations before accent colors are introduced.
+### Monster RPG Cohesion Rules
+- **Silhouette First**: Player, creatures, rewards, and threats must read at gameplay scale before detail is added.
 - **Monster Intent Readability**: Bond/Eat, threat states, and apex moments must be visually distinct in less than a second.
-- **Accent Discipline**: Use ember, mutation magenta, and bond teal as role-based accents, not ambient noise.
-- **Readable Drama**: Add punch with sharp highlights and outline-heavy typography, but never hide field/directional truth.
-- **Wild Fable Machine Ink Doctrine**:
+- **Accent Discipline**: Use amber-gold hunger, teal/cyan/moss rim magic, violet shell tones, ivory sigils, and corruption accents as role-based signals, not ambient noise.
+- **Readable Wonder**: Add mythic polish and jewel-toned shading, but never hide field/directional truth.
+- **Asset Doctrine**:
     - No AI image is used raw.
     - No procedural effect may hide combat truth.
     - No asset is accepted until it reads clearly at gameplay scale.
-    - Bonecut Ink is not the default style; it is a later/corrupted treatment inside the Wild Fable Machine Ink pipeline.
+    - Bone Ink / Bonecut Ink is a later/corrupted treatment only.
 - **Single Source Styling**: Route style choices through `systems/UIStyle.gd` semantic roles; avoid ad hoc inline scene styling.
 
-### Manga Monster Token Families
-- **Base surfaces**: ink black, deep violet shells
-- **Alert accents**: ember red/orange and apex gold
-- **Mutation accents**: magenta/purple energy
-- **Bond accents**: teal resonance
+### Monster Token Families
+- **Base surfaces**: violet-blue shells, jewel-toned shadows, readable top-down shapes
+- **Hunger accents**: amber-gold cores and warm attack flashes
+- **Magic accents**: teal/cyan/moss rim light
+- **Corruption accents**: black ink cracks, Bone Ink / Bonecut Ink, Blight/Omen marks
 - **Text hierarchy**: high-outline, high-contrast labels for critical combat reads
 
 ### Color Palette
-**Primary Dark Theme:**
-- Deep blacks: #0A0A0A, #121212
-- Shadow grays: #1A1A1A, #2A2A2A, #3A3A3A
-- Blood accents: #8B0000, #CD2626
-- Energy highlights: #00FFFF (cyber), #FF00FF (mutation), #FFFF00 (power)
+**Primary Creature-Fable Theme:**
+- Violet shell tones, amber-gold hunger, teal/cyan/moss magic, ivory sigils, and controlled black ink cracks.
+- Darkness supports readability and escalation; it is not the default whole identity.
 
 **Creature-Specific Palettes:**
 - Ashclaw: Charcoal gray + ember orange + blood red
 - Bond Remnant: Ethereal blue + white + shadow purple
-- Player forms: Human skin tones + mutation colors + energy auras
+- Player/Vessel: Purple/violet-blue shell + amber-gold hunger core + teal/cyan/moss rim magic + ivory bone/cross/sigil accents
 
 **UI Elements:**
 - Panel backgrounds: #0F0F0F with subtle gradients
@@ -58,20 +54,22 @@ This guide defines the premium visual direction for "What We Fed" art upgrades, 
 ## Character Visual Direction
 
 ### Player Character Evolution
-**Stage 1: Weak Prey**
-- Smaller, hunched posture
+The player is The Fed Anomaly / Vessel: orb-like, non-humanoid, not slime, not ghost. It absorbs, evolves, and grows.
+
+**Stage 1: Weak Vessel**
+- Compact shell posture
 - Muted colors, tattered appearance
 - Minimal energy effects
 - Vulnerable silhouette
 
-**Stage 2: Learning Survivor**
-- More upright stance
+**Stage 2: Learning Anomaly**
+- Stronger shell profile
 - First mutation signs (subtle)
 - Basic energy aura
 - Readable combat poses
 
 **Stage 3: Shaped Predator**
-- Confident, aggressive posture
+- Confident, aggressive shell stance
 - Clear mutation features
 - Dynamic energy effects
 - Distinct combat identity
@@ -87,6 +85,9 @@ This guide defines the premium visual direction for "What We Fed" art upgrades, 
 - **Impact Weight**: Heavy hits feel substantial
 - **Flow State**: Smooth transitions between states
 - **Readability**: Silhouettes clear even in chaos
+- **Direction Rule**: Player, creature, and VFX action assets are authored facing down/south by default. The engine handles rotation/orientation where applicable.
+- **Branch Rule**: Each action uses idle/base plus one branch frame. Do not require two unique authored frames per action.
+- **Defeat Rule**: Do not require authored defeat frames. Desired future behavior is code-generated defeat from `hurt_branch` effects, but do not claim it exists unless repo truth proves it.
 
 ---
 
@@ -153,16 +154,17 @@ This guide defines the premium visual direction for "What We Fed" art upgrades, 
 
 ### Combat Environments
 **Atmospheric Requirements:**
-- Oppressive, claustrophobic spaces
-- Environmental storytelling (remnants of past battles)
+- True top-down 1280x720 readable background layers
+- Environmental storytelling without hiding combat threats
 - Dynamic lighting that supports combat readability
-- World-state reflection (corruption, stability)
+- World-state reflection (living, hunger, corruption, Omen)
 
 **Visual Elements:**
 - Ruined architecture with creature influence
 - Biological growth patterns on structures
 - Atmospheric particles (ash, spores, energy)
 - Distance layering for depth perception
+- Obstacles should be separate assets/layers, not baked into the background.
 
 ### Environmental Storytelling
 - **Predation Evidence**: Scratches, remains, feeding grounds
@@ -182,14 +184,16 @@ This guide defines the premium visual direction for "What We Fed" art upgrades, 
 
 ### File Organization
 ```
+_ART_DROP_V2/
+  staging_only/
 assets/
   characters/
     player/
       combat/
-        player_idle_premium.png
-        player_attack_premium.png
-        player_hurt_premium.png
-        player_parry_premium.png
+        player_idle.png
+        player_attack.png
+        player_hurt.png
+        player_parry.png
   creatures/
     ashclaw/
       forms/
@@ -220,9 +224,12 @@ assets/
 ## Quality Assurance Checklist
 
 ### Asset Review Criteria
-- [ ] Aligns with dark creature power fantasy
+- [ ] Aligns with LEGENDARY PIXEL FABLE INK
 - [ ] Maintains readability during combat
 - [ ] Shows clear progression/evolution
+- [ ] Authored facing down/south where it is an action asset
+- [ ] Uses idle/base + one branch frame for action animation needs
+- [ ] Does not require authored defeat frames
 - [ ] Technical specifications met
 - [ ] Consistent with established style guide
 
@@ -257,16 +264,19 @@ assets/
 
 ### Visual Elements to Avoid
 - Generic fantasy RPG styling
-- Bright, cheerful color schemes
-- Overly cute or cartoonish designs
+- Pure grimdark or horror as the default state
+- Overly cute, generic, or cartoonish designs
 - Sterile, corporate-looking UI
 - Inconsistent creature design language
+- Directional sprite-set requests by default
+- Two unique authored frames per action as a requirement
+- Authored defeat-frame requirements
 
 ### Must Preserve
-- Dark, oppressive atmosphere
+- Wondrous, cool, mythic, strange creature-fable identity
 - Clear combat readability
 - Creature identity and evolution logic
-- Premium, stylish presentation
+- Legendary, collectible, slightly eerie presentation
 - "Start weak, become feared" visual progression
 
 ---
@@ -278,6 +288,8 @@ assets/
 - **Digimon**: Iconic evolution sequences
 - **My Hero Academia**: Power silhouettes, impact clarity
 - **Ben 10**: Distinct transformation fantasy
+- **Golden Sun / GBA fantasy RPGs**: Jewel-toned readability and compact action clarity
+- **Classic creature battlers**: Strong silhouettes and collectible monster identity
 - **Hades**: Dark premium UI styling
 - **Dead Cells**: Fluid combat animation
 

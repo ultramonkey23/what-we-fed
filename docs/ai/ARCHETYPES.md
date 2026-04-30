@@ -28,7 +28,7 @@ The canonical roster of AI identities. Each role is a lens for the repo.
    - *Home: .claude/agents/build-doctor.md*
 - **LORE-BRAIN**: Creature identity, species naming, and anti-generic enforcement.
    - *Home: .claude/agents/lore-brain.md*
-- **SHADER-SURGEON**: VFX, performance, and Manga Monstrosity visuals.
+- **SHADER-SURGEON**: VFX, performance, and Legendary Pixel Fable Ink readability.
    - *Home: .claude/agents/shader-surgeon.md* (Create if missing)
 
 ## Routing Rule

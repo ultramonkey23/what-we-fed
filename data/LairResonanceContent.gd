@@ -67,12 +67,36 @@ const SPECIES_AFFINITY := {
 }
 
 const MASTERY_TRAITS := {
-	"ashclaw": {"id": "ashclaw_mastery", "title": "Apex Predator"},
-	"gruvek": {"id": "gruvek_mastery", "title": "Unstoppable Hunger"},
-	"veilskin": {"id": "veilskin_mastery", "title": "Phase Master"},
-	"hushcoil": {"id": "hushcoil_mastery", "title": "Silent Death"},
-	"knellspine": {"id": "knellspine_mastery", "title": "Resonant Peal"},
-	"marrowward": {"id": "marrowward_mastery", "title": "Bone Shield"}
+	"ashclaw": {
+		"id": "ashclaw_mastery",
+		"title": "Apex Predator",
+		"description": "Predatory lunges bite harder into wounded targets and make Ashclaw support favor finishing pressure."
+	},
+	"gruvek": {
+		"id": "gruvek_mastery",
+		"title": "Unstoppable Hunger",
+		"description": "Sustained aggression thickens support charge flow after kills and rewards relentless routes."
+	},
+	"veilskin": {
+		"id": "veilskin_mastery",
+		"title": "Phase Master",
+		"description": "Perfect defensive timing opens brief evasive support windows and favors spectral counterplay."
+	},
+	"hushcoil": {
+		"id": "hushcoil_mastery",
+		"title": "Silent Death",
+		"description": "Clean, quiet chains strengthen support precision and punish enemies before they fully speak."
+	},
+	"knellspine": {
+		"id": "knellspine_mastery",
+		"title": "Resonant Peal",
+		"description": "On-beat mastery expands cadence support and makes phrase windows feel more ritualized."
+	},
+	"marrowward": {
+		"id": "marrowward_mastery",
+		"title": "Bone Shield",
+		"description": "Guarded play converts support into survival pressure and reinforces the Codex after hard reads."
+	}
 }
 
 static func get_resonance_perk(fate_id: String) -> Dictionary:
@@ -90,7 +114,17 @@ static func get_species_affinity(species_id: String) -> String:
 	return _normalize_fate_id(mapped_fate_id)
 
 static func get_mastery_trait(species_id: String) -> Dictionary:
-	return MASTERY_TRAITS.get(species_id, {})
+	if MASTERY_TRAITS.has(species_id):
+		return MASTERY_TRAITS.get(species_id, {}).duplicate(true)
+	var creature: Dictionary = COMBAT_DATA_CONTENT.get_creature(species_id)
+	var display_name: String = String(creature.get("display_name", species_id)).strip_edges()
+	if display_name.is_empty():
+		display_name = "Unknown Lineage"
+	return {
+		"id": "%s_mastery" % species_id,
+		"title": "%s Sovereignty" % display_name,
+		"description": "Ascension rewrites this lineage into a Sovereign support trait. Its exact combat expression should be authored before final balance."
+	}
 
 static func _normalize_fate_id(fate_id: String) -> String:
 	var normalized: String = fate_id.to_lower()

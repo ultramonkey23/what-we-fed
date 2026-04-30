@@ -48,7 +48,7 @@ Core operating rules:
 8. The player is the Vessel; creatures are bonded class modifiers, supports, passives, auto-actions, ranged pressure sources, and meta-progression loadout pieces.
 9. The world begins alive, safer, strange, and uncorrupted; horror comes from what feeding, bonding, ritual, Blight, Omen, and escalation do to it.
 10. The Spire is the horizon goal and should visually approach and mutate with world state.
-11. Art direction is Wild Fable Machine Ink first, with Bonecut Ink as a later/corrupted/high-pressure layer.
+11. Art direction is LEGENDARY PIXEL FABLE INK first, with Bone Ink / Bonecut Ink as a later/corrupted/high-pressure layer only.
 12. Procedural visuals should compose controlled pieces, not generate uncontrolled noise.
 13. No Lockbox item becomes implementation without repo audit, a precise handoff, validation, and a correctly formatted agent report.
 14. No full Lockbox output unless explicitly requested.
@@ -130,9 +130,11 @@ The Spire starts beautiful, ancient, and mysterious — not obviously evil.
 
 ### Style Doctrine
 
-WHAT WE FED uses **Wild Fable Machine Ink** as the core visual identity: AI-generated organic source material (creatures, portraits, world mood) unified by computer-generated procedural effects, readable combat UI, ritual geometry, pixel-art treatment, and palette discipline.
+WHAT WE FED uses **LEGENDARY PIXEL FABLE INK** as the core visual identity: detailed top-down pixel-art monster RPG style inspired by PS1-era JRPGs, GBA fantasy RPGs, classic creature battlers, Golden Sun-like jewel-toned shading, Pokemon-like silhouette readability, and Digimon-like evolution energy.
 
-**Bonecut Ink** is not the default. Bonecut Ink is a later/corrupted treatment inside the Wild Fable Machine Ink pipeline.
+**Bone Ink / Bonecut Ink** is not the default. It is a later/corrupted treatment for Blight, Omen, boss, high-pressure, or late-run states.
+
+Action assets are authored facing down/south by default. Use idle/base plus one branch frame. Do not require two unique authored frames per action or authored defeat frames.
 
 ---
 
@@ -170,7 +172,7 @@ WHAT WE FED uses **Wild Fable Machine Ink** as the core visual identity: AI-gene
 
 ### Phase 4 — Art identity and UI foundation
 
-20. Wild Fable Machine Ink Core Style
+20. Legendary Pixel Fable Ink Core Style
 21. Silhouette-First Creature Pipeline
 22. Ritual Card UI
 23. Mood-Layer Palette System
@@ -222,7 +224,7 @@ WHAT WE FED uses **Wild Fable Machine Ink** as the core visual identity: AI-gene
 | 17 | Behavior-Grown Tendencies | Phase 3 — Level-end feedback and lightweight RPG memory | LOCKED FOR LATER. |
 | 18 | World Memory | Phase 3 — Level-end feedback and lightweight RPG memory | LOCKED FOR LATER. |
 | 19 | Tendency-Based RPG Growth | Phase 3 — Level-end feedback and lightweight RPG memory | LOCKED FOR LATER. |
-| 20 | Wild Fable Machine Ink Core Style | Phase 4 — Art identity and UI foundation | LOCKED FOR LATER. |
+| 20 | Legendary Pixel Fable Ink Core Style | Phase 4 — Art identity and UI foundation | LOCKED FOR LATER. |
 | 21 | Silhouette-First Creature Pipeline | Phase 4 — Art identity and UI foundation | LOCKED FOR LATER. |
 | 22 | Ritual Card UI | Phase 4 — Art identity and UI foundation | LOCKED FOR LATER. |
 | 23 | Mood-Layer Palette System | Phase 4 — Art identity and UI foundation | LOCKED FOR LATER. |
@@ -772,10 +774,10 @@ Do not create a full stat sheet immediately. Do not reward boring repetitive spa
 
 ### 20. LOCKBOX CARD
 ### Name:
-Wild Fable Machine Ink Core Style
+Legendary Pixel Fable Ink Core Style
 
 ### Goal:
-Create a unified art style that can be beautiful, strange, readable, ancient, and eventually corrupted without becoming generic grimdark.
+Create a unified art style that is wondrous, cool, mythic, strange, collectible, whimsical, slightly eerie, readable, and eventually corrupted without becoming generic grimdark.
 
 ### Why it fits WHAT WE FED:
 It supports image generation, Aseprite, hand drawing, creature identity, readable combat, and world-state mutation.
@@ -790,7 +792,7 @@ Verify sprite sizes, resolution, import settings, placeholder visuals, UI nodes,
 The style could become too broad if rules are not strict.
 
 ### Minimum future implementation:
-Create one small art bible page: player silhouette, enemy, bonded creature, starting background, corrupted variant, UI card, and palette rules.
+Create one small art bible page: player silhouette, enemy, bonded creature, starting background, corrupted variant, UI card, palette rules, south/down action authoring, idle/base + branch-frame animation, and no authored defeat-frame requirement.
 
 ### Do not do:
 Do not make brutality the entire identity. Do not chase painterly AI detail.
@@ -871,7 +873,7 @@ Verify whether assets use sprites, ColorRects, shaders, modulated nodes, Theme r
 Bad palettes can make enemies blend into backgrounds.
 
 ### Minimum future implementation:
-Define five palette presets: Wild Fable Base, Wondrous, Harsh, Ancient, Ritual.
+Define five palette presets: Legendary Base, Wondrous, Harsh, Ancient, Ritual.
 
 ### Do not do:
 Do not recolor combat-critical markers until readability is validated.

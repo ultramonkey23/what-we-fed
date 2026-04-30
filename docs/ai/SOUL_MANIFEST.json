@@ -3,8 +3,16 @@
 	"name": "The Black Signal Soul",
 	"doctrine": {
 		"identity": "The Living Codex",
-		"theme": "Manga Monstrosity / Premium Menace",
+		"theme": "LEGENDARY PIXEL FABLE INK",
 		"world_relation": "Invasive Translation"
+	},
+	"mobile_design_truth": {
+		"version": "2.2",
+		"player": "The Fed Anomaly / Vessel; orb-like non-humanoid anomaly, not slime, not ghost",
+		"action_asset_direction": "down/south by default",
+		"animation_rule": "idle/base plus one branch frame",
+		"defeat_rule": "do not require authored defeat frames",
+		"corruption_layer": "Bone Ink / Bonecut Ink only for corruption, Blight, Omen, boss, high-pressure, or late-run states"
 	},
 	"constants": {
 		"scale": {
@@ -31,7 +39,7 @@
 			"blood_ember": "#f26b2e",
 			"ink_black": "#030103",
 			"bone_white": "#f5f0e6",
-			"manga_jitter_max": 24.0
+			"style_jitter_max": 24.0
 		}
 	},
 	"terminology": {

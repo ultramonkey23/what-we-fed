@@ -14,6 +14,7 @@ const COMBAT_DATA = preload("res://data/CombatContent.gd")
 const POTENTIAL_GATE = preload("res://systems/PotentialGate.gd")
 const GROWTH_STATS = preload("res://data/GrowthStats.gd")
 const CREATURE_TRAITS = preload("res://data/CreatureTraitContent.gd")
+const LAIR_RESONANCE = preload("res://data/LairResonanceContent.gd")
 
 const HOLD_RELEASE_TIME: float = 1.2
 
@@ -187,6 +188,8 @@ func _unhandled_input(event: InputEvent) -> void:
 				_play_feedback("TRAIT SPLICED")
 				_refresh_active_support_panel()
 				_build_creature_list(_ui_layer, GameState.lair_roster)
+			else:
+				_play_feedback(_splice_status_line(sid, tid, Dictionary(lair[_selected_index])))
 			get_viewport().set_input_as_handled()
 			return
 
@@ -196,6 +199,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			if GameState.request_ascension(sid):
 				_play_feedback("KAIJU ASCENSION")
 				_build_ui() # Rebuild for new visual scale
+			else:
+				_play_feedback(_ascension_status_line(sid))
 			get_viewport().set_input_as_handled()
 			return
 
@@ -776,11 +781,15 @@ func _refresh_active_support_panel() -> void:
 		if has_trait:
 			var tid = _archive_trait_list[_archive_selected_trait_index]
 			var trait_data = CREATURE_TRAITS.get_trait(tid)
-			_ranch_action_train.text = "S - Splice Trait (%d DNA)" % 250
-			UI_STYLE.apply_label(_ranch_action_train, "mm_choice_bond" if player_dna_actual >= 250 else "mm_dim")
+			var splice_cost: float = _trait_splicing_cost(species_id)
+			var already_spliced: bool = Array(c.get("spliced_traits", [])).has(tid)
+			_ranch_action_train.text = "S - Splice Trait (%.0f DNA)" % splice_cost
+			if already_spliced:
+				_ranch_action_train.text = "S - Trait already spliced"
+			UI_STYLE.apply_label(_ranch_action_train, "mm_choice_bond" if player_dna_actual >= splice_cost and not already_spliced else "mm_dim")
 			_ranch_action_release.text = trait_data.get("display_name", tid).to_upper()
 			UI_STYLE.apply_label(_ranch_action_release, "mm_stat_primary")
-			_ranch_action_hint.text = trait_data.get("description", "")
+			_ranch_action_hint.text = _trait_archive_detail(tid, species_id, c)
 		else:
 			_ranch_action_train.text = "Select a trait (1-3) to splice"
 			_ranch_action_release.text = ""
@@ -794,8 +803,9 @@ func _refresh_active_support_panel() -> void:
 		if bond_level >= 5:
 			var is_ascended = bool(c.get("is_ascended", false))
 			if not is_ascended:
-				_ranch_action_train.text = "A - Ascend (500 DNA)"
-				UI_STYLE.apply_label(_ranch_action_train, "mm_choice_bond" if player_dna_actual >= 500 else "mm_dim")
+				var ascension_status: Dictionary = _get_ascension_status(species_id)
+				_ranch_action_train.text = "A - Ascend (%.0f DNA)" % float(ascension_status.get("cost", LAIR_RESONANCE.ASCENSION_DNA_COST))
+				UI_STYLE.apply_label(_ranch_action_train, "mm_choice_bond" if bool(ascension_status.get("can_ascend", false)) else "mm_dim")
 			else:
 				_ranch_action_train.text += " (SUPREME)"
 				UI_STYLE.apply_label(_ranch_action_train, "mm_dim")
@@ -809,7 +819,107 @@ func _refresh_active_support_panel() -> void:
 		_ranch_action_release.text = PRESENTATION_TEXT.LAIR_ACTION_RELEASE_LABEL + " (+%d DNA)" % refund
 		UI_STYLE.apply_label(_ranch_action_release, "mm_choice_consume")
 		
-		_ranch_action_hint.text = "Deepening the sequence hardens the Codex pattern. Ascension triggers Sovereign-scale rewrite."
+		_ranch_action_hint.text = _lair_selected_creature_detail(species_id, c)
+
+
+func _trait_splicing_cost(species_id: String) -> float:
+	if GameState.has_method("get_trait_splicing_cost"):
+		return float(GameState.call("get_trait_splicing_cost", species_id))
+	var perk: Dictionary = GameState.get_current_resonance_perk()
+	return 250.0 * float(perk.get("splicing_cost_mult", 1.0))
+
+
+func _get_ascension_status(species_id: String) -> Dictionary:
+	if GameState.has_method("get_ascension_status"):
+		return Dictionary(GameState.call("get_ascension_status", species_id))
+	var mastery: Dictionary = LAIR_RESONANCE.get_mastery_trait(species_id)
+	return {
+		"can_ascend": false,
+		"cost": LAIR_RESONANCE.ASCENSION_DNA_COST,
+		"current_dna": GameState.get_dna(species_id),
+		"required_fate": LAIR_RESONANCE.get_species_affinity(species_id),
+		"current_fate": GameState.world_dominant_fate,
+		"mastery": mastery,
+		"reason": "Ascension status unavailable."
+	}
+
+
+func _ascension_status_line(species_id: String) -> String:
+	var status: Dictionary = _get_ascension_status(species_id)
+	return str(status.get("reason", "ASCENSION DENIED")).to_upper()
+
+
+func _splice_status_line(species_id: String, trait_id: String, creature: Dictionary) -> String:
+	if trait_id.is_empty():
+		return "SELECT A TRAIT"
+	if Array(creature.get("spliced_traits", [])).has(trait_id):
+		return "TRAIT ALREADY SPLICED"
+	var cost: float = _trait_splicing_cost(species_id)
+	var current_dna: float = GameState.get_dna(species_id)
+	if current_dna < cost:
+		return "NEED %.0f MORE DNA" % (cost - current_dna)
+	return "SPLICE DENIED"
+
+
+func _creature_display_name(species_id: String) -> String:
+	if species_id.is_empty():
+		return "unknown"
+	var creature_data: Dictionary = COMBAT_DATA.get_creature(species_id)
+	if creature_data.is_empty():
+		return species_id
+	return str(creature_data.get("display_name", species_id))
+
+
+func _lair_selected_creature_detail(species_id: String, creature: Dictionary) -> String:
+	var lines: Array[String] = []
+	var resonance: Dictionary = GameState.get_current_resonance_perk()
+	var resonance_name: String = str(resonance.get("display_name", "Unclaimed Resonance"))
+	var current_fate: String = GameState.world_dominant_fate.replace("_", " ").capitalize()
+	lines.append("Resonance  |  %s (%s)" % [resonance_name, current_fate])
+	var spliced: Array = Array(creature.get("spliced_traits", []))
+	if spliced.is_empty():
+		lines.append("Splices  |  none")
+	else:
+		var trait_names: Array[String] = []
+		for trait_id in spliced:
+			var trait_data: Dictionary = CREATURE_TRAITS.get_trait(str(trait_id))
+			trait_names.append(str(trait_data.get("display_name", trait_id)))
+		lines.append("Splices  |  " + ", ".join(PackedStringArray(trait_names)))
+	var status: Dictionary = _get_ascension_status(species_id)
+	var required_fate: String = str(status.get("required_fate", "unclaimed")).replace("_", " ").capitalize()
+	var mastery: Dictionary = Dictionary(status.get("mastery", {}))
+	var mastery_title: String = str(mastery.get("title", "Unknown Mastery"))
+	var mastery_desc: String = str(mastery.get("description", "No mastery record yet."))
+	lines.append("Gate  |  %s" % str(status.get("reason", "Unknown")))
+	lines.append("Need  |  Bond 5, %.0f DNA, %s" % [float(status.get("cost", LAIR_RESONANCE.ASCENSION_DNA_COST)), required_fate])
+	lines.append("Mastery  |  %s: %s" % [mastery_title, mastery_desc])
+	return _compact_lair_detail(lines, 5)
+
+
+func _trait_archive_detail(trait_id: String, species_id: String, creature: Dictionary) -> String:
+	var trait_data: Dictionary = CREATURE_TRAITS.get_trait(trait_id)
+	var lines: Array[String] = []
+	lines.append(str(trait_data.get("description", "")))
+	var synergy: String = str(trait_data.get("synergy_bonus", "")).strip_edges()
+	if not synergy.is_empty():
+		lines.append("Synergy  |  " + synergy)
+	var cost: float = _trait_splicing_cost(species_id)
+	lines.append("Cost  |  %.0f %s DNA" % [cost, _creature_display_name(species_id)])
+	if Array(creature.get("spliced_traits", [])).has(trait_id):
+		lines.append("Status  |  already inside this sequence")
+	else:
+		lines.append("Status  |  %s" % ("ready" if GameState.get_dna(species_id) >= cost else "needs more lineage DNA"))
+	return _compact_lair_detail(lines, 4)
+
+
+func _compact_lair_detail(lines: Array[String], max_lines: int) -> String:
+	if lines.size() <= max_lines:
+		return "\n".join(PackedStringArray(lines))
+	var kept: Array[String] = []
+	for i in range(maxi(max_lines - 1, 0)):
+		kept.append(lines[i])
+	kept.append("+%d more detail in this sequence." % (lines.size() - kept.size()))
+	return "\n".join(PackedStringArray(kept))
 
 
 func _build_archive_vitals(canvas: CanvasLayer) -> void:

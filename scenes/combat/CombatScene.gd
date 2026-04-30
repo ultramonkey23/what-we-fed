@@ -682,6 +682,7 @@ func _refresh_reward_overlay_content() -> void:
 	var _offer_species_id: String = str(_pending_reward_creature.get("species_id", ""))
 	var _offer_dna_threshold: float = GameState.get_effective_dna_threshold(_offer_species_id)
 	var _player_dna: float = GameState.get_dna(_offer_species_id)
+	var _archive_tether_ready: bool = GameState.is_species_ever_bonded(_offer_species_id)
 
 	_reward_creature_tag_label.text = PRESENTATION_TEXT.REWARD_TAG_CREATURE
 	_reward_title_label.text = PRESENTATION_TEXT.live_reward_title(_offer_creature_name)
@@ -692,11 +693,11 @@ func _refresh_reward_overlay_content() -> void:
 	_reward_body_label.text = body
 	
 	if _reward_dna_label != null:
-		_reward_dna_label.text = PRESENTATION_TEXT.dna_status_line(_offer_species_id)
-		_reward_dna_label.modulate = Color(0.4, 0.9, 0.8) if _player_dna >= _offer_dna_threshold else Color(1.0, 0.4, 0.4)
+		_reward_dna_label.text = PRESENTATION_TEXT.bond_offer_gate_line(_offer_species_id)
+		_reward_dna_label.modulate = Color(0.4, 0.9, 0.8) if _archive_tether_ready or _player_dna >= _offer_dna_threshold else Color(1.0, 0.4, 0.4)
 
-	_reward_bond_label.text = "B Bond" if not _pending_reward_dna_locked else "B Bond - DNA locked"
-	_reward_eat_label.text = "E Eat"
+	_reward_bond_label.text = "B Tether" if _archive_tether_ready else ("B Bond" if not _pending_reward_dna_locked else "B Bond - DNA locked")
+	_reward_eat_label.text = "E Consume"
 
 	# Evolutionary logic: bond passive is scaled by current potential
 	var bond_passive: Dictionary = _pending_reward_creature.get("bond_passive", {})
@@ -1217,9 +1218,9 @@ func _resume_song_combat_runtime_from_reward(clear_live_queue: bool = false) -> 
 	_set_song_paused(false)
 	if _escalation_director != null:
 		_escalation_director.resume()
+	_rehydrate_song_pressure_after_reward()
 	if lane_manager != null and is_instance_valid(lane_manager):
 		lane_manager.start_song_cycle()
-	_rehydrate_song_pressure_after_reward()
 	_hide_live_reward_shell()
 	_reset_pending_reward_state(clear_live_queue)
 	_refresh_song_controls_text()
@@ -5340,6 +5341,7 @@ func _refresh_live_reward_shell() -> void:
 	var species_id: String = str(pending_creature.get("species_id", ""))
 	var threshold: float = GameState.get_effective_dna_threshold(species_id)
 	var current_dna: float = GameState.get_dna(species_id)
+	var archive_tether_ready: bool = GameState.is_species_ever_bonded(species_id)
 	var display_name: String = str(pending_creature.get("display_name", "Creature"))
 	var encounter_context: String = _describe_creature_offer_context(pending_creature)
 	_live_reward_title_label.text = PRESENTATION_TEXT.live_reward_title(display_name)
@@ -5350,8 +5352,8 @@ func _refresh_live_reward_shell() -> void:
 	_live_reward_body_label.text = live_body
 	
 	if _live_reward_dna_label != null:
-		_live_reward_dna_label.text = PRESENTATION_TEXT.live_dna_gate_line(current_dna, threshold)
-		_live_reward_dna_label.modulate = Color(0.4, 0.9, 0.8) if current_dna >= threshold else Color(1.0, 0.4, 0.4)
+		_live_reward_dna_label.text = PRESENTATION_TEXT.live_bond_offer_gate_line(species_id)
+		_live_reward_dna_label.modulate = Color(0.4, 0.9, 0.8) if archive_tether_ready or current_dna >= threshold else Color(1.0, 0.4, 0.4)
 
 	_live_reward_hint_label.text = PRESENTATION_TEXT.live_reward_hint(_victory_reward_director.is_dna_locked(), _victory_reward_director.get_offer_timer())
 
@@ -5472,7 +5474,7 @@ func _on_dna_gained(_species_id: String, _amount: float, _total: float) -> void:
 	if _song_reward_pending and _awaiting_reward_choice:
 		var species_id: String = str(_pending_reward_creature.get("species_id", ""))
 		var threshold: float = GameState.get_effective_dna_threshold(species_id)
-		_pending_reward_dna_locked = not GameState.has_dna_for(species_id, threshold)
+		_pending_reward_dna_locked = not GameState.is_species_ever_bonded(species_id) and not GameState.has_dna_for(species_id, threshold)
 		_refresh_live_reward_shell()
 		_refresh_song_controls_text()
 
@@ -6130,7 +6132,6 @@ func _on_player_parried(lane: int, quality: String, _reflect_damage: float) -> v
 func _on_player_dodged(from_lane: int, to_lane: int) -> void:
 	_show_feedback("DODGE", Color(0.65, 0.85, 1.0, 1.0), 0.28)
 	_presentation_runtime.highlight_timing_ring(to_lane, Color(0.65, 0.85, 1.0, 1.0), 4.0)
-	_presentation_runtime.spawn_attack_silhouette_to_lane(to_lane, Color(0.62, 0.86, 1.0, 0.46), 8.0, 0.10, 0.92)
 	var slip: Vector2 = Vector2(0.26, float(to_lane - from_lane))
 	if slip.y == 0.0:
 		slip.y = 1.0

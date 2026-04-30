@@ -25,7 +25,8 @@ Smallest Safe Task:
 Do-Not-Break:
 - Preserve vessel identity, bonded creature/class meaning, bond/eat/lair permanence.
 - Preserve beat-feel combat timing and readable threat direction.
-- Preserve Wild Fable Machine Ink readability/menace tone.
+- Preserve LEGENDARY PIXEL FABLE INK readability: mythic monster-RPG clarity, south/down authored action art where relevant, idle/base + one branch frame, and no authored defeat-frame requirement.
+- Treat Bone Ink / Bonecut Ink as corruption, Blight, Omen, boss, high-pressure, or late-run layer only.
 - Do not edit protected systems unless explicitly required and approved.
 - Do not claim runtime validation without running.
 

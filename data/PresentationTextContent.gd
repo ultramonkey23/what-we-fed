@@ -24,6 +24,7 @@ const LIVE_CONTROLS_LOCKED: String = "Bond locked | E/N"
 const LIVE_CONTROLS_CHOICE: String = "B bond | E eat | N pass"
 const LIVE_REWARD_LOCKED_HINT_PREFIX: String = "Bond locked | E/N"
 const LIVE_REWARD_CHOICE_HINT_PREFIX: String = "B/E/N"
+const EAT_DNA_GAIN: float = 12.5
 const BOSS_STATE_OPENING: String = "Phase I  |  Hold line"
 const BOSS_STATE_FINAL: String = "Unleashed  |  No shelter"
 const TITLE_SUBTITLE: String = "The hollow keeps what it learns."
@@ -272,6 +273,26 @@ static func dna_status_line(species_id: String) -> String:
 	return line
 
 
+static func bond_offer_gate_line(species_id: String) -> String:
+	var current: float = GameState.get_dna(species_id)
+	if GameState.is_species_ever_bonded(species_id):
+		return "ARCHIVE TETHER READY  |  DNA %.0f banked" % current
+	var threshold: float = GameState.get_effective_dna_threshold(species_id)
+	var base: float = float(COMBAT_DATA.get_creature(species_id).get("dna_threshold", 0.0))
+	var line: String = "FIRST BOND COST  %.0f / %.0f DNA" % [current, threshold]
+	if base > 0.0 and threshold > base:
+		line += "  |  predation debt +%.0f%%" % (((threshold / base) - 1.0) * 100.0)
+	return line
+
+
+static func live_bond_offer_gate_line(species_id: String) -> String:
+	var current: float = GameState.get_dna(species_id)
+	if GameState.is_species_ever_bonded(species_id):
+		return "TETHER READY  |  DNA %.0f" % current
+	var threshold: float = GameState.get_effective_dna_threshold(species_id)
+	return "BOND DNA  %.0f / %.0f" % [current, threshold]
+
+
 static func live_dna_gate_line(current: float, threshold: float) -> String:
 	return "DNA  %.0f / %.0f" % [current, threshold]
 
@@ -340,17 +361,18 @@ static func reward_locked_effect_body(effect_text: String) -> String:
 static func format_eat_effect(effect: Dictionary) -> String:
 	var effect_type: String = String(effect.get("type", ""))
 	var value: float = float(effect.get("value", 0.0))
+	var dna_line: String = "\n+%.0f lineage DNA" % EAT_DNA_GAIN
 	match effect_type:
 		"damage_flat":
-			return "+%.0f permanent attack damage" % value
+			return "+%.0f permanent attack damage%s" % [value, dna_line]
 		"hp_restore":
-			return "restores %.0f HP immediately - no permanent bonus" % value
+			return "restores %.0f HP immediately - no permanent bonus%s" % [value, dna_line]
 		"max_hp_flat":
-			return "+%.0f max HP immediately" % value
+			return "+%.0f max HP immediately%s" % [value, dna_line]
 		"support_charge":
-			return "+%.0f support charge immediately" % value
+			return "+%.0f support charge immediately%s" % [value, dna_line]
 		_:
-			return "fold its pattern inside"
+			return "fold its pattern inside%s" % dna_line
 
 
 static func boss_intro_line(region_id: String, fallback: String = "APEX VERDICT") -> String:

@@ -20,10 +20,11 @@ const GOOD_PARRY_RECOVERY: float = 0.22
 const PERFECT_PARRY_RECOVERY: float = 0.14
 const FAILED_PARRY_RECOVERY: float = 0.32
 
-const DODGE_RECOVERY: float = 0.42
-const DODGE_GOOD_RECOVERY: float = 0.28
-const DODGE_IFRAME_WINDOW: float = 0.18
-const DODGE_IFRAME_WINDOW_ON_BEAT: float = 0.24
+const DODGE_RECOVERY: float = 0.65 # Increased for Massive Weight
+const DODGE_GOOD_RECOVERY: float = 0.45 
+const DODGE_IFRAME_WINDOW: float = 0.22
+const DODGE_IFRAME_WINDOW_ON_BEAT: float = 0.28
+const DODGE_PUSH_TIME: float = 0.42 # Massive "Apex" Roll duration
 const ULTIMATE_RECOVERY: float = 0.45
 
 const CHAIN_BYPASS_WINDOW: float = 0.60
@@ -37,8 +38,11 @@ const PLAYER_PARRY_PATH: String = "res://assets/characters/player/combat/player_
 const PLAYER_HURT_PATH: String = "res://assets/characters/player/combat/player_hurt.png"
 
 # Attack Range Tuning
-const PLAYER_ATTACK_RANGE: float = 125.0
-const LUNGE_MAX_RANGE: float = PLAYER_ATTACK_RANGE * 2.2 # ~275px
+const PREDATORY_LUNGE_MIN_DISTANCE: float = 80.0
+const PREDATORY_LUNGE_STANDOFF: float = 45.0
+const PREDATORY_LUNGE_PUSH_TIME: float = 0.07
+const ATTACK_EFFECT_MIN_LENGTH: float = 46.0
+const ATTACK_EFFECT_MAX_LENGTH: float = 118.0
 
 # Base display scale for the Sprite2D. 0.05 -> 512px image ~= 25px tall.
 # Kept compact so the character reads as a focal point inside the timing sigil.
@@ -54,7 +58,7 @@ const DEFAULT_FOCUS_LANE: int = 2
 # Neutral stance rules.
 const ATTACK_WORLD_X_OFFSET: float = 18.0
 const PARRY_WORLD_X_OFFSET: float = -6.0
-const DODGE_WORLD_X_OFFSET: float = -12.0
+const DODGE_WORLD_X_OFFSET: float = -22.0 # More pushback on heavy roll
 const HIT_WORLD_X_OFFSET: float = -10.0
 
 # Sprite-local pose offsets. Neutral is centered on the logical origin so the
@@ -63,13 +67,13 @@ const HIT_WORLD_X_OFFSET: float = -10.0
 const NEUTRAL_SPRITE_POSITION := Vector2(0.0, -9.0)
 const ATTACK_SPRITE_POSITION := Vector2(9.0, 1.0)
 const PARRY_SPRITE_POSITION := Vector2(6.0, 1.5)
-const DODGE_SPRITE_POSITION := Vector2(-2.0, 1.5)
+const DODGE_SPRITE_POSITION := Vector2(-5.0, 4.0) # Deep heavy tuck
 const HIT_SPRITE_POSITION := Vector2(-3.0, 1.5)
 
 const NEUTRAL_SPRITE_SCALE := Vector2(1.0, 1.0)
 const ATTACK_SPRITE_SCALE := Vector2(1.14, 0.90)
 const PARRY_SPRITE_SCALE := Vector2(1.02, 1.10)
-const DODGE_SPRITE_SCALE := Vector2(0.88, 1.12)
+const DODGE_SPRITE_SCALE := Vector2(1.32, 0.68) # Massive Squash
 const HIT_SPRITE_SCALE := Vector2(0.94, 1.0)
 
 var lane_manager: Node = null
@@ -404,6 +408,8 @@ func set_combat_visual_rig(rig: Node) -> void:
 func sync_presentation_facing_with_lane_manager(lm: Node) -> void:
 	if _player_sprite == null or lm == null:
 		return
+	if current_action_state == "dodge":
+		return # ABSOLUTE TIMING TRUTH: Dodge handles its own rotation/spin visual.
 	if _combat_visual_rig == null or not is_instance_valid(_combat_visual_rig):
 		return
 	var lane: int = clampi(active_focus_lane, 0, lm.THREAT_COUNT - 1 if lm else 3)
@@ -555,10 +561,10 @@ func _get_targets_in_cone() -> Dictionary:
 	var found_projectiles: Array = []
 	var found_enemies: Array = []
 	
-	# Action-RPG Cone: ~145 degree arc (min_dot 0.3)
-	# This ensures we don't miss targets on diagonals/left-side.
-	var min_dot: float = 0.3 
-	var max_range: float = PLAYER_ATTACK_RANGE
+	# Action-RPG truth: melee starts narrow/short, then grows slowly through stats.
+	var min_dot: float = 0.62
+	var attack_range: float = SOVEREIGN_DAMAGE_CALCULATOR.get_attack_range()
+	var lunge_range: float = SOVEREIGN_DAMAGE_CALCULATOR.get_predatory_lunge_range()
 	var center_pos: Vector2 = lane_manager.call("get_player_pos")
 	
 	# 1. Projectiles in cone: Absolute Spatial Resolution
@@ -570,7 +576,7 @@ func _get_targets_in_cone() -> Dictionary:
 		if is_instance_valid(projectile) and not bool(projectile.get("is_resolved")):
 			var to_target: Vector2 = projectile.global_position - free_position
 			var dist: float = to_target.length()
-			if dist <= max_range:
+			if dist <= attack_range:
 				var dot: float = _facing_direction.dot(to_target.normalized())
 				if dot >= min_dot:
 					var lane_val = projectile.get("lane")
@@ -583,11 +589,14 @@ func _get_targets_in_cone() -> Dictionary:
 						"ref": projectile,
 						"lane": lane_id,
 						"distance": dist,
-						"dot": dot
+						"dot": dot,
+						"pos": projectile.global_position,
+						"precision": _target_lock_score(dot, dist, attack_range),
+						"progress": float(projectile.get("progress"))
 					})
 
-	# 2. Enemies in cone (Extended for Predatory Lunge)
-	var lunge_range: float = PLAYER_ATTACK_RANGE * 2.8 # Aggressive 2.8x reach
+	# 2. Enemies in honest lunge reach. Lock-on and damage share this same list.
+	# Nearest-in-range is the target truth; facing affects precision, not eligibility.
 	var enemies: Dictionary = lane_manager.call("get_all_enemies")
 	for id in enemies.keys():
 		var enemy = enemies[id]
@@ -599,51 +608,84 @@ func _get_targets_in_cone() -> Dictionary:
 		var dist: float = to_target.length()
 		
 		if dist <= lunge_range:
-			var dot: float = _facing_direction.dot(to_target.normalized())
-			if dot >= min_dot:
-				var enemy_lane = int(enemy.get("lane", -1))
-				if enemy_lane == -1:
-					enemy_lane = _get_lane_from_vector(target_pos - center_pos)
-				
-				found_enemies.append({
-					"ref": id,
-					"lane": enemy_lane,
-					"distance": dist,
-					"dot": dot,
-					"pos": target_pos
-				})
+			var dir_to_enemy: Vector2 = to_target.normalized()
+			var dot: float = _facing_direction.dot(dir_to_enemy)
+			var enemy_lane = int(enemy.get("lane", -1))
+			if enemy_lane == -1:
+				enemy_lane = _get_lane_from_vector(target_pos - center_pos)
+
+			found_enemies.append({
+				"ref": id,
+				"lane": enemy_lane,
+				"distance": dist,
+				"dot": dot,
+				"pos": target_pos,
+				"precision": _target_lock_score(maxf(dot, 0.0), dist, lunge_range)
+			})
 						
 	return {"projectiles": found_projectiles, "enemies": found_enemies}
 
-func get_lungeable_enemies() -> Array:
+
+func _target_lock_score(dot: float, distance: float, max_range: float) -> float:
+	var range_score: float = 1.0 - clampf(distance / maxf(max_range, 1.0), 0.0, 1.0)
+	return clampf(dot, 0.0, 1.0) * 1.4 + range_score * 0.45
+
+
+func get_attack_lock_targets() -> Array:
 	var targets: Dictionary = _get_targets_in_cone()
 	var enemies: Array = targets.get("enemies", [])
-	
-	# Sort by aim quality (dot) descending, then mark the first one as primary.
-	enemies.sort_custom(func(a, b): return float(a.get("dot", 0.0)) > float(b.get("dot", 0.0)))
-	
-	for i in range(enemies.size()):
-		enemies[i]["is_primary"] = (i == 0)
-		
-	return enemies
+	enemies.sort_custom(func(a, b):
+		var dist_a: float = float(a.get("distance", 99999.0))
+		var dist_b: float = float(b.get("distance", 99999.0))
+		if not is_equal_approx(dist_a, dist_b):
+			return dist_a < dist_b
+		return float(a.get("precision", 0.0)) > float(b.get("precision", 0.0))
+	)
+	var cap: int = SOVEREIGN_DAMAGE_CALCULATOR.get_attack_target_cap()
+	var result: Array = []
+	for i in range(mini(cap, enemies.size())):
+		var target: Dictionary = Dictionary(enemies[i]).duplicate(true)
+		target["is_primary"] = (i == 0)
+		result.append(target)
+	return result
+
+func get_lungeable_enemies() -> Array:
+	return get_attack_lock_targets()
 
 
 func get_primary_action_target() -> Dictionary:
 	var targets: Dictionary = _get_targets_in_cone()
 	var projectiles: Array = targets.get("projectiles", [])
-	var enemies: Array = targets.get("enemies", [])
+	var enemies: Array = get_attack_lock_targets()
 	
-	if not projectiles.is_empty():
-		projectiles.sort_custom(func(a, b): return float(a.get("dot", 0.0)) > float(b.get("dot", 0.0)))
-		var p = projectiles[0]
-		return { "type": "projectile", "lane": int(p.get("lane", -1)), "ref": p.ref }
-		
-	if not enemies.is_empty():
-		enemies.sort_custom(func(a, b): return float(a.get("dot", 0.0)) > float(b.get("dot", 0.0)))
-		var e = enemies[0]
-		return { "type": "enemy", "id": int(e.get("ref", -1)), "lane": int(e.get("lane", -1)), "pos": e.get("pos", Vector2.ZERO) }
-		
-	return {}
+	var candidates: Array[Dictionary] = []
+	for p in projectiles:
+		var projectile: Variant = p.get("ref", null)
+		var projectile_progress: float = float(p.get("progress", 0.0))
+		candidates.append({
+			"type": "projectile",
+			"lane": int(p.get("lane", -1)),
+			"ref": projectile,
+			"pos": p.get("pos", Vector2.ZERO),
+			"precision": float(p.get("precision", 0.0)) + clampf(projectile_progress - 0.72, 0.0, 0.28) * 1.15,
+			"distance": float(p.get("distance", 0.0)),
+			"progress": projectile_progress,
+			"enemy_id": int(projectile.get("enemy_id")) if is_instance_valid(projectile) else -1
+		})
+	for e in enemies:
+		candidates.append({
+			"type": "enemy",
+			"id": int(e.get("ref", -1)),
+			"lane": int(e.get("lane", -1)),
+			"pos": e.get("pos", Vector2.ZERO),
+			"precision": float(e.get("precision", 0.0)),
+			"distance": float(e.get("distance", 0.0))
+		})
+	if candidates.is_empty():
+		return {}
+
+	candidates.sort_custom(func(a, b): return float(a.get("precision", 0.0)) > float(b.get("precision", 0.0)))
+	return candidates[0]
 
 
 func _get_lane_from_vector(dir: Vector2) -> int:
@@ -688,8 +730,6 @@ func _select_action_lane(_target_lane: int) -> void:
 
 func _try_attack(targets: Dictionary) -> void:
 	var current_aim: int = _get_target_direction()
-	_play_attack_state(current_aim)
-
 	var combo_mult: float = float(combat_meter.call("damage_multiplier")) if combat_meter else 1.0
 
 	if parry_followup_active:
@@ -698,14 +738,15 @@ func _try_attack(targets: Dictionary) -> void:
 		return
 
 	var projectiles: Array = targets.get("projectiles", [])
-	var enemies: Array = targets.get("enemies", [])
+	var enemies: Array = get_attack_lock_targets()
 
 	if not projectiles.is_empty():
 		# Timed Attack Logic: Find the best quality projectile in the cone.
-		# If multiple exist, prioritize the one with highest dot (best aim).
-		projectiles.sort_custom(func(a, b): return a.dot > b.dot)
+		# If multiple exist, prioritize the strongest spatial lock.
+		projectiles.sort_custom(func(a, b): return float(a.get("precision", 0.0)) > float(b.get("precision", 0.0)))
 		var p_data = projectiles[0]
-		var projectile = p_data.ref
+		_play_attack_state(current_aim, p_data)
+		var projectile = p_data.get("ref")
 		var quality: String = _evaluate_projectile_timing_with_forgiveness(projectile)
 		
 		match quality:
@@ -725,9 +766,12 @@ func _try_attack(targets: Dictionary) -> void:
 
 	# If no projectiles handled, do a spatial sweep on all enemies in the cone
 	if not enemies.is_empty():
+		_play_attack_state(current_aim, enemies[0])
+		_play_predatory_lunge_to_target(enemies[0])
 		for e_data in enemies:
 			_idle_attack_on_target(e_data, combo_mult)
 	else:
+		_play_attack_state(current_aim)
 		_idle_attack_on_target({}, combo_mult)
 
 
@@ -754,11 +798,11 @@ func _try_parry(targets: Dictionary) -> void:
 		return
 
 	# Find the best projectile to parry in the cone
-	projectiles.sort_custom(func(a, b): return a.dot > b.dot)
+	projectiles.sort_custom(func(a, b): return float(a.get("precision", 0.0)) > float(b.get("precision", 0.0)))
 	var p_data = projectiles[0]
-	var projectile = p_data.ref
+	var projectile = p_data.get("ref")
 	var quality: String = _evaluate_projectile_timing_with_forgiveness(projectile)
-	var target_lane: int = int(p_data.lane)
+	var target_lane: int = int(p_data.get("lane", -1))
 
 	if quality != "good" and quality != "perfect":
 		combat_meter.call("record_bad_timing")
@@ -839,7 +883,7 @@ func _try_parry(targets: Dictionary) -> void:
 	_lock_action(recovery, "parry")
 
 
-const DODGE_DISTANCE: float = 70.0
+const DODGE_DISTANCE: float = 165.0
 
 func _try_dodge() -> void:
 	if not combat_meter.call("spend_stamina_for_dodge"):
@@ -889,7 +933,37 @@ func _play_dodge_state_radial(target_pos: Vector2) -> void:
 	_apply_sprite_facing()
 	_spawn_dodge_afterimage()
 	_play_sprite_pose(DODGE_SPRITE_POSITION, DODGE_SPRITE_SCALE, 0.10)
-	_play_world_motion(target_pos, 0.10)
+	
+	# APEX VESSEL ROLL: Massive Physics + Seismic Feedback
+	var vis_node: CanvasItem = (_player_sprite as CanvasItem) if _player_sprite != null else (sprite as CanvasItem)
+	
+	# Movement: Use QUINT for a truly massive, explosive launch that grinds to a halt
+	_play_world_motion(target_pos, DODGE_PUSH_TIME)
+	
+	# Seismic Feedback: The shell 'stomps' the ground to launch its mass
+	if is_inside_tree() and CombatFeedbackDirector.has_method("trigger_shake"):
+		CombatFeedbackDirector.call("trigger_shake", 6.0, 0.12)
+	
+	var dodge_tween := create_tween().set_parallel(true).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUINT)
+	
+	# Shell Spin: Single rotation over the roll
+	dodge_tween.tween_property(vis_node, "rotation", vis_node.rotation + TAU, DODGE_PUSH_TIME)
+	
+	# Massive Shell Tuck: Physically compress the armor into a dense kinetic ball
+	var roll_scale = NEUTRAL_SPRITE_SCALE * (PLAYER_SPRITE_SCALE_BASE if _player_sprite != null else 1.0) * 0.68
+	dodge_tween.tween_property(vis_node, "scale", roll_scale, DODGE_PUSH_TIME * 0.4).set_trans(Tween.TRANS_SINE)
+	dodge_tween.chain().tween_property(vis_node, "scale", NEUTRAL_SPRITE_SCALE * (PLAYER_SPRITE_SCALE_BASE if _player_sprite != null else 1.0), DODGE_PUSH_TIME * 0.6).set_trans(Tween.TRANS_BACK)
+	
+	# Reflex Flare: Over-brightened burst at start (High-contrast Manga)
+	var flare_col = Color(2.0, 2.5, 3.0, 1.0) 
+	var base_col = Color.WHITE if _player_sprite != null else Color(0.25, 0.55, 0.95, 1.0)
+	var prop: String = "modulate" if _player_sprite != null else "color"
+	
+	dodge_tween.tween_property(vis_node, prop, flare_col, 0.05)
+	
+	var return_tween := create_tween().set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_SINE)
+	return_tween.tween_interval(0.12)
+	return_tween.tween_property(vis_node, prop, base_col, 0.22)
 
 
 func _try_ultimate() -> void:
@@ -928,21 +1002,8 @@ func _try_ultimate() -> void:
 func _idle_attack_on_target(target_data: Dictionary, combo_mult: float) -> void:
 	var target_lane: int = int(target_data.get("lane", -1))
 	var idle_damage: float = SOVEREIGN_DAMAGE_CALCULATOR.get_idle_attack_damage(combo_mult)
-	var target_pos: Vector2 = target_data.get("pos", Vector2.ZERO)
 	var enemy_id: int = int(target_data.get("ref", -1))
 	
-	# 1. PREDATORY LUNGE: Snap to target if far enough
-	if not target_pos.is_zero_approx() and _player_sprite != null:
-		var dist: float = target_pos.distance_to(free_position)
-		if dist > 80.0:
-			var lunge_tween := create_tween()
-			var lunge_pos: Vector2 = target_pos - (target_pos - free_position).normalized() * 45.0
-			# Violent thrust
-			lunge_tween.tween_property(_player_sprite, "global_position", lunge_pos, 0.04).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
-			# Snap back
-			lunge_tween.tween_property(_player_sprite, "position", Vector2.ZERO, 0.14).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-			
-	# 2. SOVEREIGN IMPACT: Apply spektacular feedback
 	if enemy_id != -1:
 		lane_manager.call("damage_enemy_by_id", enemy_id, idle_damage)
 		# Trigger spectacular feedback using the newly optimized runtime
@@ -965,6 +1026,22 @@ func _idle_attack_on_target(target_data: Dictionary, combo_mult: float) -> void:
 	EventBus.emit_signal("player_attacked", target_lane, idle_damage, false)
 
 	_lock_action(BASIC_ATTACK_RECOVERY, "idle_attack")
+
+
+func _play_predatory_lunge_to_target(target_data: Dictionary) -> void:
+	var target_pos: Vector2 = Vector2(target_data.get("pos", Vector2.ZERO))
+	if target_pos.is_zero_approx():
+		return
+	var to_target: Vector2 = target_pos - free_position
+	var distance: float = to_target.length()
+	if distance < PREDATORY_LUNGE_MIN_DISTANCE:
+		return
+	var lunge_dir: Vector2 = to_target / distance
+	var lunge_distance: float = minf(distance - PREDATORY_LUNGE_STANDOFF, SOVEREIGN_DAMAGE_CALCULATOR.get_predatory_lunge_range())
+	if lunge_distance <= 0.0:
+		return
+	_facing_direction = lunge_dir
+	_play_world_motion(free_position + lunge_dir * lunge_distance, PREDATORY_LUNGE_PUSH_TIME)
 
 
 func _resolve_timed_attack(projectile, combo_mult: float, quality: String) -> void:
@@ -1084,14 +1161,15 @@ func _resolve_late_attack(projectile: Node, target_lane: int) -> void:
 
 func _fire_parry_followup(combo_mult: float, targets: Dictionary) -> void:
 	var target_lane: int = _get_target_direction()
-	_play_attack_state(target_lane)
 
 	var followup_damage: float = max(parry_followup_damage, GameState.get_attack_damage()) * combo_mult
-	var enemies: Array = targets.get("enemies", [])
+	var enemies: Array = get_attack_lock_targets()
+	var primary_target: Dictionary = enemies[0] if not enemies.is_empty() else {}
+	_play_attack_state(target_lane, primary_target)
 	
 	if not enemies.is_empty():
 		for e_data in enemies:
-			lane_manager.call("damage_enemy_by_id", int(e_data.ref), followup_damage)
+			lane_manager.call("damage_enemy_by_id", int(e_data.get("ref", -1)), followup_damage)
 		
 	combat_meter.call("record_lane_read")
 	EventBus.emit_signal("player_attacked", target_lane, followup_damage, true)
@@ -1142,7 +1220,7 @@ func _trigger_parry_counter_warp(enemy_id: int, target_lane: int, damage: float,
 func _play_counter_warp_state() -> void:
 	# Radial warp: uses a fixed spatial reach distance based on Action-RPG aim,
 	# rather than calculating distance between hardcoded lane spawn/hit zones.
-	var reach_dist: float = PLAYER_ATTACK_RANGE * 0.85
+	var reach_dist: float = SOVEREIGN_DAMAGE_CALCULATOR.get_attack_range() * 0.85
 
 	_show_attack_image()
 	_play_sprite_pose(ATTACK_SPRITE_POSITION, ATTACK_SPRITE_SCALE, 0.18)
@@ -1256,9 +1334,8 @@ func _setup_player_sprite() -> void:
 		_atk_effect_sprite.modulate.a = 0.0
 		# Align downward asset (+90 deg to face RIGHT by default)
 		_atk_effect_sprite.rotation = PI / 2.0 
-		# Scale to match the fair PLAYER_ATTACK_RANGE
-		# Assuming asset height is its length, map it to ~220 units
-		var base_scale: float = PLAYER_ATTACK_RANGE / _atkeffect_tex.get_height()
+		# Scale to match the fair stat-scaled attack range.
+		var base_scale: float = SOVEREIGN_DAMAGE_CALCULATOR.get_attack_range() / _atkeffect_tex.get_height()
 		_atk_effect_sprite.scale = Vector2(base_scale, base_scale)
 		# Pivot at the hilt
 		_atk_effect_sprite.offset = Vector2(0, _atkeffect_tex.get_height() / 2.0)
@@ -1415,47 +1492,81 @@ func _return_to_neutral_state(immediate: bool = false) -> void:
 	# World motion snap-back removed to allow player to own their position.
 
 
-func _play_attack_state(_target_lane: int) -> void:
+func _play_attack_state(_target_lane: int, target_data: Dictionary = {}) -> void:
 	_apply_sprite_facing()
 	_show_attack_image()
-	_pulse_attack_effect()
+	_pulse_attack_effect(target_data)
 	_play_sprite_pose(ATTACK_SPRITE_POSITION, ATTACK_SPRITE_SCALE, 0.08)
 	_play_world_motion(_action_world_position(ATTACK_WORLD_X_OFFSET), 0.04)
 
 
-func _pulse_attack_effect() -> void:
-	if _atk_effect_sprite == null:
+func _pulse_attack_effect(target_data: Dictionary = {}) -> void:
+	if _atk_effect_sprite == null or _atkeffect_tex == null:
 		return
 
 	if _atk_effect_pulse_tween != null:
 		_atk_effect_pulse_tween.kill()
 
+	var target_pos: Vector2 = Vector2(target_data.get("pos", free_position + _facing_direction * SOVEREIGN_DAMAGE_CALCULATOR.get_attack_range()))
+	var to_target: Vector2 = target_pos - free_position
+	var aim_dir: Vector2 = _facing_direction
+	if to_target.length_squared() > 4.0:
+		aim_dir = to_target.normalized()
+		_facing_direction = aim_dir
+	
+	var visible_length: float = clampf(
+		minf(to_target.length(), SOVEREIGN_DAMAGE_CALCULATOR.get_attack_range()),
+		ATTACK_EFFECT_MIN_LENGTH,
+		ATTACK_EFFECT_MAX_LENGTH
+	)
+	var texture_height: float = maxf(float(_atkeffect_tex.get_height()), 1.0)
+	var length_scale: float = visible_length / texture_height
+	var slash_pos: Vector2 = NEUTRAL_SPRITE_POSITION + aim_dir * (visible_length * 0.46)
+
 	_atk_effect_sprite.visible = true
-	_atk_effect_sprite.modulate.a = 0.8
-	
-	# Manually align with player's chest/pose (sibling of sprite)
-	_atk_effect_sprite.position = NEUTRAL_SPRITE_POSITION + (_facing_direction * 15.0)
-	
-	# Rotate to match facing direction. 
-	# Asset is downward facing (+PI/2), so add that to the facing angle.
-	_atk_effect_sprite.rotation = _facing_direction.angle() + PI / 2.0
-	
-	var base_scale: float = PLAYER_ATTACK_RANGE / _atkeffect_tex.get_height()
-	_atk_effect_sprite.scale = Vector2(base_scale * 0.8, base_scale * 0.4) # Start thin
+	_atk_effect_sprite.position = slash_pos
+	_atk_effect_sprite.rotation = aim_dir.angle() + PI / 2.0
+	_atk_effect_sprite.modulate = Color(1.0, 0.93, 0.82, 0.0)
+	_atk_effect_sprite.scale = Vector2(length_scale * 0.72, length_scale * 0.22)
 
 	_atk_effect_pulse_tween = create_tween()
 	_atk_effect_pulse_tween.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUART)
 	
-	# Pulse out and fade (significantly slower for readability and weight)
-	_atk_effect_pulse_tween.tween_property(_atk_effect_sprite, "scale", Vector2(base_scale, base_scale), 0.18)
-	_atk_effect_pulse_tween.parallel().tween_property(_atk_effect_sprite, "modulate:a", 1.0, 0.08)
+	_atk_effect_pulse_tween.tween_property(_atk_effect_sprite, "scale", Vector2(length_scale * 1.08, length_scale * 0.42), 0.055)
+	_atk_effect_pulse_tween.parallel().tween_property(_atk_effect_sprite, "modulate", Color(1.25, 1.05, 0.86, 0.95), 0.045)
+	_atk_effect_pulse_tween.parallel().tween_property(_atk_effect_sprite, "position", slash_pos + aim_dir * 7.0, 0.055)
 	
-	_atk_effect_pulse_tween.tween_property(_atk_effect_sprite, "modulate:a", 0.0, 0.45)
-	_atk_effect_pulse_tween.parallel().tween_property(_atk_effect_sprite, "scale", Vector2(base_scale * 1.1, base_scale * 0.8), 0.45)
+	_atk_effect_pulse_tween.tween_property(_atk_effect_sprite, "modulate", Color(0.95, 0.12, 0.06, 0.0), 0.16)
+	_atk_effect_pulse_tween.parallel().tween_property(_atk_effect_sprite, "scale", Vector2(length_scale * 1.22, length_scale * 0.16), 0.16)
+	_atk_effect_pulse_tween.parallel().tween_property(_atk_effect_sprite, "position", slash_pos + aim_dir * 18.0, 0.16)
 	
 	_atk_effect_pulse_tween.tween_callback(func() -> void:
 		_atk_effect_sprite.visible = false
 	)
+
+	_spawn_attack_impact_sparks(aim_dir, visible_length)
+
+
+func _spawn_attack_impact_sparks(aim_dir: Vector2, visible_length: float) -> void:
+	var spark_count: int = 5
+	for i in range(spark_count):
+		var spark := Line2D.new()
+		spark.width = 1.2 if i < 3 else 0.8
+		spark.default_color = Color(1.0, 0.16, 0.06, 0.72) if i < 3 else Color(0.96, 0.92, 0.84, 0.68)
+		spark.z_index = 5
+		var side: Vector2 = aim_dir.rotated(PI * 0.5)
+		var base: Vector2 = NEUTRAL_SPRITE_POSITION + aim_dir * (visible_length * randf_range(0.42, 0.92))
+		var jitter: Vector2 = side * randf_range(-8.0, 8.0)
+		var slash_dir: Vector2 = aim_dir.rotated(randf_range(-0.45, 0.45))
+		spark.points = PackedVector2Array([
+			base + jitter,
+			base + jitter + slash_dir * randf_range(8.0, 18.0)
+		])
+		add_child(spark)
+		var tween := spark.create_tween()
+		tween.tween_property(spark, "default_color:a", 0.0, 0.12)
+		tween.parallel().tween_property(spark, "width", 0.0, 0.12)
+		tween.tween_callback(spark.queue_free)
 
 
 func _play_parry_state(_target_lane: int) -> void:
@@ -1578,12 +1689,15 @@ func _spawn_dodge_afterimage() -> void:
 	ghost.flip_h = _player_sprite.flip_h
 	ghost.position = _player_sprite.position
 	ghost.scale = _player_sprite.scale
-	ghost.modulate = Color(0.72, 0.86, 1.0, 0.34)
+	ghost.rotation = _player_sprite.rotation
+	ghost.modulate = Color(0.72, 0.86, 1.0, 0.45) # Brighter blue ghost
 	add_child(ghost)
-	var tween := create_tween()
-	tween.tween_property(ghost, "modulate:a", 0.0, 0.14)
-	tween.parallel().tween_property(ghost, "scale", _player_sprite.scale * 1.06, 0.14)
-	tween.tween_callback(func() -> void:
+	
+	var tween := create_tween().set_parallel(true).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_SINE)
+	tween.tween_property(ghost, "modulate:a", 0.0, 0.28) # Longer tail (from 0.14)
+	tween.tween_property(ghost, "scale", _player_sprite.scale * 1.15, 0.28) # Larger expand (from 1.06)
+	
+	tween.chain().tween_callback(func() -> void:
 		if is_instance_valid(ghost):
 			ghost.queue_free()
 	)

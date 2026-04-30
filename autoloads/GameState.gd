@@ -521,10 +521,52 @@ func get_current_resonance_perk() -> Dictionary:
 	return LAIR_RESONANCE.get_resonance_perk(world_dominant_fate)
 
 
-func splice_trait_to_creature(species_id: String, trait_id: String) -> bool:
-	var base_cost: float = 250.0 # Standard splicing cost
+func get_trait_splicing_cost(_species_id: String = "") -> float:
+	var base_cost: float = 250.0
 	var perk: Dictionary = get_current_resonance_perk()
-	var cost: float = base_cost * float(perk.get("splicing_cost_mult", 1.0))
+	return base_cost * float(perk.get("splicing_cost_mult", 1.0))
+
+
+func get_ascension_status(species_id: String) -> Dictionary:
+	var cost: float = LAIR_RESONANCE.ASCENSION_DNA_COST
+	var affinity: String = LAIR_RESONANCE.get_species_affinity(species_id)
+	var current_dna: float = get_dna(species_id)
+	var mastery: Dictionary = LAIR_RESONANCE.get_mastery_trait(species_id)
+	var status: Dictionary = {
+		"can_ascend": false,
+		"cost": cost,
+		"current_dna": current_dna,
+		"required_fate": affinity,
+		"current_fate": world_dominant_fate,
+		"mastery": mastery,
+		"reason": "No bonded sequence found."
+	}
+	for creature in lair_roster:
+		if String(creature.get("species_id", "")) != species_id:
+			continue
+		var bond: int = int(creature.get("bond_level", 1))
+		status["bond_level"] = bond
+		status["is_ascended"] = bool(creature.get("is_ascended", false))
+		if bool(status["is_ascended"]):
+			status["reason"] = "Already ascended."
+			return status
+		if bond < 5:
+			status["reason"] = "Bond Level 5 required."
+			return status
+		if current_dna < cost:
+			status["reason"] = "Need %.0f more DNA." % (cost - current_dna)
+			return status
+		if world_dominant_fate != affinity:
+			status["reason"] = "World Resonance must align with %s." % affinity.replace("_", " ").capitalize()
+			return status
+		status["can_ascend"] = true
+		status["reason"] = "Ready for Sovereign rewrite."
+		return status
+	return status
+
+
+func splice_trait_to_creature(species_id: String, trait_id: String) -> bool:
+	var cost: float = get_trait_splicing_cost(species_id)
 	
 	if not has_dna_for(species_id, cost): return false
 	

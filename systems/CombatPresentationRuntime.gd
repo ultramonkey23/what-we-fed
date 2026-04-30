@@ -291,7 +291,6 @@ func on_ui_shake(intensity: float, duration: float) -> void:
 
 func on_timing_ring_pressed(lane: int) -> void:
 	animate_timing_ring_press(lane)
-	spawn_attack_silhouette_to_lane(lane, Color(1.0, 1.0, 1.0, 0.18), 5.0, 0.08, 0.72)
 
 
 func on_beat_pulse(quality: String, strength: float) -> void:

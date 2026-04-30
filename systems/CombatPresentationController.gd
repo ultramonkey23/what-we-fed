@@ -429,7 +429,8 @@ func draw_timing_circles(
 	player_combat: Node2D
 ) -> void:
 	for child in timing_circle_container.get_children():
-		child.queue_free()
+		timing_circle_container.remove_child(child)
+		child.free()
 	timing_rings_cache.clear()
 
 	var biome: Dictionary = active_encounter.get("biome", {})
@@ -742,6 +743,9 @@ func update_timing_ring_proximity(
 	var primary_target: Dictionary = {}
 	if player_combat.has_method("get_primary_action_target"):
 		primary_target = player_combat.call("get_primary_action_target")
+	var attack_lock_targets: Array = []
+	if player_combat.has_method("get_attack_lock_targets"):
+		attack_lock_targets = player_combat.call("get_attack_lock_targets")
 
 	for i in range(lane_manager.THREAT_COUNT if lane_manager else 8):
 		var grave_node: Node2D = root.get_parent().get_node_or_null("GraveRing_%d" % i)
@@ -752,17 +756,16 @@ func update_timing_ring_proximity(
 		var proj = lane_manager.get_projectile(i)
 		var is_threat: bool = (proj != null and not bool(proj.get("is_resolved")))
 		
-		# Identify if this lane is the SINGULAR target the player is aiming at
-		var is_singular_target: bool = false
-		if not primary_target.is_empty():
-			if primary_target.get("type") == "projectile":
-				is_singular_target = (primary_target.get("lane", -1) == i)
-			elif primary_target.get("type") == "enemy":
-				is_singular_target = (primary_target.get("lane", -1) == i)
+		var lock_target: Dictionary = {}
+		if i < attack_lock_targets.size():
+			lock_target = Dictionary(attack_lock_targets[i])
+		var has_lock_target: bool = not lock_target.is_empty()
+		var is_singular_target: bool = has_lock_target and bool(lock_target.get("is_primary", false))
+		var primary_precision: float = float(lock_target.get("precision", primary_target.get("precision", 0.0)))
 		
 		# EVOLUTION: RELAXED SINGULARITY. 
 		# We show all imminent threats, but keep the primary target "High Contrast".
-		var should_draw: bool = is_threat or is_singular_target
+		var should_draw: bool = is_threat or has_lock_target
 		
 		if not should_draw:
 			if grave_node: grave_node.visible = false
@@ -778,7 +781,7 @@ func update_timing_ring_proximity(
 		var base_target_color: Color = Color(0.2, 0.85, 1.0, 1.0) # Electric Blue
 		var base_glow_color: Color = Color(0.6, 0.1, 0.9, 1.0)   # Purple Glow
 		
-		if is_threat:
+		if is_threat and not has_lock_target:
 			# Threat colors: Hot/Red/Orange for active projectiles
 			base_target_color = Color(1.0, 0.45, 0.2, 1.0) # Hot Orange
 			base_glow_color = Color(0.9, 0.1, 0.1, 1.0)    # Threat Red
@@ -787,9 +790,11 @@ func update_timing_ring_proximity(
 		var glow_color: Color = base_glow_color
 		var ring_radius: float = 110.0 if not is_intercardinal else 102.0 # Tighter intercardinals
 		
-		if is_threat:
-			var threat_id: int = int(proj.enemy_id)
-			target_pos = lane_manager.get_enemy_pos(threat_id)
+		if has_lock_target:
+			target_pos = Vector2(lock_target.get("pos", player_pos))
+			ring_radius = 124.0 if not is_intercardinal else 116.0
+		elif is_threat:
+			target_pos = proj.global_position
 		else:
 			target_pos = Vector2(primary_target.get("pos", player_pos))
 			ring_radius = 124.0 if not is_intercardinal else 116.0
@@ -804,10 +809,11 @@ func update_timing_ring_proximity(
 			
 			var marrow: Polygon2D = grave_node.get_node_or_null("Marrow")
 			var alpha_mult: float = 1.0 if is_singular_target else 0.42 # Dim non-targets
-			var alpha_base: float = (0.52 + beat_pulse * 0.35) * alpha_mult
+			var lock_mult: float = clampf(primary_precision / 1.65, 0.72, 1.18) if is_singular_target else 1.0
+			var alpha_base: float = (0.52 + beat_pulse * 0.35) * alpha_mult * lock_mult
 			
 			var urgency_scale: float = 1.0
-			if is_threat:
+			if is_threat and not has_lock_target:
 				var p: float = proj.progress
 				urgency_scale = 1.0 + clampf((p - 0.7) / 0.3, 0.0, 1.0) * 0.5
 			
@@ -840,16 +846,17 @@ func update_timing_ring_proximity(
 					
 		# Update Predatory Tether (Dual-Layer Electric Pulse)
 		if thread_node and glow_node:
-			# Only draw tethers for the SINGULAR target or high-urgency threats
-			var p: float = proj.progress if is_threat else 1.0
-			var is_urgent: bool = is_threat and p > 0.65
-			var tether_visible: bool = is_singular_target or is_urgent
+			# Full tethers are the player's lock-on, not generic warning lines.
+			# Non-primary projectile pressure stays in the bone shards only.
+			var p: float = proj.progress if is_threat and not has_lock_target else 1.0
+			var tether_visible: bool = has_lock_target
 			
 			if not tether_visible:
 				thread_node.default_color.a = 0.0
 				glow_node.default_color.a = 0.0
 			else:
-				var urgency_mult: float = 1.0 + (clampf((p - 0.5) / 0.5, 0.0, 1.0) * 1.5) if is_threat else 1.2
+				var lock_mult: float = clampf(primary_precision / 1.65, 0.72, 1.18) if is_singular_target else 1.0
+				var urgency_mult: float = (1.0 + (clampf((p - 0.5) / 0.5, 0.0, 1.0) * 1.5) if is_threat else 1.2) * lock_mult
 				var target_alpha_mult: float = 1.0 if is_singular_target else 0.6
 				
 				var thread_alpha: float = (0.45 + beat_pulse * 0.4) * urgency_mult * target_alpha_mult

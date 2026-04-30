@@ -1,4 +1,4 @@
-# THE SOVEREIGN CORE (v2.7)
+# THE SOVEREIGN CORE (v2.8)
 This is the single source of truth for AI doctrine, governance, and safety.
 
 ## 1. THE AUTHORITY ORDER
@@ -14,7 +14,7 @@ This is the single source of truth for AI doctrine, governance, and safety.
 2. **The Silent Council**: Viewpoint balancing (Safety, Tone, Architecture) is internalized. Output only the unified "Council Verdict" to preserve context window.
 3. **Strict Sequential Mutation**: No parallel edits to the same file. Mutations must occur in sequence across conversational turns.
 4. **Micro-Validation**: Run `validate_project.bat` incrementally after core logic changes. Do not wait for the end of the session.
-5. **Manga Monstrosity Filter**: All user-facing text and visuals must use "Black Signal" terminology (e.g., *Lineage* over *Level*, *Sequence* over *Score*, *Translation* over *Loading*, *Intrusion* over *Run*).
+5. **Legendary Pixel Fable Ink Filter**: All user-facing text and visuals must preserve WHAT WE FED terminology and the current monster-RPG art doctrine: readable, mythic, strange, collectible, slightly eerie, and never generic. Use terms like *Lineage* over *Level*, *Sequence* over *Score*, *Translation* over *Loading*, and *Intrusion* over *Run*.
 
 ## 3. THE VALIDATION LADDER
 | Level | Name | Evidence Required |
@@ -46,3 +46,4 @@ This is the single source of truth for AI doctrine, governance, and safety.
 - **No Hallucinations**: Report "Static-Only" if a test wasn't run.
 - **No Flattening**: Do not replace unique project traits with generic roguelite tropes.
 - **Input Responsiveness**: Respect the 0.14s Action Buffer.
+- **Current Art Doctrine**: LEGENDARY PIXEL FABLE INK is the base style. Bone Ink / Bonecut Ink is a corruption/high-pressure layer only. Action assets face down/south by default, use idle/base plus one branch frame, and do not require authored defeat frames.

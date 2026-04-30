@@ -6,6 +6,8 @@ extends Node
 const COMBAT_DATA = preload("res://data/CombatContent.gd")
 const PRESENTATION_TEXT = preload("res://data/PresentationTextContent.gd")
 
+const EAT_DNA_GAIN: float = 12.5
+
 signal offer_started(creature_data: Dictionary, is_live: bool, is_dna_locked: bool, timer: float)
 signal offer_ended()
 signal choice_resolved(choice_id: String, creature_data: Dictionary)
@@ -30,8 +32,8 @@ func offer_creature(creature_data: Dictionary, is_live: bool, timer: float = 0.0
 
 	_pending_creature = creature_data.duplicate(true)
 	var species_id: String = String(_pending_creature.get("species_id", ""))
-	var effective_threshold: float = GameState.get_effective_dna_threshold(species_id)
-	_is_dna_locked = not GameState.has_dna_for(species_id, effective_threshold)
+	var bond_cost: float = _get_bond_cost(species_id)
+	_is_dna_locked = bond_cost > 0.0 and not GameState.has_dna_for(species_id, bond_cost)
 	
 	_is_awaiting_choice = true
 	_choice_made = false
@@ -61,20 +63,21 @@ func resolve_choice(choice_id: String) -> bool:
 	var species_id: String = String(_pending_creature.get("species_id", ""))
 	
 	if choice_id == "bond":
-		var threshold: float = GameState.get_effective_dna_threshold(species_id)
-		if not GameState.has_dna_for(species_id, threshold):
-			EventBus.emit_signal("dna_lock_denied", species_id, GameState.get_dna(species_id), threshold)
+		var bond_cost: float = _get_bond_cost(species_id)
+		if bond_cost > 0.0 and not GameState.has_dna_for(species_id, bond_cost):
+			EventBus.emit_signal("dna_lock_denied", species_id, GameState.get_dna(species_id), bond_cost)
 			return false
 
 	_choice_made = true
 	_is_awaiting_choice = false
 	
 	if choice_id == "bond":
+		var bond_cost: float = _get_bond_cost(species_id)
 		var updated_creature: Dictionary = GameState.add_bonded_creature(_pending_creature)
 		if GameState.has_method("register_growth_choice"):
 			GameState.register_growth_choice("bond")
-		var threshold: float = GameState.get_effective_dna_threshold(species_id)
-		GameState.spend_dna(species_id, threshold)
+		if bond_cost > 0.0:
+			GameState.spend_dna(species_id, bond_cost)
 		EventBus.emit_signal("creature_bonded", updated_creature)
 	else:
 		var _absorbed: Dictionary = GameState.absorb_creature_type(_pending_creature)
@@ -83,7 +86,7 @@ func resolve_choice(choice_id: String) -> bool:
 		
 		# Predatory Gain: Award lineage DNA for consumption.
 		# A Hunt Offer 'Eat' is a significant predation event (5x standard kill).
-		GameState.add_dna(species_id, 12.5)
+		GameState.add_dna(species_id, EAT_DNA_GAIN)
 		
 		EventBus.emit_signal("creature_eaten", _pending_creature)
 
@@ -133,8 +136,8 @@ func is_awaiting_choice() -> bool:
 func is_dna_locked() -> bool:
 	if not _pending_creature.is_empty():
 		var species_id: String = String(_pending_creature.get("species_id", ""))
-		var effective_threshold: float = GameState.get_effective_dna_threshold(species_id)
-		_is_dna_locked = not GameState.has_dna_for(species_id, effective_threshold)
+		var bond_cost: float = _get_bond_cost(species_id)
+		_is_dna_locked = bond_cost > 0.0 and not GameState.has_dna_for(species_id, bond_cost)
 	return _is_dna_locked
 
 func get_offer_timer() -> float:
@@ -150,3 +153,11 @@ func reset() -> void:
 	_offer_timer = 0.0
 	_is_live_offer = false
 	emit_signal("queue_updated", 0)
+
+
+func _get_bond_cost(species_id: String) -> float:
+	if species_id.is_empty():
+		return 999.0
+	if GameState.is_species_ever_bonded(species_id):
+		return 0.0
+	return GameState.get_effective_dna_threshold(species_id)

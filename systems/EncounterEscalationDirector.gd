@@ -59,7 +59,7 @@ var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
 var _escalation_rules: Dictionary = {}
 
-var lane_manager: Node = null
+var zone_manager: Node = null
 var player_combat: Node2D = null
 
 var _player_hp_ratio: float = 1.0
@@ -97,7 +97,7 @@ func _process(delta):
 	if _recent_hit_timer > 0.0:
 		_recent_hit_timer = maxf(_recent_hit_timer - delta, 0.0)
 		
-	_sync_budgets_to_lane_manager()
+	_sync_budgets_to_zone_manager()
 	_emit_ecology_state_if_changed()
 
 func setup(region_id: String, phases: Array, rng: RandomNumberGenerator) -> void:
@@ -210,24 +210,24 @@ func _enter_phase(new_idx: int) -> void:
 	if not intro_text.is_empty():
 		feedback_requested.emit(intro_text, Color(0.92, 0.88, 0.74, 1.0), 0.55)
 	
-	if _escalation_rules.get("surge_on_phase_start", true) or lane_manager.alive_count() == 0:
+	if _escalation_rules.get("surge_on_phase_start", true) or zone_manager.alive_count() == 0:
 		_seed_initial_phase_enemies(phase)
 	_emit_ecology_state_if_changed()
 
 func _seed_initial_phase_enemies(phase: Dictionary) -> void:
-	if lane_manager == null or not is_instance_valid(lane_manager):
+	if zone_manager == null or not is_instance_valid(zone_manager):
 		return
 		
 	var max_threats: int = _resolve_authority_budget(phase)
-	var current_alive: int = lane_manager.alive_count()
-	var lanes_to_fill: int = min(max_threats - current_alive, lane_manager.THREAT_COUNT)
+	var current_alive: int = zone_manager.alive_count()
+	var lanes_to_fill: int = min(max_threats - current_alive, zone_manager.THREAT_COUNT)
 	
 	if lanes_to_fill <= 0:
 		return
 
 	var empty_lanes: Array = []
-	for lane in range(lane_manager.THREAT_COUNT):
-		if lane_manager.call("is_lane_empty", lane):
+	for lane in range(zone_manager.THREAT_COUNT):
+		if zone_manager.call("is_lane_empty", lane):
 			empty_lanes.append(lane)
 
 	var player_lane: int = 1 # Default fallback
@@ -249,15 +249,15 @@ func _seed_initial_phase_enemies(phase: Dictionary) -> void:
 		_request_spawn(int(ordered_lanes[i]))
 		filled += 1
 
-func _sync_budgets_to_lane_manager() -> void:
-	if lane_manager == null or not is_instance_valid(lane_manager):
+func _sync_budgets_to_zone_manager() -> void:
+	if zone_manager == null or not is_instance_valid(zone_manager):
 		return
 	
 	var budget: int = _resolve_authority_budget(get_current_phase_data())
 	if budget != _last_synced_budget:
 		_last_synced_budget = budget
-		if lane_manager.has_method("set_attack_authority_budget"):
-			lane_manager.call("set_attack_authority_budget", budget)
+		if zone_manager.has_method("set_attack_authority_budget"):
+			zone_manager.call("set_attack_authority_budget", budget)
 
 	# Frequency scaling (only if boss escalation hasn't taken over)
 	if not _boss_escalation_fired:
@@ -267,8 +267,8 @@ func _sync_budgets_to_lane_manager() -> void:
 		if _player_hp_ratio <= LOW_HP_RELIEF_RATIO or _recent_hit_timer > 0.0:
 			interval += 0.85 # Visible relief
 		
-		if lane_manager.has_method("set_cycle_interval"):
-			lane_manager.call("set_cycle_interval", clampf(interval, 1.2, 3.5))
+		if zone_manager.has_method("set_cycle_interval"):
+			zone_manager.call("set_cycle_interval", clampf(interval, 1.2, 3.5))
 
 func notify_enemy_defeated(enemy_id: int, lane: int, replaced_immediately: bool = false) -> void:
 	if not _running or _current_phase_index < 0:
@@ -320,7 +320,7 @@ func notify_enemy_defeated(enemy_id: int, lane: int, replaced_immediately: bool 
 
 	_schedule_spawn_debt(lane, delay, find_new_lane)
 	
-	_sync_budgets_to_lane_manager()
+	_sync_budgets_to_zone_manager()
 	_emit_ecology_state_if_changed()
 
 
@@ -345,13 +345,13 @@ func _schedule_smart_respawn(origin_lane: int, delay: float, find_new_lane: bool
 
 
 func _on_smart_respawn_timeout(origin_lane: int, find_new_lane: bool) -> void:
-	if not _running or _paused or lane_manager == null or not is_instance_valid(lane_manager):
+	if not _running or _paused or zone_manager == null or not is_instance_valid(zone_manager):
 		return
 	
 	var phase: Dictionary = _phases[_current_phase_index]
 	var max_threats: int = _resolve_authority_budget(phase)
 	
-	if lane_manager.alive_count() < max_threats:
+	if zone_manager.alive_count() < max_threats:
 		var target_lane: int = origin_lane
 		if find_new_lane:
 			target_lane = _pick_best_empty_lane(origin_lane)
@@ -365,13 +365,13 @@ func _refund_blocked_spawn_debt() -> void:
 	_spawn_debt = minf(_spawn_debt + 1.0, float(_resolve_population_cap()))
 
 func _pick_best_empty_lane(exclude_lane: int) -> int:
-	if lane_manager == null or not is_instance_valid(lane_manager):
+	if zone_manager == null or not is_instance_valid(zone_manager):
 		return exclude_lane
 
 	var empty_lanes: Array = []
 	var any_empty_lanes: Array = []
-	for lane in range(lane_manager.THREAT_COUNT):
-		if lane_manager.call("is_lane_empty", lane):
+	for lane in range(zone_manager.THREAT_COUNT):
+		if zone_manager.call("is_lane_empty", lane):
 			any_empty_lanes.append(lane)
 			if lane != exclude_lane:
 				empty_lanes.append(lane)
@@ -406,12 +406,12 @@ func _on_timed_attack_resolved(_lane: int, quality: String, _damage: float, enem
 		_last_hit_quality_by_enemy[enemy_id] = quality
 
 func _can_schedule_spawn(phase: Dictionary, enemy: Dictionary) -> bool:
-	if lane_manager == null or not is_instance_valid(lane_manager):
+	if zone_manager == null or not is_instance_valid(zone_manager):
 		return false
 	
 	# POPULATION LIMIT: Scaled by momentum
 	var pop_cap: int = _resolve_population_cap()
-	if lane_manager.alive_count() >= pop_cap:
+	if zone_manager.alive_count() >= pop_cap:
 		return false
 
 	var pressure_cap: float = _resolve_pressure_cap(phase)
@@ -434,7 +434,7 @@ func _pick_pressure_aware_enemy(phase: Dictionary) -> Dictionary:
 	if pool.is_empty():
 		return {}
 		
-	var alive_count: int = lane_manager.alive_count() if lane_manager != null else 0
+	var alive_count: int = zone_manager.alive_count() if zone_manager != null else 0
 	var momentum_ratio: float = _resolve_effective_momentum_ratio()
 	var shaping: String = String(_escalation_rules.get("pressure_shaping", "default"))
 	var quality_band: Dictionary = Dictionary(_difficulty_modifiers.get("threat_quality", {}))
@@ -536,15 +536,15 @@ func notify_boss_hp_changed(ratio: float) -> void:
 		_trigger_boss_escalation()
 
 func _trigger_boss_escalation() -> void:
-	if lane_manager == null:
+	if zone_manager == null:
 		return
 		
 	feedback_requested.emit("SOVEREIGN UNLEASH", Color(0.92, 0.42, 0.12, 1.0), 0.70)
 	
-	if lane_manager.has_method("set_cycle_interval"):
-		lane_manager.call("set_cycle_interval", 0.60)
-	if lane_manager.has_method("set_fire_stagger"):
-		lane_manager.call("set_fire_stagger", 0.44)
+	if zone_manager.has_method("set_cycle_interval"):
+		zone_manager.call("set_cycle_interval", 0.60)
+	if zone_manager.has_method("set_fire_stagger"):
+		zone_manager.call("set_fire_stagger", 0.44)
 
 func get_kill_momentum_ratio() -> float:
 	return _resolve_effective_momentum_ratio()
@@ -555,7 +555,7 @@ func get_ecology_snapshot() -> Dictionary:
 	var pressure_cap: float = _resolve_pressure_cap(phase)
 	return {
 		"phase_index": _current_phase_index,
-		"alive_count": lane_manager.alive_count() if lane_manager != null and is_instance_valid(lane_manager) else 0,
+		"alive_count": zone_manager.alive_count() if zone_manager != null and is_instance_valid(zone_manager) else 0,
 		"authority_budget": authority_budget,
 		"attack_authority_budget": authority_budget,
 		"pressure_points": _resolve_current_pressure_points(),
@@ -569,7 +569,7 @@ func get_ecology_snapshot() -> Dictionary:
 	}
 
 func _resolve_authority_budget(phase: Dictionary) -> int:
-	if lane_manager == null or not is_instance_valid(lane_manager):
+	if zone_manager == null or not is_instance_valid(zone_manager):
 		return 1
 	var lane_pressure_band: Dictionary = Dictionary(_difficulty_modifiers.get("lane_pressure", {}))
 	var authority_target: int = int(phase.get("authority_target", phase.get("max_active_threats", 2)))
@@ -577,7 +577,7 @@ func _resolve_authority_budget(phase: Dictionary) -> int:
 	var momentum_ratio: float = _resolve_effective_momentum_ratio()
 	if momentum_ratio >= AUTHORITY_MOMENTUM_THRESHOLD and _player_hp_ratio > LOW_HP_RELIEF_RATIO and _recent_hit_timer <= 0.0:
 		max_threats += AUTHORITY_MOMENTUM_BONUS
-	max_threats = clampi(max_threats, 1, lane_manager.THREAT_COUNT)
+	max_threats = clampi(max_threats, 1, zone_manager.THREAT_COUNT)
 	if _player_hp_ratio <= LOW_HP_RELIEF_RATIO or _recent_hit_timer > 0.0:
 		max_threats = max(1, max_threats - 1)
 	return max_threats
@@ -599,16 +599,16 @@ func _resolve_effective_momentum_ratio() -> float:
 	return clampf(effective_momentum / MOMENTUM_MAX, 0.0, 1.0)
 
 func _resolve_current_pressure_points() -> float:
-	if lane_manager == null or not is_instance_valid(lane_manager):
+	if zone_manager == null or not is_instance_valid(zone_manager):
 		return 0.0
 	var total: float = 0.0
-	var all_enemies: Dictionary = lane_manager.call("get_all_enemies")
+	var all_enemies: Dictionary = zone_manager.call("get_all_enemies")
 	for id in all_enemies.keys():
 		var enemy: Dictionary = all_enemies[id]
 		if not enemy.is_empty() and float(enemy.get("hp", 0.0)) > 0.0:
 			total += _estimate_enemy_pressure_points(enemy) * 0.52
 			
-		var projectile = lane_manager.call("get_projectile_by_id", id)
+		var projectile = zone_manager.call("get_projectile_by_id", id)
 		if projectile != null:
 			var projectile_damage: float = float(projectile.get("damage"))
 			var projectile_speed: float = float(projectile.get("speed"))

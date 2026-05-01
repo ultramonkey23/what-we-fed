@@ -5,7 +5,7 @@ signal impact_fx_requested(kind: StringName, world_pos: Vector2, direction: Vect
 # ─── ONREADY NODES ───────────────────────────────────────────────────────────
 @onready var background: ColorRect = $Background
 @onready var flash_overlay: ColorRect = $FlashOverlay
-@onready var lane_manager: Node = $LaneManager
+@onready var zone_manager: Node = $ZoneManager
 @onready var player_combat: Node2D = $PlayerCombat
 @onready var combat_meter: Node = $CombatMeter
 @onready var camera_2d: Camera2D = $Camera2D
@@ -377,9 +377,9 @@ func _exit_tree() -> void:
 		EventBus.vessel_shifted.disconnect(_on_vessel_shifted)
 	if EventBus.proc_feedback_requested.is_connected(_on_proc_feedback_requested):
 		EventBus.proc_feedback_requested.disconnect(_on_proc_feedback_requested)
-	if lane_manager != null and is_instance_valid(lane_manager) and lane_manager.has_method("apply_status"):
-		if EventBus.enemy_status_applied_requested.is_connected(lane_manager.apply_status):
-			EventBus.enemy_status_applied_requested.disconnect(lane_manager.apply_status)
+	if zone_manager != null and is_instance_valid(zone_manager) and zone_manager.has_method("apply_status"):
+		if EventBus.enemy_status_applied_requested.is_connected(zone_manager.apply_status):
+			EventBus.enemy_status_applied_requested.disconnect(zone_manager.apply_status)
 	if EventBus.ultimate_power_granted.is_connected(_on_ultimate_power_granted):
 		EventBus.ultimate_power_granted.disconnect(_on_ultimate_power_granted)
 	
@@ -458,7 +458,7 @@ func _exit_tree() -> void:
 
 
 func _initialize_systems() -> void:
-	_setup_lane_manager()
+	_setup_zone_manager()
 	_setup_player_combat()
 	_setup_performance_rewards()
 	_setup_vessel_modifier_director()
@@ -498,7 +498,7 @@ func _setup_bonded_companions() -> void:
 			companion.name = "BondedCompanion_" + species_id
 			add_child(companion)
 			if companion.has_method("setup"):
-				companion.call("setup", species_id, player_combat, lane_manager)
+				companion.call("setup", species_id, player_combat, zone_manager)
 
 
 func _setup_run_director() -> void:
@@ -549,7 +549,7 @@ func _setup_escalation_director() -> void:
 	_escalation_director = ENCOUNTER_ESCALATION_DIRECTOR.new()
 	_escalation_director.name = "EncounterEscalationDirector"
 	add_child(_escalation_director)
-	_escalation_director.lane_manager = lane_manager
+	_escalation_director.zone_manager = zone_manager
 	_escalation_director.player_combat = player_combat
 	_escalation_director.phase_changed.connect(_on_escalation_phase_changed)
 	_escalation_director.spawn_requested.connect(_on_escalation_spawn_requested)
@@ -576,8 +576,8 @@ func _on_escalation_phase_changed(index: int, _phase_data: Dictionary) -> void:
 
 
 func _on_escalation_spawn_requested(lane: int, enemy_data: Dictionary) -> void:
-	if lane_manager != null and is_instance_valid(lane_manager):
-		lane_manager.set_enemy(lane, enemy_data)
+	if zone_manager != null and is_instance_valid(zone_manager):
+		zone_manager.set_enemy(lane, enemy_data)
 		var live_enemy: Dictionary = _resolve_spawned_live_enemy(lane, enemy_data)
 		if live_enemy.is_empty():
 			return
@@ -592,17 +592,17 @@ func _on_escalation_spawn_requested(lane: int, enemy_data: Dictionary) -> void:
 
 
 func _resolve_spawned_live_enemy(spawn_lane: int, enemy_seed: Dictionary) -> Dictionary:
-	if lane_manager == null or not is_instance_valid(lane_manager):
+	if zone_manager == null or not is_instance_valid(zone_manager):
 		return {}
 
 	# Fast path: lane spawn landed directly in a striker lane.
-	var lane_enemy: Dictionary = lane_manager.call("get_enemy", spawn_lane)
+	var lane_enemy: Dictionary = zone_manager.call("get_enemy", spawn_lane)
 	if not lane_enemy.is_empty():
 		return lane_enemy.duplicate(true)
 
-	if not lane_manager.has_method("get_all_enemies"):
+	if not zone_manager.has_method("get_all_enemies"):
 		return {}
-	var all_live: Dictionary = Dictionary(lane_manager.call("get_all_enemies"))
+	var all_live: Dictionary = Dictionary(zone_manager.call("get_all_enemies"))
 	if all_live.is_empty():
 		return {}
 
@@ -865,8 +865,8 @@ func _show_victory_reward_internal(creature_data: Dictionary, is_dna_locked: boo
 
 func _resolve_runtime_authority_budget(phase: Dictionary = {}, snapshot: Dictionary = {}) -> int:
 	var lane_count: int = 3
-	if lane_manager != null and is_instance_valid(lane_manager):
-		lane_count = int(lane_manager.THREAT_COUNT)
+	if zone_manager != null and is_instance_valid(zone_manager):
+		lane_count = int(zone_manager.THREAT_COUNT)
 	var authority_budget: int = lane_count
 	if not snapshot.is_empty():
 		authority_budget = int(snapshot.get("attack_authority_budget", snapshot.get("authority_budget", authority_budget)))
@@ -879,15 +879,15 @@ func _resolve_runtime_authority_budget(phase: Dictionary = {}, snapshot: Diction
 
 
 func _apply_attack_authority_budget(snapshot: Dictionary = {}, phase: Dictionary = {}) -> void:
-	if lane_manager == null or not is_instance_valid(lane_manager):
+	if zone_manager == null or not is_instance_valid(zone_manager):
 		return
-	if not lane_manager.has_method("set_attack_authority_budget"):
+	if not zone_manager.has_method("set_attack_authority_budget"):
 		return
 	var resolved_budget: int = _resolve_runtime_authority_budget(phase, snapshot)
 	if resolved_budget == _active_attack_authority_budget:
 		return
 	_active_attack_authority_budget = resolved_budget
-	lane_manager.call("set_attack_authority_budget", _active_attack_authority_budget)
+	zone_manager.call("set_attack_authority_budget", _active_attack_authority_budget)
 
 
 func _initialize_ui() -> void:
@@ -979,7 +979,7 @@ func _update_timers(delta: float) -> void:
 	_update_tempo_state()
 
 	# Vectorized timer updates for performance
-	var threat_count: int = lane_manager.THREAT_COUNT if lane_manager else 8
+	var threat_count: int = zone_manager.THREAT_COUNT if zone_manager else 8
 	for i in range(threat_count):
 		if _ring_highlight_timers[i] > 0.0:
 			_ring_highlight_timers[i] = max(_ring_highlight_timers[i] - delta, 0.0)
@@ -1241,8 +1241,8 @@ func _resume_song_combat_runtime_from_reward(clear_live_queue: bool = false) -> 
 	if _escalation_director != null:
 		_escalation_director.resume()
 	_rehydrate_song_pressure_after_reward()
-	if lane_manager != null and is_instance_valid(lane_manager):
-		lane_manager.start_song_cycle()
+	if zone_manager != null and is_instance_valid(zone_manager):
+		zone_manager.start_song_cycle()
 	_hide_live_reward_shell()
 	_reset_pending_reward_state(clear_live_queue)
 	_refresh_song_controls_text()
@@ -1251,9 +1251,9 @@ func _resume_song_combat_runtime_from_reward(clear_live_queue: bool = false) -> 
 func _rehydrate_song_pressure_after_reward() -> void:
 	if not _song_mode or _run_finished:
 		return
-	if lane_manager == null or not is_instance_valid(lane_manager):
+	if zone_manager == null or not is_instance_valid(zone_manager):
 		return
-	if lane_manager.alive_count() > 0:
+	if zone_manager.alive_count() > 0:
 		return
 	if _song_phase_index < 0 or _song_phase_index >= _song_phases.size():
 		return
@@ -1267,28 +1267,28 @@ func _rehydrate_song_pressure_after_reward() -> void:
 
 
 func _resolve_song_empty_lane_near_player() -> int:
-	if lane_manager == null:
+	if zone_manager == null:
 		return 2 # East fallback
 
 	var player_lane: int = _get_player_focus_lane()
-	var total_lanes: int = int(lane_manager.THREAT_COUNT)
+	var total_lanes: int = int(zone_manager.THREAT_COUNT)
 
 	# Priority 1: Current lane if empty
-	if lane_manager.call("is_lane_empty", player_lane):
+	if zone_manager.call("is_lane_empty", player_lane):
 		return player_lane
 
 	# Priority 2: Immediate adjacent lanes (8-way circle)
 	var left_adj: int = (player_lane - 1 + total_lanes) % total_lanes
 	var right_adj: int = (player_lane + 1) % total_lanes
 
-	if lane_manager.call("is_lane_empty", left_adj):
+	if zone_manager.call("is_lane_empty", left_adj):
 		return left_adj
-	if lane_manager.call("is_lane_empty", right_adj):
+	if zone_manager.call("is_lane_empty", right_adj):
 		return right_adj
 
 	# Priority 3: Any empty lane
 	for i in range(total_lanes):
-		if lane_manager.call("is_lane_empty", i):
+		if zone_manager.call("is_lane_empty", i):
 			return i
 
 	return player_lane # Fallback to player lane if everything is full
@@ -1315,10 +1315,10 @@ func _lane_cardinal_token(lane: int) -> String:
 
 
 func _song_reserve_count() -> int:
-	if lane_manager != null and lane_manager.has_method("alive_count"):
+	if zone_manager != null and zone_manager.has_method("alive_count"):
 		# In the new model, 'reserve' count is basically (total alive - strikers).
-		var total = int(lane_manager.call("alive_count"))
-		var strikers = int(lane_manager.call("alive_striker_count"))
+		var total = int(zone_manager.call("alive_count"))
+		var strikers = int(zone_manager.call("alive_striker_count"))
 		return max(0, total - strikers)
 	return 0
 
@@ -1397,10 +1397,10 @@ func _current_void_elapsed_seconds() -> float:
 
 
 func _update_presentation_layers(delta: float) -> void:
-	if _combat_visual_rig != null and is_instance_valid(_combat_visual_rig) and lane_manager != null:
-		_combat_visual_rig.global_position = lane_manager.call("get_player_pos")
-		if player_combat != null and player_combat.has_method("sync_presentation_facing_with_lane_manager"):
-			player_combat.call("sync_presentation_facing_with_lane_manager", lane_manager)
+	if _combat_visual_rig != null and is_instance_valid(_combat_visual_rig) and zone_manager != null:
+		_combat_visual_rig.global_position = zone_manager.call("get_player_pos")
+		if player_combat != null and player_combat.has_method("sync_presentation_facing_with_zone_manager"):
+			player_combat.call("sync_presentation_facing_with_zone_manager", zone_manager)
 	if _timing_circle_container != null:
 		_update_timing_ring_proximity(delta)
 		if _presentation_runtime != null and player_combat != null:
@@ -1502,10 +1502,10 @@ func _ensure_song_runtime_active() -> void:
 
 	if _escalation_director != null:
 		_escalation_director.resume()
-	if lane_manager != null and is_instance_valid(lane_manager):
-		if not lane_manager.is_combat_running() or lane_manager.is_song_cycle_stalled():
-			lane_manager.start_song_cycle()
-		if lane_manager.alive_count() <= 0:
+	if zone_manager != null and is_instance_valid(zone_manager):
+		if not zone_manager.is_combat_running() or zone_manager.is_song_cycle_stalled():
+			zone_manager.start_song_cycle()
+		if zone_manager.alive_count() <= 0:
 			_rehydrate_song_pressure_after_reward()
 
 
@@ -1583,8 +1583,8 @@ func _update_timing_debug() -> void:
 
 
 func _recover_stalled_cycles() -> void:
-	if not _song_boss_triggered and lane_manager.is_combat_running() and lane_manager.is_song_cycle_stalled() and lane_manager.alive_count() > 0:
-		lane_manager.start_song_cycle()
+	if not _song_boss_triggered and zone_manager.is_combat_running() and zone_manager.is_song_cycle_stalled() and zone_manager.alive_count() > 0:
+		zone_manager.start_song_cycle()
 
 
 func _update_boss_race(delta: float) -> void:
@@ -1599,7 +1599,7 @@ func _update_boss_race(delta: float) -> void:
 func _update_timing_ring_proximity(delta: float) -> void:
 	_presentation_controller.update_timing_ring_proximity(
 		_active_encounter,
-		lane_manager,
+		zone_manager,
 		player_combat,
 		_song_conductor,
 		_timing_rings_cache,
@@ -1620,7 +1620,7 @@ func _update_lane_visual_states() -> void:
 	var critical_peak: float = 0.0
 	_critical_threat_lane = -1
 
-	for lane in range(lane_manager.THREAT_COUNT if lane_manager else 8):
+	for lane in range(zone_manager.THREAT_COUNT if zone_manager else 8):
 		var intercept_dist: float = _lane_intercept_distance(lane)
 		if intercept_dist <= 0.0:
 			continue
@@ -1644,7 +1644,7 @@ func _update_lane_visual_states() -> void:
 			focus_alpha = COMBAT_FEEL_CONTENT.FOCAL_MARKER_ACTIVE_ALPHA
 			focus_scale = 1.08
 
-		var proj = lane_manager.get_projectile(lane)
+		var proj = zone_manager.get_projectile(lane)
 		if proj != null and not proj.is_resolved and not proj.is_reflected:
 			var p: float = proj.progress
 			var telegraph_profile: Dictionary = proj.telegraph_profile
@@ -2920,7 +2920,7 @@ func _setup_presentation_runtime() -> void:
 		_timing_circle_container,
 		_attack_fx_container,
 		player_combat,
-		lane_manager,
+		zone_manager,
 		ui_layer,
 		_enemy_markers_by_id,
 		_ring_highlight_timers,
@@ -3149,7 +3149,7 @@ func _setup_vessel_modifier_director() -> void:
 	_vessel_modifier_director = VESSEL_MODIFIER_DIRECTOR.new()
 	_vessel_modifier_director.name = "VesselModifierDirector"
 	add_child(_vessel_modifier_director)
-	_vessel_modifier_director.bind_runtime(lane_manager)
+	_vessel_modifier_director.bind_runtime(zone_manager)
 
 
 func _setup_performance_hud() -> void:
@@ -3266,24 +3266,24 @@ func _connect_eventbus() -> void:
 	EventBus.quig_narrative_triggered.connect(_on_quig_narrative_triggered)
 
 
-func _setup_lane_manager() -> void:
-	lane_manager.setup_layout(get_viewport_rect().size)
+func _setup_zone_manager() -> void:
+	zone_manager.setup_layout(get_viewport_rect().size)
 
-	if not lane_manager.load_scene():
-		push_error("LaneManager failed to load projectile scene.")
+	if not zone_manager.load_scene():
+		push_error("ZoneManager failed to load projectile scene.")
 		return
 
-	lane_manager.combat_scene = self
-	if lane_manager.has_method("set_attack_authority_budget"):
-		_active_attack_authority_budget = int(lane_manager.THREAT_COUNT)
-		lane_manager.call("set_attack_authority_budget", _active_attack_authority_budget)
+	zone_manager.combat_scene = self
+	if zone_manager.has_method("set_attack_authority_budget"):
+		_active_attack_authority_budget = int(zone_manager.THREAT_COUNT)
+		zone_manager.call("set_attack_authority_budget", _active_attack_authority_budget)
 
 
 func _setup_player_combat() -> void:
 	# Keep player silhouette above timing sigil visuals for readability.
 	player_combat.z_index = 25
 	if player_combat.has_method("setup"):
-		player_combat.call("setup", lane_manager, combat_meter)
+		player_combat.call("setup", zone_manager, combat_meter)
 
 
 func _start_song_run() -> void:
@@ -3362,10 +3362,10 @@ func _start_regular_level(level_index: int, reset_hp: bool) -> void:
 	_status_marker_overrides.clear()
 	if _song_mode and not _is_boss_encounter:
 		_clear_song_enemy_tracking()
-	if lane_manager != null and lane_manager.has_method("stop"):
-		lane_manager.stop()
-	lane_manager.set_song_mode_enabled(true)
-	_active_attack_authority_budget = int(lane_manager.THREAT_COUNT)
+	if zone_manager != null and zone_manager.has_method("stop"):
+		zone_manager.stop()
+	zone_manager.set_song_mode_enabled(true)
+	_active_attack_authority_budget = int(zone_manager.THREAT_COUNT)
 	_apply_attack_authority_budget()
 
 	_base_difficulty_modifiers = Dictionary(level_data.get("difficulty_modifiers", {}))
@@ -3405,7 +3405,7 @@ func _start_regular_level(level_index: int, reset_hp: bool) -> void:
 		_escalation_director.start(_song_level_start_time)
 	_rebuild_music_driven_difficulty()
 
-	lane_manager.set_song_mode_enabled(true)
+	zone_manager.set_song_mode_enabled(true)
 
 	if _song_timer_label != null:
 		_song_timer_label.visible = true
@@ -3457,8 +3457,8 @@ func _on_regular_level_complete() -> void:
 
 	# Stop combat, pacing, and song transport.
 	_set_song_paused(true)
-	if lane_manager != null and lane_manager.has_method("stop"):
-		lane_manager.stop()
+	if zone_manager != null and zone_manager.has_method("stop"):
+		zone_manager.stop()
 	if _escalation_director != null:
 		_escalation_director.pause()
 	_stop_song_conductor()
@@ -3995,11 +3995,11 @@ func _enter_song_phase(new_idx: int) -> void:
 		profile_name = _active_encounter["escalation_profile"]
 	if profile_name != null and COMBAT_CONTENT.ESCALATION_PROFILES.has(profile_name):
 		var profile = COMBAT_CONTENT.ESCALATION_PROFILES[profile_name]
-		if lane_manager != null:
+		if zone_manager != null:
 			if profile.has("cycle_interval"):
-				lane_manager.set_cycle_interval(profile["cycle_interval"])
+				zone_manager.set_cycle_interval(profile["cycle_interval"])
 			if profile.has("fire_stagger"):
-				lane_manager.set_fire_stagger(profile["fire_stagger"])
+				zone_manager.set_fire_stagger(profile["fire_stagger"])
 
 	_apply_song_phase_cadence(new_phase, _song_section_spawn_mult)
 	_apply_attack_authority_budget(_latest_ecology_snapshot, new_phase)
@@ -4026,9 +4026,9 @@ func _place_song_enemy_data(lane: int, enemy_data: Dictionary) -> void:
 
 	# LaneManager handles internal orbiting if the active attack budget is full.
 	# It also handles ID generation if needed.
-	lane_manager.set_enemy(lane, seeded_enemy)
+	zone_manager.set_enemy(lane, seeded_enemy)
 
-	var enemies: Dictionary = lane_manager.call("get_all_enemies")
+	var enemies: Dictionary = zone_manager.call("get_all_enemies")
 	var enemy_id: int = int(seeded_enemy.get("id", -1))
 	if not enemies.has(enemy_id):
 		enemy_id = _resolve_newest_untracked_enemy_id(enemies)
@@ -4049,8 +4049,8 @@ func _place_song_enemy_data(lane: int, enemy_data: Dictionary) -> void:
 	
 	_enemy_markers_by_id[enemy_id] = marker_data
 
-	if not lane_manager.is_combat_running():
-		lane_manager.start_song_cycle()
+	if not zone_manager.is_combat_running():
+		zone_manager.start_song_cycle()
 
 func _offer_song_phase_reward(reward_pool: Array) -> void:
 	if reward_pool.is_empty():
@@ -4086,14 +4086,14 @@ func _trigger_boss_final_movement() -> void:
 	if _escalation_director != null:
 		_escalation_director.stop()
 	_latest_ecology_snapshot.clear()
-	if lane_manager != null and is_instance_valid(lane_manager) and lane_manager.has_method("set_attack_authority_budget"):
-		_active_attack_authority_budget = int(lane_manager.THREAT_COUNT)
-		lane_manager.call("set_attack_authority_budget", _active_attack_authority_budget)
+	if zone_manager != null and is_instance_valid(zone_manager) and zone_manager.has_method("set_attack_authority_budget"):
+		_active_attack_authority_budget = int(zone_manager.THREAT_COUNT)
+		zone_manager.call("set_attack_authority_budget", _active_attack_authority_budget)
 	_boss_hp_threshold_fired = false
 	_boss_decree_timeline_active = false
 	_boss_presence_timer = 0.0
 	COMBAT_TRANSITION_STATE.prepare_boss_handoff(
-		lane_manager,
+		zone_manager,
 		Callable(self, "_clear_mastery_context_cache"),
 		Callable(self, "_stop_song_conductor")
 	)
@@ -4101,8 +4101,8 @@ func _trigger_boss_final_movement() -> void:
 	# chorus — so the first sovereign feels like a shift in register, not just more of
 	# the same. Phase 2 and the 50%-HP escalation accelerate from here.
 	# Wide stagger (0.54) keeps lanes separated — each sovereign arrives as its own event.
-	lane_manager.set_cycle_interval(1.05)
-	lane_manager.set_fire_stagger(0.54)
+	zone_manager.set_cycle_interval(1.05)
+	zone_manager.set_fire_stagger(0.54)
 
 	# Start the boss climax track. This stops the region run song and becomes the
 	# damage-race timer — kill the boss before the boss track ends or lose.
@@ -4238,9 +4238,9 @@ func _on_conductor_accent_fired() -> void:
 	EventBus.emit_signal("screen_flash", Color(1.0, 1.0, 1.0, 0.05), 0.05)
 	EventBus.emit_signal("screen_shake", 1.5 * accent_burst_strength, 0.06)
 
-	if lane_manager != null and is_instance_valid(lane_manager):
+	if zone_manager != null and is_instance_valid(zone_manager):
 		for _i in range(maxi(int(round(accent_burst_strength)), 1)):
-			lane_manager.trigger_accent_burst()
+			zone_manager.trigger_accent_burst()
 	
 	# Small HUD pulse feedback for the accent
 	if _presentation_runtime != null:
@@ -4372,7 +4372,7 @@ func _on_boss_music_finished() -> void:
 	if _run_finished:
 		return
 	# Song ended while boss still lives — player loses.
-	lane_manager.stop()
+	zone_manager.stop()
 	if player_combat != null and player_combat.has_method("set_combat_enabled"):
 		player_combat.call("set_combat_enabled", false)
 	_show_feedback("THE SONG DEVOURED YOU", Color(1.0, 0.28, 0.22, 1.0), 0.80)
@@ -4577,7 +4577,7 @@ func _begin_dev_harness_autoquit() -> void:
 
 
 func _run_dev_harness_control_sequence() -> void:
-	if lane_manager == null or player_combat == null:
+	if zone_manager == null or player_combat == null:
 		push_warning("CONTROL_FOCUS_SEQUENCE FAIL missing combat runtime")
 		return
 	if not player_combat.has_method("debug_force_focus_and_action"):
@@ -4585,14 +4585,14 @@ func _run_dev_harness_control_sequence() -> void:
 		return
 
 	print("CONTROL_FOCUS_SEQUENCE BEGIN")
-	lane_manager.stop()
-	if lane_manager.has_method("set_song_mode_enabled"):
-		lane_manager.call("set_song_mode_enabled", false)
-	if lane_manager.has_method("set_attack_authority_budget"):
-		lane_manager.call("set_attack_authority_budget", lane_manager.THREAT_COUNT)
+	zone_manager.stop()
+	if zone_manager.has_method("set_song_mode_enabled"):
+		zone_manager.call("set_song_mode_enabled", false)
+	if zone_manager.has_method("set_attack_authority_budget"):
+		zone_manager.call("set_attack_authority_budget", zone_manager.THREAT_COUNT)
 
-	for lane in range(lane_manager.THREAT_COUNT):
-		lane_manager.call("set_enemy", lane, _build_debug_control_enemy(lane))
+	for lane in range(zone_manager.THREAT_COUNT):
+		zone_manager.call("set_enemy", lane, _build_debug_control_enemy(lane))
 
 	var steps: Array[Dictionary] = [
 		{"lane": 0, "action": "attack", "threshold": 0.99, "label": "N_ATTACK", "expect_projectile_cleared": true},
@@ -4617,7 +4617,7 @@ func _run_dev_harness_control_sequence() -> void:
 		await get_tree().create_timer(0.26).timeout
 		var focused_lane: int = _get_player_focus_lane()
 		var expect_cleared: bool = bool(step.get("expect_projectile_cleared", true))
-		var projectile_cleared: bool = lane_manager.call("get_projectile", lane) == null
+		var projectile_cleared: bool = zone_manager.call("get_projectile", lane) == null
 		if expect_cleared and not projectile_cleared:
 			projectile_cleared = await _debug_wait_for_projectile_clear(lane, 0.35)
 		var step_passed: bool = action_ok and focused_lane == lane and (projectile_cleared or not expect_cleared)
@@ -4658,20 +4658,20 @@ func _build_debug_control_enemy(lane: int) -> Dictionary:
 
 
 func _debug_fire_control_lane(lane: int) -> bool:
-	for clear_lane in range(lane_manager.THREAT_COUNT if lane_manager != null else 8):
-		var projectile = lane_manager.call("get_projectile", clear_lane)
+	for clear_lane in range(zone_manager.THREAT_COUNT if zone_manager != null else 8):
+		var projectile = zone_manager.call("get_projectile", clear_lane)
 		if projectile != null and is_instance_valid(projectile):
 			projectile.call("resolve", "debug_reset")
-	if not lane_manager.has_method("debug_fire_lane"):
+	if not zone_manager.has_method("debug_fire_lane"):
 		return false
-	var fired_v: Variant = lane_manager.call("debug_fire_lane", lane)
+	var fired_v: Variant = zone_manager.call("debug_fire_lane", lane)
 	return fired_v == true
 
 
 func _debug_wait_for_projectile_progress(lane: int, threshold: float, max_wait: float) -> bool:
 	var elapsed: float = 0.0
 	while elapsed < max_wait:
-		var projectile = lane_manager.call("get_projectile", lane)
+		var projectile = zone_manager.call("get_projectile", lane)
 		if projectile != null and is_instance_valid(projectile):
 			if not bool(projectile.get("is_resolved")) and float(projectile.get("progress")) >= threshold:
 				return true
@@ -4683,7 +4683,7 @@ func _debug_wait_for_projectile_progress(lane: int, threshold: float, max_wait: 
 func _debug_wait_for_projectile_clear(lane: int, max_wait: float) -> bool:
 	var elapsed: float = 0.0
 	while elapsed < max_wait:
-		var projectile = lane_manager.call("get_projectile", lane)
+		var projectile = zone_manager.call("get_projectile", lane)
 		if projectile == null or not is_instance_valid(projectile):
 			return true
 		await get_tree().create_timer(0.02).timeout
@@ -4717,8 +4717,8 @@ func _debug_apply_boss_threshold_preview() -> void:
 			_performance_reward_director.call("notify_boss_threshold", "sovereign_unleash", 8.0, "BOSS BREAK")
 		_presentation_runtime.apply_impact_profile(COMBAT_IMPACT_FEEDBACK.build_boss_threshold_profile())
 		_trigger_boss_threshold_spectacle()
-		lane_manager.set_cycle_interval(0.60)
-		lane_manager.set_fire_stagger(0.44)
+		zone_manager.set_cycle_interval(0.60)
+		zone_manager.set_fire_stagger(0.44)
 
 
 func _should_use_dev_generated_boss_encounter() -> bool:
@@ -4815,7 +4815,7 @@ func _build_arena_visuals() -> void:
 	var refs: Dictionary = _presentation_controller.build_arena_visuals(
 		self,
 		_active_encounter,
-		lane_manager,
+		zone_manager,
 		player_combat,
 		_all_enemies_by_id,
 		_enemy_phase_by_id,
@@ -4851,7 +4851,7 @@ func _build_enemy_marker(enemy_id: int, lane: int, enemy: Dictionary, marker_siz
 		enemy,
 		marker_size,
 		base_color,
-		lane_manager,
+		zone_manager,
 		_texture_cache
 	)
 
@@ -4859,7 +4859,7 @@ func _update_enemy_marker_threat_states() -> void:
 	_presentation_controller.update_enemy_marker_threat_states(
 		_enemy_markers_by_id,
 		_all_enemies_by_id,
-		lane_manager
+		zone_manager
 	)
 
 
@@ -4868,7 +4868,7 @@ func _draw_timing_circles() -> void:
 		_timing_circle_container,
 		_timing_rings_cache,
 		_active_encounter,
-		lane_manager,
+		zone_manager,
 		player_combat
 	)
 
@@ -4921,7 +4921,7 @@ func _start_current_phase() -> void:
 		_show_feedback(str(phase_intro_texts[_current_phase_index]), Color(0.92, 0.88, 0.74, 1.0), 0.45)
 
 	var phase_enemies: Array = phases[_current_phase_index]
-	var lane_count: int = lane_manager.THREAT_COUNT if lane_manager != null else 8
+	var lane_count: int = zone_manager.THREAT_COUNT if zone_manager != null else 8
 	var lane_array: Array = []
 	for _i in range(lane_count):
 		lane_array.append({})
@@ -4931,7 +4931,7 @@ func _start_current_phase() -> void:
 		if lane >= 0 and lane < lane_count:
 			lane_array[lane] = enemy.duplicate(true)
 
-	lane_manager.start_combat(lane_array)
+	zone_manager.start_combat(lane_array)
 
 
 func _advance_phase() -> void:
@@ -4956,8 +4956,8 @@ func _advance_phase() -> void:
 		EventBus.emit_signal("screen_shake", 5.0, 0.30)
 		# Three-lane phase — tighten the fire cadence to 0.78 s.
 		# Tighter stagger (0.45) brings all three sovereigns into quicker succession.
-		lane_manager.set_cycle_interval(0.78)
-		lane_manager.set_fire_stagger(0.45)
+		zone_manager.set_cycle_interval(0.78)
+		zone_manager.set_fire_stagger(0.45)
 
 	var timer: SceneTreeTimer = get_tree().create_timer(pause_duration)
 	await timer.timeout
@@ -4976,8 +4976,8 @@ func _complete_current_encounter() -> void:
 	_combat_finished = true
 	_phase_transitioning = false
 
-	if lane_manager != null and lane_manager.has_method("stop"):
-		lane_manager.stop()
+	if zone_manager != null and zone_manager.has_method("stop"):
+		zone_manager.stop()
 
 	if player_combat != null and player_combat.has_method("set_combat_enabled"):
 		player_combat.call("set_combat_enabled", false)
@@ -5127,8 +5127,8 @@ func _finish_run(victory: bool) -> void:
 	_hide_song_hud()
 	_hide_boss_bar()
 
-	if lane_manager != null and lane_manager.has_method("stop"):
-		lane_manager.stop()
+	if zone_manager != null and zone_manager.has_method("stop"):
+		zone_manager.stop()
 
 	if player_combat != null and player_combat.has_method("set_combat_enabled"):
 		player_combat.call("set_combat_enabled", false)
@@ -5187,7 +5187,7 @@ func _show_boss_intro(boss_name: String) -> void:
 	EventBus.emit_signal("screen_flash", flash_1.color, flash_1.duration)
 	EventBus.emit_signal("screen_shake", 2.2, 0.16)
 	
-	for _intro_lane in range(lane_manager.THREAT_COUNT if lane_manager else 8):
+	for _intro_lane in range(zone_manager.THREAT_COUNT if zone_manager else 8):
 		_presentation_runtime.highlight_timing_ring(_intro_lane, Color(0.92, 0.42, 0.12, 1.0), 6.2)
 
 	_title_card.text = boss_name
@@ -5234,7 +5234,7 @@ func _trigger_boss_threshold_spectacle() -> void:
 		"boss_phase": "threshold_50"
 	})
 	_show_feedback(PRESENTATION_TEXT.boss_threshold_break_line(_region_id), Color(0.96, 0.46, 0.14, 1.0), 0.52)
-	for _thresh_lane in range(lane_manager.THREAT_COUNT):
+	for _thresh_lane in range(zone_manager.THREAT_COUNT):
 		_presentation_runtime.highlight_timing_ring(_thresh_lane, Color(0.94, 0.38, 0.08, 1.0), 7.2)
 
 	var flash_1: Dictionary = COMBAT_FEEL_CONSTANTS.get_screen_flash_params("boss_threshold")
@@ -5650,7 +5650,7 @@ func _on_enemy_damaged(enemy_id: int, damage: float) -> void:
 	if lane >= 0:
 		var max_hp: float = float(_enemy_max_hp.get(enemy_id, 0))
 		if max_hp > 0.0:
-			var enemy_data: Dictionary = lane_manager.call("get_enemy_by_id", enemy_id)
+			var enemy_data: Dictionary = zone_manager.call("get_enemy_by_id", enemy_id)
 			var current_hp: float = float(enemy_data.get("hp", 0))
 			if current_hp / max_hp <= ENEMY_LOW_HP_THRESHOLD:
 				var marker_data = _enemy_markers_by_id.get(enemy_id, null)
@@ -5752,7 +5752,7 @@ func _refresh_enemy_marker_health(enemy_id: int) -> void:
 	if lane < 0:
 		return
 	var max_hp: float = maxf(float(_enemy_max_hp.get(enemy_id, 0.0)), 1.0)
-	var enemy_data_v: Dictionary = lane_manager.call("get_enemy", lane)
+	var enemy_data_v: Dictionary = zone_manager.call("get_enemy", lane)
 	var current_hp: float = clampf(float(enemy_data_v.get("hp", 0.0)), 0.0, max_hp)
 	var ratio: float = current_hp / max_hp
 	var track_node = marker_data.get("hp_track")
@@ -5797,10 +5797,10 @@ func _on_boss_damaged(id: int, damage: float, is_threshold_impact: bool) -> void
 
 
 func _on_enemy_status_applied_requested(sector: int, status_id: String, params: Dictionary) -> void:
-	if lane_manager == null: return
+	if zone_manager == null: return
 	var enemy_id: int = _get_enemy_id_for_lane(sector)
 	if enemy_id != -1:
-		lane_manager.call("apply_status_by_id", enemy_id, status_id, params)
+		zone_manager.call("apply_status_by_id", enemy_id, status_id, params)
 
 
 func _on_enemy_defeated(enemy_id: int) -> void:
@@ -5888,8 +5888,8 @@ func _show_dna_feedback(species_id: String, _amount: float, result: Dictionary) 
 
 
 func _resolve_enemy_context(enemy_id: int) -> Dictionary:
-	if lane_manager != null and is_instance_valid(lane_manager) and lane_manager.has_method("get_all_enemies"):
-		var live_enemies: Dictionary = Dictionary(lane_manager.call("get_all_enemies"))
+	if zone_manager != null and is_instance_valid(zone_manager) and zone_manager.has_method("get_all_enemies"):
+		var live_enemies: Dictionary = Dictionary(zone_manager.call("get_all_enemies"))
 		if live_enemies.has(enemy_id):
 			return Dictionary(live_enemies[enemy_id]).duplicate(true)
 	return Dictionary(_all_enemies_by_id.get(enemy_id, {})).duplicate(true)
@@ -5957,7 +5957,7 @@ func _on_slow_motion(requested_scale: float, duration: float) -> void:
 
 
 func _impact_lane_forward(lane: int) -> Vector2:
-	if lane_manager == null or player_combat == null:
+	if zone_manager == null or player_combat == null:
 		return Vector2.RIGHT
 	var start_point: Vector2 = _lane_player_pos()
 	var end_point: Vector2 = _lane_hit_zone_pos(lane)
@@ -5968,28 +5968,28 @@ func _impact_lane_forward(lane: int) -> Vector2:
 
 
 func _impact_pos_lane(lane: int, t: float = 0.52) -> Vector2:
-	if lane_manager == null or player_combat == null:
+	if zone_manager == null or player_combat == null:
 		return Vector2.ZERO
 	return _lane_player_pos().lerp(_lane_hit_zone_pos(lane), t)
 
 
 func _lane_player_pos() -> Vector2:
-	if lane_manager != null and lane_manager.has_method("get_player_pos"):
-		return lane_manager.call("get_player_pos")
+	if zone_manager != null and zone_manager.has_method("get_player_pos"):
+		return zone_manager.call("get_player_pos")
 	if player_combat != null:
 		return player_combat.position
 	return Vector2.ZERO
 
 
 func _lane_hit_zone_pos(lane: int) -> Vector2:
-	if lane_manager != null and lane_manager.has_method("get_threat_hit_zone_pos"):
-		return lane_manager.call("get_threat_hit_zone_pos", lane)
+	if zone_manager != null and zone_manager.has_method("get_threat_hit_zone_pos"):
+		return zone_manager.call("get_threat_hit_zone_pos", lane)
 	return _lane_player_pos() + _lane_direction_fallback(lane) * 110.0
 
 
 func _lane_spawn_pos(lane: int) -> Vector2:
-	if lane_manager != null and lane_manager.has_method("get_threat_spawn_pos"):
-		return lane_manager.call("get_threat_spawn_pos", lane)
+	if zone_manager != null and zone_manager.has_method("get_threat_spawn_pos"):
+		return zone_manager.call("get_threat_spawn_pos", lane)
 	return _lane_player_pos() + _lane_direction_fallback(lane) * 260.0
 
 
@@ -6033,7 +6033,7 @@ func _enemy_is_elite_for_impact(enemy_id: int) -> bool:
 
 
 func _on_attack_timing_early_resolved(lane: int) -> void:
-	var lane_count: int = lane_manager.THREAT_COUNT if lane_manager != null else 8
+	var lane_count: int = zone_manager.THREAT_COUNT if zone_manager != null else 8
 	if lane < 0 or lane >= lane_count:
 		return
 	var fwd: Vector2 = _impact_lane_forward(lane)
@@ -6064,7 +6064,7 @@ func _on_timed_attack_resolved(sector: int, quality: String, damage: float, enem
 	var flat_bonus_effect: Dictionary = _get_growth_effect("timed_attack_bonus_flat")
 	var beat_quality: String = _get_beat_quality_for_action()
 	if not flat_bonus_effect.is_empty() and enemy_id != -1:
-		lane_manager.call("damage_enemy_by_id", enemy_id, float(flat_bonus_effect.get("value", 0.0)))
+		zone_manager.call("damage_enemy_by_id", enemy_id, float(flat_bonus_effect.get("value", 0.0)))
 		_presentation_runtime.spawn_attack_silhouette_to_lane(sector, Color(0.98, 0.70, 0.34, 0.30), 8.0, 0.08, 0.94)
 
 	if quality == "perfect":
@@ -6103,7 +6103,7 @@ func _try_apply_vessel_modifier_on_perfect(origin_lane: int, origin_damage: floa
 		var target_lane: int = int(target_variant)
 		var enemy_id: int = _get_enemy_id_for_lane(target_lane)
 		if enemy_id != -1:
-			lane_manager.call("damage_enemy_by_id", enemy_id, cleave_damage)
+			zone_manager.call("damage_enemy_by_id", enemy_id, cleave_damage)
 		_presentation_runtime.spawn_attack_silhouette_to_lane(target_lane, silhouette_color, 7.0, 0.08, 0.92)
 	_show_feedback(
 		String(plan.get("label", "")),
@@ -6423,7 +6423,7 @@ func _on_support_charge_changed(current: float, maximum: float, active_species_i
 
 
 func _refresh_bonded_creature_render(active_species_id: String = "") -> void:
-	if _bonded_creature_sprite == null or lane_manager == null:
+	if _bonded_creature_sprite == null or zone_manager == null:
 		return
 
 	var species_id: String = active_species_id
@@ -6550,10 +6550,10 @@ func _apply_song_phase_cadence(phase: Dictionary, spawn_mult: float = 1.0) -> vo
 	var final_interval: float = resolved_interval * resonance_cadence * cadence_mult
 	var final_spawn_mult: float = resolved_spawn_mult * hunt_pressure_mult / max(resonance_density, 0.1)
 	
-	if not lane_manager.is_combat_running():
-		lane_manager.start_song_cycle()
-	lane_manager.set_cycle_interval(final_interval * final_spawn_mult)
-	lane_manager.set_fire_stagger(resolved_stagger * stagger_mult)
+	if not zone_manager.is_combat_running():
+		zone_manager.start_song_cycle()
+	zone_manager.set_cycle_interval(final_interval * final_spawn_mult)
+	zone_manager.set_fire_stagger(resolved_stagger * stagger_mult)
 
 
 func _build_music_progression_state() -> Dictionary:
@@ -6695,9 +6695,9 @@ func _apply_difficulty_modifiers_to_runtime() -> void:
 		_escalation_director.call("set_difficulty_modifiers", _difficulty_modifiers)
 	if _performance_reward_director != null and is_instance_valid(_performance_reward_director) and _performance_reward_director.has_method("set_difficulty_modifiers"):
 		_performance_reward_director.call("set_difficulty_modifiers", _difficulty_modifiers)
-	if lane_manager != null and is_instance_valid(lane_manager) and lane_manager.has_method("set_punish_damage_mult"):
+	if zone_manager != null and is_instance_valid(zone_manager) and zone_manager.has_method("set_punish_damage_mult"):
 		var punish_band: Dictionary = Dictionary(_difficulty_modifiers.get("punish_severity", {}))
-		lane_manager.call("set_punish_damage_mult", float(punish_band.get("projectile_damage_mult", 1.0)))
+		zone_manager.call("set_punish_damage_mult", float(punish_band.get("projectile_damage_mult", 1.0)))
 
 
 func _clear_mastery_context_cache() -> void:
@@ -6777,7 +6777,7 @@ func _on_bonded_support_triggered(species_id: String, lane: int, effect_id: Stri
 			"cadence_surge": cadence_surge,
 			"bond_surge": surge_mult > 1.0,
 			"is_hollow_active": str(active_creature.get("species_id", "")) == "bond_remnant",
-			"lane_manager": lane_manager,
+			"zone_manager": zone_manager,
 			"combat_meter": combat_meter,
 			"game_state": GameState
 		}
@@ -6824,7 +6824,7 @@ func _on_tier_changed(new_tier: String, _old_tier: String) -> void:
 
 
 func _get_enemy_id_for_lane(lane: int) -> int:
-	var enemy: Dictionary = lane_manager.call("get_enemy", lane)
+	var enemy: Dictionary = zone_manager.call("get_enemy", lane)
 	if enemy.is_empty():
 		return -1
 	return int(enemy.get("id", -1))

@@ -21,7 +21,7 @@ offset_bottom = 720.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="LaneManager" type="Node2D" parent="." unique_id=1794296682]
+[node name="ZoneManager" type="Node2D" parent="." unique_id=1794296682]
 script = ExtResource("1_7pc1q")
 
 [node name="Enemies" type="Node2D" parent="." unique_id=1524850244]

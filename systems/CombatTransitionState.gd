@@ -5,10 +5,10 @@ extends RefCounted
 # mastery cache clearing and active audio teardown.
 
 
-static func prepare_boss_handoff(lane_manager: Node, clear_mastery: Callable, stop_song_conductor: Callable) -> void:
+static func prepare_boss_handoff(zone_manager: Node, clear_mastery: Callable, stop_song_conductor: Callable) -> void:
 	clear_mastery.call()
-	lane_manager.stop()
-	lane_manager.set_song_mode_enabled(false)
+	zone_manager.stop()
+	zone_manager.set_song_mode_enabled(false)
 	stop_song_conductor.call()
 
 

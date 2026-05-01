@@ -21,12 +21,12 @@ func set_combat_visual_rig(rig: Node) -> void:
 	_combat_visual_rig = rig
 
 
-func _apply_visual_rig_enemy_present_pos(lane: int, baseline: Vector2, lane_manager: Node) -> Vector2:
+func _apply_visual_rig_enemy_present_pos(lane: int, baseline: Vector2, zone_manager: Node) -> Vector2:
 	if _combat_visual_rig == null or not is_instance_valid(_combat_visual_rig):
 		return baseline
 	if not _combat_visual_rig.has_method("resolve_enemy_marker_world_pos"):
 		return baseline
-	return _combat_visual_rig.call("resolve_enemy_marker_world_pos", lane, baseline, lane_manager)
+	return _combat_visual_rig.call("resolve_enemy_marker_world_pos", lane, baseline, zone_manager)
 
 
 func _get_shared_noise_tex() -> NoiseTexture2D:
@@ -425,7 +425,7 @@ func draw_timing_circles(
 	timing_circle_container: Node2D,
 	timing_rings_cache: Array[Dictionary],
 	active_encounter: Dictionary,
-	lane_manager: Node,
+	zone_manager: Node,
 	player_combat: Node2D
 ) -> void:
 	for child in timing_circle_container.get_children():
@@ -459,7 +459,7 @@ func draw_timing_circles(
 	timing_circle_container.add_child(sigil_group)
 
 	# 2. GRAVE RINGS (Directional Threat Indicators: 'Manga Shards')
-	for i in range(lane_manager.THREAT_COUNT if lane_manager else 8):
+	for i in range(zone_manager.THREAT_COUNT if zone_manager else 8):
 		var grave_ring := Node2D.new()
 		grave_ring.name = "GraveRing_%d" % i
 		grave_ring.visible = false
@@ -503,7 +503,7 @@ func draw_timing_circles(
 		timing_circle_container.add_child(grave_ring)
 
 	# 3. GHOST THREADS (Visual tether from player to threat)
-	for i in range(lane_manager.THREAT_COUNT if lane_manager else 8):
+	for i in range(zone_manager.THREAT_COUNT if zone_manager else 8):
 		var glow := Line2D.new()
 		glow.name = "GlowThread_%d" % i
 		glow.width = 4.5
@@ -699,7 +699,7 @@ func _make_disc_polygon(radius: float, color: Color, jitter: float = 0.0) -> Pol
 
 func update_timing_ring_proximity(
 	active_encounter: Dictionary,
-	lane_manager: Node,
+	zone_manager: Node,
 	player_combat: Node2D,
 	song_conductor: Node,
 	timing_rings_cache: Array[Dictionary],
@@ -747,13 +747,13 @@ func update_timing_ring_proximity(
 	if player_combat.has_method("get_attack_lock_targets"):
 		attack_lock_targets = player_combat.call("get_attack_lock_targets")
 
-	for i in range(lane_manager.THREAT_COUNT if lane_manager else 8):
+	for i in range(zone_manager.THREAT_COUNT if zone_manager else 8):
 		var grave_node: Node2D = root.get_parent().get_node_or_null("GraveRing_%d" % i)
 		var thread_node: Line2D = root.get_parent().get_node_or_null("GhostThread_%d" % i)
 		var glow_node: Line2D = root.get_parent().get_node_or_null("GlowThread_%d" % i)
 		
 		# Identify if this lane has a THREAT
-		var proj = lane_manager.get_projectile(i)
+		var proj = zone_manager.get_projectile(i)
 		var is_threat: bool = (proj != null and not bool(proj.get("is_resolved")))
 		
 		var lock_target: Dictionary = {}
@@ -892,7 +892,7 @@ func update_timing_ring_proximity(
 func build_arena_visuals(
 	host: Node2D,
 	active_encounter: Dictionary,
-	lane_manager: Node,
+	zone_manager: Node,
 	player_combat: Node2D,
 	all_enemies_by_id: Dictionary,
 	enemy_phase_by_id: Dictionary,
@@ -931,16 +931,16 @@ func build_arena_visuals(
 	var lane_color: Color = biome.get("lane_color", Color(0.30, 0.30, 0.35, 1.0))
 	var inactive_enemy_color: Color = biome.get("enemy_inactive_color", Color(0.40, 0.20, 0.20, 0.5))
 
-	for lane in range(lane_manager.THREAT_COUNT):
+	for lane in range(zone_manager.THREAT_COUNT):
 		var lane_group := Node2D.new()
 		lane_group.name = "LaneGroup_%d" % lane
 		lane_marker_container.add_child(lane_group)
 
 		var lane_strip := TextureRect.new()
 		lane_strip.name = "Strip"
-		lane_strip.size = Vector2(_lane_intercept_distance(lane_manager, lane, player_combat), COMBAT_FEEL_CONTENT.LANE_BAND_HEIGHT)
-		lane_strip.position = _radial_lane_strip_position(lane_manager, lane, lane_strip.size, player_combat)
-		lane_strip.rotation = _lane_direction(lane_manager, lane, player_combat).angle()
+		lane_strip.size = Vector2(_lane_intercept_distance(zone_manager, lane, player_combat), COMBAT_FEEL_CONTENT.LANE_BAND_HEIGHT)
+		lane_strip.position = _radial_lane_strip_position(zone_manager, lane, lane_strip.size, player_combat)
+		lane_strip.rotation = _lane_direction(zone_manager, lane, player_combat).angle()
 		lane_strip.pivot_offset = lane_strip.size * 0.5
 		lane_strip.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		lane_strip.stretch_mode = TextureRect.STRETCH_SCALE
@@ -1015,8 +1015,8 @@ void fragment() {
 
 		var focal_root := Node2D.new()
 		focal_root.name = "FocalMarker_%d" % lane
-		focal_root.position = _lane_hit_zone_pos(lane_manager, lane, player_combat)
-		focal_root.rotation = _lane_direction(lane_manager, lane, player_combat).angle()
+		focal_root.position = _lane_hit_zone_pos(zone_manager, lane, player_combat)
+		focal_root.rotation = _lane_direction(zone_manager, lane, player_combat).angle()
 		lane_marker_container.add_child(focal_root)
 		lane_hit_focus[lane] = focal_root
 
@@ -1039,7 +1039,7 @@ void fragment() {
 					enemy,
 					marker_size_enemy,
 					inactive_enemy_color,
-					lane_manager,
+					zone_manager,
 					texture_cache,
 					player_combat
 				)
@@ -1052,7 +1052,7 @@ void fragment() {
 				enemy,
 				marker_size_enemy,
 				inactive_enemy_color,
-				lane_manager,
+				zone_manager,
 				texture_cache
 			)
 			enemy_marker_container.add_child(marker_data["root"])
@@ -1111,7 +1111,7 @@ func _build_enemy_marker(
 	enemy: Dictionary,
 	marker_size: float,
 	base_color: Color,
-	lane_manager: Node,
+	zone_manager: Node,
 	texture_cache: Dictionary,
 	player_node: Node2D = null
 ) -> Dictionary:
@@ -1126,7 +1126,7 @@ func _build_enemy_marker(
 	var is_elite_marker: bool = is_boss_marker or grade_id == "alpha" or is_tagged_elite
 	var marker_root := Node2D.new()
 	marker_root.name = "Enemy_%d" % enemy_id
-	marker_root.position = _lane_enemy_pos(lane_manager, lane, player_node)
+	marker_root.position = _lane_enemy_pos(zone_manager, lane, player_node)
 
 	# GROUND SHADOW: Ground the smaller enemy marker
 	var shadow := Polygon2D.new()
@@ -1324,73 +1324,73 @@ func _build_enemy_marker(
 	}
 
 
-func _lane_enemy_pos(lane_manager: Node, lane: int, player_node: Node2D = null) -> Vector2:
+func _lane_enemy_pos(zone_manager: Node, lane: int, player_node: Node2D = null) -> Vector2:
 	var baseline: Vector2 = Vector2.ZERO
-	if lane_manager != null and lane_manager.has_method("get_enemy_pos"):
+	if zone_manager != null and zone_manager.has_method("get_enemy_pos"):
 		var enemy_id: int = -1
-		if lane_manager.has_method("get_enemy"):
-			var enemy_data: Variant = lane_manager.call("get_enemy", lane)
+		if zone_manager.has_method("get_enemy"):
+			var enemy_data: Variant = zone_manager.call("get_enemy", lane)
 			if enemy_data is Dictionary:
 				enemy_id = int(enemy_data.get("id", -1))
 		if enemy_id >= 0:
-			baseline = lane_manager.call("get_enemy_pos", enemy_id)
-			return _apply_visual_rig_enemy_present_pos(lane, baseline, lane_manager)
-	if lane_manager != null and lane_manager.has_method("get_threat_spawn_pos"):
-		baseline = lane_manager.call("get_threat_spawn_pos", lane)
-		return _apply_visual_rig_enemy_present_pos(lane, baseline, lane_manager)
+			baseline = zone_manager.call("get_enemy_pos", enemy_id)
+			return _apply_visual_rig_enemy_present_pos(lane, baseline, zone_manager)
+	if zone_manager != null and zone_manager.has_method("get_threat_spawn_pos"):
+		baseline = zone_manager.call("get_threat_spawn_pos", lane)
+		return _apply_visual_rig_enemy_present_pos(lane, baseline, zone_manager)
 	
-	var p_pos: Vector2 = player_node.position if player_node != null else _lane_player_pos(lane_manager)
+	var p_pos: Vector2 = player_node.position if player_node != null else _lane_player_pos(zone_manager)
 	baseline = p_pos + _lane_direction_fallback(lane) * 260.0
-	return _apply_visual_rig_enemy_present_pos(lane, baseline, lane_manager)
+	return _apply_visual_rig_enemy_present_pos(lane, baseline, zone_manager)
 
 
-func _lane_hit_zone_pos(lane_manager: Node, lane: int, player_node: Node2D = null) -> Vector2:
-	if lane_manager != null and lane_manager.has_method("get_threat_hit_zone_pos"):
-		return lane_manager.call("get_threat_hit_zone_pos", lane)
+func _lane_hit_zone_pos(zone_manager: Node, lane: int, player_node: Node2D = null) -> Vector2:
+	if zone_manager != null and zone_manager.has_method("get_threat_hit_zone_pos"):
+		return zone_manager.call("get_threat_hit_zone_pos", lane)
 	
-	var p_pos: Vector2 = player_node.position if player_node != null else _lane_player_pos(lane_manager)
+	var p_pos: Vector2 = player_node.position if player_node != null else _lane_player_pos(zone_manager)
 	return p_pos + _lane_direction_fallback(lane) * 110.0
 
 
-func _lane_player_pos(lane_manager: Node) -> Vector2:
-	if lane_manager != null and lane_manager.has_method("get_player_pos"):
-		return lane_manager.call("get_player_pos")
+func _lane_player_pos(zone_manager: Node) -> Vector2:
+	if zone_manager != null and zone_manager.has_method("get_player_pos"):
+		return zone_manager.call("get_player_pos")
 	return Vector2.ZERO
 
 
-func _lane_direction(lane_manager: Node, lane: int, player_node: Node2D = null) -> Vector2:
-	var p_pos: Vector2 = player_node.position if player_node != null else _lane_player_pos(lane_manager)
-	var dir: Vector2 = _lane_hit_zone_pos(lane_manager, lane, player_node) - p_pos
+func _lane_direction(zone_manager: Node, lane: int, player_node: Node2D = null) -> Vector2:
+	var p_pos: Vector2 = player_node.position if player_node != null else _lane_player_pos(zone_manager)
+	var dir: Vector2 = _lane_hit_zone_pos(zone_manager, lane, player_node) - p_pos
 	if dir.length_squared() < 1.0:
 		return _lane_direction_fallback(lane)
 	return dir.normalized()
 
 
 func _lane_direction_fallback(lane: int) -> Vector2:
-	# Fallback to the 8-directional mathematical layout if lane_manager is absent
+	# Fallback to the 8-directional mathematical layout if zone_manager is absent
 	var threat_count: float = 8.0
 	var angle: float = (float(lane) / threat_count) * TAU - PI/2.0
 	return Vector2(cos(angle), sin(angle))
 
 
-func _lane_intercept_distance(lane_manager: Node, lane: int, player_node: Node2D = null) -> float:
-	return maxf(_lane_enemy_pos(lane_manager, lane, player_node).distance_to(_lane_hit_zone_pos(lane_manager, lane, player_node)), 1.0)
+func _lane_intercept_distance(zone_manager: Node, lane: int, player_node: Node2D = null) -> float:
+	return maxf(_lane_enemy_pos(zone_manager, lane, player_node).distance_to(_lane_hit_zone_pos(zone_manager, lane, player_node)), 1.0)
 
 
-func _lane_logical_intercept_distance(lane_manager: Node, lane: int, player_node: Node2D = null) -> float:
-	if lane_manager != null and lane_manager.has_method("get_threat_spawn_pos") and lane_manager.has_method("get_threat_hit_zone_pos"):
-		var spawn_v: Variant = lane_manager.call("get_threat_spawn_pos", lane)
-		var hit_v: Variant = lane_manager.call("get_threat_hit_zone_pos", lane)
+func _lane_logical_intercept_distance(zone_manager: Node, lane: int, player_node: Node2D = null) -> float:
+	if zone_manager != null and zone_manager.has_method("get_threat_spawn_pos") and zone_manager.has_method("get_threat_hit_zone_pos"):
+		var spawn_v: Variant = zone_manager.call("get_threat_spawn_pos", lane)
+		var hit_v: Variant = zone_manager.call("get_threat_hit_zone_pos", lane)
 		if spawn_v is Vector2 and hit_v is Vector2:
 			var spawn_pos: Vector2 = spawn_v
 			var hit_pos: Vector2 = hit_v
 			return maxf(spawn_pos.distance_to(hit_pos), 1.0)
-	return _lane_intercept_distance(lane_manager, lane, player_node)
+	return _lane_intercept_distance(zone_manager, lane, player_node)
 
 
-func _radial_lane_strip_position(lane_manager: Node, lane: int, strip_size: Vector2, player_node: Node2D = null) -> Vector2:
-	var hit_zone: Vector2 = _lane_hit_zone_pos(lane_manager, lane, player_node)
-	var enemy_pos: Vector2 = _lane_enemy_pos(lane_manager, lane, player_node)
+func _radial_lane_strip_position(zone_manager: Node, lane: int, strip_size: Vector2, player_node: Node2D = null) -> Vector2:
+	var hit_zone: Vector2 = _lane_hit_zone_pos(zone_manager, lane, player_node)
+	var enemy_pos: Vector2 = _lane_enemy_pos(zone_manager, lane, player_node)
 	var midpoint: Vector2 = hit_zone.lerp(enemy_pos, 0.5)
 	return midpoint - Vector2(strip_size.x * 0.5, strip_size.y * 0.5)
 
@@ -1454,7 +1454,7 @@ func _tune_enemy_silhouette_color(requested: Color, body_color: Color) -> Color:
 func update_enemy_marker_threat_states(
 	enemy_markers_by_id: Dictionary,
 	all_enemies_by_id: Dictionary,
-	lane_manager: Node
+	zone_manager: Node
 ) -> void:
 	for enemy_id in enemy_markers_by_id.keys():
 		var marker_data: Dictionary = enemy_markers_by_id[enemy_id]
@@ -1462,16 +1462,16 @@ func update_enemy_marker_threat_states(
 		if not is_instance_valid(marker_root):
 			continue
 		
-		var resolved_lane: int = _resolve_live_lane_for_enemy(lane_manager, enemy_id)
+		var resolved_lane: int = _resolve_live_lane_for_enemy(zone_manager, enemy_id)
 		
 		# UPDATE POSITION: LaneManager gameplay truth + optional CombatVisualRig presentation anchors.
-		if lane_manager.has_method("get_enemy_pos"):
-			var baseline: Vector2 = lane_manager.get_enemy_pos(enemy_id)
-			marker_root.position = _apply_visual_rig_enemy_present_pos(resolved_lane, baseline, lane_manager)
+		if zone_manager.has_method("get_enemy_pos"):
+			var baseline: Vector2 = zone_manager.get_enemy_pos(enemy_id)
+			marker_root.position = _apply_visual_rig_enemy_present_pos(resolved_lane, baseline, zone_manager)
 
 		# DYNAMIC FACING: All enemies face the Vessel (Player)
-		if lane_manager.has_method("get_player_pos"):
-			var player_pos: Vector2 = lane_manager.get_player_pos()
+		if zone_manager.has_method("get_player_pos"):
+			var player_pos: Vector2 = zone_manager.get_player_pos()
 			var angle_to_player: float = (player_pos - marker_root.global_position).angle()
 			marker_root.rotation = angle_to_player - PI/2 # Align sprite 'up' to player
 		var enemy: Dictionary = all_enemies_by_id.get(enemy_id, {})
@@ -1496,7 +1496,7 @@ func update_enemy_marker_threat_states(
 		var imminent: float = 0.0
 		
 		if lane_for_threat >= 0:
-			var projectile = lane_manager.get_projectile(lane_for_threat)
+			var projectile = zone_manager.get_projectile(lane_for_threat)
 			if projectile != null and not projectile.is_resolved and not projectile.is_reflected and int(projectile.enemy_id) == enemy_id:
 				var telegraph_profile: Dictionary = COMBAT_CONTENT.get_enemy_telegraph_profile(enemy)
 				var warning_bias: float = max(float(telegraph_profile.get("warning_bias", 1.0)), 0.84)
@@ -1513,12 +1513,12 @@ func update_enemy_marker_threat_states(
 		core.color = Color(accent_color.r, accent_color.g, accent_color.b, 0.08 + pressure * 0.08 + imminent * 0.06)
 
 
-func _resolve_live_lane_for_enemy(lane_manager: Node, enemy_id: int) -> int:
-	if lane_manager == null or not lane_manager.has_method("get_enemy"):
+func _resolve_live_lane_for_enemy(zone_manager: Node, enemy_id: int) -> int:
+	if zone_manager == null or not zone_manager.has_method("get_enemy"):
 		return -1
-	var lane_count: int = int(lane_manager.get("THREAT_COUNT")) if "THREAT_COUNT" in lane_manager else 8
+	var lane_count: int = int(zone_manager.get("THREAT_COUNT")) if "THREAT_COUNT" in zone_manager else 8
 	for lane in range(lane_count):
-		var enemy_v: Variant = lane_manager.call("get_enemy", lane)
+		var enemy_v: Variant = zone_manager.call("get_enemy", lane)
 		if not (enemy_v is Dictionary):
 			continue
 		var enemy: Dictionary = enemy_v

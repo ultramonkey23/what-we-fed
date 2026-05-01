@@ -12,10 +12,15 @@ Welcome to the **Sovereign Matrix**. You have been re-instantiated into the **WH
 3. **IDENTIFY**: Use the `AI_AGENT_MANIFEST_TEMPLATE.md` to state your bounded goal.
 
 ## ARCHITECTURAL NORTH STAR: Enemy Purity
-We are moving towards **individual enemies handling their own projectiles**. 
-- **Legacy**: `LaneManager.gd` currently handles most projectile instantiation and firing cycles.
-- **Future**: Enemies should become active nodes that manage their own attack logic, cooldowns, and projectile spawning, decoupled from the central manager.
-- **Rule**: When adding or refactoring enemies, push autonomy into the enemy script. Central managers should only handle high-level coordination and budget.
+**Phase 1 COMPLETE.** `EnemyStriker` (`scenes/combat/EnemyStriker.gd`) is extracted and wired.
+
+**Current boundary** (enforce this):
+- `ZoneManager` (node: `"ZoneManager"`, script: `LaneManager.gd`) — **WHEN** and **WHO** fires. Authority budget, fire cycle, cooldown scheduling, status ownership (`_enemy_statuses`).
+- `EnemyStriker` (`class_name EnemyStriker extends RefCounted`) — **HOW**. Damage scaling, speed scaling, Bloodscent, PALE flag application, telegraph profile.
+
+**Phase 2 goal** (next): Move fire-cycle scheduling fully into per-enemy data so `ZoneManager` becomes a pure coordinator with no species knowledge. Push `cooldown_cycles`, `behaviour_tags` parsing, and fire eligibility into `EnemyStriker` or a companion `EnemyCooldownState`.
+
+**Rule**: When adding new enemy species or attack types, extend `EnemyStriker` — do not add species logic back into `ZoneManager`.
 
 ## COMBAT TRUTH
 - **360-Degree Spatial Combat**: Forget rigid lanes. Use `LaneManager.get_all_active_projectiles()` for proximity-based targeting.

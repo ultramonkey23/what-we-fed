@@ -60,6 +60,8 @@ var _threat_spawn_positions: Array[Vector2] = []
 var _threat_hit_zone_positions: Array[Vector2] = []
 
 var _projectile_scene: PackedScene = null
+var _enemy_projectile_scenes: Dictionary = {} # enemy_id -> PackedScene
+var _striker_objects: Dictionary = {} # enemy_id -> EnemyStriker
 var _melee_approach_script: Script = null
 var _active_projectiles: Dictionary = {} # enemy_id -> projectile node
 var _enemies: Dictionary = {} # enemy_id -> Dictionary (Population)
@@ -135,6 +137,15 @@ func load_scene() -> bool:
 	return true
 
 
+func _cache_enemy_scene(id: int, enemy: Dictionary) -> void:
+	var path: String = String(enemy.get("projectile_scene_path", ""))
+	if not path.is_empty() and ResourceLoader.exists(path):
+		var scene := load(path) as PackedScene
+		_enemy_projectile_scenes[id] = scene if scene != null else _projectile_scene
+	else:
+		_enemy_projectile_scenes[id] = _projectile_scene
+
+
 func start_combat(enemy_data: Array) -> void:
 	# Starts or restarts a combat cycle with dynamic strikers.
 	if combat_scene == null:
@@ -163,7 +174,11 @@ func start_combat(enemy_data: Array) -> void:
 		enemy["id"] = id
 		enemy["lane"] = lane # Maintain legacy lane ID for signals
 		_enemies[id] = enemy
-		
+		_cache_enemy_scene(id, enemy)
+		var so_init := EnemyStriker.new()
+		so_init.setup(enemy, _enemy_projectile_scenes.get(id, _projectile_scene) as PackedScene)
+		_striker_objects[id] = so_init
+
 		# Any-angle initialization: map 8 lanes to angles, but store as dynamic striker.
 		var angle: float = (float(lane) / float(THREAT_COUNT)) * TAU - PI/2.0
 		_strikers[id] = {"angle": angle, "lane": lane}
@@ -366,7 +381,11 @@ func set_enemy(lane: int, enemy_data: Dictionary) -> void:
 	if id == _next_enemy_id: _next_enemy_id += 1
 	enemy["id"] = id
 	_enemies[id] = enemy
-	
+	_cache_enemy_scene(id, enemy)
+	var so := EnemyStriker.new()
+	so.setup(enemy, _enemy_projectile_scenes.get(id, _projectile_scene) as PackedScene)
+	_striker_objects[id] = so
+
 	# Decide if they join orbit or take a striker slot
 	# Hunting Field expansion: attack_authority_budget now allows more than 8.
 	if alive_striker_count() < attack_authority_budget:
@@ -461,6 +480,8 @@ func _handle_enemy_defeat(id: int) -> void:
 	_orbit_angles.erase(id)
 	_orbit_radius_offsets.erase(id)
 	_enemy_visual_offsets.erase(id)
+	_enemy_projectile_scenes.erase(id)
+	_striker_objects.erase(id)
 	_enemies.erase(id)
 
 	if alive_count() <= 0:
@@ -499,6 +520,8 @@ func stop() -> void:
 	_orbit_radius_offsets.clear()
 	_orbit_drift_accum.clear()
 	_enemy_visual_offsets.clear()
+	_enemy_projectile_scenes.clear()
+	_striker_objects.clear()
 
 	for id in _active_projectiles:
 		var projectile = _active_projectiles[id]
@@ -697,48 +720,38 @@ func _fire_striker(id: int) -> bool:
 	var angle: float = float(striker_data.get("angle", 0.0))
 	var lane: int = int(striker_data.get("lane", -1))
 
-	var behaviour_tags = enemy.get("behaviour_tags", [])
-	if behaviour_tags is Array and (behaviour_tags as Array).has("melee"):
-		return _fire_melee_striker(id, enemy, angle, lane)
-
-	var projectile_speed: float = _get_enemy_projectile_speed(enemy)
-
-	if not _can_schedule_projectile_id(projectile_speed):
+	var striker: EnemyStriker = _striker_objects.get(id) as EnemyStriker
+	if striker == null:
 		return false
 
-	var projectile = _projectile_scene.instantiate()
+	if striker.is_melee():
+		return _fire_melee_striker(id, enemy, angle, lane)
+
+	var base_speed: float = _get_enemy_projectile_speed(enemy)
+
+	if not _can_schedule_projectile_id(base_speed):
+		return false
+
+	var scene: PackedScene = striker.projectile_scene
+	if scene == null:
+		return false
+	var projectile = scene.instantiate()
 	if projectile == null:
 		return false
 
-	var projectile_damage: float = float(enemy.get("damage", 8.0))
-	projectile_damage *= _punish_damage_mult
-
-	# Bloodscent: Ashclaw scales with player Bleed stacks
-	if enemy.get("species_id") == "ashclaw":
-		var player_bleed: int = GameState.player_bleed_stacks
-		if player_bleed > 0:
-			projectile_damage *= (1.0 + (0.10 * player_bleed))
-			projectile_speed *= (1.0 + (0.15 * player_bleed))
-
-	# PALE
+	var pale_active: bool = false
 	if _enemy_statuses.has(id) and _enemy_statuses[id].get("id", "") == "pale" and _enemy_statuses[id].get("fire_pending", false):
-		projectile_damage *= PALE_DAMAGE_MULT
+		pale_active = true
 		_enemy_statuses.erase(id)
 		if lane >= 0: EventBus.emit_signal("enemy_status_cleared", lane)
 
-	var telegraph_profile: Dictionary = COMBAT_CONTENT.get_enemy_telegraph_profile(enemy)
-	telegraph_profile["projectile_body_path"] = COMBAT_CONTENT.get_projectile_body_resource_path(enemy)
+	var projectile_damage: float = striker.compute_projectile_damage(_punish_damage_mult, pale_active)
+	var projectile_speed: float = striker.compute_projectile_speed(base_speed)
+
 	var section_id: String = ""
 	if combat_scene != null and combat_scene.has_method("get_current_song_section_id"):
 		section_id = String(combat_scene.get_current_song_section_id())
-	var section_mod: String = COMBAT_CONTENT.get_shot_modifier_for_section(section_id)
-	var species_mod: String = String(telegraph_profile.get("species_shot_modifier", "")).strip_edges()
-	
-	if not species_mod.is_empty():
-		telegraph_profile["shot_modifier"] = species_mod
-	else:
-		telegraph_profile["shot_modifier"] = section_mod
-	telegraph_profile.erase("species_shot_modifier")
+	var telegraph_profile: Dictionary = striker.build_telegraph_profile(section_id)
 
 	var player_pos: Vector2 = get_player_pos()
 	var spawn_pos: Vector2 = get_enemy_pos(id)
@@ -793,15 +806,12 @@ func _fire_melee_striker(id: int, enemy: Dictionary, angle: float, lane: int) ->
 	if melee == null:
 		return false
 
-	var melee_damage: float = float(enemy.get("damage", 14.0)) * _punish_damage_mult
-	var approach_speed: float = float(enemy.get("approach_speed", 80.0))
+	var striker: EnemyStriker = _striker_objects.get(id) as EnemyStriker
+	if striker == null:
+		return false
 
-	# Bloodscent: Ashclaw scales with player Bleed stacks
-	if enemy.get("species_id") == "ashclaw":
-		var player_bleed: int = GameState.player_bleed_stacks
-		if player_bleed > 0:
-			melee_damage *= (1.0 + (0.10 * player_bleed))
-			approach_speed *= (1.0 + (0.15 * player_bleed))
+	var melee_damage: float = striker.compute_melee_damage(_punish_damage_mult)
+	var approach_speed: float = striker.compute_approach_speed()
 
 	var player_pos: Vector2 = get_player_pos()
 	var spawn_pos: Vector2 = get_enemy_pos(id)
@@ -848,10 +858,14 @@ func _resolve_authorized_strikers_for_cycle() -> Array[int]:
 			continue
 			
 		_enemy_authority_debt[id] = minf(_enemy_authority_debt.get(id, 0.0) + 1.0, 8.0)
-		
+
+		var cycles_since_last: int = _fire_cycle_index - int(_enemy_last_fired_cycle.get(id, -999))
+		var cooldown_cycles: int = int(enemy.get("cooldown_cycles", 0))
+		if cooldown_cycles > 0 and cycles_since_last < cooldown_cycles:
+			continue
+
 		var damage_score: float = clampf(float(enemy.get("damage", 8.0)) / 10.0, 0.60, 1.80)
 		var speed_score: float = clampf(_get_enemy_projectile_speed(enemy) / 320.0, 0.70, 1.70)
-		var cycles_since_last: int = _fire_cycle_index - int(_enemy_last_fired_cycle.get(id, -999))
 		var age_bonus: float = clampf(float(cycles_since_last) / 4.0, 0.0, 1.4)
 		var jitter: float = _rng.randf() * 0.08
 		var score: float = _enemy_authority_debt[id] * 1.35 + age_bonus + damage_score * 0.35 + speed_score * 0.25 + jitter

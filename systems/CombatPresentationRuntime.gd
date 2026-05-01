@@ -11,7 +11,7 @@ var _camera_2d: Camera2D
 var _timing_circle_container: Node2D
 var _attack_fx_container: Node2D
 var _player_combat: Node2D
-var _lane_manager: Node
+var _zone_manager: Node
 var _ui_layer: CanvasLayer
 var _battlefield_panel: Control
 var _enemy_markers_by_id: Dictionary
@@ -41,7 +41,7 @@ func _init(
 	timing_circle_container: Node2D,
 	attack_fx_container: Node2D,
 	player_combat: Node2D,
-	lane_manager: Node,
+	zone_manager: Node,
 	ui_layer: CanvasLayer,
 	enemy_markers_by_id: Dictionary,
 	ring_highlight_timers: Array[float],
@@ -53,7 +53,7 @@ func _init(
 	_timing_circle_container = timing_circle_container
 	_attack_fx_container = attack_fx_container
 	_player_combat = player_combat
-	_lane_manager = lane_manager
+	_zone_manager = zone_manager
 	_ui_layer = ui_layer
 	_battlefield_panel = battlefield_panel
 	_enemy_markers_by_id = enemy_markers_by_id
@@ -131,9 +131,9 @@ func _pulse_active_enemy_markers(intensity: float) -> void:
 
 
 func _is_enemy_id_active(enemy_id: int) -> bool:
-	if _lane_manager == null or not _lane_manager.has_method("get_enemy"): return true
-	for lane in range(_lane_manager.THREAT_COUNT if _lane_manager else 4):
-		var lane_enemy_v: Variant = _lane_manager.call("get_enemy", lane)
+	if _zone_manager == null or not _zone_manager.has_method("get_enemy"): return true
+	for lane in range(_zone_manager.THREAT_COUNT if _zone_manager else 4):
+		var lane_enemy_v: Variant = _zone_manager.call("get_enemy", lane)
 		if not lane_enemy_v is Dictionary: continue
 		var lane_enemy: Dictionary = lane_enemy_v
 		if not lane_enemy.is_empty() and float(lane_enemy.get("hp", 0.0)) > 0.0 and int(lane_enemy.get("id", -1)) == enemy_id:
@@ -523,10 +523,10 @@ func spawn_attack_silhouette_to_lane(lane: int, color: Color, thickness: float, 
 
 
 func _spawn_fallback_slash(lane: int, color: Color, thickness: float, lifetime: float) -> void:
-	if not _player_combat or not _lane_manager: return
+	if not _player_combat or not _zone_manager: return
 	var start: Vector2 = _player_combat.position + Vector2(10.0, -6.0)
-	var end: Vector2 = _lane_manager.call("get_threat_hit_zone_pos", lane)
-	var dir: Vector2 = (end - _lane_manager.call("get_player_pos")).normalized()
+	var end: Vector2 = _zone_manager.call("get_threat_hit_zone_pos", lane)
+	var dir: Vector2 = (end - _zone_manager.call("get_player_pos")).normalized()
 	end += dir * 8.0
 	var delta: Vector2 = (end - start)
 	var slash := Polygon2D.new()
@@ -678,10 +678,10 @@ func _spawn_ink_splatter(pos: Vector2, color: Color) -> void:
 
 
 func _get_impact_spawn_pos(lane: int, enemy_id: int) -> Vector2:
-	if enemy_id >= 0 and _lane_manager != null and is_instance_valid(_lane_manager):
-		if _lane_manager.has_method("get_enemy_pos"): return _lane_manager.call("get_enemy_pos", enemy_id)
-	if lane >= 0 and _lane_manager != null and is_instance_valid(_lane_manager):
-		if _lane_manager.has_method("get_threat_spawn_pos"): return _lane_manager.call("get_threat_spawn_pos", lane)
+	if enemy_id >= 0 and _zone_manager != null and is_instance_valid(_zone_manager):
+		if _zone_manager.has_method("get_enemy_pos"): return _zone_manager.call("get_enemy_pos", enemy_id)
+	if lane >= 0 and _zone_manager != null and is_instance_valid(_zone_manager):
+		if _zone_manager.has_method("get_threat_spawn_pos"): return _zone_manager.call("get_threat_spawn_pos", lane)
 	if _player_combat != null and is_instance_valid(_player_combat): return _player_combat.global_position
 	return Vector2(640, 360)
 

@@ -23,13 +23,13 @@ extends Node2D
 @onready var sigil_direction_pivot: Node2D = $SigilDirectionPivot
 
 
-func resolve_enemy_marker_world_pos(lane: int, baseline: Vector2, lane_manager: Node) -> Vector2:
+func resolve_enemy_marker_world_pos(lane: int, baseline: Vector2, zone_manager: Node) -> Vector2:
 	if not apply_east_west_anchor_offsets:
 		return baseline
-	if lane_manager == null or not lane_manager.has_method("get_threat_spawn_pos"):
+	if zone_manager == null or not zone_manager.has_method("get_threat_spawn_pos"):
 		return baseline
 
-	var spawn: Vector2 = lane_manager.call("get_threat_spawn_pos", lane)
+	var spawn: Vector2 = zone_manager.call("get_threat_spawn_pos", lane)
 	var anchor: Marker2D = null
 	if lane == 2:
 		anchor = enemy_anchor_east

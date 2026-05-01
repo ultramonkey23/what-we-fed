@@ -150,7 +150,7 @@ func _build_metadata(capture_source: String, context: Dictionary, png_path: Stri
 	var viewport_size: Vector2 = get_viewport().get_visible_rect().size
 	var camera: Camera2D = get_viewport().get_camera_2d()
 	var combat_meter: Node = _find_node_by_name(scene, "CombatMeter")
-	var lane_manager: Node = _find_node_by_name(scene, "LaneManager")
+	var zone_manager: Node = _find_node_by_name(scene, "ZoneManager")
 	var player_combat: Node = _find_node_by_name(scene, "PlayerCombat")
 	var game_state: Node = get_node_or_null("/root/GameState")
 	var song_conductor: Node = _find_node_by_name(scene, "SongConductor")
@@ -172,7 +172,7 @@ func _build_metadata(capture_source: String, context: Dictionary, png_path: Stri
 		"camera": _camera_metadata(camera),
 		"combat": _combat_metadata(combat_meter, player_combat),
 		"song": _song_metadata(song_conductor, game_state, scene),
-		"lane": _lane_metadata(lane_manager, player_combat, context),
+		"lane": _lane_metadata(zone_manager, player_combat, context),
 		"support": _support_metadata(game_state, run_growth, context),
 		"game_state": _game_state_metadata(game_state)
 	}
@@ -225,12 +225,12 @@ func _song_metadata(song_conductor: Node, game_state: Node, scene: Node) -> Dict
 	}
 
 
-func _lane_metadata(lane_manager: Node, player_combat: Node, context: Dictionary) -> Dictionary:
+func _lane_metadata(zone_manager: Node, player_combat: Node, context: Dictionary) -> Dictionary:
 	var cardinal_positions: Array[Dictionary] = []
-	if lane_manager != null and lane_manager.has_method("get_threat_spawn_pos") and lane_manager.has_method("get_threat_hit_zone_pos"):
+	if zone_manager != null and zone_manager.has_method("get_threat_spawn_pos") and zone_manager.has_method("get_threat_hit_zone_pos"):
 		for lane in range(4):
-			var spawn_pos: Vector2 = lane_manager.call("get_threat_spawn_pos", lane)
-			var hit_pos: Vector2 = lane_manager.call("get_threat_hit_zone_pos", lane)
+			var spawn_pos: Vector2 = zone_manager.call("get_threat_spawn_pos", lane)
+			var hit_pos: Vector2 = zone_manager.call("get_threat_hit_zone_pos", lane)
 			cardinal_positions.append({
 				"lane": lane,
 				"spawn": spawn_pos,

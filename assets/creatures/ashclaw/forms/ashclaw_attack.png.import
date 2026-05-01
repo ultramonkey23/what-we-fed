@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://74ahfsajpj82"
-path="res://.godot/imported/ashclaw_adult.png-20c6eb7f07790339d833ce31866f0e4c.ctex"
+uid="uid://dun6k6740bi14"
+path="res://.godot/imported/ashclaw_attack.png-324daec4dee0c8865b77429bef95acd2.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/creatures/ashclaw/forms/ashclaw_adult.png"
-dest_files=["res://.godot/imported/ashclaw_adult.png-20c6eb7f07790339d833ce31866f0e4c.ctex"]
+source_file="res://assets/creatures/ashclaw/forms/ashclaw_attack.png"
+dest_files=["res://.godot/imported/ashclaw_attack.png-324daec4dee0c8865b77429bef95acd2.ctex"]
 
 [params]
 

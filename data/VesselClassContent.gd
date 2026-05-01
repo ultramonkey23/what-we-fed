@@ -8,18 +8,18 @@ const CLASSES: Dictionary = {
 		"id": "ashclaw",
 		"display_name": "ASHCLAW VESSEL",
 		"vibe_color": Color(0.95, 0.42, 0.18, 1.0), # Ember
-		"vessel_trait": "Cleave",
+		"vessel_trait": "Rupture",
 		"visual_style": {
 			"jitter": 4.5,
 			"width_mult": 1.2,
 			"aura_pulse_speed": 2.4,
 			"aura_alpha": 0.25
 		},
-		"description": "Perfect hits create a blood-ember cleave in adjacent sectors.",
+		"description": "Timed hits apply Blood-Ember. Hitting an enemy with 5 stacks causes a Rupture (AoE burst).",
 		"attack_modifier": {
-			"on_quality": "perfect",
-			"effect_id": "vessel_cleave",
-			"adjacent_damage_mult": 0.4
+			"on_quality": "any_timed",
+			"effect_id": "vessel_rupture",
+			"rupture_damage_mult": 2.5
 		},
 		"hud_sigil_override": "ashclaw_sigil"
 	},

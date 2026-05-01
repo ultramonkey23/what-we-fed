@@ -91,10 +91,7 @@ func spawn(kind: StringName, world_pos: Vector2, direction: Vector2, scale_mult:
 		t.tween_interval(hold)
 	t.tween_property(spr, "modulate:a", 0.0, fade_time)
 	t.parallel().tween_property(spr, "scale", spr.scale * cfg.end_scale_mul, fade_time)
-	t.tween_callback(func() -> void:
-		if is_instance_valid(spr):
-			spr.queue_free()
-	)
+	t.tween_callback(spr.queue_free)
 
 
 func _texture_for_kind(kind: StringName) -> Texture2D:

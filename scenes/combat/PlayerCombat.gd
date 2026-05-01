@@ -1227,12 +1227,12 @@ func _play_counter_warp_state() -> void:
 	_play_world_motion(_action_world_position(reach_dist), 0.05)
 
 
-func _take_damage(amount: float, source_lane: int) -> void:
+func _take_damage(amount: float, source_sector: int) -> void:
 	if dodge_invuln_timer > 0.0:
 		EventBus.emit_signal("proc_feedback_requested", "DODGED", Color(0.24, 0.78, 1.0, 1.0))
 		return
 
-	_play_hit_state(source_lane)
+	_play_hit_state(source_sector)
 	_show_hurt_image()
 
 	var surge_dr: float = 0.0
@@ -1258,11 +1258,15 @@ func _take_damage(amount: float, source_lane: int) -> void:
 		_get_damage_reduction(),
 		surge_dr
 	)
+	
+	# Apply Blood-Ember Vulnerability
+	amount *= GameState.get_player_bleed_damage_mult()
+
 	GameState.player_hp = max(GameState.player_hp - amount, 0.0)
 	_flash_sprite_color(Color(1.0, 0.25, 0.25, 1.0), 0.18)
 	combat_meter.call("break_phrase")
-	_clear_mastery_context("damage_taken", source_lane)
-	EventBus.emit_signal("player_took_damage", amount, source_lane)
+	_clear_mastery_context("damage_taken", source_sector)
+	EventBus.emit_signal("player_took_damage", amount, source_sector)
 
 	if GameState.player_hp <= 0.0:
 		EventBus.emit_signal("player_died")
@@ -1656,6 +1660,14 @@ func _on_projectile_player_contact(projectile: Node) -> void:
 
 	if combat_enabled:
 		_take_damage(proj_damage, proj_lane)
+		
+		# Blood-Ember: Projectiles from Ashclaw apply Bleed to player
+		var e_id: Variant = projectile.get("enemy_id")
+		if e_id != null and lane_manager != null:
+			var enemy: Dictionary = lane_manager.call("get_enemy_by_id", int(e_id))
+			var species_id: String = String(enemy.get("species_id", ""))
+			if species_id == "ashclaw":
+				GameState.apply_player_bleed()
 
 
 func _check_input_buffer() -> void:

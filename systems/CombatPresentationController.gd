@@ -1143,6 +1143,13 @@ func _build_enemy_marker(
 	shadow.position = Vector2(0, marker_half * 0.75)
 	marker_root.add_child(shadow)
 
+	var has_real_sprite: bool = false
+	var species_id: String = String(enemy.get("species_id", ""))
+	if not species_id.is_empty():
+		var sprite_path: String = COMBAT_CONTENT.get_creature_art_path(species_id, "battlefield")
+		if not sprite_path.is_empty():
+			has_real_sprite = true
+
 	var frame := ColorRect.new()
 	frame.name = "Frame"
 	frame.size = Vector2(marker_size + 4.0, marker_size + 4.0)
@@ -1151,6 +1158,8 @@ func _build_enemy_marker(
 	marker_root.add_child(frame)
 	if is_elite_marker:
 		frame.color = Color(0.18, 0.05, 0.03, 0.78)
+	if has_real_sprite:
+		frame.visible = false
 
 	var body := ColorRect.new()
 	body.name = "Body"
@@ -1159,6 +1168,7 @@ func _build_enemy_marker(
 	body.color = base_color
 	body.modulate = enemy.get("marker_modulate", Color(1.0, 1.0, 1.0, 1.0))
 	marker_root.add_child(body)
+	if has_real_sprite: body.visible = false
 
 	var core := ColorRect.new()
 	core.name = "Core"
@@ -1166,6 +1176,7 @@ func _build_enemy_marker(
 	core.position = Vector2(-(core.size.x * 0.5), -(core.size.y * 0.5))
 	core.color = Color(0.0, 0.0, 0.0, 0.12)
 	marker_root.add_child(core)
+	if has_real_sprite: core.visible = false
 
 	var edge := ColorRect.new()
 	edge.name = "Edge"
@@ -1184,8 +1195,11 @@ func _build_enemy_marker(
 	_configure_enemy_marker_shape(accent, sigil, marker_size, String(telegraph_profile.get("family", "fang")))
 	marker_root.add_child(accent)
 	marker_root.add_child(sigil)
+	
+	if has_real_sprite:
+		accent.visible = false
+		sigil.visible = false
 
-	var species_id: String = String(enemy.get("species_id", ""))
 	if not species_id.is_empty():
 		var sprite_path: String = COMBAT_CONTENT.get_creature_art_path(species_id, "battlefield")
 		if not sprite_path.is_empty():
@@ -1211,10 +1225,22 @@ func _build_enemy_marker(
 				sprite.modulate = _tune_enemy_silhouette_color(marker_modulate, base_color)
 				sprite.modulate.a = 1.0
 				var silhouette_mult: float = 0.74
-				sprite.scale = Vector2(render.get("scale", 0.052), render.get("scale", 0.052)) * (marker_size / 42.0) * silhouette_mult
+				
+				# DYNAMIC GROWTH SCALING: Apply age-specific scale from content data
+				var age_scales: Dictionary = render.get("age_scales", {})
+				var base_scale: float = float(age_scales.get("adult", render.get("scale", 0.052)))
+				
+				sprite.scale = Vector2.ONE * base_scale * (marker_size / 42.0) * silhouette_mult
 				sprite.position = Vector2(0.0, -2.0)
 				marker_root.add_child(sprite)
 				marker_root.move_child(sprite, 3)
+				
+				# Remove placeholder box visual if we have a real sprite
+				body.visible = false
+				core.visible = false
+				frame.visible = false
+				accent.visible = false
+				sigil.visible = false
 
 	var readout_width: float = marker_size + (28.0 if is_boss_marker else 18.0)
 	var hp_bar_height: float = 7.0 if is_boss_marker else 5.0
@@ -1285,6 +1311,7 @@ func _build_enemy_marker(
 
 	return {
 		"root": marker_root,
+		"species_id": species_id,
 		"body": body,
 		"core": core,
 		"edge": edge,
@@ -1441,7 +1468,12 @@ func update_enemy_marker_threat_states(
 		if lane_manager.has_method("get_enemy_pos"):
 			var baseline: Vector2 = lane_manager.get_enemy_pos(enemy_id)
 			marker_root.position = _apply_visual_rig_enemy_present_pos(resolved_lane, baseline, lane_manager)
-		
+
+		# DYNAMIC FACING: All enemies face the Vessel (Player)
+		if lane_manager.has_method("get_player_pos"):
+			var player_pos: Vector2 = lane_manager.get_player_pos()
+			var angle_to_player: float = (player_pos - marker_root.global_position).angle()
+			marker_root.rotation = angle_to_player - PI/2 # Align sprite 'up' to player
 		var enemy: Dictionary = all_enemies_by_id.get(enemy_id, {})
 		var lane_for_threat: int = resolved_lane
 		if lane_for_threat < 0:

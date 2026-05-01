@@ -135,6 +135,8 @@ func bind_nodes(nodes: Dictionary) -> void:
 		EventBus.player_healed.connect(_on_player_health_changed_event)
 	if not EventBus.player_took_damage.is_connected(_on_player_took_damage_event):
 		EventBus.player_took_damage.connect(_on_player_took_damage_event)
+	if not EventBus.player_bleed_changed.is_connected(_on_player_bleed_changed):
+		EventBus.player_bleed_changed.connect(_on_player_bleed_changed)
 
 
 func cleanup() -> void:
@@ -152,6 +154,8 @@ func cleanup() -> void:
 		EventBus.player_healed.disconnect(_on_player_health_changed_event)
 	if EventBus.player_took_damage.is_connected(_on_player_took_damage_event):
 		EventBus.player_took_damage.disconnect(_on_player_took_damage_event)
+	if EventBus.player_bleed_changed.is_connected(_on_player_bleed_changed):
+		EventBus.player_bleed_changed.disconnect(_on_player_bleed_changed)
 
 
 # ── Resource HUD ──────────────────────────────────────────────────────────────
@@ -159,19 +163,36 @@ func cleanup() -> void:
 func _on_style_changed(_score: float, tier: String) -> void:
 	refresh_style(tier)
 
+
+func _on_player_bleed_changed(_stacks: int, _max_stacks: int) -> void:
+	refresh_hp(GameState.player_hp, GameState.player_max_hp)
+
+
 func _on_player_health_changed_event(_amount: float) -> void:
 	# Always fetch latest from GameState to ensure accuracy
 	refresh_hp(GameState.player_hp, GameState.player_max_hp)
 
-func _on_player_took_damage_event(_amount: float, _source_lane: int) -> void:
+func _on_player_took_damage_event(_amount: float, _source_sector: int) -> void:
 	refresh_hp(GameState.player_hp, GameState.player_max_hp)
 
 func refresh_hp(hp: float, max_hp: float) -> void:
 	if _hp_bar != null:
 		_hp_bar.max_value = max_hp
 		_hp_bar.value = hp
+		# Bleed tint
+		if GameState.player_bleed_stacks > 0:
+			_hp_bar.modulate = Color(1.0, 0.45, 0.25, 1.0)
+		else:
+			_hp_bar.modulate = Color.WHITE
+
 	if _hp_value_label != null:
-		_hp_value_label.text = "%d/%d" % [int(hp), int(max_hp)]
+		var stacks: int = GameState.player_bleed_stacks
+		if stacks > 0:
+			_hp_value_label.text = "%d/%d (B%d)" % [int(hp), int(max_hp), stacks]
+			_hp_value_label.modulate = Color(1.0, 0.40, 0.20, 1.0)
+		else:
+			_hp_value_label.text = "%d/%d" % [int(hp), int(max_hp)]
+			_hp_value_label.modulate = Color.WHITE
 
 
 func refresh_stamina(current: float, maximum: float) -> void:
@@ -238,20 +259,20 @@ func _on_combat_started(enemy_data: Array) -> void:
 	_current_enemy_data = enemy_data
 
 
-func _on_player_teleported(_from: int, to: int) -> void:
-	_update_scouter_focus(to)
+func _on_player_teleported(_from_sector: int, to_sector: int) -> void:
+	_update_scouter_focus(to_sector)
 	refresh_power_level()
 
 
-func _on_player_attacked(lane: int, _damage: float, _was_timed: bool) -> void:
-	_update_scouter_focus(lane)
+func _on_player_attacked(sector: int, _damage: float, _was_timed: bool) -> void:
+	_update_scouter_focus(sector)
 
 
-func _update_scouter_focus(lane: int) -> void:
-	if lane < 0 or lane >= _current_enemy_data.size():
+func _update_scouter_focus(sector: int) -> void:
+	if sector < 0 or sector >= _current_enemy_data.size():
 		return
 	
-	var enemy: Dictionary = _current_enemy_data[lane]
+	var enemy: Dictionary = _current_enemy_data[sector]
 	if enemy.is_empty():
 		return
 		

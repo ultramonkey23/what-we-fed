@@ -31,8 +31,6 @@ func get_hit_zone_pos_for_angle(angle: float) -> Vector2:
 	return _center_pos + dir * HIT_ZONE_DISTANCE
 
 # Status effect constants.
-const REND_DAMAGE_MULT: float = 1.30        # +30% damage to the enemy while REND is active
-const REND_BASE_CHARGES: int = 3            # REND consumes on hit; expires after 3 hits
 const PALE_DAMAGE_MULT: float = 0.50        # PALE halves the enemy's next fired projectile damage
 const EXPOSE_DAMAGE_MULT: float = 1.25      # +25% damage to the enemy while EXPOSE is active
 const EXPOSE_BASE_DURATION: float = 2.5     # EXPOSE expires after 2.5 seconds
@@ -43,11 +41,15 @@ const SLOW_SPEED_MULT: float = 0.70         # -30% projectile speed while SLOW i
 const ENEMY_DEFENSE_MAX_REDUCTION_RATIO: float = 0.35
 const ENEMY_DEFENSE_MIN_DAMAGE: float = 1.0
 
+# Bleed / Blood-Ember constants
+const BLEED_MAX_STACKS: int = 5
+const BLEED_DAMAGE_AMP_PER_STACK: float = 0.10 # +10% damage per stack
+
 # Per-enemy-type status flags. bond_reaper: EXPOSE windows are shorter (harder to exploit).
 # sovereign: REND can only be applied once (resilient apex predator).
 const ENEMY_STATUS_FLAGS: Dictionary = {
 	"bond_reaper": {"expose_duration_mult": 0.5},
-	"sovereign": {"rend_max_charges": 1}
+	"sovereign": {}
 }
 
 var combat_scene: Node = null
@@ -587,10 +589,6 @@ func apply_status_by_id(id: int, status_id: String, params: Dictionary = {}) -> 
 	var status: Dictionary = {"id": status_id, "hits_remaining": 0, "duration": -1.0, "fire_pending": false}
 
 	match status_id:
-		"rend":
-			var base_charges: int = int(params.get("charges", REND_BASE_CHARGES))
-			var max_charges: int = int(flags.get("rend_max_charges", REND_BASE_CHARGES))
-			status["hits_remaining"] = min(base_charges, max_charges)
 		"pale":
 			status["fire_pending"] = true
 		"gorge_mark":
@@ -605,6 +603,12 @@ func apply_status_by_id(id: int, status_id: String, params: Dictionary = {}) -> 
 			status["slow"] = bool(params.get("slow", false))
 		"slow":
 			status["duration"] = float(params.get("duration", 2.0))
+		"bleed":
+			var current_stacks: int = 0
+			if _enemy_statuses.has(id) and _enemy_statuses[id].get("id") == "bleed":
+				current_stacks = int(_enemy_statuses[id].get("stacks", 0))
+			status["stacks"] = clampi(current_stacks + 1, 1, BLEED_MAX_STACKS)
+			EventBus.enemy_bleed_changed.emit(id, status["stacks"], BLEED_MAX_STACKS)
 		_:
 			return
 
@@ -618,12 +622,27 @@ func _get_status_damage_mult_by_id(id: int) -> float:
 	if not _enemy_statuses.has(id):
 		return 1.0
 	match _enemy_statuses[id].get("id", ""):
-		"rend":
-			return REND_DAMAGE_MULT
 		"expose":
 			return EXPOSE_DAMAGE_MULT
+		"bleed":
+			var stacks: int = int(_enemy_statuses[id].get("stacks", 0))
+			return 1.0 + (BLEED_DAMAGE_AMP_PER_STACK * stacks)
 		_:
 			return 1.0
+
+
+func get_enemy_bleed_stacks(id: int) -> int:
+	if _enemy_statuses.has(id) and _enemy_statuses[id].get("id") == "bleed":
+		return int(_enemy_statuses[id].get("stacks", 0))
+	return 0
+
+
+func clear_enemy_status_by_id(id: int) -> void:
+	if _enemy_statuses.has(id):
+		_enemy_statuses.erase(id)
+		var lane = _find_lane_for_enemy(id)
+		if lane >= 0:
+			EventBus.emit_signal("enemy_status_cleared", lane)
 
 
 func _run_fire_cycle(task_id: int) -> void:
@@ -693,6 +712,13 @@ func _fire_striker(id: int) -> bool:
 
 	var projectile_damage: float = float(enemy.get("damage", 8.0))
 	projectile_damage *= _punish_damage_mult
+
+	# Bloodscent: Ashclaw scales with player Bleed stacks
+	if enemy.get("species_id") == "ashclaw":
+		var player_bleed: int = GameState.player_bleed_stacks
+		if player_bleed > 0:
+			projectile_damage *= (1.0 + (0.10 * player_bleed))
+			projectile_speed *= (1.0 + (0.15 * player_bleed))
 
 	# PALE
 	if _enemy_statuses.has(id) and _enemy_statuses[id].get("id", "") == "pale" and _enemy_statuses[id].get("fire_pending", false):
@@ -770,6 +796,13 @@ func _fire_melee_striker(id: int, enemy: Dictionary, angle: float, lane: int) ->
 	var melee_damage: float = float(enemy.get("damage", 14.0)) * _punish_damage_mult
 	var approach_speed: float = float(enemy.get("approach_speed", 80.0))
 
+	# Bloodscent: Ashclaw scales with player Bleed stacks
+	if enemy.get("species_id") == "ashclaw":
+		var player_bleed: int = GameState.player_bleed_stacks
+		if player_bleed > 0:
+			melee_damage *= (1.0 + (0.10 * player_bleed))
+			approach_speed *= (1.0 + (0.15 * player_bleed))
+
 	var player_pos: Vector2 = get_player_pos()
 	var spawn_pos: Vector2 = get_enemy_pos(id)
 	var dir_to_player: Vector2 = (player_pos - spawn_pos).normalized()
@@ -822,6 +855,11 @@ func _resolve_authorized_strikers_for_cycle() -> Array[int]:
 		var age_bonus: float = clampf(float(cycles_since_last) / 4.0, 0.0, 1.4)
 		var jitter: float = _rng.randf() * 0.08
 		var score: float = _enemy_authority_debt[id] * 1.35 + age_bonus + damage_score * 0.35 + speed_score * 0.25 + jitter
+		
+		# Bloodscent: Ashclaw is more aggressive if player is bleeding
+		if enemy.get("species_id") == "ashclaw":
+			score += float(GameState.player_bleed_stacks) * 2.0
+
 		candidates.append({
 			"id": id,
 			"score": score

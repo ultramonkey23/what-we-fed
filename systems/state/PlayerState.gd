@@ -23,6 +23,11 @@ var stat_potential: float = 1.0        # Hollow: EXP/Tendency/DNA Efficiency Mul
 var stat_intelligence: float = 1.0     # Eye: Support Charge & Telegraph Read Mult
 var stat_adaptability: float = 1.0     # Form: Timed Attack & Combo Armor Mult
 
+# Blood-Ember / Bleed State
+const BLEED_MAX_STACKS: int = 5
+const BLEED_DAMAGE_AMP_PER_STACK: float = 0.10
+var bleed_stacks: int = 0
+
 
 func reset_to_base() -> void:
 	# PERSISTENT TRUTH: Only Potential and Luck are Meta-Stats. 
@@ -35,6 +40,7 @@ func reset_to_base() -> void:
 	stat_swiftness = 1.0
 	stat_intelligence = 1.0
 	stat_adaptability = 1.0
+	bleed_stacks = 0
 	
 	max_hp = stat_vitality
 	base_damage = stat_power
@@ -65,3 +71,7 @@ func get_attack_damage(absorbed_types: Array) -> float:
 		if entry.has("damage_bonus"):
 			total_damage += float(entry["damage_bonus"])
 	return total_damage
+
+
+func get_bleed_vulnerability_multiplier() -> float:
+	return 1.0 + (BLEED_DAMAGE_AMP_PER_STACK * bleed_stacks)

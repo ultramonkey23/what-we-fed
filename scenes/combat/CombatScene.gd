@@ -396,6 +396,8 @@ func _exit_tree() -> void:
 			EventBus.ui_shake.disconnect(_presentation_runtime.on_ui_shake)
 		if EventBus.dna_resonated.is_connected(_presentation_runtime.on_dna_resonated):
 			EventBus.dna_resonated.disconnect(_presentation_runtime.on_dna_resonated)
+		if EventBus.projectile_fired.is_connected(_presentation_runtime.on_projectile_fired):
+			EventBus.projectile_fired.disconnect(_presentation_runtime.on_projectile_fired)
 		_presentation_runtime.set_readability_stress(0.0)
 
 	if EventBus.slow_motion.is_connected(_on_slow_motion):
@@ -466,9 +468,9 @@ func _initialize_systems() -> void:
 	_setup_victory_reward_director()
 	_setup_support_resolver()
 	_setup_quig_narrative()
+	_setup_bonded_companions()
 
-	if RunStats and RunStats.has_signal("score_changed"):
-		RunStats.score_changed.connect(_on_run_score_changed)
+	if RunStats and RunStats.has_signal("score_changed"):		RunStats.score_changed.connect(_on_run_score_changed)
 
 
 func _setup_quig_narrative() -> void:
@@ -477,6 +479,26 @@ func _setup_quig_narrative() -> void:
 	_quig_narrative_system = preload("res://systems/QuigNarrativeSystem.gd").new()
 	_quig_narrative_system.name = "QuigNarrativeSystem"
 	add_child(_quig_narrative_system)
+
+
+func _setup_bonded_companions() -> void:
+	# PERSISTENT COMPANION DOCTRINE: Bonded creatures are active participants.
+	# 360-degree movement, lane-independent targeting, auto-attack synergy.
+	for child in get_children():
+		if child.name.begins_with("BondedCompanion_"):
+			child.queue_free()
+			
+	for creature in GameState.roster:
+		var species_id: String = String(creature.get("species_id", ""))
+		if species_id.is_empty(): continue
+		
+		var companion_script = load("res://scenes/combat/BondedCompanion.gd")
+		if companion_script:
+			var companion = companion_script.new()
+			companion.name = "BondedCompanion_" + species_id
+			add_child(companion)
+			if companion.has_method("setup"):
+				companion.call("setup", species_id, player_combat, lane_manager)
 
 
 func _setup_run_director() -> void:
@@ -3226,6 +3248,7 @@ func _connect_eventbus() -> void:
 	EventBus.player_teleported.connect(_on_player_teleported)
 	EventBus.timing_ring_pressed.connect(_presentation_runtime.on_timing_ring_pressed)
 	EventBus.song_beat_pulse.connect(_presentation_runtime.on_song_beat_pulse)
+	EventBus.projectile_fired.connect(_presentation_runtime.on_projectile_fired)
 	EventBus.run_growth_changed.connect(_on_run_growth_changed)
 	EventBus.run_growth_level_resolved.connect(_on_run_growth_level_resolved)
 	EventBus.tendency_growth_resolved.connect(_on_tendency_growth_resolved)
@@ -5513,12 +5536,12 @@ func _on_dna_routing_changed(route_id: String, label: String) -> void:
 		_run_spine_surface.call("refresh_prep_summary")
 
 
-func _on_player_took_damage(amount: float, source_lane: int) -> void:
+func _on_player_took_damage(amount: float, source_sector: int) -> void:
 	if _escalation_director != null:
 		_escalation_director.notify_player_hp_changed(GameState.get_hp_percent())
-		_escalation_director.notify_player_took_damage(amount, source_lane)
+		_escalation_director.notify_player_took_damage(amount, source_sector)
 	
-	_trigger_regional_feedback("player_damaged", {"lane": source_lane})
+	_trigger_regional_feedback("player_damaged", {"sector": source_sector})
 
 
 func _trigger_regional_feedback(event_id: String, ctx: Dictionary = {}) -> void:
@@ -5773,9 +5796,9 @@ func _on_boss_damaged(id: int, damage: float, is_threshold_impact: bool) -> void
 	pass # Handling moved to dedicated boss sub-logic
 
 
-func _on_enemy_status_applied_requested(lane: int, status_id: String, params: Dictionary) -> void:
+func _on_enemy_status_applied_requested(sector: int, status_id: String, params: Dictionary) -> void:
 	if lane_manager == null: return
-	var enemy_id: int = _get_enemy_id_for_lane(lane)
+	var enemy_id: int = _get_enemy_id_for_lane(sector)
 	if enemy_id != -1:
 		lane_manager.call("apply_status_by_id", enemy_id, status_id, params)
 
@@ -6018,11 +6041,11 @@ func _on_attack_timing_early_resolved(lane: int) -> void:
 	impact_fx_requested.emit(&"miss", _impact_pos_lane(lane, 0.36), fwd.rotated(jitter), 0.74)
 
 
-func _on_player_attacked(lane: int, _damage: float, was_timed: bool) -> void:
+func _on_player_attacked(sector: int, _damage: float, was_timed: bool) -> void:
 	if was_timed:
 		_show_feedback("TIMED", Color(1.0, 0.95, 0.55, 1.0), 0.36)
-		_presentation_runtime.highlight_timing_ring(lane, Color(1.0, 0.95, 0.55, 1.0), 5.0)
-		_presentation_runtime.spawn_attack_silhouette_to_lane(lane, Color(1.0, 0.92, 0.58, 0.55), 10.0, 0.12, 1.0)
+		_presentation_runtime.highlight_timing_ring(sector, Color(1.0, 0.95, 0.55, 1.0), 5.0)
+		_presentation_runtime.spawn_attack_silhouette_to_lane(sector, Color(1.0, 0.92, 0.58, 0.55), 10.0, 0.12, 1.0)
 		_flash_meter_shell(Color(0.25, 0.20, 0.10, 0.94), 0.12)
 		# Beat quality bonus: on-beat timed attacks get richer feedback and a sharper flash.
 		var bq: String = _get_beat_quality_for_action()
@@ -6032,28 +6055,28 @@ func _on_player_attacked(lane: int, _damage: float, was_timed: bool) -> void:
 			_show_beat_feedback("ON BEAT", Color(0.88, 0.84, 0.52, 1.0))
 	else:
 		_show_feedback("HIT", Color(0.95, 0.95, 0.95, 1.0), 0.28)
-		_presentation_runtime.highlight_timing_ring(lane, Color(0.95, 0.95, 0.95, 1.0), 4.0)
-		_presentation_runtime.spawn_attack_silhouette_to_lane(lane, Color(0.92, 0.92, 0.92, 0.35), 7.0, 0.10, 0.88)
+		_presentation_runtime.highlight_timing_ring(sector, Color(0.95, 0.95, 0.95, 1.0), 4.0)
+		_presentation_runtime.spawn_attack_silhouette_to_lane(sector, Color(0.92, 0.92, 0.92, 0.35), 7.0, 0.10, 0.88)
 		_flash_meter_shell(Color(0.16, 0.16, 0.17, 0.94), 0.08)
 
 
-func _on_timed_attack_resolved(lane: int, quality: String, damage: float, enemy_id: int) -> void:
+func _on_timed_attack_resolved(sector: int, quality: String, damage: float, enemy_id: int) -> void:
 	var flat_bonus_effect: Dictionary = _get_growth_effect("timed_attack_bonus_flat")
 	var beat_quality: String = _get_beat_quality_for_action()
 	if not flat_bonus_effect.is_empty() and enemy_id != -1:
 		lane_manager.call("damage_enemy_by_id", enemy_id, float(flat_bonus_effect.get("value", 0.0)))
-		_presentation_runtime.spawn_attack_silhouette_to_lane(lane, Color(0.98, 0.70, 0.34, 0.30), 8.0, 0.08, 0.94)
+		_presentation_runtime.spawn_attack_silhouette_to_lane(sector, Color(0.98, 0.70, 0.34, 0.30), 8.0, 0.08, 0.94)
 
 	if quality == "perfect":
-		impact_fx_requested.emit(&"perfect", _impact_pos_lane(lane, 0.58), _impact_lane_forward(lane), 1.0)
+		impact_fx_requested.emit(&"perfect", _impact_pos_lane(sector, 0.58), _impact_lane_forward(sector), 1.0)
 		_notify_tempo_mastery(COMBAT_FEEL_CONTENT.TEMPO_PUNCTURE, "perfect_hit", {
 			"beat_quality": beat_quality
 		})
-		_try_apply_vessel_modifier_on_perfect(lane, damage)
+		_try_apply_vessel_modifier_on_perfect(sector, damage)
 	elif quality == "good":
-		impact_fx_requested.emit(&"perfect", _impact_pos_lane(lane, 0.52), _impact_lane_forward(lane), 0.78)
+		impact_fx_requested.emit(&"perfect", _impact_pos_lane(sector, 0.52), _impact_lane_forward(sector), 0.78)
 
-	_presentation_runtime.apply_impact_profile(COMBAT_IMPACT_FEEDBACK.build_timed_attack_profile(quality, beat_quality), lane, enemy_id)
+	_presentation_runtime.apply_impact_profile(COMBAT_IMPACT_FEEDBACK.build_timed_attack_profile(quality, beat_quality), sector, enemy_id)
 	_presentation_runtime.pulse_sigil_result_snap(quality, "attack")
 
 	if quality == "perfect":
@@ -6129,23 +6152,23 @@ func _on_player_parried(lane: int, quality: String, _reflect_damage: float) -> v
 		})
 
 
-func _on_player_dodged(from_lane: int, to_lane: int) -> void:
+func _on_player_dodged(from_sector: int, to_sector: int) -> void:
 	_show_feedback("DODGE", Color(0.65, 0.85, 1.0, 1.0), 0.28)
-	_presentation_runtime.highlight_timing_ring(to_lane, Color(0.65, 0.85, 1.0, 1.0), 4.0)
-	var slip: Vector2 = Vector2(0.26, float(to_lane - from_lane))
+	_presentation_runtime.highlight_timing_ring(to_sector, Color(0.65, 0.85, 1.0, 1.0), 4.0)
+	var slip: Vector2 = Vector2(0.26, float(to_sector - from_sector))
 	if slip.y == 0.0:
 		slip.y = 1.0
 	var dodge_dir: Vector2 = slip.normalized()
-	impact_fx_requested.emit(&"dodge", _impact_pos_lane(to_lane, 0.40), dodge_dir, 1.04)
+	impact_fx_requested.emit(&"dodge", _impact_pos_lane(to_sector, 0.40), dodge_dir, 1.04)
 	var bq: String = _get_beat_quality_for_action()
-	_presentation_runtime.apply_impact_profile(COMBAT_IMPACT_FEEDBACK.build_dodge_profile(bq), to_lane, _get_enemy_id_for_lane(to_lane))
+	_presentation_runtime.apply_impact_profile(COMBAT_IMPACT_FEEDBACK.build_dodge_profile(bq), to_sector, _get_enemy_id_for_lane(to_sector))
 	if bq == "perfect":
 		_show_beat_feedback("SLIP", Color(0.65, 0.85, 1.0, 1.0))
 		EventBus.emit_signal("screen_flash", Color(0.50, 0.70, 1.0, 0.05), 0.04)
 	elif bq == "good":
 		_show_beat_feedback("SLIP", Color(0.55, 0.75, 0.92, 1.0))
 	if _performance_reward_director != null and is_instance_valid(_performance_reward_director) and _performance_reward_director.has_method("notify_dodge_timing_quality"):
-		_performance_reward_director.call("notify_dodge_timing_quality", from_lane, to_lane, bq)
+		_performance_reward_director.call("notify_dodge_timing_quality", from_sector, to_sector, bq)
 	if _tempo_state_family == COMBAT_FEEL_CONTENT.TEMPO_DECREE:
 		_notify_tempo_mastery(COMBAT_FEEL_CONTENT.TEMPO_DECREE, "law_response", {
 			"response": "dodge",
@@ -6807,14 +6830,14 @@ func _get_enemy_id_for_lane(lane: int) -> int:
 	return int(enemy.get("id", -1))
 
 
-func _on_enemy_status_applied(lane: int, status_id: String, params: Dictionary) -> void:
+func _on_enemy_status_applied(sector: int, status_id: String, params: Dictionary) -> void:
 	# Updates the enemy marker color to reflect the new status.
 	# "gorge_mark_triggered" fires when a marked enemy dies — show FEAST feedback.
 	if status_id == "gorge_mark_triggered":
 		_show_feedback("FEAST", Color(0.92, 0.60, 0.20, 1.0), 0.36)
 		return
 
-	var enemy_id: int = _get_enemy_id_for_lane(lane)
+	var enemy_id: int = _get_enemy_id_for_lane(sector)
 	if enemy_id < 0:
 		return
 	var marker_data = _enemy_markers_by_id.get(enemy_id, null)
@@ -6822,9 +6845,9 @@ func _on_enemy_status_applied(lane: int, status_id: String, params: Dictionary) 
 		return
 
 	match status_id:
-		"rend":
+		"bleed":
 			_status_marker_overrides[enemy_id] = Color(0.80, 0.22, 0.10, 0.92)
-			_show_feedback("REND", Color(0.94, 0.40, 0.24, 1.0), 0.30)
+			_show_feedback("BLEED", Color(0.94, 0.40, 0.24, 1.0), 0.30)
 		"pale":
 			_status_marker_overrides[enemy_id] = Color(0.40, 0.42, 0.58, 0.70)
 			_show_feedback("PALE", Color(0.74, 0.78, 0.96, 1.0), 0.28)
@@ -6854,9 +6877,9 @@ func _on_enemy_status_applied(lane: int, status_id: String, params: Dictionary) 
 		marker_body.color = _status_marker_overrides[enemy_id]
 
 
-func _on_enemy_status_cleared(lane: int) -> void:
+func _on_enemy_status_cleared(sector: int) -> void:
 	# Resets the enemy marker color to its biome-based color when a status expires or is consumed.
-	var enemy_id: int = _get_enemy_id_for_lane(lane)
+	var enemy_id: int = _get_enemy_id_for_lane(sector)
 	if enemy_id < 0:
 		return
 	_status_marker_overrides.erase(enemy_id)
@@ -6888,7 +6911,7 @@ func _get_growth_effect(effect_type: String) -> Dictionary:
 	return {}
 
 
-func _on_player_teleported(_from_lane: int, _to_lane: int) -> void:
+func _on_player_teleported(_from_sector: int, _to_sector: int) -> void:
 	_draw_timing_circles()
 
 

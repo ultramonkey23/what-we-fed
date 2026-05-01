@@ -2,6 +2,7 @@ extends RefCounted
 
 const MOTION_JUICE = preload("res://systems/MotionJuice.gd")
 const HUD_PANEL_ART = preload("res://systems/HUDPanelArt.gd")
+const COMBAT_CONTENT = preload("res://data/CombatContent.gd")
 const BLACK_SIGNAL_SHADER = preload("res://art/vfx/black_signal_combat.gdshader")
 const ENEMY_BEAT_PULSE_INTENSITY: float = 0.03
 
@@ -205,7 +206,12 @@ func flash_enemy_damage(enemy_id: int, profile: Dictionary = {}) -> void:
 	_enemy_flash_tweens_by_id[enemy_id] = tween
 	tween.tween_method(func(v: float): shader_material.set_shader_parameter("hit_flash_intensity", v), 1.0, 0.0, 0.10)
 	tween.parallel().tween_method(func(v: float): shader_material.set_shader_parameter("chromatic_aberration", v), chroma, 0.0, 0.10)
-	tween.finished.connect(func(): if _enemy_flash_tweens_by_id.get(enemy_id) == tween: _enemy_flash_tweens_by_id.erase(enemy_id))
+	tween.finished.connect(_on_enemy_flash_finished.bind(enemy_id, tween))
+
+
+func _on_enemy_flash_finished(enemy_id: int, tween: Tween) -> void:
+	if _enemy_flash_tweens_by_id.get(enemy_id) == tween:
+		_enemy_flash_tweens_by_id.erase(enemy_id)
 
 
 func _kill_enemy_flash_tween(enemy_id: int) -> void:
@@ -289,8 +295,12 @@ func on_ui_shake(intensity: float, duration: float) -> void:
 				tween.tween_property(child, "position", orig, step)
 
 
-func on_timing_ring_pressed(lane: int) -> void:
-	animate_timing_ring_press(lane)
+func on_timing_ring_pressed(sector: int) -> void:
+	animate_timing_ring_press(sector)
+
+
+func on_projectile_fired(_sector: int, enemy_id: int) -> void:
+	_swap_enemy_texture(enemy_id, "attack", 0.35)
 
 
 func on_beat_pulse(quality: String, strength: float) -> void:
@@ -676,9 +686,49 @@ func _get_impact_spawn_pos(lane: int, enemy_id: int) -> Vector2:
 	return Vector2(640, 360)
 
 
+func _swap_enemy_texture(enemy_id: int, context: String, duration: float) -> void:
+	var marker_data_v = _enemy_markers_by_id.get(enemy_id, null)
+	if marker_data_v == null or not marker_data_v is Dictionary: return
+	var marker_data: Dictionary = marker_data_v
+	var species_id: String = String(marker_data.get("species_id", ""))
+	if species_id.is_empty(): return
+	
+	var silhouette: Sprite2D = _resolve_enemy_visual_target(enemy_id) as Sprite2D
+	if not is_instance_valid(silhouette): return
+	
+	var path: String = COMBAT_CONTENT.get_creature_art_path(species_id, context, "adult")
+	if path.is_empty() or not ResourceLoader.exists(path): return
+	
+	var tex: Texture2D = load(path) as Texture2D
+	if tex == null: return
+	
+	var old_tex: Texture2D = silhouette.texture
+	silhouette.texture = tex
+	silhouette.hframes = clampi(int(float(tex.get_width()) / tex.get_height()), 1, 64)
+	silhouette.frame = 0
+	
+	# Swap back after duration
+	var tree = silhouette.get_tree()
+	if tree == null: return
+	
+	var t := tree.create_timer(duration)
+	t.timeout.connect(_restore_enemy_texture.bind(silhouette, old_tex))
+
+
+func _restore_enemy_texture(silhouette: Variant, old_tex: Texture2D) -> void:
+	if is_instance_valid(silhouette) and silhouette is Sprite2D:
+		var s := silhouette as Sprite2D
+		s.texture = old_tex
+		s.hframes = clampi(int(float(old_tex.get_width()) / old_tex.get_height()), 1, 64)
+		s.frame = 0
+
+
 func animate_enemy_damage(enemy_id: int, profile: Dictionary = {}) -> void:
 	var marker: Node2D = _get_enemy_marker_root(enemy_id)
 	if marker == null: return
+	
+	_swap_enemy_texture(enemy_id, "hurt", 0.30)
+	
 	var orig_p: Vector2 = marker.position
 	var orig_s: Vector2 = marker.scale
 	var orig_m: Color = marker.modulate

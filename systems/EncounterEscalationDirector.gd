@@ -340,23 +340,25 @@ func _resolve_bpm_respawn_delay() -> float:
 
 func _schedule_smart_respawn(origin_lane: int, delay: float, find_new_lane: bool) -> void:
 	var timer = get_tree().create_timer(delay)
-	timer.timeout.connect(func() -> void:
-		if not _running or _paused or lane_manager == null or not is_instance_valid(lane_manager):
-			return
-		
-		var phase: Dictionary = _phases[_current_phase_index]
-		var max_threats: int = _resolve_authority_budget(phase)
-		
-		if lane_manager.alive_count() < max_threats:
-			var target_lane: int = origin_lane
-			if find_new_lane:
-				target_lane = _pick_best_empty_lane(origin_lane)
-			
-			if not _request_spawn(target_lane):
-				_refund_blocked_spawn_debt()
-				_schedule_smart_respawn(target_lane, _resolve_bpm_respawn_delay(), true)
-	, CONNECT_ONE_SHOT)
+	timer.timeout.connect(_on_smart_respawn_timeout.bind(origin_lane, find_new_lane), CONNECT_ONE_SHOT)
 	_pending_spawn_timers.append(timer)
+
+
+func _on_smart_respawn_timeout(origin_lane: int, find_new_lane: bool) -> void:
+	if not _running or _paused or lane_manager == null or not is_instance_valid(lane_manager):
+		return
+	
+	var phase: Dictionary = _phases[_current_phase_index]
+	var max_threats: int = _resolve_authority_budget(phase)
+	
+	if lane_manager.alive_count() < max_threats:
+		var target_lane: int = origin_lane
+		if find_new_lane:
+			target_lane = _pick_best_empty_lane(origin_lane)
+		
+		if not _request_spawn(target_lane):
+			_refund_blocked_spawn_debt()
+			_schedule_smart_respawn(target_lane, _resolve_bpm_respawn_delay(), true)
 
 
 func _refund_blocked_spawn_debt() -> void:

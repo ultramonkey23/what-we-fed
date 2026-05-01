@@ -72,16 +72,23 @@ const CREATURES := {
 	   "description": "It learned to cut before it learned the cost of stopping.",
 	   "signal_flavor": "The air near its claws smells of ozone and old, dry blood.",
 	   "dna_threshold": 8.0,
-	   "sprite_path": "res://assets/creatures/ashclaw/forms/ashclaw_baby.png",
-	   "reward_portrait_path": "res://assets/creatures/ashclaw/forms/ashclaw_baby.png",
-	   "support_portrait_path": "res://assets/creatures/ashclaw/forms/ashclaw_teen.png",
-	   "battlefield_sprite_path": "res://assets/creatures/ashclaw/forms/ashclaw_adult.png",
+	   "sprite_path": "res://assets/creatures/ashclaw/forms/ashclaw_idle.png",
+	   "reward_portrait_path": "res://assets/creatures/ashclaw/forms/ashclaw_idle.png",
+	   "support_portrait_path": "res://assets/creatures/ashclaw/forms/ashclaw_idle.png",
+	   "battlefield_sprite_path": "res://assets/creatures/ashclaw/forms/ashclaw_idle.png",
+	   "attack_sprite_path": "res://assets/creatures/ashclaw/forms/ashclaw_attack.png",
+	   "hurt_sprite_path": "res://assets/creatures/ashclaw/forms/ashclaw_hurt.png",
 	   "combat_render": {
-		   "scale": 0.22,
+		   "scale": 0.12, # Baby/Default scale
+		   "age_scales": {
+			   "baby": 0.12,
+			   "teen": 0.16,
+			   "adult": 0.22
+		   },
 		   "world_offset": Vector2(-116.0, 82.0),
 		   "z_index": 6,
-		   "modulate": Color(0.92, 0.91, 0.88, 0.90),
-		   "marker_modulate": Color(0.96, 0.93, 0.88, 0.94)
+		   "modulate": Color(0.92, 0.91, 0.88, 1.0),
+		   "marker_modulate": Color(0.96, 0.93, 0.88, 1.0)
 	   },
 	   "eat_effect": {"type": "damage_flat", "value": 2.0},
 	   "mutation": {
@@ -123,7 +130,12 @@ const CREATURES := {
 		   "support_portrait_path": "res://assets/creatures/bond_remnant/forms/bond_remnant_adult.png",
 		   "battlefield_sprite_path": "res://assets/creatures/bond_remnant/forms/bond_remnant_adult.png",
 		   "combat_render": {
-			   "scale": 0.22,
+			   "scale": 0.12,
+			   "age_scales": {
+				   "baby": 0.12,
+				   "teen": 0.17,
+				   "adult": 0.22
+			   },
 			   "world_offset": Vector2(-124.0, 88.0),
 			   "z_index": 6,
 			   "modulate": Color(0.84, 0.88, 1.0, 0.85),
@@ -176,6 +188,12 @@ const CREATURES := {
 			"feedback_text": "GORGE",
 			"hud_trigger_hint": "Kill: gorge all"
 		},
+		"combat_render": {
+			"scale": 0.052,
+			"age_scales": {"baby": 0.052, "teen": 0.07, "adult": 0.10},
+			"world_offset": Vector2(-108.0, 74.0),
+			"z_index": 5
+		},
 		"quig_offer_text": "Quig: \"You smell that first. Keep your lane clean.\"",
 		"wrong_detail": "jaw unhinged past any angle that should work"
 	},
@@ -207,6 +225,12 @@ const CREATURES := {
 			"feedback_text": "PHASE",
 			"hud_trigger_hint": "Perf.parry: phase"
 		},
+		"combat_render": {
+			"scale": 0.052,
+			"age_scales": {"baby": 0.052, "teen": 0.07, "adult": 0.10},
+			"world_offset": Vector2(-108.0, 74.0),
+			"z_index": 5
+		},
 		"quig_offer_text": "Quig: \"If it blinks, your read was late.\"",
 		"wrong_detail": "no visible eyes but something tracks every movement"
 	},
@@ -224,19 +248,26 @@ const CREATURES := {
 		"dna_threshold": 12.0,
 		"eat_effect": {"type": "damage_flat", "value": 3.0},
 		"mutation": {
-			"id": "thornback_rend",
-			"display_name": "Thornback's Rend",
-			"summary": "Next 8 timed attacks apply extra bleed (Rend)",
-			"effect": {"type": "rend_on_hit", "charges": 3, "use_charges": 8}
+			"id": "thornback_bleed",
+			"display_name": "Thornback's Bleed",
+			"summary": "Next 8 timed attacks apply 2x bleed stacks",
+			"effect": {"type": "bleed_on_hit", "charges": 2, "use_charges": 8}
 		},
 		"bond_passive": {"type": "timed_damage_flat", "value": 3.0},
 		"support_role": {
 			"readout_name": "Thornback",
-			"effect_id": "thornback_rend",
+			"effect_id": "thornback_bleed",
 			"trigger_on": ["perfect_timed_attack"],
 			"effect_value": 20.0,
-			"feedback_text": "REND",
-			"hud_trigger_hint": "Perf.timed: rend"
+			"feedback_text": "BLEED",
+			"hud_trigger_hint": "Perf.timed: bleed"
+		},
+
+		"combat_render": {
+			"scale": 0.052,
+			"age_scales": {"baby": 0.052, "teen": 0.07, "adult": 0.10},
+			"world_offset": Vector2(-108.0, 74.0),
+			"z_index": 5
 		},
 		"quig_offer_text": "Quig: \"Keep your hands visible. It counts movement.\"",
 		"wrong_detail": "spines still growing — some through the wrong layers"
@@ -269,6 +300,12 @@ const CREATURES := {
 			"feedback_text": "PEAL",
 			"hud_trigger_hint": "Good+perf.timed"
 		},
+		"combat_render": {
+			"scale": 0.052,
+			"age_scales": {"baby": 0.052, "teen": 0.07, "adult": 0.10},
+			"world_offset": Vector2(-108.0, 74.0),
+			"z_index": 5
+		},
 		"quig_offer_text": "Quig: \"When it starts singing, cut the rhythm first.\"",
 		"wrong_detail": "vertebrae tuned like bells and filed to a point"
 	},
@@ -299,6 +336,12 @@ const CREATURES := {
 			"effect_value": 8.0,
 			"feedback_text": "WARD",
 			"hud_trigger_hint": "Dodge: bone ward"
+		},
+		"combat_render": {
+			"scale": 0.06,
+			"age_scales": {"baby": 0.06, "teen": 0.08, "adult": 0.12},
+			"world_offset": Vector2(-108.0, 74.0),
+			"z_index": 5
 		},
 		"quig_offer_text": "Quig: \"Its shelter is a mouth. Move early.\"",
 		"wrong_detail": "bone plates growing inward as if trying to cage the heart"
@@ -331,6 +374,12 @@ const CREATURES := {
 			"feedback_text": "MAUL",
 			"hud_trigger_hint": "Ultimate: maul"
 		},
+		"combat_render": {
+			"scale": 0.052,
+			"age_scales": {"baby": 0.052, "teen": 0.07, "adult": 0.11},
+			"world_offset": Vector2(-108.0, 74.0),
+			"z_index": 5
+		},
 		"quig_offer_text": "Quig: \"It commits before the wound speaks. Respect that.\"",
 		"wrong_detail": "second jaw folding out from under the first"
 	},
@@ -361,6 +410,12 @@ const CREATURES := {
 			"effect_value": 7.0,
 			"feedback_text": "LULL",
 			"hud_trigger_hint": "Perf.parry: hush"
+		},
+		"combat_render": {
+			"scale": 0.052,
+			"age_scales": {"baby": 0.052, "teen": 0.07, "adult": 0.10},
+			"world_offset": Vector2(-108.0, 74.0),
+			"z_index": 5
 		},
 		"quig_offer_text": "Quig: \"Keep your voice down. It hunts the first panic.\"",
 		"wrong_detail": "throat lined with soft tissue that dampens every sound except yours"
@@ -393,6 +448,12 @@ const CREATURES := {
 			"feedback_text": "EXPOSE",
 			"hud_trigger_hint": "Perf.parry: seam"
 		},
+		"combat_render": {
+			"scale": 0.052,
+			"age_scales": {"baby": 0.052, "teen": 0.07, "adult": 0.10},
+			"world_offset": Vector2(-108.0, 74.0),
+			"z_index": 5
+		},
 		"quig_offer_text": "Quig: \"Still enough to fool you. It is watching.\"",
 		"wrong_detail": "pupils gone but something colder left behind in their place"
 	},
@@ -409,6 +470,7 @@ const CREATURES := {
 		"battlefield_sprite_path": "res://assets/creatures/pale_shelf/enemies/pale_shelf_precision_stalker.png",
 		"combat_render": {
 			"scale": 0.052,
+			"age_scales": {"baby": 0.052, "teen": 0.07, "adult": 0.10},
 			"world_offset": Vector2(-108.0, 74.0),
 			"z_index": 5,
 			"modulate": Color(0.84, 0.96, 1.0, 0.88),
@@ -429,6 +491,7 @@ const CREATURES := {
 		"battlefield_sprite_path": "res://assets/creatures/pale_shelf/enemies/pale_shelf_shardshroud_sentinel.png",
 		"combat_render": {
 			"scale": 0.054,
+			"age_scales": {"baby": 0.054, "teen": 0.075, "adult": 0.11},
 			"world_offset": Vector2(-108.0, 74.0),
 			"z_index": 5,
 			"modulate": Color(0.86, 0.92, 0.88, 0.88),
@@ -451,7 +514,7 @@ const CREATURES := {
 		"dna_threshold": 11.0,
 		"eat_effect": {"type": "damage_flat", "value": 2.5},
 		"mutation": {
-			"id": "silt_drag",
+			"id": "siltgrip_drag",
 			"display_name": "Siltgrip's Drag",
 			"summary": "Next 8 timed hits heal for 4",
 			"effect": {"type": "heal_on_hit", "value": 4.0, "charges": 8}
@@ -463,7 +526,13 @@ const CREATURES := {
 			"trigger_on": ["enemy_defeated"],
 			"effect_value": 9.0,
 			"feedback_text": "DRAG",
-			"hud_trigger_hint": "Kill: heal+rend"
+			"hud_trigger_hint": "Kill: heal+bleed"
+		},
+		"combat_render": {
+			"scale": 0.054,
+			"age_scales": {"baby": 0.054, "teen": 0.075, "adult": 0.11},
+			"world_offset": Vector2(-108.0, 74.0),
+			"z_index": 5
 		},
 		"quig_offer_text": "Quig: \"If your kill rhythm drops, it notices. Keep pressure.\"",
 		"wrong_detail": "claws shaped only for closing; they have forgotten the geometry of letting go"
@@ -761,12 +830,12 @@ const ENEMY_TELEGRAPH_PROFILES := {
 
 const CREATURE_ENCOUNTER_PROFILES := {
 	"ashclaw": {
-		"projectile_speed": 300.0,
-		"dna_reward": 2.5,
-		"marker_modulate": Color(0.96, 0.89, 0.82, 0.96),
-		"encounter_summary": "Tracks your lane and punishes slack fear."
-	},
-	"bond_remnant": {
+			"projectile_speed": 300.0,
+			"dna_reward": 2.5,
+			"marker_modulate": Color(0.96, 0.89, 0.82, 1.0),
+			"encounter_summary": "Tracks your lane and punishes slack fear.",
+			"apply_bleed": true
+	},	"bond_remnant": {
 		"projectile_speed": 330.0,
 		"dna_reward": 2.75,
 		"marker_modulate": Color(0.84, 0.88, 0.98, 0.96),
@@ -1124,6 +1193,10 @@ static func get_creature_art_path(species_id: String, context: String = "default
 			if stage == "teen":
 				return String(creature.get("support_portrait_path", creature.get("sprite_path", "")))
 			return String(creature.get("sprite_path", ""))
+		"attack":
+			return String(creature.get("attack_sprite_path", get_creature_art_path(species_id, "battlefield", stage)))
+		"hurt":
+			return String(creature.get("hurt_sprite_path", get_creature_art_path(species_id, "battlefield", stage)))
 		_:
 			var default_path: String = String(creature.get("sprite_path", ""))
 			if default_path.is_empty() and has_fallback_portrait:

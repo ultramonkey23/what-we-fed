@@ -80,6 +80,10 @@ var stat_adaptability: float:
 	get: return player.stat_adaptability
 	set(v): player.stat_adaptability = v
 
+var player_bleed_stacks: int:
+	get: return player.bleed_stacks
+	set(v): player.bleed_stacks = v
+
 var is_in_combat: bool:
 	get: return run.is_in_combat
 	set(v): run.is_in_combat = v
@@ -292,10 +296,13 @@ func _process(delta: float) -> void:
 	if not is_in_combat and run_in_progress:
 		# Flesh (Vitality) Passive Regeneration: 
 		# Every 10 points above 100 base grants 0.5 HP/sec.
-		if stat_vitality > 100.0:
-			var regen_rate: float = (stat_vitality - 100.0) / 10.0 * 0.5
-			if regen_rate > 0.0 and player_hp < player_max_hp:
-				player_hp = min(player_hp + regen_rate * delta, player_max_hp)
+		# Optimization: Tick every 30 frames for non-combat background regen.
+		if Engine.get_process_frames() % 30 == 0:
+			if stat_vitality > 100.0:
+				var regen_rate: float = (stat_vitality - 100.0) / 10.0 * 0.5
+				if regen_rate > 0.0 and player_hp < player_max_hp:
+					# Multiply by 30-frame delta equivalent
+					player_hp = min(player_hp + regen_rate * delta * 30.0, player_max_hp)
 
 
 # --- Creature Logic ---
@@ -441,6 +448,20 @@ func get_hp_percent() -> float:
 
 func heal_player(amount: float) -> float:
 	return player.heal(amount)
+
+
+func apply_player_bleed() -> void:
+	player.bleed_stacks = clampi(player.bleed_stacks + 1, 0, player.BLEED_MAX_STACKS)
+	EventBus.player_bleed_changed.emit(player.bleed_stacks, player.BLEED_MAX_STACKS)
+
+
+func reset_player_bleed() -> void:
+	player.bleed_stacks = 0
+	EventBus.player_bleed_changed.emit(0, player.BLEED_MAX_STACKS)
+
+
+func get_player_bleed_damage_mult() -> float:
+	return player.get_bleed_vulnerability_multiplier()
 
 
 func get_power_level() -> float:

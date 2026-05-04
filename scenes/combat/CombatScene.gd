@@ -5796,9 +5796,8 @@ func _on_boss_damaged(id: int, damage: float, is_threshold_impact: bool) -> void
 	pass # Handling moved to dedicated boss sub-logic
 
 
-func _on_enemy_status_applied_requested(sector: int, status_id: String, params: Dictionary) -> void:
+func _on_enemy_status_applied_requested(enemy_id: int, status_id: String, params: Dictionary) -> void:
 	if zone_manager == null: return
-	var enemy_id: int = _get_enemy_id_for_lane(sector)
 	if enemy_id != -1:
 		zone_manager.call("apply_status_by_id", enemy_id, status_id, params)
 
@@ -6830,14 +6829,13 @@ func _get_enemy_id_for_lane(lane: int) -> int:
 	return int(enemy.get("id", -1))
 
 
-func _on_enemy_status_applied(sector: int, status_id: String, params: Dictionary) -> void:
+func _on_enemy_status_applied(enemy_id: int, status_id: String, params: Dictionary) -> void:
 	# Updates the enemy marker color to reflect the new status.
 	# "gorge_mark_triggered" fires when a marked enemy dies — show FEAST feedback.
 	if status_id == "gorge_mark_triggered":
 		_show_feedback("FEAST", Color(0.92, 0.60, 0.20, 1.0), 0.36)
 		return
 
-	var enemy_id: int = _get_enemy_id_for_lane(sector)
 	if enemy_id < 0:
 		return
 	var marker_data = _enemy_markers_by_id.get(enemy_id, null)
@@ -6848,7 +6846,10 @@ func _on_enemy_status_applied(sector: int, status_id: String, params: Dictionary
 		"bleed":
 			_status_marker_overrides[enemy_id] = Color(0.80, 0.22, 0.10, 0.92)
 			_show_feedback("BLEED", Color(0.94, 0.40, 0.24, 1.0), 0.30)
-		"pale":
+		"rend":
+			_status_marker_overrides[enemy_id] = Color(0.98, 0.76, 0.32, 0.92)
+			_show_feedback("REND", Color(1.0, 0.84, 0.45, 1.0), 0.32)
+		"expose":
 			_status_marker_overrides[enemy_id] = Color(0.40, 0.42, 0.58, 0.70)
 			_show_feedback("PALE", Color(0.74, 0.78, 0.96, 1.0), 0.28)
 		"gorge_mark":
@@ -6877,12 +6878,10 @@ func _on_enemy_status_applied(sector: int, status_id: String, params: Dictionary
 		marker_body.color = _status_marker_overrides[enemy_id]
 
 
-func _on_enemy_status_cleared(sector: int) -> void:
+func _on_enemy_status_cleared(enemy_id: int) -> void:
 	# Resets the enemy marker color to its biome-based color when a status expires or is consumed.
-	var enemy_id: int = _get_enemy_id_for_lane(sector)
-	if enemy_id < 0:
-		return
-	_status_marker_overrides.erase(enemy_id)
+	if enemy_id != -1 and _status_marker_overrides.has(enemy_id):
+		_status_marker_overrides.erase(enemy_id)
 
 	var marker_data = _enemy_markers_by_id.get(enemy_id, null)
 	if marker_data == null:

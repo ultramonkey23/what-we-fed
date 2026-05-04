@@ -112,9 +112,6 @@ var _idle_tex: Texture2D = null
 var _attack_tex: Texture2D = null
 var _atkeffect_tex: Texture2D = null
 var _parry_tex: Texture2D = null
-var RunGrowth: Node:
-	get: return get_node_or_null("/root/RunGrowth")
-
 var _hurt_tex: Texture2D = null
 var _image_restore_tween: Tween = null
 var _atk_effect_pulse_tween: Tween = null

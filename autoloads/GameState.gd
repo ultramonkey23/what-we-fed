@@ -5,6 +5,7 @@ const RITUAL_CONTENT = preload("res://data/RitualConsumableContent.gd")
 const CREATURE_TRAITS = preload("res://data/CreatureTraitContent.gd")
 const COLLAR_CONTENT = preload("res://data/CollarContent.gd")
 const LAIR_RESONANCE = preload("res://data/LairResonanceContent.gd")
+const COMBAT_CONTENT = preload("res://data/CombatContent.gd")
 
 # Sub-state Components
 var player := PlayerState.new()
@@ -23,6 +24,7 @@ var intro_bond_selected_species_id: String = ""
 
 # PERSISTENT META STATS
 var meta_limit_breakers: int = 0
+var meta_support_slots: int = 1
 
 
 func increment_meta_limit_breakers(achievement_id: String = "") -> void:
@@ -140,6 +142,9 @@ var lair_roster: Array[Dictionary]:
 var active_lair_creature_id: String:
 	get: return creatures.active_lair_creature_id
 	set(v): creatures.active_lair_creature_id = v
+var active_lair_creature_ids: Array[String]:
+	get: return creatures.active_lair_creature_ids
+	set(v): creatures.active_lair_creature_ids = v
 var active_region: Dictionary:
 	get: return run.active_region
 	set(v): run.active_region = v
@@ -380,6 +385,43 @@ func add_bonded_creature(creature_data: Dictionary) -> Dictionary:
 
 func set_active_lair_creature(species_id: String) -> void:
 	active_lair_creature_id = species_id
+	active_lair_creature_ids.clear()
+	if not species_id.is_empty():
+		active_lair_creature_ids.append(species_id)
+
+
+func toggle_active_lair_creature(species_id: String) -> bool:
+	if species_id.is_empty():
+		return false
+	if not is_species_ever_bonded(species_id):
+		return false
+	var slot_count: int = get_support_slot_count()
+	var active_ids: Array[String] = active_lair_creature_ids.duplicate()
+	if active_ids.has(species_id):
+		active_ids.erase(species_id)
+	else:
+		if active_ids.size() >= slot_count:
+			if slot_count == 1:
+				active_ids = [species_id]
+			else:
+				return false
+		elif not active_ids.has(species_id):
+			active_ids.append(species_id)
+	active_lair_creature_ids = active_ids
+	active_lair_creature_id = active_lair_creature_ids[0] if not active_lair_creature_ids.is_empty() else ""
+	return true
+
+
+func get_support_slot_count() -> int:
+	return clampi(meta_support_slots, 1, 4)
+
+
+func unlock_support_slot() -> bool:
+	if meta_support_slots >= 4:
+		return false
+	meta_support_slots += 1
+	creatures.ensure_active_lair_creatures(get_support_slot_count())
+	return true
 
 
 func set_active_region(region: Dictionary) -> void:
@@ -400,6 +442,31 @@ func _sync_to_lair(creature: Dictionary) -> void:
 	var lair_entry: Dictionary = creature.duplicate(true)
 	lair_entry.erase("bond_order")
 	lair_roster.append(lair_entry)
+
+
+func deepen_lair_bond(species_id: String, amount: int = 1) -> Dictionary:
+	if species_id.is_empty() or amount <= 0:
+		return {}
+	for i in range(lair_roster.size()):
+		if String(lair_roster[i].get("species_id", "")) != species_id:
+			continue
+		var current_level: int = int(lair_roster[i].get("bond_level", 1))
+		if current_level >= 5:
+			return {}
+		var next_level: int = mini(current_level + amount, 5)
+		lair_roster[i]["bond_level"] = next_level
+		if next_level >= 5:
+			lair_roster[i]["is_exceptional"] = true
+			lair_roster[i]["variant_id"] = String(lair_roster[i].get("variant_id", "exceptional_alpha"))
+		for j in range(roster.size()):
+			if String(roster[j].get("species_id", "")) == species_id:
+				roster[j]["bond_level"] = next_level
+				if bool(lair_roster[i].get("is_exceptional", false)):
+					roster[j]["is_exceptional"] = true
+					roster[j]["variant_id"] = String(lair_roster[i].get("variant_id", ""))
+				break
+		return Dictionary(lair_roster[i]).duplicate(true)
+	return {}
 
 
 func is_species_ever_bonded(species_id: String) -> bool:
@@ -861,14 +928,10 @@ func get_lair_release_refund(species_id: String) -> int:
 func train_lair_creature(species_id: String) -> bool:
 	var cost: int = get_lair_training_cost(species_id)
 	if not has_dna_for(species_id, float(cost)): return false
-	for i in range(lair_roster.size()):
-		if String(lair_roster[i].get("species_id", "")) == species_id:
-			var cur_bond: int = int(lair_roster[i].get("bond_level", 1))
-			if cur_bond >= 5: return false
-			spend_dna(species_id, float(cost))
-			lair_roster[i]["bond_level"] = cur_bond + 1
-			return true
-	return false
+	var updated: Dictionary = deepen_lair_bond(species_id, 1)
+	if updated.is_empty(): return false
+	spend_dna(species_id, float(cost))
+	return true
 
 
 func release_lair_creature(species_id: String) -> void:
@@ -880,6 +943,8 @@ func release_lair_creature(species_id: String) -> void:
 			break
 	if active_lair_creature_id == species_id:
 		active_lair_creature_id = ""
+	active_lair_creature_ids.erase(species_id)
+	creatures.ensure_active_lair_creatures(get_support_slot_count())
 
 
 func is_intro_bond_choice_pending() -> bool:
@@ -898,6 +963,7 @@ func reset_profile_progression_state() -> void:
 	collar_inventory.clear()
 	equipped_collar_id = ""
 	meta_limit_breakers = 0
+	meta_support_slots = 1
 	creatures.reset_profile_progression()
 	player.reset_to_base()
 	rewards.reset_run_state()
@@ -909,7 +975,7 @@ func reset_run_state() -> void:
 	# 1. Reset per-run components
 	player.reset_to_base()
 	rewards.reset_run_state()
-	creatures.reset_run_state()
+	creatures.reset_run_state(get_support_slot_count())
 	run.reset_run_state()
 
 	# 2. RESOLUTION TRUTH: Data-Driven Creature Classes & Meta-Potential.

@@ -34,6 +34,8 @@ func get_hit_zone_pos_for_angle(angle: float) -> Vector2:
 const PALE_DAMAGE_MULT: float = 0.50        # PALE halves the enemy's next fired projectile damage
 const EXPOSE_DAMAGE_MULT: float = 1.25      # +25% damage to the enemy while EXPOSE is active
 const EXPOSE_BASE_DURATION: float = 2.5     # EXPOSE expires after 2.5 seconds
+const REND_DAMAGE_MULT: float = 1.50        # +50% damage while REND is active
+const REND_HITS_BASE: int = 3               # REND lasts for 3 hits by default
 const GORGE_MARK_BONUS_CHARGE: float = 5.0  # Extra support charge when a GORGE-MARK enemy is defeated
 const VENOM_DAMAGE_RATIO: float = 0.10      # 10% of max HP (or current?) dealt per beat
 const VENOM_BASE_BEATS: int = 4
@@ -43,7 +45,7 @@ const ENEMY_DEFENSE_MIN_DAMAGE: float = 1.0
 
 # Bleed / Blood-Ember constants
 const BLEED_MAX_STACKS: int = 5
-const BLEED_DAMAGE_AMP_PER_STACK: float = 0.10 # +10% damage per stack
+const BLEED_DAMAGE_AMP_PER_STACK: float = 0.10 # +10% damage per stack (Sovereign Burn synergy)
 
 # Per-enemy-type status flags. bond_reaper: EXPOSE windows are shorter (harder to exploit).
 # sovereign: REND can only be applied once (resilient apex predator).
@@ -222,11 +224,7 @@ func _on_song_beat_pulse(_beat_index: int, _intensity: float, _quality: String) 
 	
 	for id in expired:
 		_enemy_statuses.erase(id)
-		# For backward compatibility, we'll try to find if this enemy is in a lane
-		# but the new system uses enemy_id for status.
-		var lane: int = _find_lane_for_enemy(id)
-		if lane >= 0:
-			EventBus.emit_signal("enemy_status_cleared", lane)
+		EventBus.emit_signal("enemy_status_cleared", id)
 
 
 func get_projectile(lane: int) -> Node:
@@ -459,12 +457,11 @@ func _handle_enemy_defeat(id: int) -> void:
 	
 	if _enemy_statuses.has(id) and _enemy_statuses[id].get("id", "") == "gorge_mark":
 		_enemy_statuses.erase(id)
-		if lane >= 0: 
-			EventBus.emit_signal("enemy_status_applied", lane, "gorge_mark_triggered", {})
-			EventBus.emit_signal("enemy_status_cleared", lane)
+		EventBus.emit_signal("enemy_status_applied", id, "gorge_mark_triggered", {})
+		EventBus.emit_signal("enemy_status_cleared", id)
 	elif _enemy_statuses.has(id):
 		_enemy_statuses.erase(id)
-		if lane >= 0: EventBus.emit_signal("enemy_status_cleared", lane)
+		EventBus.emit_signal("enemy_status_cleared", id)
 
 	EventBus.emit_signal("enemy_defeated", id)
 
@@ -616,6 +613,8 @@ func apply_status_by_id(id: int, status_id: String, params: Dictionary = {}) -> 
 			status["fire_pending"] = true
 		"gorge_mark":
 			pass
+		"rend":
+			status["hits_remaining"] = int(params.get("hits", REND_HITS_BASE))
 		"expose":
 			var base_dur: float = float(params.get("duration", EXPOSE_BASE_DURATION))
 			var dur_mult: float = float(flags.get("expose_duration_mult", 1.0))
@@ -636,9 +635,7 @@ func apply_status_by_id(id: int, status_id: String, params: Dictionary = {}) -> 
 			return
 
 	_enemy_statuses[id] = status
-	var lane = _find_lane_for_enemy(id)
-	if lane >= 0:
-		EventBus.emit_signal("enemy_status_applied", lane, status_id, params)
+	EventBus.emit_signal("enemy_status_applied", id, status_id, params)
 
 
 func _get_status_damage_mult_by_id(id: int) -> float:
@@ -647,6 +644,8 @@ func _get_status_damage_mult_by_id(id: int) -> float:
 	match _enemy_statuses[id].get("id", ""):
 		"expose":
 			return EXPOSE_DAMAGE_MULT
+		"rend":
+			return REND_DAMAGE_MULT
 		"bleed":
 			var stacks: int = int(_enemy_statuses[id].get("stacks", 0))
 			return 1.0 + (BLEED_DAMAGE_AMP_PER_STACK * stacks)
@@ -663,9 +662,7 @@ func get_enemy_bleed_stacks(id: int) -> int:
 func clear_enemy_status_by_id(id: int) -> void:
 	if _enemy_statuses.has(id):
 		_enemy_statuses.erase(id)
-		var lane = _find_lane_for_enemy(id)
-		if lane >= 0:
-			EventBus.emit_signal("enemy_status_cleared", lane)
+		EventBus.emit_signal("enemy_status_cleared", id)
 
 
 func _run_fire_cycle(task_id: int) -> void:

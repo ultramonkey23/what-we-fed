@@ -30,6 +30,13 @@ const BOSS_STATE_FINAL: String = "Unleashed  |  No shelter"
 const TITLE_SUBTITLE: String = "The hollow keeps what it learns."
 const TITLE_PROMPT: String = "Press any key to initiate translation"
 const TITLE_HINT: String = "H — controls  |  Ctrl+Shift+N — new admittance"
+const TITLE_SUBTITLE_FIRST_ADMITTANCE: String = "No lineage has answered yet. The hollow waits for first admittance."
+const TITLE_SUBTITLE_ARCHIVE_EMPTY: String = "The archive is awake, but no bonded pattern survives inside it."
+const TITLE_SUBTITLE_RETURNING: String = "The archive remembers %d bonded lineages."
+const TITLE_PROMPT_FIRST_ADMITTANCE: String = "Press any key to choose first lineage"
+const TITLE_PROMPT_ARCHIVE_EMPTY: String = "Press any key to intrude and extract lineage"
+const TITLE_PROMPT_RETURNING: String = "Press any key to return to the lair"
+const TITLE_HINT_RETURNING: String = "H — controls  |  Ctrl+Shift+N — new admittance"
 const TITLE_HELP_HEADER: String = "Survival Protocol"
 const INTRO_BOND_HEADER: String = "FIRST ADMITTANCE"
 const INTRO_BOND_SUBTITLE: String = "This cycle opens with one lineage tethered to your sequence. Choose the pattern that sustains your re-instantiation."
@@ -39,11 +46,12 @@ const LAIR_SUBTITLE: String = "Patterns persist between re-instantiations — fl
 const LAIR_EMPTY: String = "Archive empty.\nIntrude into the hollow and extract a lineage."
 const LAIR_NOTE: String = "Selected lineage enters re-instantiated. A stronger pattern taken mid-run overwrites your active sequence."
 const LAIR_DEN_LABEL: String = "Lineage archive"
-const LAIR_DEN_BLURB: String = "What you harvest remembers you. One lineage can be re-instantiated as support each intrusion."
+const LAIR_DEN_BLURB: String = "Harvested lineages stay here. Heartroot handles growth."
 const LAIR_ACTIVE_HEAD: String = "Active sequence"
 const LAIR_ACTIVE_SOLO: String = "No companion tethered for this re-instantiation.\n\nPress 1–3 to assign a lineage, or the same key again to descend alone."
-const LAIR_ACTION_TRAIN_LABEL: String = "T - Deepen Sequence"
-const LAIR_ACTION_RELEASE_LABEL: String = "X - Purge Archive"
+const LAIR_ACTION_TRAIN_LABEL: String = "H - Heartroot Chamber"
+const LAIR_ACTION_TETHER_LOCKED: String = "Archive bond persists"
+const LAIR_ACTION_TETHER_HINT: String = "1-3: next intrusion tether. Bond persists."
 const LAIR_DNA_REQUIRED: String = "DNA required: %d"
 const LAIR_DNA_REFUND: String = "DNA refund: %d"
 const LAIR_TRAIN_SUCCESS: String = "Bond deepens. %s is now level %d."
@@ -254,6 +262,29 @@ const QUIG_REACTIVE_LINES := {
 		]
 	}
 }
+
+
+static func title_subtitle() -> String:
+	if GameState.is_intro_bond_choice_pending():
+		return TITLE_SUBTITLE_FIRST_ADMITTANCE
+	var bonded_count: int = GameState.lair_roster.size()
+	if bonded_count <= 0:
+		return TITLE_SUBTITLE_ARCHIVE_EMPTY
+	return TITLE_SUBTITLE_RETURNING % bonded_count
+
+
+static func title_prompt() -> String:
+	if GameState.is_intro_bond_choice_pending():
+		return TITLE_PROMPT_FIRST_ADMITTANCE
+	if GameState.lair_roster.is_empty():
+		return TITLE_PROMPT_ARCHIVE_EMPTY
+	return TITLE_PROMPT_RETURNING
+
+
+static func title_hint() -> String:
+	if GameState.is_intro_bond_choice_pending():
+		return TITLE_HINT
+	return TITLE_HINT_RETURNING
 
 
 static func dna_status_line(species_id: String) -> String:

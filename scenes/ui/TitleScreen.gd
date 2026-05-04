@@ -3,6 +3,7 @@ extends Node2D
 const LAIR_SCENE_PATH: String = "res://scenes/ui/LairScene.tscn"
 const INTRO_BOND_SCENE_PATH: String = "res://scenes/ui/IntroBondChoiceScene.tscn"
 const UI_STYLE = preload("res://systems/UIStyle.gd")
+const HUD_PANEL_ART = preload("res://systems/HUDPanelArt.gd")
 const PRESENTATION_TEXT = preload("res://data/PresentationTextContent.gd")
 const TITLE_SIGIL_PATH: String = "res://assets/ui/shell/title_sigil.png"
 
@@ -71,11 +72,14 @@ func _build_ui() -> void:
 	var canvas: CanvasLayer = CanvasLayer.new()
 	add_child(canvas)
 
+	_build_title_lair_silhouette(canvas)
+
 	var title_rail := Panel.new()
 	title_rail.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	title_rail.position = Vector2(200.0, 198.0)
 	title_rail.size = Vector2(880.0, 188.0)
 	UI_STYLE.apply_shell_style(title_rail, "mm_command")
+	_apply_title_vein_panel(title_rail, 0.28, UI_STYLE.get_manga_color("bond_teal"))
 	canvas.add_child(title_rail)
 
 	var title_label: Label = Label.new()
@@ -101,27 +105,38 @@ func _build_ui() -> void:
 		canvas.move_child(sigil, 0)
 
 	var sub_label: Label = Label.new()
-	sub_label.text = PRESENTATION_TEXT.TITLE_SUBTITLE
+	sub_label.text = PRESENTATION_TEXT.title_subtitle()
 	sub_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	sub_label.size = Vector2(1280.0, 40.0)
-	sub_label.position = Vector2(0.0, 328.0)
+	sub_label.size = Vector2(1120.0, 48.0)
+	sub_label.position = Vector2(80.0, 318.0)
+	sub_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	UI_STYLE.apply_label(sub_label, "mm_subtitle")
+	sub_label.add_theme_font_size_override("font_size", 20)
 	canvas.add_child(sub_label)
 
 	var prompt_label: Label = Label.new()
-	prompt_label.text = PRESENTATION_TEXT.TITLE_PROMPT
+	prompt_label.text = PRESENTATION_TEXT.title_prompt()
 	prompt_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	prompt_label.size = Vector2(1280.0, 40.0)
-	prompt_label.position = Vector2(0.0, 434.0)
+	prompt_label.size = Vector2(1280.0, 58.0)
+	prompt_label.position = Vector2(0.0, 416.0)
 	UI_STYLE.apply_label(prompt_label, "mm_stat_primary")
+	prompt_label.add_theme_font_size_override("font_size", 30)
 	canvas.add_child(prompt_label)
 
+	var prompt_slash := ColorRect.new()
+	prompt_slash.color = UI_STYLE.get_manga_color("blood_ember")
+	prompt_slash.color.a = 0.72
+	prompt_slash.position = Vector2(490.0, 408.0)
+	prompt_slash.size = Vector2(284.0, 2.0)
+	canvas.add_child(prompt_slash)
+
 	var hint_label: Label = Label.new()
-	hint_label.text = PRESENTATION_TEXT.TITLE_HINT
+	hint_label.text = PRESENTATION_TEXT.title_hint()
 	hint_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hint_label.size = Vector2(1280.0, 30.0)
 	hint_label.position = Vector2(0.0, 660.0)
 	UI_STYLE.apply_label(hint_label, "mm_hint")
+	hint_label.add_theme_font_size_override("font_size", 20)
 	canvas.add_child(hint_label)
 
 	_controls_panel = ColorRect.new()
@@ -173,3 +188,76 @@ func _build_ui() -> void:
 	close_hint.position = Vector2(3.0, 334.0)
 	UI_STYLE.apply_label(close_hint, "mm_hint")
 	_controls_panel.add_child(close_hint)
+
+
+func _build_title_lair_silhouette(canvas: CanvasLayer) -> void:
+	var root := Node2D.new()
+	root.name = "TitleLairSilhouette"
+	canvas.add_child(root)
+
+	var chamber_color := UI_STYLE.get_manga_color("ink_black")
+	chamber_color.a = 0.58
+	var rim_blood := UI_STYLE.get_manga_color("blood_ember")
+	rim_blood.a = 0.18
+	var rim_bond := UI_STYLE.get_manga_color("bond_teal")
+	rim_bond.a = 0.16
+
+	var throat := Polygon2D.new()
+	throat.polygon = PackedVector2Array([
+		Vector2(140.0, 610.0),
+		Vector2(252.0, 470.0),
+		Vector2(386.0, 432.0),
+		Vector2(584.0, 390.0),
+		Vector2(728.0, 408.0),
+		Vector2(1026.0, 348.0),
+		Vector2(1168.0, 454.0),
+		Vector2(1120.0, 648.0),
+		Vector2(850.0, 612.0),
+		Vector2(638.0, 670.0),
+		Vector2(404.0, 604.0)
+	])
+	throat.color = chamber_color
+	root.add_child(throat)
+
+	_add_title_root_line(root, PackedVector2Array([
+		Vector2(82.0, 584.0), Vector2(252.0, 512.0), Vector2(446.0, 468.0), Vector2(644.0, 454.0),
+		Vector2(842.0, 420.0), Vector2(1128.0, 462.0)
+	]), rim_blood, 5.0)
+	_add_title_root_line(root, PackedVector2Array([
+		Vector2(230.0, 168.0), Vector2(404.0, 238.0), Vector2(580.0, 292.0), Vector2(826.0, 284.0),
+		Vector2(1056.0, 208.0)
+	]), rim_bond, 3.0)
+	_add_title_root_line(root, PackedVector2Array([
+		Vector2(626.0, 92.0), Vector2(646.0, 218.0), Vector2(638.0, 384.0), Vector2(638.0, 656.0)
+	]), Color(UI_STYLE.get_manga_color("alert_gold"), 0.12), 2.0)
+
+	for i in range(5):
+		var tooth := Polygon2D.new()
+		var x := 210.0 + float(i) * 212.0
+		tooth.polygon = PackedVector2Array([
+			Vector2(x, 0.0),
+			Vector2(x + 52.0, 0.0),
+			Vector2(x + 16.0, 102.0)
+		])
+		tooth.color = Color(UI_STYLE.get_manga_color("paper"), 0.045)
+		root.add_child(tooth)
+
+
+func _add_title_root_line(parent: Node, points: PackedVector2Array, color: Color, width: float) -> void:
+	var line := Line2D.new()
+	line.points = points
+	line.width = width
+	line.default_color = color
+	line.joint_mode = Line2D.LINE_JOINT_ROUND
+	line.begin_cap_mode = Line2D.LINE_CAP_ROUND
+	line.end_cap_mode = Line2D.LINE_CAP_ROUND
+	parent.add_child(line)
+
+
+func _apply_title_vein_panel(panel: Control, pulse: float, color: Color) -> void:
+	if panel == null:
+		return
+	var ink := UI_STYLE.get_manga_color("ink_black")
+	HUD_PANEL_ART.apply_panel_art(panel, "", Rect2(), "TitleVeinArt", "TitleVeinBacking", Color(ink.r, ink.g, ink.b, 0.42))
+	HUD_PANEL_ART.set_vein_color(panel, color, "TitleVeinBacking")
+	HUD_PANEL_ART.set_vein_pulse(panel, pulse, "TitleVeinBacking")

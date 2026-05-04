@@ -12,12 +12,9 @@ const UI_STYLE = preload("res://systems/UIStyle.gd")
 const PRESENTATION_TEXT = preload("res://data/PresentationTextContent.gd")
 const COMBAT_DATA = preload("res://data/CombatContent.gd")
 const POTENTIAL_GATE = preload("res://systems/PotentialGate.gd")
-const GROWTH_STATS = preload("res://data/GrowthStats.gd")
 const CREATURE_TRAITS = preload("res://data/CreatureTraitContent.gd")
 const LAIR_RESONANCE = preload("res://data/LairResonanceContent.gd")
 const HUD_PANEL_ART = preload("res://systems/HUDPanelArt.gd")
-
-const HOLD_RELEASE_TIME: float = 1.2
 
 var _creature_cards: Array[Panel] = []
 var _card_accents: Array[ColorRect] = []
@@ -36,22 +33,19 @@ var _hub_identity: Label
 var _hub_support: Label
 var _hub_bond_pot: Label
 var _hub_dna_stat: Label
+var _hub_detail_scroll: ScrollContainer
+var _hub_detail_box: VBoxContainer
 
-var _ranch_action_train: Label
-var _ranch_action_release: Label
-var _ranch_action_hint: Label
+var _lair_action_primary: Label
+var _lair_action_status: Label
+var _lair_action_detail_scroll: ScrollContainer
+var _lair_action_detail: Label
 var _bottom_hint: Label
 var _feedback_label: Label
 
-var _vitals_labels: Dictionary = {}
-var _bias_label: Label
 var _archive_mode: bool = false
 var _archive_trait_list: Array[String] = []
 var _archive_selected_trait_index: int = -1
-
-var _release_hold_current: float = 0.0
-var _is_releasing: bool = false
-var _growth_stats_ref: GrowthStats = GROWTH_STATS.new()
 
 var _translation_jitter: Node2D
 var _jitter_intensity: float = 0.0
@@ -91,20 +85,6 @@ func _process(delta: float) -> void:
 		)
 		_ui_layer.offset = offset
 		
-	if _is_releasing:
-		if Input.is_key_pressed(KEY_X):
-			_release_hold_current += delta
-			var progress: float = clampf(_release_hold_current / HOLD_RELEASE_TIME, 0.0, 1.0)
-			_update_release_feedback(progress)
-			if _release_hold_current >= HOLD_RELEASE_TIME:
-				_execute_release()
-				_is_releasing = false
-				_release_hold_current = 0.0
-		else:
-			_is_releasing = false
-			_release_hold_current = 0.0
-			_update_release_feedback(0.0)
-
 
 func _sync_selection_index() -> void:
 	_selected_index = -1
@@ -126,10 +106,6 @@ func _unhandled_input(event: InputEvent) -> void:
 
 	var key_event: InputEventKey = event as InputEventKey
 	if not key_event.pressed or key_event.echo:
-		if key_event.keycode == KEY_X and not key_event.pressed:
-			_is_releasing = false
-			_release_hold_current = 0.0
-			_update_release_feedback(0.0)
 		return
 
 	if key_event.keycode == KEY_TAB:
@@ -146,6 +122,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		KEY_1: index = 0
 		KEY_2: index = 1
 		KEY_3: index = 2
+		KEY_H:
+			get_tree().change_scene_to_file("res://scenes/ui/HeartrootChamber.tscn")
+			return
 
 	if index >= 0:
 		if _archive_mode:
@@ -183,21 +162,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 
 	if key_event.keycode == KEY_T:
-		if _selected_index >= 0 and _selected_index < lair.size():
-			var sid: String = String(lair[_selected_index].get("species_id", ""))
-			if GameState.train_lair_creature(sid):
-				_play_feedback("BOND DEEPENED")
-				_refresh_active_support_panel()
-				_build_creature_list(_ui_layer, GameState.lair_roster)
-			else:
-				var cost: int = GameState.get_lair_training_cost(sid)
-				var cur_bond: int = int(lair[_selected_index].get("bond_level", 1))
-				if cur_bond >= 5:
-					_play_feedback("MAX BOND REACHED")
-				elif GameState.get_dna(sid) < cost:
-					_play_feedback("NOT ENOUGH DNA (NEED %d)" % cost)
-			get_viewport().set_input_as_handled()
-			return
+		get_tree().change_scene_to_file("res://scenes/ui/HeartrootChamber.tscn")
+		get_viewport().set_input_as_handled()
+		return
 
 	if key_event.keycode == KEY_S and _archive_mode:
 		if _selected_index >= 0 and _archive_selected_trait_index >= 0:
@@ -217,22 +184,13 @@ func _unhandled_input(event: InputEvent) -> void:
 
 	if key_event.keycode == KEY_A:
 		if _selected_index >= 0 and _selected_index < lair.size():
-			var sid: String = String(lair[_selected_index].get("species_id", ""))
-			if GameState.request_ascension(sid):
-				_play_feedback("KAIJU ASCENSION")
-				_jitter_intensity = 12.0
-				var tween := create_tween()
-				tween.tween_property(self, "_jitter_intensity", 0.1, 1.5).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
-				_build_ui() # Rebuild for new visual scale
-			else:
-				_play_feedback(_ascension_status_line(sid))
+			_play_feedback("ASCENSION BELONGS IN HEARTROOT")
 			get_viewport().set_input_as_handled()
 			return
 
 	if key_event.keycode == KEY_X:
 		if _selected_index >= 0 and _selected_index < lair.size():
-			_is_releasing = true
-			_release_hold_current = 0.0
+			_play_feedback("ARCHIVE BOND PERSISTS")
 			get_viewport().set_input_as_handled()
 			return
 
@@ -248,27 +206,6 @@ func _unhandled_input(event: InputEvent) -> void:
 	if key_event.keycode == KEY_ESCAPE:
 		get_tree().change_scene_to_file(TITLE_SCENE_PATH)
 		return
-
-
-func _execute_release() -> void:
-	var lair: Array = GameState.lair_roster
-	if _selected_index >= 0 and _selected_index < lair.size():
-		var sid: String = String(lair[_selected_index].get("species_id", ""))
-		GameState.release_lair_creature(sid)
-		_selected_index = -1
-		_build_ui() # Full rebuild since roster count changed
-
-
-func _update_release_feedback(progress: float) -> void:
-	if not is_instance_valid(_ranch_action_release):
-		return
-	if progress <= 0.0:
-		_refresh_active_support_panel() # Reset to normal
-		return
-	
-	var pct: int = int(progress * 100.0)
-	_ranch_action_release.text = "HOLD X TO RELEASE... %d%%" % pct
-	_ranch_action_release.add_theme_color_override("font_color", UI_STYLE.get_manga_color("blood_ember").lerp(Color.WHITE, progress))
 
 
 func _play_feedback(text: String) -> void:
@@ -303,6 +240,8 @@ func _build_ui() -> void:
 	_ui_layer = CanvasLayer.new()
 	add_child(_ui_layer)
 
+	_build_lair_living_map(_ui_layer)
+
 	var header: Label = Label.new()
 	header.text = "INTERFACE WOUND" if not _archive_mode else "THE ARCHIVE"
 	header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -315,10 +254,11 @@ func _build_ui() -> void:
 	var sub: Label = Label.new()
 	sub.text = PRESENTATION_TEXT.LAIR_SUBTITLE if not _archive_mode else "Extracted traits can be spliced into active sequences."
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	sub.size = Vector2(920.0, 48.0)
-	sub.position = Vector2(180.0, 92.0)
+	sub.size = Vector2(960.0, 34.0)
+	sub.position = Vector2(160.0, 88.0)
 	sub.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	UI_STYLE.apply_label(sub, "mm_subtitle")
+	sub.add_theme_font_size_override("font_size", 18)
 	_ui_layer.add_child(sub)
 
 	var lair: Array = GameState.lair_roster
@@ -327,17 +267,17 @@ func _build_ui() -> void:
 		_clear_hub_refs()
 	else:
 		_build_den_sidebar(_ui_layer, lair)
+		_build_lair_room_spine(_ui_layer)
 		_build_creature_list(_ui_layer, lair)
-		_build_archive_vitals(_ui_layer)
 
 	_build_bottom_bar(_ui_layer, lair)
 	
 	_feedback_label = Label.new()
 	_feedback_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_feedback_label.size = Vector2(SIDEBAR_W, 40.0)
-	_feedback_label.position = Vector2(SIDEBAR_X, 430.0)
+	_feedback_label.size = Vector2(LIST_W, 40.0)
+	_feedback_label.position = Vector2(LIST_X, 582.0)
 	_feedback_label.modulate.a = 0.0
-	_feedback_label.pivot_offset = Vector2(SIDEBAR_W * 0.5, 20.0)
+	_feedback_label.pivot_offset = Vector2(LIST_W * 0.5, 20.0)
 	UI_STYLE.apply_label(_feedback_label, "mm_choice_bond")
 	_ui_layer.add_child(_feedback_label)
 
@@ -349,13 +289,14 @@ func _clear_hub_refs() -> void:
 	_hub_support = null
 	_hub_bond_pot = null
 	_hub_dna_stat = null
-	_ranch_action_train = null
-	_ranch_action_release = null
-	_ranch_action_hint = null
+	_hub_detail_scroll = null
+	_hub_detail_box = null
+	_lair_action_primary = null
+	_lair_action_status = null
+	_lair_action_detail_scroll = null
+	_lair_action_detail = null
 	_bottom_hint = null
 	_feedback_label = null
-	_vitals_labels.clear()
-	_bias_label = null
 
 
 func _build_empty_state(canvas: CanvasLayer) -> void:
@@ -368,27 +309,83 @@ func _build_empty_state(canvas: CanvasLayer) -> void:
 	canvas.add_child(empty_label)
 
 
+func _build_lair_room_spine(canvas: CanvasLayer) -> void:
+	var rooms := [
+		{"label": "LINEAGE", "role": "mm_apex", "active": not _archive_mode},
+		{"label": "HEARTROOT", "role": "mm_command", "active": false},
+		{"label": "ARCHIVE", "role": "mm_mutation", "active": _archive_mode},
+		{"label": "SEALED", "role": "lair_card", "active": false}
+	]
+	var x: float = LIST_X
+	var y: float = 122.0
+	var w: float = 190.0
+	var h: float = 26.0
+	var gap: float = 10.0
+	for i in range(rooms.size()):
+		var room: Dictionary = rooms[i]
+		var tab := Panel.new()
+		tab.position = Vector2(x + float(i) * (w + gap), y)
+		tab.size = Vector2(w, h)
+		UI_STYLE.apply_shell_style(tab, String(room.get("role", "lair_card")))
+		_apply_lair_vein_panel(tab, 0.24 if bool(room.get("active", false)) else 0.05, _room_accent_color(String(room.get("label", ""))))
+		tab.modulate.a = 1.0 if bool(room.get("active", false)) else 0.54
+		canvas.add_child(tab)
+
+		var label := Label.new()
+		label.text = String(room.get("label", ""))
+		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		label.position = Vector2(0.0, 0.0)
+		label.size = tab.size
+		UI_STYLE.apply_label(label, "mm_caption")
+		label.add_theme_font_size_override("font_size", 14)
+		tab.add_child(label)
+
+
+func _apply_lair_vein_panel(panel: Control, pulse: float, color: Color) -> void:
+	if panel == null:
+		return
+	var ink := UI_STYLE.get_manga_color("ink_black")
+	HUD_PANEL_ART.apply_panel_art(panel, "", Rect2(), "LairVeinArt", "LairVeinBacking", Color(ink.r, ink.g, ink.b, 0.34))
+	HUD_PANEL_ART.set_vein_color(panel, color, "LairVeinBacking")
+	HUD_PANEL_ART.set_vein_pulse(panel, pulse, "LairVeinBacking")
+
+
+func _room_accent_color(room_label: String) -> Color:
+	match room_label:
+		"LINEAGE":
+			return UI_STYLE.get_manga_color("blood_ember")
+		"HEARTROOT":
+			return UI_STYLE.get_manga_color("bond_teal")
+		"ARCHIVE":
+			return UI_STYLE.get_manga_color("mutation_magenta")
+		_:
+			return UI_STYLE.get_manga_color("paper")
+
+
 func _build_den_sidebar(canvas: CanvasLayer, lair: Array) -> void:
 	var slab: Panel = Panel.new()
-	slab.position = Vector2(SIDEBAR_X - 6.0, 118.0)
-	slab.size = Vector2(SIDEBAR_W + 12.0, 498.0)
+	slab.position = Vector2(SIDEBAR_X - 6.0, 112.0)
+	slab.size = Vector2(SIDEBAR_W + 12.0, 532.0)
 	UI_STYLE.apply_shell_style(slab, "lair_sidebar")
+	_apply_lair_vein_panel(slab, 0.22, UI_STYLE.get_manga_color("blood_ember"))
 	canvas.add_child(slab)
 
 	var den: Label = Label.new()
 	den.text = PRESENTATION_TEXT.LAIR_DEN_LABEL if not _archive_mode else "Extracted Traits"
-	den.position = Vector2(SIDEBAR_X + 10.0, 128.0)
+	den.position = Vector2(SIDEBAR_X + 10.0, 124.0)
 	den.size = Vector2(SIDEBAR_W - 20.0, 28.0)
 	UI_STYLE.apply_label(den, "mm_choice_consume")
-	den.add_theme_font_size_override("font_size", 15)
+	den.add_theme_font_size_override("font_size", 17)
 	canvas.add_child(den)
 
 	var blurb: Label = Label.new()
 	blurb.text = PRESENTATION_TEXT.LAIR_DEN_BLURB if not _archive_mode else "Select a trait to view its effect and splice it onto your active sequence."
-	blurb.position = Vector2(SIDEBAR_X + 10.0, 156.0)
-	blurb.size = Vector2(SIDEBAR_W - 20.0, 56.0)
+	blurb.position = Vector2(SIDEBAR_X + 10.0, 152.0)
+	blurb.size = Vector2(SIDEBAR_W - 20.0, 64.0)
 	blurb.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	UI_STYLE.apply_label(blurb, "mm_dim")
+	blurb.add_theme_font_size_override("font_size", 15)
 	canvas.add_child(blurb)
 
 	if _archive_mode:
@@ -396,87 +393,205 @@ func _build_den_sidebar(canvas: CanvasLayer, lair: Array) -> void:
 	else:
 		var act_head: Label = Label.new()
 		act_head.text = PRESENTATION_TEXT.LAIR_ACTIVE_HEAD
-		act_head.position = Vector2(SIDEBAR_X + 10.0, 224.0)
+		act_head.position = Vector2(SIDEBAR_X + 10.0, 226.0)
 		act_head.size = Vector2(SIDEBAR_W - 20.0, 26.0)
 		UI_STYLE.apply_label(act_head, "mm_choice_bond")
-		act_head.add_theme_font_size_override("font_size", 18)
+		act_head.add_theme_font_size_override("font_size", 21)
 		canvas.add_child(act_head)
 
 		var panel: ColorRect = ColorRect.new()
 		panel.color = UI_STYLE.get_manga_color("ink_black")
 		panel.color.a = 0.88
-		panel.position = Vector2(SIDEBAR_X + 8.0, 254.0)
-		panel.size = Vector2(SIDEBAR_W - 16.0, 188.0)
+		panel.position = Vector2(SIDEBAR_X + 8.0, 258.0)
+		panel.size = Vector2(SIDEBAR_W - 16.0, 244.0)
+		_apply_lair_vein_panel(panel, 0.10, UI_STYLE.get_manga_color("alert_gold"))
 		canvas.add_child(panel)
 
 		var inset: ColorRect = ColorRect.new()
 		inset.color = UI_STYLE.get_manga_color("alert_gold")
 		inset.color.a = 0.24
-		inset.position = Vector2(SIDEBAR_X + 8.0, 254.0)
-		inset.size = Vector2(3.0, 188.0)
+		inset.position = Vector2(SIDEBAR_X + 8.0, 258.0)
+		inset.size = Vector2(3.0, 244.0)
 		canvas.add_child(inset)
 
 		_hub_solo_label = Label.new()
 		_hub_solo_label.text = PRESENTATION_TEXT.LAIR_ACTIVE_SOLO
-		_hub_solo_label.position = Vector2(SIDEBAR_X + 20.0, 264.0)
-		_hub_solo_label.size = Vector2(SIDEBAR_W - 36.0, 168.0)
+		_hub_solo_label.custom_minimum_size = Vector2(SIDEBAR_W - 52.0, 190.0)
 		_hub_solo_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		UI_STYLE.apply_label(_hub_solo_label, "mm_body")
-		canvas.add_child(_hub_solo_label)
+		_hub_solo_label.add_theme_font_size_override("font_size", 17)
+
+		_hub_detail_scroll = ScrollContainer.new()
+		_hub_detail_scroll.position = Vector2(SIDEBAR_X + 20.0, 270.0)
+		_hub_detail_scroll.size = Vector2(SIDEBAR_W - 44.0, 218.0)
+		_hub_detail_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+		_hub_detail_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+		_hub_detail_scroll.mouse_filter = Control.MOUSE_FILTER_STOP
+		canvas.add_child(_hub_detail_scroll)
+
+		_hub_detail_box = VBoxContainer.new()
+		_hub_detail_box.position = Vector2.ZERO
+		_hub_detail_box.custom_minimum_size.x = SIDEBAR_W - 52.0
+		_hub_detail_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_hub_detail_box.add_theme_constant_override("separation", 7)
+		_hub_detail_scroll.add_child(_hub_detail_box)
+		_hub_detail_box.add_child(_hub_solo_label)
 
 		_hub_name = Label.new()
-		_hub_name.position = Vector2(SIDEBAR_X + 20.0, 262.0)
-		_hub_name.size = Vector2(SIDEBAR_W - 36.0, 32.0)
+		_hub_name.custom_minimum_size = Vector2(SIDEBAR_W - 52.0, 34.0)
+		_hub_name.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		UI_STYLE.apply_label(_hub_name, "mm_stat_primary")
-		canvas.add_child(_hub_name)
+		_hub_name.add_theme_font_size_override("font_size", 22)
+		_hub_detail_box.add_child(_hub_name)
 
 		_hub_identity = Label.new()
-		_hub_identity.position = Vector2(SIDEBAR_X + 20.0, 296.0)
-		_hub_identity.size = Vector2(SIDEBAR_W - 36.0, 22.0)
+		_hub_identity.custom_minimum_size = Vector2(SIDEBAR_W - 52.0, 22.0)
+		_hub_identity.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		UI_STYLE.apply_label(_hub_identity, "mm_dim")
-		canvas.add_child(_hub_identity)
+		_hub_identity.add_theme_font_size_override("font_size", 15)
+		_hub_detail_box.add_child(_hub_identity)
 		
 		_hub_dna_stat = Label.new()
-		_hub_dna_stat.position = Vector2(SIDEBAR_X + 20.0, 316.0)
-		_hub_dna_stat.size = Vector2(SIDEBAR_W - 36.0, 22.0)
+		_hub_dna_stat.custom_minimum_size = Vector2(SIDEBAR_W - 52.0, 40.0)
+		_hub_dna_stat.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		UI_STYLE.apply_label(_hub_dna_stat, "mm_choice_bond")
-		_hub_dna_stat.add_theme_font_size_override("font_size", 14)
-		canvas.add_child(_hub_dna_stat)
+		_hub_dna_stat.add_theme_font_size_override("font_size", 18)
+		_hub_detail_box.add_child(_hub_dna_stat)
 
 		_hub_support = Label.new()
-		_hub_support.position = Vector2(SIDEBAR_X + 20.0, 342.0)
-		_hub_support.size = Vector2(SIDEBAR_W - 36.0, 44.0)
+		_hub_support.custom_minimum_size = Vector2(SIDEBAR_W - 52.0, 54.0)
 		_hub_support.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		UI_STYLE.apply_label(_hub_support, "mm_caption")
-		canvas.add_child(_hub_support)
+		_hub_support.add_theme_font_size_override("font_size", 15)
+		_hub_detail_box.add_child(_hub_support)
 
 		_hub_bond_pot = Label.new()
-		_hub_bond_pot.position = Vector2(SIDEBAR_X + 20.0, 386.0)
-		_hub_bond_pot.size = Vector2(SIDEBAR_W - 36.0, 56.0)
+		_hub_bond_pot.custom_minimum_size = Vector2(SIDEBAR_W - 52.0, 84.0)
 		_hub_bond_pot.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		UI_STYLE.apply_label(_hub_bond_pot, "mm_stat_secondary")
-		canvas.add_child(_hub_bond_pot)
+		_hub_bond_pot.add_theme_font_size_override("font_size", 16)
+		_hub_detail_box.add_child(_hub_bond_pot)
 
-	_ranch_action_train = Label.new()
-	_ranch_action_train.position = Vector2(SIDEBAR_X + 10.0, 458.0)
-	_ranch_action_train.size = Vector2(SIDEBAR_W - 20.0, 24.0)
-	UI_STYLE.apply_label(_ranch_action_train, "mm_caption")
-	canvas.add_child(_ranch_action_train)
+	_lair_action_primary = Label.new()
+	_lair_action_primary.position = Vector2(SIDEBAR_X + 18.0, 508.0)
+	_lair_action_primary.size = Vector2(SIDEBAR_W - 44.0, 30.0)
+	UI_STYLE.apply_label(_lair_action_primary, "mm_caption")
+	_lair_action_primary.add_theme_font_size_override("font_size", 16)
+	canvas.add_child(_lair_action_primary)
 
-	_ranch_action_release = Label.new()
-	_ranch_action_release.position = Vector2(SIDEBAR_X + 10.0, 484.0)
-	_ranch_action_release.size = Vector2(SIDEBAR_W - 20.0, 24.0)
-	UI_STYLE.apply_label(_ranch_action_release, "mm_caption")
-	canvas.add_child(_ranch_action_release)
+	_lair_action_status = Label.new()
+	_lair_action_status.position = Vector2(SIDEBAR_X + 18.0, 540.0)
+	_lair_action_status.size = Vector2(SIDEBAR_W - 44.0, 30.0)
+	UI_STYLE.apply_label(_lair_action_status, "mm_caption")
+	_lair_action_status.add_theme_font_size_override("font_size", 16)
+	canvas.add_child(_lair_action_status)
 
-	_ranch_action_hint = Label.new()
-	_ranch_action_hint.position = Vector2(SIDEBAR_X + 10.0, 514.0)
-	_ranch_action_hint.size = Vector2(SIDEBAR_W - 20.0, 80.0)
-	_ranch_action_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	UI_STYLE.apply_label(_ranch_action_hint, "mm_dim")
-	canvas.add_child(_ranch_action_hint)
+	_lair_action_detail_scroll = ScrollContainer.new()
+	_lair_action_detail_scroll.position = Vector2(SIDEBAR_X + 18.0, 572.0)
+	_lair_action_detail_scroll.size = Vector2(SIDEBAR_W - 44.0, 70.0)
+	_lair_action_detail_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_lair_action_detail_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	_lair_action_detail_scroll.mouse_filter = Control.MOUSE_FILTER_STOP
+	_apply_lair_scroll_gutter(_lair_action_detail_scroll, UI_STYLE.get_manga_color("bond_teal"))
+	canvas.add_child(_lair_action_detail_scroll)
+
+	_lair_action_detail = Label.new()
+	_lair_action_detail.position = Vector2.ZERO
+	_lair_action_detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_lair_action_detail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	UI_STYLE.apply_label(_lair_action_detail, "mm_dim")
+	_lair_action_detail.add_theme_font_size_override("font_size", 15)
+	_lair_action_detail_scroll.add_child(_lair_action_detail)
 
 	_refresh_active_support_panel()
+
+
+func _build_lair_living_map(canvas: CanvasLayer) -> void:
+	var map := Node2D.new()
+	map.name = "LairLivingMap"
+	canvas.add_child(map)
+
+	var floor_shadow := Polygon2D.new()
+	floor_shadow.polygon = PackedVector2Array([
+		Vector2(58.0, 672.0),
+		Vector2(146.0, 574.0),
+		Vector2(330.0, 530.0),
+		Vector2(498.0, 552.0),
+		Vector2(686.0, 504.0),
+		Vector2(906.0, 526.0),
+		Vector2(1190.0, 458.0),
+		Vector2(1238.0, 662.0)
+	])
+	floor_shadow.color = Color(UI_STYLE.get_manga_color("ink_black"), 0.42)
+	map.add_child(floor_shadow)
+
+	_add_lair_root_line(map, PackedVector2Array([
+		Vector2(198.0, 628.0), Vector2(326.0, 570.0), Vector2(424.0, 456.0),
+		Vector2(608.0, 414.0), Vector2(844.0, 386.0), Vector2(1166.0, 318.0)
+	]), Color(UI_STYLE.get_manga_color("blood_ember"), 0.20), 6.0)
+	_add_lair_root_line(map, PackedVector2Array([
+		Vector2(186.0, 168.0), Vector2(344.0, 254.0), Vector2(492.0, 286.0),
+		Vector2(692.0, 256.0), Vector2(1014.0, 178.0), Vector2(1230.0, 222.0)
+	]), Color(UI_STYLE.get_manga_color("bond_teal"), 0.15), 3.0)
+	_add_lair_root_line(map, PackedVector2Array([
+		Vector2(758.0, 132.0), Vector2(706.0, 254.0), Vector2(678.0, 410.0),
+		Vector2(710.0, 570.0), Vector2(754.0, 690.0)
+	]), Color(UI_STYLE.get_manga_color("mutation_magenta"), 0.13), 3.0)
+
+	var rooms := [
+		{"name": "LINEAGE", "pos": Vector2(412.0, 320.0), "size": Vector2(170.0, 60.0), "color": UI_STYLE.get_manga_color("blood_ember")},
+		{"name": "HEARTROOT", "pos": Vector2(620.0, 278.0), "size": Vector2(190.0, 72.0), "color": UI_STYLE.get_manga_color("bond_teal")},
+		{"name": "ARCHIVE", "pos": Vector2(856.0, 330.0), "size": Vector2(160.0, 58.0), "color": UI_STYLE.get_manga_color("mutation_magenta")},
+		{"name": "SEALED", "pos": Vector2(1042.0, 250.0), "size": Vector2(132.0, 46.0), "color": UI_STYLE.get_manga_color("paper")}
+	]
+	for room in rooms:
+		var room_name: String = String(room.get("name", ""))
+		var room_pos: Vector2 = room.get("pos", Vector2.ZERO)
+		var room_size: Vector2 = room.get("size", Vector2.ZERO)
+		var room_color: Color = room.get("color", UI_STYLE.get_manga_color("paper"))
+		var glow := ColorRect.new()
+		glow.position = room_pos
+		glow.size = room_size
+		var c: Color = room_color
+		c.a = 0.075 if room_name != "SEALED" else 0.035
+		glow.color = c
+		glow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		map.add_child(glow)
+
+		var rim := ColorRect.new()
+		rim.position = room_pos
+		rim.size = Vector2(room_size.x, 2.0)
+		var rc: Color = room_color
+		rc.a = 0.20
+		rim.color = rc
+		rim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		map.add_child(rim)
+
+
+func _add_lair_root_line(parent: Node, points: PackedVector2Array, color: Color, width: float) -> void:
+	var line := Line2D.new()
+	line.points = points
+	line.width = width
+	line.default_color = color
+	line.joint_mode = Line2D.LINE_JOINT_ROUND
+	line.begin_cap_mode = Line2D.LINE_CAP_ROUND
+	line.end_cap_mode = Line2D.LINE_CAP_ROUND
+	parent.add_child(line)
+
+
+func _apply_lair_scroll_gutter(scroll: ScrollContainer, color: Color) -> void:
+	if scroll == null:
+		return
+	var gutter := ColorRect.new()
+	gutter.name = "ScrollRootGutter"
+	gutter.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	gutter.position = Vector2(scroll.size.x - 4.0, 0.0)
+	gutter.size = Vector2(2.0, scroll.size.y)
+	var c := color
+	c.a = 0.20
+	gutter.color = c
+	scroll.add_child(gutter)
+	scroll.move_child(gutter, 0)
 
 
 func _build_archive_trait_list_sidebar(canvas: CanvasLayer) -> void:
@@ -542,10 +657,10 @@ func _build_creature_list(canvas: CanvasLayer, lair: Array) -> void:
 	_card_global_indices.clear()
 
 	var card_width: float = LIST_W
-	var card_height: float = 128.0
+	var card_height: float = 138.0
 	var card_gap: float = 8.0
 	var card_x: float = LIST_X
-	var list_start_y: float = 146.0
+	var list_start_y: float = 158.0
 
 	_page_start = clampi(_page_start, 0, maxi(lair.size() - 1, 0))
 	_page_start = int(floor(float(_page_start) / float(MAX_LAIR_DISPLAY))) * MAX_LAIR_DISPLAY
@@ -564,6 +679,7 @@ func _build_creature_card(canvas: CanvasLayer, creature: Dictionary, index: int,
 	card.size = Vector2(w, h)
 	card.position = Vector2(x, y)
 	UI_STYLE.apply_shell_style(card, "lair_card")
+	_apply_lair_vein_panel(card, 0.05, UI_STYLE.get_manga_color("blood_ember"))
 	canvas.add_child(card)
 
 	var accent: ColorRect = ColorRect.new()
@@ -599,38 +715,42 @@ func _build_creature_card(canvas: CanvasLayer, creature: Dictionary, index: int,
 	name_label.position = Vector2(50.0, 10.0)
 	name_label.size = Vector2(w - 200.0, 30.0)
 	UI_STYLE.apply_label(name_label, "mm_stat_primary")
+	name_label.add_theme_font_size_override("font_size", 24)
 	card.add_child(name_label)
 
 	var id_label: Label = Label.new()
 	id_label.text = _identity_line(creature, species_id)
-	id_label.position = Vector2(50.0, 40.0)
+	id_label.position = Vector2(50.0, 44.0)
 	id_label.size = Vector2(w - 90.0, 22.0)
 	UI_STYLE.apply_label(id_label, "mm_dim")
+	id_label.add_theme_font_size_override("font_size", 16)
 	card.add_child(id_label)
 
 	var bond_level: int = int(creature.get("bond_level", 1))
 	var potential_label: String = _get_potential_label_for_species(species_id)
 	var bl_label: Label = Label.new()
 	bl_label.text = "Bond %d  ·  Potential cap %s" % [bond_level, potential_label]
-	bl_label.position = Vector2(50.0, 62.0)
+	bl_label.position = Vector2(50.0, 68.0)
 	bl_label.size = Vector2(w - 100.0, 22.0)
 	UI_STYLE.apply_label(bl_label, "mm_stat_secondary")
+	bl_label.add_theme_font_size_override("font_size", 18)
 	card.add_child(bl_label)
 
 	var support_line: String = _support_one_liner(creature, species_id)
 	if not support_line.is_empty():
 		var sup_label: Label = Label.new()
 		sup_label.text = support_line
-		sup_label.position = Vector2(50.0, 84.0)
+		sup_label.position = Vector2(50.0, 94.0)
 		sup_label.size = Vector2(w - 100.0, 22.0)
 		UI_STYLE.apply_label(sup_label, "mm_caption")
+		sup_label.add_theme_font_size_override("font_size", 16)
 		card.add_child(sup_label)
 
 	var desc: String = String(creature.get("description", ""))
 	if not desc.is_empty():
 		var desc_scroll := ScrollContainer.new()
-		desc_scroll.position = Vector2(50.0, 104.0)
-		desc_scroll.size = Vector2(w - 70.0, 22.0)
+		desc_scroll.position = Vector2(50.0, 118.0)
+		desc_scroll.size = Vector2(w - 70.0, 18.0)
 		desc_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 		desc_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
 		desc_scroll.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -642,6 +762,7 @@ func _build_creature_card(canvas: CanvasLayer, creature: Dictionary, index: int,
 		desc_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		desc_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		UI_STYLE.apply_label(desc_label, "mm_body")
+		desc_label.add_theme_font_size_override("font_size", 15)
 		desc_scroll.add_child(desc_label)
 		_reflow_lair_desc_scroll(desc_scroll, desc_label)
 
@@ -694,8 +815,8 @@ func _build_bottom_bar(canvas: CanvasLayer, lair: Array) -> void:
 	var note: Label = Label.new()
 	note.text = PRESENTATION_TEXT.LAIR_NOTE
 	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	note.size = Vector2(1060.0, 30.0)
-	note.position = Vector2(110.0, 612.0)
+	note.size = Vector2(LIST_W, 30.0)
+	note.position = Vector2(LIST_X, 612.0)
 	UI_STYLE.apply_label(note, "mm_dim")
 	canvas.add_child(note)
 
@@ -704,6 +825,7 @@ func _build_bottom_bar(canvas: CanvasLayer, lair: Array) -> void:
 	_bottom_hint.size = Vector2(1280.0, 28.0)
 	_bottom_hint.position = Vector2(0.0, 652.0)
 	UI_STYLE.apply_label(_bottom_hint, "mm_hint")
+	_bottom_hint.add_theme_font_size_override("font_size", 17)
 	canvas.add_child(_bottom_hint)
 	
 	_refresh_bottom_bar()
@@ -721,7 +843,7 @@ func _refresh_bottom_bar() -> void:
 	else:
 		var page_count: int = int(ceil(float(lair.size()) / float(MAX_LAIR_DISPLAY)))
 		var cur_page: int = int(floor(float(_page_start) / float(MAX_LAIR_DISPLAY))) + 1
-		hint_text = "1/2/3 — toggle support (%d slots)  |  [/] page %d/%d  |  TAB archive  |  ENTER continue" % [
+		hint_text = "1/2/3 — toggle support (%d slots)  |  [/] page %d/%d  |  TAB archive  |  H heartroot  |  ENTER continue" % [
 			GameState.get_support_slot_count(),
 			cur_page,
 			maxi(page_count, 1)
@@ -743,8 +865,10 @@ func _refresh_card_highlights() -> void:
 		
 		if is_selected:
 			UI_STYLE.apply_shell_style(_creature_cards[i], "mm_apex")
+			_apply_lair_vein_panel(_creature_cards[i], 0.42, UI_STYLE.get_manga_color("blood_ember"))
 		else:
 			UI_STYLE.apply_shell_style(_creature_cards[i], "lair_card")
+			_apply_lair_vein_panel(_creature_cards[i], 0.06, UI_STYLE.get_manga_color("paper"))
 			
 		if i < _card_accents.size() and is_instance_valid(_card_accents[i]):
 			_card_accents[i].color = UI_STYLE.get_manga_color("alert_gold") if is_selected else Color(0.0, 0.0, 0.0, 0.0)
@@ -769,11 +893,10 @@ func _refresh_active_support_panel() -> void:
 		_hub_support.visible = has
 		_hub_bond_pot.visible = has
 	
-	_ranch_action_train.visible = has
-	_ranch_action_release.visible = has
-	_ranch_action_hint.visible = has
-	
-	_refresh_archive_vitals()
+	_lair_action_primary.visible = has
+	_lair_action_status.visible = has
+	_lair_action_detail_scroll.visible = has
+	_lair_action_detail.visible = has
 	
 	if not has:
 		return
@@ -782,9 +905,12 @@ func _refresh_active_support_panel() -> void:
 	
 	if not _archive_mode:
 		_hub_name.text = String(c.get("display_name", "Unknown"))
+		_fit_label_to_bounds(_hub_name)
 		_hub_identity.text = _identity_line(c, species_id)
+		_fit_label_to_bounds(_hub_identity)
 		
 		_hub_dna_stat.text = PRESENTATION_TEXT.dna_status_line(species_id)
+		_fit_label_to_bounds(_hub_dna_stat)
 		
 		var role: Dictionary = COMBAT_DATA.get_support_role(species_id)
 		if role.is_empty():
@@ -795,6 +921,7 @@ func _refresh_active_support_panel() -> void:
 			_hub_support.text = readout
 		else:
 			_hub_support.text = "%s\n%s" % [readout, PRESENTATION_TEXT.support_trigger_line(trig_hint)]
+		_fit_label_to_bounds(_hub_support)
 		
 		var bond_level: int = int(c.get("bond_level", 1))
 		var stats: Dictionary = GameState.get_bond_level_stats_readout(bond_level)
@@ -804,17 +931,18 @@ func _refresh_active_support_panel() -> void:
 		var next_pct: int = int((stats.next_mult - 1.0) * 100.0)
 		
 		var is_ascended = bool(c.get("is_ascended", false))
-		var bond_text: String = "Sequence depth %d %s · Potential %s\n" % [bond_level, "[ASCENDED]" if is_ascended else "", pot]
-		bond_text += "Current Effect: +%d%%\n" % cur_pct
+		var bond_text: String = "Sequence %d %s · Potential %s\n" % [bond_level, "[ASCENDED]" if is_ascended else "", pot]
+		bond_text += "Now +%d%%\n" % cur_pct
 		if not stats.is_max:
-			bond_text += "Next Level: +%d%%" % next_pct
+			bond_text += "Next +%d%% in Heartroot" % next_pct
 		else:
 			if not is_ascended:
-				bond_text += "MAX LEVEL - READY FOR ASCENSION"
+				bond_text += "Heartroot ascension ready"
 			else:
-				bond_text += "SUPREME FORM REACHED"
+				bond_text += "Sovereign form reached"
 		
 		_hub_bond_pot.text = bond_text
+		_fit_label_to_bounds(_hub_bond_pot)
 	
 	var player_dna_actual = GameState.get_dna(species_id)
 	if _archive_mode:
@@ -824,43 +952,24 @@ func _refresh_active_support_panel() -> void:
 			var trait_data = CREATURE_TRAITS.get_trait(tid)
 			var splice_cost: float = _trait_splicing_cost(species_id)
 			var already_spliced: bool = Array(c.get("spliced_traits", [])).has(tid)
-			_ranch_action_train.text = "S - Splice Trait (%.0f DNA)" % splice_cost
+			_lair_action_primary.text = "S - Splice Trait (%.0f DNA)" % splice_cost
 			if already_spliced:
-				_ranch_action_train.text = "S - Trait already spliced"
-			UI_STYLE.apply_label(_ranch_action_train, "mm_choice_bond" if player_dna_actual >= splice_cost and not already_spliced else "mm_dim")
-			_ranch_action_release.text = trait_data.get("display_name", tid).to_upper()
-			UI_STYLE.apply_label(_ranch_action_release, "mm_stat_primary")
-			_ranch_action_hint.text = _trait_archive_detail(tid, species_id, c)
+				_lair_action_primary.text = "S - Trait already spliced"
+			UI_STYLE.apply_label(_lair_action_primary, "mm_choice_bond" if player_dna_actual >= splice_cost and not already_spliced else "mm_dim")
+			_lair_action_status.text = trait_data.get("display_name", tid).to_upper()
+			UI_STYLE.apply_label(_lair_action_status, "mm_stat_primary")
+			_set_lair_action_detail_text(_trait_archive_detail(tid, species_id, c))
 		else:
-			_ranch_action_train.text = "Select a trait (1-3) to splice"
-			_ranch_action_release.text = ""
-			_ranch_action_hint.text = ""
+			_lair_action_primary.text = "Select a trait (1-3) to splice"
+			_lair_action_status.text = ""
+			_set_lair_action_detail_text("")
 	else:
-		var bond_level = int(c.get("bond_level", 1))
-		var cost: int = GameState.get_lair_training_cost(species_id)
-		var refund: int = GameState.get_lair_release_refund(species_id)
+		_lair_action_primary.text = PRESENTATION_TEXT.LAIR_ACTION_TRAIN_LABEL
+		UI_STYLE.apply_label(_lair_action_primary, "mm_choice_bond")
+		_lair_action_status.text = PRESENTATION_TEXT.LAIR_ACTION_TETHER_LOCKED
+		UI_STYLE.apply_label(_lair_action_status, "mm_dim")
 		
-		_ranch_action_train.text = PRESENTATION_TEXT.LAIR_ACTION_TRAIN_LABEL
-		if bond_level >= 5:
-			var is_ascended = bool(c.get("is_ascended", false))
-			if not is_ascended:
-				var ascension_status: Dictionary = _get_ascension_status(species_id)
-				_ranch_action_train.text = "A - Ascend (%.0f DNA)" % float(ascension_status.get("cost", LAIR_RESONANCE.ASCENSION_DNA_COST))
-				UI_STYLE.apply_label(_ranch_action_train, "mm_choice_bond" if bool(ascension_status.get("can_ascend", false)) else "mm_dim")
-			else:
-				_ranch_action_train.text += " (SUPREME)"
-				UI_STYLE.apply_label(_ranch_action_train, "mm_dim")
-		else:
-			var can_afford: bool = player_dna_actual >= cost
-			_ranch_action_train.text += " - %d DNA" % cost
-			UI_STYLE.apply_label(_ranch_action_train, "mm_choice_bond" if can_afford else "mm_choice_consume")
-			if not can_afford:
-				_ranch_action_train.add_theme_color_override("font_color", UI_STYLE.get_manga_color("blood_ember").lerp(Color.BLACK, 0.4))
-			
-		_ranch_action_release.text = PRESENTATION_TEXT.LAIR_ACTION_RELEASE_LABEL + " (+%d DNA)" % refund
-		UI_STYLE.apply_label(_ranch_action_release, "mm_choice_consume")
-		
-		_ranch_action_hint.text = _lair_selected_creature_detail(species_id, c)
+		_set_lair_action_detail_text(_lair_selected_creature_detail(species_id, c))
 
 
 func _trait_splicing_cost(species_id: String) -> float:
@@ -868,6 +977,22 @@ func _trait_splicing_cost(species_id: String) -> float:
 		return float(GameState.call("get_trait_splicing_cost", species_id))
 	var perk: Dictionary = GameState.get_current_resonance_perk()
 	return 250.0 * float(perk.get("splicing_cost_mult", 1.0))
+
+
+func _set_lair_action_detail_text(text: String) -> void:
+	if not is_instance_valid(_lair_action_detail) or not is_instance_valid(_lair_action_detail_scroll):
+		return
+	_lair_action_detail.text = text
+	var inner_w: float = maxf(1.0, _lair_action_detail_scroll.size.x - 6.0)
+	_lair_action_detail.custom_minimum_size.x = inner_w
+	var content_h: float = _lair_action_detail.get_minimum_size().y
+	_lair_action_detail.custom_minimum_size.y = maxf(_lair_action_detail_scroll.size.y, content_h)
+
+
+func _fit_label_to_bounds(label: Label) -> void:
+	if not is_instance_valid(label):
+		return
+	label.custom_minimum_size.x = maxf(1.0, label.size.x)
 
 
 func _get_ascension_status(species_id: String) -> Dictionary:
@@ -916,6 +1041,7 @@ func _lair_selected_creature_detail(species_id: String, creature: Dictionary) ->
 	var resonance: Dictionary = GameState.get_current_resonance_perk()
 	var resonance_name: String = str(resonance.get("display_name", "Unclaimed Resonance"))
 	var current_fate: String = GameState.world_dominant_fate.replace("_", " ").capitalize()
+	lines.append(PRESENTATION_TEXT.LAIR_ACTION_TETHER_HINT)
 	lines.append("Resonance  |  %s (%s)" % [resonance_name, current_fate])
 	var spliced: Array = Array(creature.get("spliced_traits", []))
 	if spliced.is_empty():
@@ -934,7 +1060,7 @@ func _lair_selected_creature_detail(species_id: String, creature: Dictionary) ->
 	lines.append("Gate  |  %s" % str(status.get("reason", "Unknown")))
 	lines.append("Need  |  Bond 5, %.0f DNA, %s" % [float(status.get("cost", LAIR_RESONANCE.ASCENSION_DNA_COST)), required_fate])
 	lines.append("Mastery  |  %s: %s" % [mastery_title, mastery_desc])
-	return _compact_lair_detail(lines, 5)
+	return _compact_lair_detail(lines, 4)
 
 
 func _trait_archive_detail(trait_id: String, species_id: String, creature: Dictionary) -> String:
@@ -961,119 +1087,3 @@ func _compact_lair_detail(lines: Array[String], max_lines: int) -> String:
 		kept.append(lines[i])
 	kept.append("+%d more detail in this sequence." % (lines.size() - kept.size()))
 	return "\n".join(PackedStringArray(kept))
-
-
-func _build_archive_vitals(canvas: CanvasLayer) -> void:
-	var v_panel := ColorRect.new()
-	v_panel.color = UI_STYLE.get_manga_color("ink_black")
-	v_panel.color.a = 0.82
-	v_panel.position = Vector2(LIST_X, 558.0)
-	v_panel.size = Vector2(LIST_W, 112.0)
-	canvas.add_child(v_panel)
-	
-	var v_rim := ColorRect.new()
-	v_rim.color = UI_STYLE.get_manga_color("blood_ember")
-	v_rim.color.a = 0.4
-	v_rim.position = Vector2(LIST_X, 558.0)
-	v_rim.size = Vector2(LIST_W, 2.0)
-	canvas.add_child(v_rim)
-	
-	var v_label := Label.new()
-	v_label.text = "ARCHIVE VITALS"
-	v_label.position = Vector2(LIST_X + 12.0, 532.0)
-	v_label.size = Vector2(200.0, 24.0)
-	UI_STYLE.apply_label(v_label, "mm_choice_bond")
-	v_label.add_theme_font_size_override("font_size", 14)
-	canvas.add_child(v_label)
-	
-	var stats = [
-		["stat_vitality", "FLESH"], ["stat_power", "MAW"], ["stat_carapace", "BONE"],
-		["stat_endurance", "LUNG"], ["stat_swiftness", "NERVE"], ["stat_luck", "OMEN"],
-		["stat_potential", "HOLLOW"], ["stat_intelligence", "EYE"], ["stat_adaptability", "FORM"]
-	]
-	
-	var start_x = LIST_X + 24.0
-	var start_y = 574.0
-	var col_w = 200.0
-	var row_h = 24.0
-	
-	for i in range(stats.size()):
-		var col = floori(i / 3.0)
-		var row = i % 3
-		var s_data = stats[i]
-		var s_key = s_data[0]
-		# var s_name = s_data[1] # Unused but keeping for context
-		
-		var s_lab = Label.new()
-		s_lab.position = Vector2(start_x + col * col_w, start_y + row * row_h)
-		s_lab.size = Vector2(col_w - 20.0, row_h)
-		UI_STYLE.apply_label(s_lab, "mm_body")
-		s_lab.add_theme_font_size_override("font_size", 13)
-		canvas.add_child(s_lab)
-		_vitals_labels[s_key] = s_lab
-		
-	_bias_label = Label.new()
-	_bias_label.position = Vector2(LIST_X + 600.0, 574.0)
-	_bias_label.size = Vector2(210.0, 80.0)
-	_bias_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	UI_STYLE.apply_label(_bias_label, "mm_caption")
-	canvas.add_child(_bias_label)
-	
-	_refresh_archive_vitals()
-
-
-func _refresh_archive_vitals() -> void:
-	if _vitals_labels.is_empty():
-		return
-		
-	var stats_map = {
-		"stat_vitality": ["FLESH", GameState.stat_vitality],
-		"stat_power": ["MAW", GameState.stat_power],
-		"stat_carapace": ["BONE", GameState.stat_carapace],
-		"stat_endurance": ["LUNG", GameState.stat_endurance],
-		"stat_swiftness": ["NERVE", GameState.stat_swiftness],
-		"stat_luck": ["OMEN", GameState.stat_luck],
-		"stat_potential": ["HOLLOW", GameState.stat_potential],
-		"stat_intelligence": ["EYE", GameState.stat_intelligence],
-		"stat_adaptability": ["FORM", GameState.stat_adaptability]
-	}
-	
-	for key in stats_map.keys():
-		if _vitals_labels.has(key):
-			var data = stats_map[key]
-			_vitals_labels[key].text = "%s: %.1f" % [data[0], data[1]]
-			
-	if not is_instance_valid(_bias_label):
-		return
-		
-	var lair: Array = GameState.lair_roster
-	var has: bool = _selected_index >= 0 and _selected_index < lair.size()
-	
-	if not has:
-		_bias_label.text = "GENETIC BIAS: NONE\n(Solo descent grants balanced growth)"
-		return
-		
-	var c: Dictionary = lair[_selected_index]
-	var p_type: String = String(c.get("primary_type", "")).to_lower()
-	var s_type: String = String(c.get("secondary_type", "")).to_lower()
-	
-	var weights = {}
-	var p_w = _growth_stats_ref.genetic_weights.get(p_type, {})
-	var s_w = _growth_stats_ref.genetic_weights.get(s_type, {})
-	
-	for k in p_w.keys(): weights[k] = weights.get(k, 0) + p_w[k]
-	for k in s_w.keys(): weights[k] = weights.get(k, 0) + s_w[k]
-	
-	if weights.is_empty():
-		_bias_label.text = "GENETIC BIAS: STABLE"
-	else:
-		var bias_str = "GENETIC BIAS:\n"
-		var sorted_keys = weights.keys()
-		sorted_keys.sort_custom(func(a, b): return weights[a] > weights[b])
-		
-		var lines = []
-		for k in sorted_keys:
-			var lab = k.replace("stat_", "").to_upper()
-			lines.append("%s (+%d)" % [lab, weights[k]])
-		bias_str += " · ".join(lines)
-		_bias_label.text = bias_str

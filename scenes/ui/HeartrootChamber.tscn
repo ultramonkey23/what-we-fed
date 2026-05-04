@@ -1,0 +1,200 @@
+[gd_scene format=3 uid="uid://dn2m7k8j6l4p1"]
+
+[ext_resource type="Script" path="res://scenes/ui/HeartrootChamber.gd" id="1_logic"]
+
+[node name="HeartrootChamber" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_logic")
+
+[node name="BackdropHost" type="Node2D" parent="."]
+
+[node name="Shaker" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="Title" type="Label" parent="Shaker"]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -400.0
+offset_top = 36.0
+offset_right = 400.0
+offset_bottom = 96.0
+grow_horizontal = 2
+text = "HEARTROOT CHAMBER"
+horizontal_alignment = 1
+
+[node name="StatsWoundFrame" type="Panel" parent="Shaker"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -340.0
+offset_top = -190.0
+offset_right = 340.0
+offset_bottom = 210.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="MarginC" type="MarginContainer" parent="Shaker/StatsWoundFrame"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 14
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 14
+
+[node name="StatsContainer" type="VBoxContainer" parent="Shaker/StatsWoundFrame/MarginC"]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="DNAInfo" type="Label" parent="Shaker/StatsWoundFrame/MarginC/StatsContainer"]
+layout_mode = 2
+text = "AVAILABLE FED DNA: 0"
+horizontal_alignment = 1
+
+[node name="FangStatFrame" type="Panel" parent="Shaker/StatsWoundFrame/MarginC/StatsContainer"]
+custom_minimum_size = Vector2(0, 54)
+layout_mode = 2
+mouse_filter = 2
+
+[node name="FangStat" type="HBoxContainer" parent="Shaker/StatsWoundFrame/MarginC/StatsContainer/FangStatFrame"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 10.0
+offset_top = 8.0
+offset_right = -10.0
+offset_bottom = -8.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 10
+
+[node name="Label" type="Label" parent="Shaker/StatsWoundFrame/MarginC/StatsContainer/FangStatFrame/FangStat"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "[1] FANG — Power"
+
+[node name="Level" type="Label" parent="Shaker/StatsWoundFrame/MarginC/StatsContainer/FangStatFrame/FangStat"]
+layout_mode = 2
+text = "Lv. 0"
+
+[node name="Cost" type="Label" parent="Shaker/StatsWoundFrame/MarginC/StatsContainer/FangStatFrame/FangStat"]
+layout_mode = 2
+text = "[100 DNA]"
+
+[node name="NerveStatFrame" type="Panel" parent="Shaker/StatsWoundFrame/MarginC/StatsContainer"]
+custom_minimum_size = Vector2(0, 54)
+layout_mode = 2
+mouse_filter = 2
+
+[node name="NerveStat" type="HBoxContainer" parent="Shaker/StatsWoundFrame/MarginC/StatsContainer/NerveStatFrame"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 10.0
+offset_top = 8.0
+offset_right = -10.0
+offset_bottom = -8.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 10
+
+[node name="Label" type="Label" parent="Shaker/StatsWoundFrame/MarginC/StatsContainer/NerveStatFrame/NerveStat"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "[2] NERVE — Swiftness"
+
+[node name="Level" type="Label" parent="Shaker/StatsWoundFrame/MarginC/StatsContainer/NerveStatFrame/NerveStat"]
+layout_mode = 2
+text = "Lv. 0"
+
+[node name="Cost" type="Label" parent="Shaker/StatsWoundFrame/MarginC/StatsContainer/NerveStatFrame/NerveStat"]
+layout_mode = 2
+text = "[100 DNA]"
+
+[node name="BondStatFrame" type="Panel" parent="Shaker/StatsWoundFrame/MarginC/StatsContainer"]
+custom_minimum_size = Vector2(0, 54)
+layout_mode = 2
+mouse_filter = 2
+
+[node name="BondStat" type="HBoxContainer" parent="Shaker/StatsWoundFrame/MarginC/StatsContainer/BondStatFrame"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 10.0
+offset_top = 8.0
+offset_right = -10.0
+offset_bottom = -8.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 10
+
+[node name="Label" type="Label" parent="Shaker/StatsWoundFrame/MarginC/StatsContainer/BondStatFrame/BondStat"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "[3] BOND — Potential"
+
+[node name="Level" type="Label" parent="Shaker/StatsWoundFrame/MarginC/StatsContainer/BondStatFrame/BondStat"]
+layout_mode = 2
+text = "Lv. 0"
+
+[node name="Cost" type="Label" parent="Shaker/StatsWoundFrame/MarginC/StatsContainer/BondStatFrame/BondStat"]
+layout_mode = 2
+text = "[100 DNA]"
+
+[node name="Controls" type="Label" parent="Shaker"]
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -440.0
+offset_top = -96.0
+offset_right = 440.0
+offset_bottom = -36.0
+grow_horizontal = 2
+grow_vertical = 0
+text = "[1] Fang  [2] Nerve  [3] Bond  [B] Back to Lair"
+horizontal_alignment = 1
+
+[node name="ProcToast" type="Label" parent="Shaker"]
+visible = false
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -420.0
+offset_top = 200.0
+offset_right = 420.0
+offset_bottom = 252.0
+grow_horizontal = 2
+grow_vertical = 0
+text = " "
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 3

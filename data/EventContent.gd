@@ -80,6 +80,102 @@ const EVENTS: Dictionary = {
 				"effect": {"type": "none"}
 			}
 		]
+	},
+	"the_feeding_ground": {
+		"id": "the_feeding_ground",
+		"type": EVENT_TYPES.NARRATIVE,
+		"title": "The Feeding Ground",
+		"body": "Something large ate here recently. The bones are still warm. You can almost taste the hierarchy that ended in this clearing.",
+		"choices": [
+			{
+				"id": "claim_the_territory",
+				"label": "Mark this as yours",
+				"summary": "Assert apex standing. World shifts toward Predatory Brutal.",
+				"effect": {"type": "fate_shift", "fate_id": "predatory_brutal", "amount": 0.14}
+			},
+			{
+				"id": "study_the_remains",
+				"label": "Study what was killed",
+				"summary": "Learn from the kill pattern. Gain permanent +1 Attack Damage.",
+				"effect": {"type": "permanent_stat_gain", "stat": "player_base_damage", "value": 1.0}
+			}
+		]
+	},
+	"the_cataloguers_post": {
+		"id": "the_cataloguers_post",
+		"type": EVENT_TYPES.NARRATIVE,
+		"title": "The Cataloguer's Post",
+		"body": "A lattice of wire and membrane stretches between two dead trees. Something has been counting passages through here. A small slot awaits an offering.",
+		"choices": [
+			{
+				"id": "submit_sample",
+				"label": "Submit 35 DNA as a sample",
+				"summary": "Comply with the system. Receive 30 HP. World shifts toward Sterile.",
+				"cost": {"type": "dna_any", "value": 35},
+				"effect": {"type": "multi", "effects": [
+					{"type": "fate_shift", "fate_id": "sterile_technocratic", "amount": 0.12},
+					{"type": "hp_restore", "value": 30}
+				]}
+			},
+			{
+				"id": "dismantle_the_post",
+				"label": "Tear the apparatus down",
+				"summary": "Reject the Sterile order. World shifts Predatory.",
+				"effect": {"type": "fate_shift", "fate_id": "predatory_brutal", "amount": 0.08}
+			}
+		]
+	},
+	"the_weight_of_sequence": {
+		"id": "the_weight_of_sequence",
+		"type": EVENT_TYPES.NARRATIVE,
+		"title": "The Weight of Sequence",
+		"body": "A creature you once ate speaks through the soil. Not words — just the shape of what it wanted before the end. The haunting is not a curse. It is a ledger.",
+		"choices": [
+			{
+				"id": "acknowledge_the_debt",
+				"label": "Acknowledge the debt",
+				"summary": "Sit with the memory. Deepen the Haunted ritual. Restore 15 HP.",
+				"effect": {"type": "multi", "effects": [
+					{"type": "fate_shift", "fate_id": "haunted_ritual", "amount": 0.15},
+					{"type": "hp_restore", "value": 15}
+				]}
+			},
+			{
+				"id": "silence_the_echo",
+				"label": "Push the memory down",
+				"summary": "Pay 20 DNA to quiet the echo. Shifts Predatory.",
+				"cost": {"type": "dna_any", "value": 20},
+				"effect": {"type": "fate_shift", "fate_id": "predatory_brutal", "amount": 0.09}
+			}
+		]
+	},
+	"the_pale_extrusion": {
+		"id": "the_pale_extrusion",
+		"type": EVENT_TYPES.TRADE,
+		"title": "The Pale Extrusion",
+		"body": "A bulbous, almost-white organism has pushed itself halfway through the ground. It extends one glistening limb holding something useful. It seems to want to be fed.",
+		"choices": [
+			{
+				"id": "trade_for_vitality",
+				"label": "Feed it 45 DNA — receive full heal",
+				"summary": "Exchange 45 DNA for complete HP restoration.",
+				"cost": {"type": "dna_any", "value": 45},
+				"effect": {"type": "hp_restore_percent", "value": 1.0}
+			},
+			{
+				"id": "trade_for_edge",
+				"label": "Feed it 60 DNA — receive a permanent edge",
+				"summary": "Exchange 60 DNA for permanent +2 Attack Damage.",
+				"cost": {"type": "dna_any", "value": 60},
+				"effect": {"type": "permanent_stat_gain", "stat": "player_base_damage", "value": 2.0}
+			},
+			{
+				"id": "leave_it",
+				"label": "Leave it in the ground",
+				"summary": "Walk on.",
+				"effect": {"type": "none"}
+			}
+		]
 	}
 }
 

@@ -18,6 +18,16 @@
 - [ ] DNA/Growth persists or updates correctly.
 - [ ] HUD readouts (Combo, Score) update in real-time.
 
+## 3A. Creature Collection & Bond Persistence
+- [ ] Bonding a creature adds it to the permanent lair roster.
+- [ ] Bonded creatures remain chooseable after starting a future run.
+- [ ] Bond level/deepening progress does not reset between runs.
+- [ ] Support-slot count is meta progression and does not reset between runs.
+- [ ] Active support selection is a subset of bonded creatures, not the permanent collection itself.
+- [ ] When more bonded creatures exist than visible lair cards, every bonded creature remains reachable through paging/filtering.
+- [ ] Save -> quit -> reload preserves lair roster, bond levels, selected supports, support-slot count, and species DNA totals.
+- [ ] Eating grants species DNA without unlocking a permanent bonded support.
+
 ## 4. Identity Check
 - [ ] Lane indicators are clearly visible.
 - [ ] Timing feel matches the beat.

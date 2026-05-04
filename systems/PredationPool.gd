@@ -173,11 +173,12 @@ static func apply_choice(choice: Dictionary, run_growth: Node) -> bool:
 				return false
 			if int(bonded.get("bond_level", 1)) >= 5:
 				return false
-			GameState.spend_dna(sid, cost)
-			var template: Dictionary = COMBAT_DATA.get_creature(sid)
-			if template.is_empty():
+			if not GameState.has_method("deepen_lair_bond"):
 				return false
-			GameState.add_bonded_creature(template)
+			var updated: Dictionary = GameState.deepen_lair_bond(sid, 1)
+			if updated.is_empty():
+				return false
+			GameState.spend_dna(sid, cost)
 			return true
 		KIND_TITHE:
 			GameState.spend_dna(sid, cost)

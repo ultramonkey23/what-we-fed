@@ -12,65 +12,20 @@ var _is_sovereign_active: bool = false
 
 func _ready() -> void:
 	_rng.randomize()
-	_debug_log(
-		"H1",
-		"QuigNarrativeSystem ready entered",
-		{
-			"eventbus_present": EventBus != null
-		}
-	)
 	_connect_signals()
 
 
 func _connect_signals() -> void:
 	var has_sovereign_reached := EventBus.has_signal("sovereign_reached")
-	var has_sovereign_threshold_reached := EventBus.has_signal("sovereign_threshold_reached")
-	_debug_log(
-		"H1",
-		"Signal presence check before connects",
-		{
-			"has_sovereign_reached": has_sovereign_reached,
-			"has_sovereign_threshold_reached": has_sovereign_threshold_reached
-		}
-	)
-	_debug_log(
-		"H2",
-		"Existing EventBus signal list sampled",
-		{
-			"signal_names": EventBus.get_signal_list().map(func(s): return String(s.get("name", "")))
-		}
-	)
 	EventBus.tempo_state_entered.connect(_on_tempo_state_entered)
 	EventBus.player_parried.connect(_on_player_parried)
 	EventBus.timed_attack_resolved.connect(_on_timed_attack_resolved)
 	EventBus.creature_bonded.connect(_on_creature_bonded)
 	EventBus.creature_eaten.connect(_on_creature_eaten)
 	EventBus.player_took_damage.connect(_on_player_took_damage)
-	_debug_log(
-		"H3",
-		"Attempting sovereign_reached connect",
-		{
-			"will_attempt": has_sovereign_reached
-		}
-	)
 	if has_sovereign_reached:
 		EventBus.sovereign_reached.connect(_on_sovereign_reached)
-	else:
-		_debug_log(
-			"H5",
-			"Skipping sovereign_reached connect because signal is absent",
-			{}
-		)
 	EventBus.sovereign_threshold_reached.connect(_on_sovereign_threshold_reached)
-	_debug_log(
-		"H4",
-		"Sovereign signal connect calls completed",
-		{
-			"reached_connected": EventBus.sovereign_reached.is_connected(_on_sovereign_reached) if has_sovereign_reached else false,
-			"threshold_connected": EventBus.sovereign_threshold_reached.is_connected(_on_sovereign_threshold_reached)
-		}
-	)
-	EventBus.enemy_damaged.connect(_on_enemy_damaged)
 	EventBus.combat_ended.connect(_on_combat_ended)
 	EventBus.world_fate_shifted.connect(_on_world_fate_shifted)
 	EventBus.creature_ascended.connect(_on_creature_ascended)
@@ -126,13 +81,6 @@ func _on_sovereign_threshold_reached(threshold: float) -> void:
 		_trigger_line("urgency", "sovereign_low_hp", 0.0)
 
 
-func _on_enemy_damaged(_enemy_id: int, _damage: float) -> void:
-	if _is_sovereign_active:
-		# Check for boss low HP (assumes we can get it from GameState or we just track it)
-		# For now, let's keep it simple or check a global state if possible.
-		pass
-
-
 func _on_combat_ended(_victory: bool) -> void:
 	_is_sovereign_active = false
 
@@ -140,37 +88,15 @@ func _on_combat_ended(_victory: bool) -> void:
 func _trigger_line(category: String, subcategory: String, override_cooldown: float = -1.0) -> void:
 	var now := Time.get_ticks_msec() / 1000.0
 	var effective_cooldown = override_cooldown if override_cooldown >= 0 else _cooldown
-	
+
 	if now - _last_line_time < effective_cooldown:
 		return
-	
+
 	var pool: Array = PRESENTATION_TEXT.QUIG_REACTIVE_LINES.get(category, {}).get(subcategory, [])
 	if pool.is_empty():
 		return
-	
+
 	var line: String = pool[_rng.randi_range(0, pool.size() - 1)]
 	_last_line_time = now
-	
-	# Emit signal for HUD to pick up
+
 	EventBus.emit_signal("quig_narrative_triggered", "Quig: \"" + line + "\"", 3.5)
-
-
-func _debug_log(hypothesis_id: String, message: String, data: Dictionary = {}) -> void:
-	#region agent log
-	var entry := {
-		"sessionId": "8704df",
-		"runId": "initial",
-		"hypothesisId": hypothesis_id,
-		"location": "systems/QuigNarrativeSystem.gd",
-		"message": message,
-		"data": data,
-		"timestamp": Time.get_ticks_msec()
-	}
-	var file := FileAccess.open("C:/Users/harin/gamesdevs/What We Fed/debug-8704df.log", FileAccess.READ_WRITE)
-	if file == null:
-		file = FileAccess.open("C:/Users/harin/gamesdevs/What We Fed/debug-8704df.log", FileAccess.WRITE_READ)
-	if file != null:
-		file.seek_end()
-		file.store_line(JSON.stringify(entry))
-		file.close()
-	#endregion

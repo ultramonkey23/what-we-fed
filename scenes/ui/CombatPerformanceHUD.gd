@@ -117,7 +117,7 @@ func _apply_styles() -> void:
 	if _level_label:
 		UI_STYLE.apply_label(_level_label, "hud_meta")
 		_level_label.add_theme_font_size_override("font_size", 16)
-		_level_label.text = "L1"
+		_level_label.text = "LINEAGE 1"
 
 	if _caption: 
 		UI_STYLE.apply_label(_caption, "hud_metric_title")
@@ -217,7 +217,7 @@ func _on_combo_changed(count: int, tier: String) -> void:
 		tween.parallel().tween_property(_ultimate_bar, "modulate", UI_STYLE.get_tier_color(tier), 0.2)
 	
 	if count > 0:
-		if _combo_display: _combo_display.text = "%dx" % count
+		if _combo_display: _combo_display.text = "%d SEQUENCE" % count
 		if _power_level:
 			_power_level.text = tier.to_upper()
 			_power_level.modulate = UI_STYLE.get_tier_color(tier)
@@ -243,11 +243,15 @@ func _on_ultimate_fired(_power: float) -> void:
 	if _ultimate_bar: _ultimate_bar.value = 0.0
 
 
-func _on_combo_broken(_lost: int) -> void:
+func _on_combo_broken(lost: int) -> void:
 	_ultimate_ready = false
 	if _ultimate_label: _ultimate_label.text = "APEX"
 	if _ultimate_bar: _ultimate_bar.value = 0.0
 	_stop_ultimate_pulse()
+	
+	if lost > 5:
+		_on_proc_feedback("SEQUENCE SEVERED: -%d" % lost, Color(0.8, 0.1, 0.1, 1.0))
+		EventBus.screen_shake.emit(1.5, 0.2)
 
 
 func _start_ultimate_pulse() -> void:
@@ -267,9 +271,9 @@ func _stop_ultimate_pulse() -> void:
 
 func _proc_feedback_is_urgent(text: String) -> bool:
 	var u: String = text.to_upper()
-	return u.find("LEVEL") >= 0 or u.find("EVOLUTION") >= 0 or u.find("DEBT PAID") >= 0 \
+	return u.find("LINEAGE") >= 0 or u.find("EVOLUTION") >= 0 or u.find("DEBT PAID") >= 0 \
 		or u.find("TEMPO ") >= 0 or u.find("DECREE") >= 0 or u.find("SLOTS SEALED") >= 0 \
-		or u.find("HUNT SURGES") >= 0
+		or u.find("HUNT SURGES") >= 0 or u.find("SEQUENCE") >= 0
 
 
 func _on_song_beat_pulse(_beat_index: int, intensity: float, _quality: String) -> void:
@@ -301,12 +305,12 @@ func _on_song_beat_pulse(_beat_index: int, intensity: float, _quality: String) -
 
 
 func _pulse_hud_element(element: Control) -> void:
-	var tilt: float = randf_range(-2.5, 2.5)
-	var t = create_tween().set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_ELASTIC)
-	element.scale = Vector2(1.12, 1.18)
+	var tilt: float = randf_range(-3.5, 3.5)
+	var t = create_tween().set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_EXPO)
+	element.scale = Vector2(1.24, 1.32) # High impact punch
 	element.rotation_degrees = tilt
-	t.tween_property(element, "scale", Vector2.ONE, 0.25)
-	t.parallel().tween_property(element, "rotation_degrees", 0.0, 0.2).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUART)
+	t.tween_property(element, "scale", Vector2.ONE, 0.35)
+	t.parallel().tween_property(element, "rotation_degrees", 0.0, 0.25).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUART)
 
 
 
@@ -406,7 +410,7 @@ func _on_proc_feedback(text: String, color: Color) -> void:
 
 func _on_run_growth_changed(level: int, experience: float, exp_to_next: float) -> void:
 	if _level_label:
-		_level_label.text = "L%d" % level
+		_level_label.text = "LINEAGE %d" % level
 		
 	if _exp_bar:
 		var progress: float = clamp(experience / exp_to_next, 0.0, 1.0)
@@ -431,7 +435,7 @@ func _on_level_up(result: Dictionary) -> void:
 	var summary: String = String(result.get("summary", ""))
 	
 	# Trigger a global feedback for the level up
-	_on_proc_feedback("LEVEL UP: " + title, UI_STYLE.MM_MUTATION_MAGENTA)
+	_on_proc_feedback("LINEAGE ASCENSION: " + title, UI_STYLE.MM_MUTATION_MAGENTA)
 	
 	# Dramatic screen flash
 	EventBus.screen_flash.emit(UI_STYLE.MM_MUTATION_MAGENTA.lerp(Color.WHITE, 0.5), 0.15)

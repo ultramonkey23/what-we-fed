@@ -346,8 +346,8 @@ func _build_choice_cards() -> void:
 
 		var body_label: Label = Label.new()
 		body_label.name = "Body"
-		body_label.position = Vector2(12.0, 130.0)
-		body_label.size = Vector2(card_w - 24.0, 44.0)
+		body_label.position = Vector2(12.0, 126.0)
+		body_label.size = Vector2(card_w - 24.0, 50.0)
 		body_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		UI_STYLE.apply_label(body_label, "overlay_body")
 		body_label.add_theme_font_size_override("font_size", 13)
@@ -396,9 +396,9 @@ func _refresh_cards() -> void:
 			card.get_node("Reward").visible = _shell_phase == "path"
 			if _shell_phase == "path":
 				var lock_prefix: String = "LOCKED  |  " if is_locked else ""
-				card.get_node("Cost").text = "%sENTRY COST: %s" % [lock_prefix, _entry_cost_text(Dictionary(choice.get("entry_cost", {})))]
-				card.get_node("Risk").text = "RISK TAGS: %s" % _risk_modifier_text(Dictionary(choice.get("risk_modifier", {})))
-				card.get_node("Reward").text = "REWARD PROMISE: %s" % str(choice.get("potential_reward_bias", "unknown"))
+				card.get_node("Cost").text = "%sCOST  |  %s" % [lock_prefix, _entry_cost_text(Dictionary(choice.get("entry_cost", {})))]
+				card.get_node("Risk").text = "PRESSURE  |  %s" % _path_pressure_text(choice)
+				card.get_node("Reward").text = "PAYOFF  |  %s" % _path_payoff_text(choice)
 		else:
 			card.visible = false
 	_refresh_card_layout()
@@ -445,9 +445,13 @@ func _apply_shell_titles() -> void:
 func _compose_choice_body(choice: Dictionary, is_locked: bool) -> String:
 	if _shell_phase != "path":
 		return str(choice.get("summary", ""))
+	var lines: Array[String] = [str(choice.get("summary", ""))]
+	var consequence: String = _path_consequence_text(choice)
+	if not consequence.is_empty():
+		lines.append(consequence)
 	if is_locked:
-		return str(choice.get("summary", "")) + "\nCannot pay entry."
-	return str(choice.get("summary", ""))
+		lines.append("Cannot pay entry.")
+	return "\n".join(PackedStringArray(lines))
 
 
 func _entry_cost_text(cost: Dictionary) -> String:
@@ -471,6 +475,58 @@ func _risk_modifier_text(risk_modifier: Dictionary) -> String:
 	if summary.is_empty():
 		return label
 	return "%s: %s" % [label, summary]
+
+
+func _path_pressure_text(choice: Dictionary) -> String:
+	var encounter_options: Dictionary = Dictionary(choice.get("encounter_options", {}))
+	if bool(encounter_options.get("is_event", false)):
+		return str(encounter_options.get("event_type", "event")).capitalize()
+	var risk_modifier: Dictionary = Dictionary(choice.get("risk_modifier", {}))
+	if risk_modifier.is_empty():
+		return "baseline"
+	var label: String = str(risk_modifier.get("display_name", risk_modifier.get("id", "risk"))).to_upper()
+	var summary: String = str(risk_modifier.get("summary", "")).strip_edges()
+	if summary.is_empty():
+		return label
+	return "%s - %s" % [label, summary]
+
+
+func _path_payoff_text(choice: Dictionary) -> String:
+	var reward_context: Dictionary = Dictionary(choice.get("reward_context", {}))
+	if bool(reward_context.get("is_event", false)):
+		return str(choice.get("potential_reward_bias", "world consequence"))
+	if bool(reward_context.get("predation_pool", false)):
+		return "DNA offers"
+	if bool(reward_context.get("elite_reward_tier", false)):
+		return "elite reward pull"
+	if bool(reward_context.get("bond_flavored", false)):
+		return "bond/support bias"
+	return str(choice.get("potential_reward_bias", "stable reward"))
+
+
+func _path_consequence_text(choice: Dictionary) -> String:
+	var node_id: String = str(choice.get("id", ""))
+	var encounter_options: Dictionary = Dictionary(choice.get("encounter_options", {}))
+	if bool(encounter_options.get("is_event", false)):
+		return "Consequence: no combat slice; resolve the encounter."
+	var entry_effects: Dictionary = Dictionary(choice.get("entry_effects", {}))
+	var effect_lines: Array[String] = []
+	var bond_gain: int = int(entry_effects.get("bond_level_gain", 0))
+	if bond_gain > 0:
+		effect_lines.append("+%d bond" % bond_gain)
+	var support_floor: float = float(entry_effects.get("support_floor", 0.0))
+	if support_floor > 0.0:
+		effect_lines.append("support floor %.0f" % support_floor)
+	if not effect_lines.is_empty():
+		return "Consequence: " + ", ".join(PackedStringArray(effect_lines))
+	var reward_context: Dictionary = Dictionary(choice.get("reward_context", {}))
+	if bool(reward_context.get("predation_pool", false)):
+		return "Consequence: predation offers can open."
+	if bool(reward_context.get("elite_reward_tier", false)):
+		return "Consequence: harder bodies, richer pull."
+	if node_id == "prey":
+		return "Consequence: stable hunt, low commitment."
+	return ""
 
 
 func _refresh_hint() -> void:
@@ -512,6 +568,7 @@ func _creature_display_name(species_id: String) -> String:
 
 func _compose_run_prep_body() -> String:
 	var blocks: Array[String] = []
+	var vessel_lines: Array[String] = []
 
 	var hp_line: String = "Vitals  |  HP %.0f / %.0f  |  ATK %.0f  |  DEF %.0f" % [
 		GameState.player_hp,
@@ -519,7 +576,7 @@ func _compose_run_prep_body() -> String:
 		GameState.get_attack_damage(),
 		GameState.player_defense
 	]
-	blocks.append(hp_line)
+	vessel_lines.append(hp_line)
 
 	var growth_line: String = "Growth  |  —"
 	if RunGrowth != null and is_instance_valid(RunGrowth):
@@ -528,38 +585,44 @@ func _compose_run_prep_body() -> String:
 			float(RunGrowth.current_exp),
 			float(RunGrowth.exp_to_next)
 		]
-	blocks.append(growth_line)
+	vessel_lines.append(growth_line)
 
 	var route_line: String = "DNA harvest  |  %s" % PRESENTATION_TEXT.DNA_ROUTE_BOND_LABEL
 	if RunGrowth != null and is_instance_valid(RunGrowth) and RunGrowth.has_method("get_dna_routing_label"):
 		route_line = "DNA harvest  |  %s" % RunGrowth.call("get_dna_routing_label")
-	blocks.append(route_line)
+	vessel_lines.append(route_line)
 	
 	var resonance: Dictionary = GameState.get_current_resonance_perk()
 	if resonance.get("id") != "unclaimed":
 		var res_line: String = "Resonance  |  %s: %s" % [resonance.get("perk_title"), resonance.get("perk_description")]
-		blocks.append(res_line)
+		vessel_lines.append(res_line)
 
-	blocks.append(_compose_management_digest_block())
+	blocks.append(_compose_run_prep_section("VESSEL STATE", vessel_lines))
+
+	var ecology_lines_out: Array[String] = []
 
 	if GameState.has_method("get_reward_ecology_summary_lines"):
 		var ecology_lines: Array = GameState.get_reward_ecology_summary_lines()
 		for ecology_line in ecology_lines:
-			blocks.append(str(ecology_line))
+			ecology_lines_out.append(str(ecology_line))
 	if GameState.has_method("get_reward_ecology_slot_alerts"):
 		var ecology_alerts: Array = GameState.get_reward_ecology_slot_alerts()
 		if not ecology_alerts.is_empty():
-			blocks.append("Ecology alerts  |  " + "\n  ".join(PackedStringArray(ecology_alerts)))
+			ecology_lines_out.append("Ecology alerts  |  " + "\n  ".join(PackedStringArray(ecology_alerts)))
+	blocks.append(_compose_run_prep_section("REWARD ECOLOGY", ecology_lines_out))
 
+	blocks.append(_compose_run_prep_section("BUILD HAND", [_compose_management_digest_block()]))
+
+	var bond_lines: Array[String] = []
 	if GameState.roster.is_empty():
-		blocks.append("Bonds  |  none yet")
+		bond_lines.append("none yet")
 	else:
-		var bond_lines: Array[String] = []
 		for creature in GameState.roster:
 			var sid: String = str(creature.get("species_id", ""))
 			var bl: int = int(creature.get("bond_level", 1))
-			bond_lines.append("%s  (bond L%d)" % [_creature_display_name(sid), bl])
-		blocks.append("Bonds  |  " + "\n  ".join(PackedStringArray(bond_lines)))
+			var active_mark: String = "  |  support" if GameState.active_lair_creature_ids.has(sid) else ""
+			bond_lines.append("%s  |  bond L%d%s" % [_creature_display_name(sid), bl, active_mark])
+	blocks.append(_compose_run_prep_section("BONDED SEQUENCES", bond_lines))
 
 	var dna_pairs: Array[Dictionary] = []
 	for species_key in GameState.dna_by_species.keys():
@@ -570,22 +633,22 @@ func _compose_run_prep_body() -> String:
 		dna_pairs.append({"id": sid2, "amt": amt})
 	dna_pairs.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(a["amt"]) > float(b["amt"]))
 
+	var dna_lines: Array[String] = []
 	if dna_pairs.is_empty():
-		blocks.append("Stored DNA  |  none")
+		dna_lines.append("none")
 	else:
-		var dna_lines: Array[String] = []
 		var limit: int = min(dna_pairs.size(), 8)
 		for i in range(limit):
 			var row: Dictionary = dna_pairs[i]
 			dna_lines.append("%s  × %.0f" % [_creature_display_name(str(row["id"])), float(row["amt"])])
 		if dna_pairs.size() > limit:
 			dna_lines.append("…  +%d more species" % (dna_pairs.size() - limit))
-		blocks.append("Stored DNA  |  " + "\n  ".join(PackedStringArray(dna_lines)))
+	blocks.append(_compose_run_prep_section("LINEAGE DNA", dna_lines))
 
+	var mut_lines: Array[String] = []
 	if GameState.active_mutations.is_empty():
-		blocks.append("Inner work  |  no mutations yet")
+		mut_lines.append("no mutations yet")
 	else:
-		var mut_lines: Array[String] = []
 		for mut in GameState.active_mutations:
 			var mid: String = str(mut.get("id", "mutation"))
 			var charges: int = int(mut.get("current_charges", 0))
@@ -593,12 +656,12 @@ func _compose_run_prep_body() -> String:
 			var etype: String = str(effect.get("type", ""))
 			var tail: String = ("  |  " + etype) if not etype.is_empty() else ""
 			mut_lines.append("%s  —  %d charges%s" % [mid, charges, tail])
-		blocks.append("Inner work  |  " + "\n  ".join(PackedStringArray(mut_lines)))
+	blocks.append(_compose_run_prep_section("INNER WORK", mut_lines))
 
+	var digest: Array[String] = []
 	if GameState.absorbed_types.is_empty():
-		blocks.append("Digestions  |  none logged")
+		digest.append("none logged")
 	else:
-		var digest: Array[String] = []
 		var cap: int = min(GameState.absorbed_types.size(), 6)
 		for j in range(cap):
 			var absorbed: Dictionary = GameState.absorbed_types[j]
@@ -609,9 +672,21 @@ func _compose_run_prep_body() -> String:
 		var more_count: int = GameState.absorbed_types.size() - cap
 		if more_count > 0:
 			digest.append("… +%d earlier" % more_count)
-		blocks.append("Digestions  |  " + "\n  ".join(PackedStringArray(digest)))
+	blocks.append(_compose_run_prep_section("DIGESTIONS", digest))
 
 	return "\n\n".join(PackedStringArray(blocks))
+
+
+func _compose_run_prep_section(title: String, lines: Array[String]) -> String:
+	var cleaned: Array[String] = []
+	for line in lines:
+		var text: String = line.strip_edges()
+		if text.is_empty():
+			continue
+		cleaned.append("  " + text.replace("\n", "\n  "))
+	if cleaned.is_empty():
+		cleaned.append("  none")
+	return "%s\n%s" % [title, "\n".join(PackedStringArray(cleaned))]
 
 
 func _handle_management_input(key_event: InputEventKey) -> bool:

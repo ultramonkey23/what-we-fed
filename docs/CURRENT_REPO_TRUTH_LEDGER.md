@@ -1,5 +1,29 @@
 # CURRENT_REPO_TRUTH_LEDGER
 
+## 2026-05-01 Creature Bonding Persistence / Support Selection Pass
+- **Scope**: Static/code-confirmed creature collection and support-selection evolution. This entry reflects the current repository state after the creature bonding pass; it does not claim manual playtest validation.
+- **Primary implementation truth**:
+  - `GameState.gd` now carries `meta_support_slots`, plural `active_lair_creature_ids`, support-slot helpers, and explicit `deepen_lair_bond()` progression for permanent bonded creatures.
+  - `CreatureState.gd` now treats `lair_roster` as the permanent meta collection and seeds each run's active `roster` from selected bonded supports during run reset.
+  - `LairScene.gd` now supports paged bonded-creature browsing and multi-support selection bounded by support-slot count.
+  - `PredationPool.gd` and `PathRunPlan.gd` now deepen existing lair bonds instead of re-adding bonded creatures through duplicate unlock paths.
+  - `RunSpineScene.gd` now shows clearer path-card consequence previews and marks bonded sequences as support when selected.
+  - `EventBus.gd` signal declarations were reconciled with live emit/listener arities used by growth, DNA, support charge, and bonded support events.
+- **Doctrine alignment**:
+  - First bond is a permanent meta unlock.
+  - Bond rank and support-slot count are meta progression, not run-local loot.
+  - Active supports are a chosen subset of the permanent collection, not the collection itself.
+- **Validation evidence**:
+  - `cmd /c validate_project.bat`: PASS (`VALIDATE OK`, chained data validation success) after the game-file implementation pass.
+  - `git diff --check`: no whitespace errors; only line-ending normalization warnings were reported for touched GDScript files.
+- **Validation limits**:
+  - Disk save/load persistence was not manually verified.
+  - Lair paging, multi-support selection feel, support-slot balance, and combat support readability were not manually playtested.
+  - Runtime behavior is code-confirmed and headless-validated, not feel-validated.
+- **Repo-only follow-up added**:
+  - `docs/CREATURE_BONDING_PERSISTENCE_CONTRACT.md` now defines the permanent bonded-creature state contract and regression expectations.
+  - `docs/ai/REGRESSION_CHECKLIST.md` now includes explicit bonded-creature persistence checks.
+
 ## 2026-04-29 Lair Comprehension Self-Review Upgrade
 - **Review Findings**: The first Lair comprehension pass had three static risks: ascension could show `Unknown Mastery` for species without explicit Mastery Trait data, failed trait splicing gave no user-facing reason, and the new detail copy could overflow the existing sidebar.
 - **Mastery Fallback**: `LairResonanceContent.get_mastery_trait()` now returns a generated lineage-specific fallback trait instead of `{}` for species without authored mastery data. This prevents empty `mastery_trait_id`/unknown copy when Ascension is otherwise legal.

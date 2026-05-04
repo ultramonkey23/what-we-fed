@@ -15,6 +15,7 @@ const POTENTIAL_GATE = preload("res://systems/PotentialGate.gd")
 const GROWTH_STATS = preload("res://data/GrowthStats.gd")
 const CREATURE_TRAITS = preload("res://data/CreatureTraitContent.gd")
 const LAIR_RESONANCE = preload("res://data/LairResonanceContent.gd")
+const HUD_PANEL_ART = preload("res://systems/HUDPanelArt.gd")
 
 const HOLD_RELEASE_TIME: float = 1.2
 
@@ -22,7 +23,9 @@ var _creature_cards: Array[Panel] = []
 var _card_accents: Array[ColorRect] = []
 var _card_index_labels: Array[Label] = []
 var _active_pills: Array[Label] = []
+var _card_global_indices: Array[int] = []
 var _selected_index: int = -1
+var _page_start: int = 0
 var _can_input: bool = false
 var _breath_time: float = 0.0
 
@@ -108,9 +111,10 @@ func _sync_selection_index() -> void:
 	if GameState.active_lair_creature_id.is_empty():
 		return
 	var lair: Array = GameState.lair_roster
-	for i in range(min(lair.size(), MAX_LAIR_DISPLAY)):
+	for i in range(lair.size()):
 		if String(lair[i].get("species_id", "")) == GameState.active_lair_creature_id:
 			_selected_index = i
+			_page_start = int(floor(float(i) / float(MAX_LAIR_DISPLAY))) * MAX_LAIR_DISPLAY
 			return
 
 
@@ -135,7 +139,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 
 	var lair: Array = GameState.lair_roster
-	var display_count: int = min(lair.size(), MAX_LAIR_DISPLAY)
+	var display_count: int = min(lair.size() - _page_start, MAX_LAIR_DISPLAY)
 
 	var index: int = -1
 	match key_event.keycode:
@@ -149,18 +153,33 @@ func _unhandled_input(event: InputEvent) -> void:
 				_archive_selected_trait_index = index
 				_refresh_active_support_panel()
 		else:
-			if index < display_count:
-				if _selected_index == index:
-					_selected_index = -1
-					GameState.set_active_lair_creature("")
-				else:
-					_selected_index = index
-					GameState.set_active_lair_creature(String(lair[index].get("species_id", "")))
+			var global_index: int = _page_start + index
+			if index < display_count and global_index < lair.size():
+				_selected_index = global_index
+				var species_id: String = String(lair[global_index].get("species_id", ""))
+				if not GameState.toggle_active_lair_creature(species_id):
+					_play_feedback("SUPPORT SLOTS FULL (%d)" % GameState.get_support_slot_count())
 				_refresh_card_highlights()
 				_refresh_active_support_panel()
 				_refresh_bottom_bar()
 				_breath_time = 0.0
 		get_viewport().set_input_as_handled()
+		return
+
+	if key_event.keycode == KEY_BRACKETLEFT and not _archive_mode:
+		if _page_start > 0:
+			_page_start = maxi(0, _page_start - MAX_LAIR_DISPLAY)
+			_build_creature_list(_ui_layer, GameState.lair_roster)
+			_refresh_bottom_bar()
+			get_viewport().set_input_as_handled()
+		return
+
+	if key_event.keycode == KEY_BRACKETRIGHT and not _archive_mode:
+		if _page_start + MAX_LAIR_DISPLAY < lair.size():
+			_page_start += MAX_LAIR_DISPLAY
+			_build_creature_list(_ui_layer, GameState.lair_roster)
+			_refresh_bottom_bar()
+			get_viewport().set_input_as_handled()
 		return
 
 	if key_event.keycode == KEY_T:
@@ -186,6 +205,9 @@ func _unhandled_input(event: InputEvent) -> void:
 			var tid: String = _archive_trait_list[_archive_selected_trait_index]
 			if GameState.splice_trait_to_creature(sid, tid):
 				_play_feedback("TRAIT SPLICED")
+				_jitter_intensity = 6.0
+				var tween := create_tween()
+				tween.tween_property(self, "_jitter_intensity", 0.05, 0.8).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
 				_refresh_active_support_panel()
 				_build_creature_list(_ui_layer, GameState.lair_roster)
 			else:
@@ -198,6 +220,9 @@ func _unhandled_input(event: InputEvent) -> void:
 			var sid: String = String(lair[_selected_index].get("species_id", ""))
 			if GameState.request_ascension(sid):
 				_play_feedback("KAIJU ASCENSION")
+				_jitter_intensity = 12.0
+				var tween := create_tween()
+				tween.tween_property(self, "_jitter_intensity", 0.1, 1.5).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
 				_build_ui() # Rebuild for new visual scale
 			else:
 				_play_feedback(_ascension_status_line(sid))
@@ -514,6 +539,7 @@ func _build_creature_list(canvas: CanvasLayer, lair: Array) -> void:
 	_card_accents.clear()
 	_card_index_labels.clear()
 	_active_pills.clear()
+	_card_global_indices.clear()
 
 	var card_width: float = LIST_W
 	var card_height: float = 128.0
@@ -521,10 +547,14 @@ func _build_creature_list(canvas: CanvasLayer, lair: Array) -> void:
 	var card_x: float = LIST_X
 	var list_start_y: float = 146.0
 
-	var count: int = min(lair.size(), MAX_LAIR_DISPLAY)
+	_page_start = clampi(_page_start, 0, maxi(lair.size() - 1, 0))
+	_page_start = int(floor(float(_page_start) / float(MAX_LAIR_DISPLAY))) * MAX_LAIR_DISPLAY
+	var count: int = min(lair.size() - _page_start, MAX_LAIR_DISPLAY)
 	for i in range(count):
+		var global_index: int = _page_start + i
 		var card_y: float = list_start_y + i * (card_height + card_gap)
-		_build_creature_card(canvas, lair[i], i, card_x, card_y, card_width, card_height)
+		_build_creature_card(canvas, lair[global_index], i, card_x, card_y, card_width, card_height)
+		_card_global_indices.append(global_index)
 
 	_refresh_card_highlights()
 
@@ -689,7 +719,13 @@ func _refresh_bottom_bar() -> void:
 	if count == 0:
 		hint_text = "ENTER — begin entry  |  ESC — title"
 	else:
-		hint_text = "TAB — toggle Lair/Archive  |  ENTER — continue  |  ESC — title"
+		var page_count: int = int(ceil(float(lair.size()) / float(MAX_LAIR_DISPLAY)))
+		var cur_page: int = int(floor(float(_page_start) / float(MAX_LAIR_DISPLAY))) + 1
+		hint_text = "1/2/3 — toggle support (%d slots)  |  [/] page %d/%d  |  TAB archive  |  ENTER continue" % [
+			GameState.get_support_slot_count(),
+			cur_page,
+			maxi(page_count, 1)
+		]
 
 	_bottom_hint.text = hint_text
 
@@ -698,7 +734,12 @@ func _refresh_card_highlights() -> void:
 	for i in range(_creature_cards.size()):
 		if not is_instance_valid(_creature_cards[i]):
 			continue
-		var is_selected: bool = (i == _selected_index)
+		var global_index: int = _card_global_indices[i] if i < _card_global_indices.size() else i
+		var lair: Array = GameState.lair_roster
+		var species_id: String = ""
+		if global_index >= 0 and global_index < lair.size():
+			species_id = String(lair[global_index].get("species_id", ""))
+		var is_selected: bool = GameState.active_lair_creature_ids.has(species_id)
 		
 		if is_selected:
 			UI_STYLE.apply_shell_style(_creature_cards[i], "mm_apex")

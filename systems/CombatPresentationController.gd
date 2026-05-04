@@ -808,39 +808,50 @@ func update_timing_ring_proximity(
 			grave_node.rotation = dir_to_target.angle()
 			
 			var marrow: Polygon2D = grave_node.get_node_or_null("Marrow")
-			var alpha_mult: float = 1.0 if is_singular_target else 0.42 # Dim non-targets
+			var alpha_mult: float = 1.0 if is_singular_target else 0.65 # Dim non-targets (Boosted from 0.42)
 			var lock_mult: float = clampf(primary_precision / 1.65, 0.72, 1.18) if is_singular_target else 1.0
-			var alpha_base: float = (0.52 + beat_pulse * 0.35) * alpha_mult * lock_mult
+			var alpha_base: float = (0.65 + beat_pulse * 0.35) * alpha_mult * lock_mult # Base boosted from 0.52
 			
 			var urgency_scale: float = 1.0
+			var glitch_offset := Vector2.ZERO
 			if is_threat and not has_lock_target:
 				var p: float = proj.progress
-				urgency_scale = 1.0 + clampf((p - 0.7) / 0.3, 0.0, 1.0) * 0.5
+				urgency_scale = 1.0 + clampf((p - 0.6) / 0.4, 0.0, 1.0) * 1.2 # Boosted urgency scale and wider detection window
+				
+				# Sovereign Glitch: Imminent threats tear the UI fabric
+				if p > 0.9:
+					var glitch_t: float = Time.get_ticks_msec() * 0.06
+					glitch_offset = Vector2(sin(glitch_t), cos(glitch_t * 1.5)) * 6.0 * (p - 0.9) / 0.1
 			
 			# Handle Splinter cluster
 			for j in range(3):
 				var splinter: Polygon2D = grave_node.get_node_or_null("Splinter_%d" % j)
 				if splinter:
-					splinter.color = Color(glow_color, alpha_base * 0.4)
+					splinter.color = Color(glow_color, alpha_base * 0.55) # Splinter fill boosted from 0.4
+					
+					# Sovereign Tear: Imminent threats cause alpha flickering
+					if urgency_scale > 1.8:
+						splinter.color.a *= 0.5 + 0.5 * sin(Time.get_ticks_msec() * 0.1)
+					
 					var outline: Line2D = splinter.get_node_or_null("Outline")
 					if outline:
 						outline.default_color = target_color
 						outline.default_color.a = alpha_base
-						outline.width = (1.0 + beat_pulse * 1.2) * (1.2 if is_singular_target else 0.8)
+						outline.width = (1.2 + beat_pulse * 1.5) * (1.2 if is_singular_target else 0.8) # Thicker outlines
 					
 					# Splinter Jitter & Orbit
 					var drift_angle := delta * 2.0 + float(j) * 2.1
-					var drift := Vector2(cos(drift_angle), sin(drift_angle)) * 2.0
-					splinter.position += drift * delta
+					var drift := Vector2(cos(drift_angle), sin(drift_angle)) * 3.5 # More aggressive jitter
+					splinter.position = (drift * delta) + glitch_offset # Apply Sovereign Glitch
 					
 					# Intercardinal shards are "sharper" (thinner)
-					var shard_scale: float = urgency_scale * 0.5 + beat_pulse * 0.08
+					var shard_scale: float = urgency_scale * 0.62 + beat_pulse * 0.12 # Base scale boosted
 					splinter.scale = Vector2(shard_scale * 1.2, shard_scale * 0.6) if is_intercardinal else Vector2(shard_scale, shard_scale)
 					
-			grave_node.scale = Vector2.ONE * (1.0 + beat_pulse * 0.15) * (1.15 if is_singular_target else 0.85)
+			grave_node.scale = Vector2.ONE * (1.0 + beat_pulse * 0.2) * (1.2 if is_singular_target else 0.9)
 			if marrow: 
 				marrow.color = glow_color
-				marrow.color.a = (0.4 + beat_pulse * 0.4) * alpha_mult
+				marrow.color.a = (0.55 + beat_pulse * 0.4) * alpha_mult # Marrow alpha boosted from 0.4
 				# Intercardinal marrow is thinner
 				marrow.scale = Vector2(1.2, 0.5) if is_intercardinal else Vector2.ONE
 					
@@ -975,11 +986,27 @@ uniform float time_offset = 0.0;
 
 void fragment() {
 	vec2 uv = UV;
-	float drift = sin((uv.y * 10.0) + (TIME + time_offset) * 20.0) * shudder_intensity * 0.05;
-	uv.x += drift;
+	float t = TIME + time_offset;
+	
+	// Tactical Grid: Micro-Glitch Scanlines
+	float scanline = sin(uv.x * 240.0 + t * 4.0) * 0.05;
+	float drift = sin((uv.y * 12.0) + t * 25.0) * shudder_intensity * 0.06;
+	
+	uv.x += drift + (shudder_intensity * scanline);
+	
 	vec4 color = texture(TEXTURE, uv);
+	
+	// Scan Pulse: A vertical line sweeping the lane substrate
+	float pulse = smoothstep(0.03, 0.0, abs(uv.x - fract(t * 0.35)));
+	color.rgb = mix(color.rgb, color.rgb * 1.6, pulse * 0.25);
+	
 	// Flash only nudges value now; avoid full white bars during hits.
-	color.rgb = mix(color.rgb, color.rgb * 1.15, shudder_intensity * 0.18);
+	color.rgb = mix(color.rgb, color.rgb * 1.25, shudder_intensity * 0.22);
+	
+	// Add micro-noise for grain
+	float noise = fract(sin(dot(uv, vec2(12.9898, 78.233) * t)) * 43758.5453);
+	color.rgb += noise * 0.03 * shudder_intensity;
+	
 	COLOR = color;
 }
 """

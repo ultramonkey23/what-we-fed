@@ -216,5 +216,5 @@ static func _raise_active_bond_level(gain: int) -> void:
 	var base_creature: Dictionary = COMBAT_DATA.get_creature(species_id)
 	if base_creature.is_empty():
 		return
-	for _i in range(gain):
-		GameState.add_bonded_creature(base_creature)
+	if GameState.has_method("deepen_lair_bond"):
+		GameState.deepen_lair_bond(species_id, gain)

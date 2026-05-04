@@ -9,12 +9,13 @@ This is the single source of truth for AI doctrine, governance, and safety.
 5. **Older Canon / Source Docs**: Identity anchors (DNA Economy, Bond vs Eat). Guidance only.
 6. **Dream Scope**: Future intentions, not yet implemented.
 
-## 2. THE 5 SOVEREIGN LAWS
+## 2. THE 6 SOVEREIGN LAWS
 1. **Pre-Flight Signal Grep**: NEVER change a function signature, signal, or global property without first mapping every consumer/listener in the project.
 2. **The Silent Council**: Viewpoint balancing (Safety, Tone, Architecture) is internalized. Output only the unified "Council Verdict" to preserve context window.
 3. **Strict Sequential Mutation**: No parallel edits to the same file. Mutations must occur in sequence across conversational turns.
 4. **Micro-Validation**: Run `validate_project.bat` incrementally after core logic changes. Do not wait for the end of the session.
 5. **Legendary Pixel Fable Ink Filter**: All user-facing text and visuals must preserve WHAT WE FED terminology and the current monster-RPG art doctrine: readable, mythic, strange, collectible, slightly eerie, and never generic. Use terms like *Lineage* over *Level*, *Sequence* over *Score*, *Translation* over *Loading*, and *Intrusion* over *Run*.
+6. **Visual Proof Rule**: For any task involving visuals, art, animation, VFX, UI, backgrounds, shaders, combat readability, enemy/boss presentation, reward presentation, or demo polish, the agent MUST produce a visual proof package when technically possible. Do not claim visual success without visual proof (screenshots/logs) unless capture is technically impossible. See `docs/ai/VISUAL_TRUTH_LOOP.md` for standards.
 
 ## 3. THE VALIDATION LADDER
 | Level | Name | Evidence Required |

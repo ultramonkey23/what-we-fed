@@ -33,8 +33,14 @@
 - [x] DNA Economy Intact
 - [x] Action-RPG Hunting Field LOCKED
 - [x] Enemy Purity Phase 1 LOCKED (EnemyStriker owns HOW; LaneManager owns WHEN/WHO)
+- [x] Visual Proof Rule LOCKED (Law #6: mandatory evidence for visual/polish tasks)
 
 ## 5. RECENT ARCHITECTURE & IDENTITY CHANGES (v3.5)
+
+### Visual Proof Rule (Sovereign Law #6)
+- Mandatory visual evidence (screenshots, logs, notes) required for all visual, UI, VFX, and art-doctrine tasks.
+- Folder convention: `_visual_proofs/[task_name]/`.
+- Integrated into `SOVEREIGN_CORE.md`, `REPORT_CONTRACT.md`, `AGENTS.md`, `GEMINI.md`, and `CLAUDE.md`.
 
 ### ZoneManager Rename
 - `CombatScene.gd`, `PlayerCombat.gd`, `CombatVisualRig.gd`, `CombatPresentationRuntime.gd`,

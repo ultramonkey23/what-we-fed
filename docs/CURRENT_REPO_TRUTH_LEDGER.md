@@ -172,11 +172,11 @@
 
 ## Verified Current Systems (Static / Code-Confirmed)
 - Hunting Field Combat Evolution (v2.3.2):
-    - **Permissive Action Recovery**: Implemented in `PlayerCombat.gd`. Players can move during lunge recovery without snap-back to origin.
-    - **Chunky Soulslike Dodge**: Implemented in `PlayerCombat.gd`. 70-unit distance, 0.10s lunge, 0.42s recovery, 0.18s i-frames (0.24s on-beat). Precise input-based direction.
-    - **Any-Angle Spawning & Pressure Director**: Implemented in `LaneManager.gd`. Threats now spawn from any orbit angle; authority system is ID-keyed and supports up to 16 simultaneous strikers.
-    - **Manual Creature Support**: Implemented in `PlayerCombat.gd` and `RunGrowth.gd`. Players manually trigger support with `action_support`. On-beat usage grants extra Tendency rewards.
-    - **Dynamic Visual Scaffolding**: Implemented in `CombatPresentationController.gd`. Timing rings, lane strips, and markers now anchor to and follow the player's dynamic position rather than screen center.
+	- **Permissive Action Recovery**: Implemented in `PlayerCombat.gd`. Players can move during lunge recovery without snap-back to origin.
+	- **Chunky Soulslike Dodge**: Implemented in `PlayerCombat.gd`. 70-unit distance, 0.10s lunge, 0.42s recovery, 0.18s i-frames (0.24s on-beat). Precise input-based direction.
+	- **Any-Angle Spawning & Pressure Director**: Implemented in `LaneManager.gd`. Threats now spawn from any orbit angle; authority system is ID-keyed and supports up to 16 simultaneous strikers.
+	- **Manual Creature Support**: Implemented in `PlayerCombat.gd` and `RunGrowth.gd`. Players manually trigger support with `action_support`. On-beat usage grants extra Tendency rewards.
+	- **Dynamic Visual Scaffolding**: Implemented in `CombatPresentationController.gd`. Timing rings, lane strips, and markers now anchor to and follow the player's dynamic position rather than screen center.
 
 ## Evidence Source
 - Source: GODLY v2.3 medium-evolution validation pass.

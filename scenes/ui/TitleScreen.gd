@@ -6,6 +6,7 @@ const UI_STYLE = preload("res://systems/UIStyle.gd")
 const HUD_PANEL_ART = preload("res://systems/HUDPanelArt.gd")
 const PRESENTATION_TEXT = preload("res://data/PresentationTextContent.gd")
 const TITLE_SIGIL_PATH: String = "res://assets/ui/shell/title_sigil.png"
+const TITLE_BACKGROUND_PATH: String = "res://assets/backgrounds/combat/Ruins_world.png"
 
 var _controls_panel: ColorRect = null
 var _controls_visible: bool = false
@@ -14,11 +15,12 @@ var _can_start: bool = false
 
 func _ready() -> void:
 	_build_ui()
+	_build_mythical_atmosphere()
+	UI_STYLE.apply_mythical_entrance(self)
 	# Defer enabling start-input slightly so any key held during scene transition
 	# does not immediately launch the run before the title has rendered.
 	await get_tree().create_timer(0.15).timeout
 	_can_start = true
-
 
 func _unhandled_input(event: InputEvent) -> void:
 	if not (event is InputEventKey):
@@ -64,6 +66,64 @@ func _set_controls_panel_visible(visible_state: bool) -> void:
 	_controls_visible = visible_state
 	if _controls_panel != null:
 		_controls_panel.visible = visible_state
+
+
+func _build_mythical_atmosphere() -> void:
+	var canvas := CanvasLayer.new()
+	canvas.name = "AtmosphereLayer"
+	canvas.layer = -1 # Behind UI but above backdrop
+	add_child(canvas)
+	
+	# --- MYTHICAL BACKGROUND (RUINS) ---
+	if ResourceLoader.exists(TITLE_BACKGROUND_PATH):
+		var bg_tex := load(TITLE_BACKGROUND_PATH) as Texture2D
+		if bg_tex:
+			var bg_rect := TextureRect.new()
+			bg_rect.texture = bg_tex
+			bg_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			bg_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+			bg_rect.size = Vector2(1280.0, 720.0)
+			bg_rect.modulate = Color(0.30, 0.28, 0.38, 0.24) # Darker/More desaturated than Lair
+			canvas.add_child(bg_rect)
+	
+	# --- SPIRIT PARTICLES (DESATURATED DUST) ---
+	var particles := CPUParticles2D.new()
+	particles.name = "SpiritParticles"
+	particles.position = Vector2(640.0, 360.0)
+	particles.amount = 30
+	particles.lifetime = 8.0
+	particles.preprocess = 5.0
+	particles.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
+	particles.emission_rect_extents = Vector2(700.0, 400.0)
+	particles.gravity = Vector2(0, -8.0)
+	particles.direction = Vector2(1, 0)
+	particles.spread = 180.0
+	particles.initial_velocity_min = 4.0
+	particles.initial_velocity_max = 12.0
+	particles.scale_amount_min = 1.0
+	particles.scale_amount_max = 2.5
+	
+	# Use desaturated purple from ruins
+	particles.color = Color(0.65, 0.58, 0.72, 0.08)
+	
+	canvas.add_child(particles)
+
+	# --- SOUL MIST (LOW DRIFT) ---
+	var mist := CPUParticles2D.new()
+	mist.name = "SoulMist"
+	mist.position = Vector2(640.0, 700.0)
+	mist.amount = 6
+	mist.lifetime = 15.0
+	mist.preprocess = 10.0
+	mist.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
+	mist.emission_rect_extents = Vector2(640.0, 20.0)
+	mist.gravity = Vector2(1, -2.0)
+	mist.initial_velocity_min = 8.0
+	mist.initial_velocity_max = 16.0
+	mist.scale_amount_min = 90.0
+	mist.scale_amount_max = 160.0
+	mist.color = Color(0.08, 0.05, 0.12, 0.15) # Very dark mist
+	canvas.add_child(mist)
 
 
 func _build_ui() -> void:

@@ -13,40 +13,57 @@ uniform vec4 base_color : source_color = vec4(0.03, 0.03, 0.04, 0.72);
 uniform vec4 vein_color : source_color = vec4(0.8, 0.1, 0.15, 1.0);
 uniform float vein_pulse : hint_range(0.0, 1.0) = 0.0;
 uniform float jagged_depth : hint_range(0.0, 50.0) = 8.0;
+uniform float pixel_size : hint_range(1.0, 10.0) = 2.0;
 uniform float time_offset = 0.0;
 
-float noise(vec2 p) {
+float hash(vec2 p) {
 	return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
 }
 
+float noise(vec2 p) {
+	vec2 i = floor(p);
+	vec2 f = fract(p);
+	float a = hash(i);
+	float b = hash(i + vec2(1.0, 0.0));
+	float c = hash(i + vec2(0.0, 1.0));
+	float d = hash(i + vec2(1.0, 1.0));
+	vec2 u = f * f * (3.0 - 2.0 * f);
+	return mix(a, b, u.x) + (c - a) * u.y * (1.0 - u.x) + (d - b) * u.x * u.y;
+}
+
 void fragment() {
-	vec2 uv = UV;
-	vec2 size = 1.0 / SCREEN_PIXEL_SIZE; // Rough approximation if not provided
-	
+	// Pixelation logic
+	vec2 uv = floor(UV * (1.0 / SCREEN_PIXEL_SIZE) / pixel_size) * SCREEN_PIXEL_SIZE * pixel_size;
+
 	// Jagged Edge Logic: Distort UVs at boundaries
 	float edge_dist = min(min(uv.x, 1.0 - uv.x), min(uv.y, 1.0 - uv.y));
-	float noise_val = noise(uv * 10.0 + (TIME + time_offset) * 0.1);
-	
+	float noise_val = noise(uv * 12.0 + (TIME + time_offset) * 0.15);
+
 	if (edge_dist < (jagged_depth / 100.0) * noise_val) {
 		discard;
 	}
-	
-	// Vein Pulsing: Procedural "biological" channels
-	float v = sin(uv.x * 20.0 + uv.y * 15.0 + (TIME + time_offset) * 2.0) * 
-			  cos(uv.y * 25.0 - uv.x * 10.0 + (TIME + time_offset) * 1.5);
-	v = smoothstep(0.4, 0.5, v * noise_val);
-	
-	vec4 final_color = mix(base_color, vein_color, v * vein_pulse * 0.6);
-	
+
+	// Vein Pulsing: Procedural "biological" channels with dithered feel
+	float v1 = noise(uv * 15.0 + (TIME + time_offset) * 1.8);
+	float v2 = noise(uv * 22.0 - (TIME + time_offset) * 1.2);
+	float v = smoothstep(0.45, 0.55, v1 * v2);
+
+	// Dithered shadow blend
+	float dither = hash(uv * 512.0 + TIME);
+	vec4 final_color = mix(base_color, vein_color, v * vein_pulse * 0.65);
+
+	if (v * vein_pulse > 0.1 && dither > 0.85) {
+		final_color = mix(final_color, vein_color, 0.3);
+	}
+
 	// Add a sharp predatory border
-	if (edge_dist < 0.015) {
+	if (edge_dist < 0.012) {
 		final_color = mix(final_color, vein_color, vein_pulse);
 	}
-	
+
 	COLOR = final_color;
 }
 """
-
 static func clear_cache() -> void:
 	_visible_region_cache.clear()
 

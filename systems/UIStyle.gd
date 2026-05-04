@@ -28,6 +28,29 @@ const MM_PAPER = Color(0.96, 0.94, 0.90, 1.0)
 
 
 ## Full-screen menu shell: subtle vertical gradient plus a thin warm frame (matches HUD border tones).
+const SOVEREIGN_GRAIN_SHADER = """
+shader_type canvas_item;
+
+uniform vec4 base_color : source_color;
+uniform float grain_amount : hint_range(0.0, 0.1) = 0.035;
+uniform float scanline_amount : hint_range(0.0, 0.05) = 0.012;
+
+float hash(vec2 p) {
+	return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
+}
+
+void fragment() {
+	vec4 color = base_color;
+	float noise = hash(UV + TIME * 0.01);
+	color.rgb = mix(color.rgb, vec3(noise), grain_amount);
+
+	float scanline = sin(UV.y * 800.0) * scanline_amount;
+	color.rgb -= scanline;
+
+	COLOR = color;
+}
+"""
+
 static func attach_shell_backdrop(root: Node2D, size: Vector2 = Vector2(1280.0, 720.0)) -> void:
 	_attach_backdrop_internal(root, size, false)
 
@@ -46,37 +69,37 @@ static func _attach_backdrop_internal(root: Node2D, size: Vector2, is_wound: boo
 	root.add_child(layer)
 	root.move_child(layer, 0)
 
+	var bg_color := Color(0.015, 0.008, 0.018, 1.0) if is_wound else Color(0.035, 0.025, 0.045, 1.0)
+
+	var backdrop := ColorRect.new()
+	backdrop.size = size
+	backdrop.material = ShaderMaterial.new()
+	backdrop.material.shader = Shader.new()
+	backdrop.material.shader.code = SOVEREIGN_GRAIN_SHADER
+	backdrop.material.set_shader_parameter("base_color", bg_color)
+	backdrop.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.add_child(backdrop)
+
+	# --- VIGNETTE & DEPTH ---
 	var gradient := Gradient.new()
-	if is_wound:
-		gradient.colors = PackedColorArray([
-			Color(0.010, 0.005, 0.012, 1.0), # Deep black
-			Color(0.025, 0.015, 0.030, 1.0),
-			Color(0.040, 0.020, 0.025, 1.0)
-		])
-	else:
-		gradient.colors = PackedColorArray([
-			Color(0.030, 0.020, 0.040, 1.0),
-			Color(0.050, 0.030, 0.055, 1.0),
-			Color(0.090, 0.050, 0.060, 1.0)
-		])
-	gradient.offsets = PackedFloat32Array([0.0, 0.52, 1.0])
+	gradient.colors = PackedColorArray([
+		Color(0, 0, 0, 0.0),
+		Color(0, 0, 0, 0.45)
+	])
+	gradient.offsets = PackedFloat32Array([0.25, 1.0])
 
 	var gt := GradientTexture2D.new()
 	gt.gradient = gradient
-	gt.width = 8
-	gt.height = 512
-	gt.fill = GradientTexture2D.FILL_LINEAR
-	gt.fill_from = Vector2(0.5, 0.0)
-	gt.fill_to = Vector2(0.5, 1.0)
+	gt.fill = GradientTexture2D.FILL_RADIAL
+	gt.fill_from = Vector2(0.5, 0.5)
+	gt.fill_to = Vector2(1.1, 1.1)
 
-	var bg := TextureRect.new()
-	bg.texture = gt
-	bg.position = Vector2.ZERO
-	bg.size = size
-	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	bg.stretch_mode = TextureRect.STRETCH_SCALE
-	layer.add_child(bg)
-
+	var vignette := TextureRect.new()
+	vignette.texture = gt
+	vignette.size = size
+	vignette.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vignette.stretch_mode = TextureRect.STRETCH_SCALE
+	layer.add_child(vignette)
 	# 'Wrongly Clean' Bone Ink geometry
 	if is_wound:
 		var edge_color := Color(0.96, 0.94, 0.90, 0.08) # Paper/Bone alpha
@@ -1065,3 +1088,35 @@ static func get_tier_label(tier_id: String) -> String:
 		"apex": return "APEX"
 		"sovereign": return "SOVEREIGN"
 		_: return tier_id.to_upper()
+
+
+## --- POWER UPGRADES: MYTHICAL TRANSITIONS ---
+
+## Applies a brief 'Glitchy Blink' to a node, making it feel strange and unstable.
+static func apply_glitch_blink(node: CanvasItem, duration: float = 0.25) -> void:
+	if node == null: return
+	var tree = node.get_tree()
+	if tree == null: return
+
+	var tween = tree.create_tween()
+	for i in range(4):
+		tween.tween_property(node, "modulate:a", 0.1, 0.02)
+		tween.tween_property(node, "modulate:a", 1.0, 0.02)
+		tween.tween_interval(duration / 4.0)
+
+
+## Applies a mythical entrance effect: slow fade-in + grain surge.
+static func apply_mythical_entrance(node: CanvasItem, duration: float = 1.2) -> void:
+	if node == null: return
+	var tree = node.get_tree()
+	if tree == null: return
+
+	node.modulate.a = 0.0
+	var tween = tree.create_tween()
+	tween.set_parallel(true)
+	tween.tween_property(node, "modulate:a", 1.0, duration).set_trans(Tween.TRANS_SINE)
+
+	# If it has a material with grain, pulse the grain
+	if node.material is ShaderMaterial:
+		tween.tween_property(node.material, "shader_parameter/grain_amount", 0.1, duration * 0.5).set_trans(Tween.TRANS_BOUNCE)
+		tween.chain().tween_property(node.material, "shader_parameter/grain_amount", 0.035, duration * 0.5)

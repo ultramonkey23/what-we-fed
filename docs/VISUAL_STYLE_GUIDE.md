@@ -230,6 +230,7 @@ assets/
 - [ ] Authored facing down/south where it is an action asset
 - [ ] Uses idle/base + one branch frame for action animation needs
 - [ ] Does not require authored defeat frames
+- [ ] **Visual Proof Rule**: Screenshots/Logs provided in `_visual_proofs/`
 - [ ] Technical specifications met
 - [ ] Consistent with established style guide
 

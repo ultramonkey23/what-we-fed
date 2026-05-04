@@ -3,6 +3,32 @@
 ## Core Concept
 Agents lack "eyes" by default. To bridge the gap between mechanical truth (code) and visual truth (the screen), the **Visual Truth Loop** establishes a strict pipeline for inspecting game aesthetics, HUD readability, and VFX clutter.
 
+## VISUAL PROOF RULE (Sovereign Law #6)
+For any task involving visuals, art, animation, VFX, UI, backgrounds, shaders, combat readability, enemy/boss presentation, reward presentation, or demo polish, the agent MUST produce a visual proof package when technically possible.
+
+**Required proof:**
+1. **Validation logs**: Full output of `validate_project.bat` or relevant test suite.
+2. **Screenshot**: Captured *after* the change.
+3. **Before/After**: If replacing existing visuals, show the comparison.
+4. **Visual-readability notes**: Short analysis of how the change affects player focus.
+5. **Context list**: Exact scene and game state captured.
+
+**Preferred proof (when possible):**
+- Short gameplay recording.
+- Timed screenshot sequence (e.g., during an animation branch).
+- Boss/level/parry/attack capture.
+- Asset reference images used.
+
+**Proof Folder Convention:**
+`_visual_proofs/[task_name]/`
+  - `screenshots/`
+  - `logs/`
+  - `notes/`
+  - `references/`
+  - `recordings/` (optional)
+
+Do not claim visual success without visual proof unless capture is technically impossible.
+
 ## The Loop
 1. **Capture**: The user, `tools/capture_audit_frame.gd`, or an automated test script captures screenshot(s) or short video frame sequences of the specific gameplay moment in question.
    - *Convention*: Save visual evidence to `what-we-fed/docs/ai/visual_audits/pending/`.
@@ -99,7 +125,8 @@ The Inspector transforms capture seed(s) plus screenshot evidence into this patc
 ```
 
 ## Required Tooling Support
-- `tools/capture_audit_frame.gd`: Optional debug Node that snapshots the screen and dumps a `.png` plus sibling `.json` metadata into `docs/ai/visual_audits/pending/`. It is intentionally not wired into combat by default; attach it to a debug scene/autoload when visual truth work is active.
+- `autoloads/VisualAuditAutoload.gd`: The primary automation driver. It is registered as a global autoload and listens to `EventBus` to capture screenshots and metadata into `docs/ai/visual_audits/pending/`.
+- `tools/capture_audit_frame.gd`: Legacy/Manual tool script for cases where a custom Node setup is required. Use the autoload for standard gameplay capture.
 - Image context injection in the agent chat (e.g., via Cursor/Claude attachments) must be explicitly requested when Visual Truth drifts.
 
 ## Role Extraction Decision

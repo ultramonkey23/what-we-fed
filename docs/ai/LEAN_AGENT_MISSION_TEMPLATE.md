@@ -13,6 +13,8 @@ Goal:
 Relevant Repo Truth:
 - Source docs inspected: [paths]
 - Current constraints verified: [brief bullets]
+- Architecture context: `docs/ai/AI_ARCHITECTURE_LEDGER.md`, `docs/ai/CURRENT_PULSE.md`
+- Evolution proposals: `docs/ai/evolution_proposals/README.md`
 
 Files/Systems To Inspect:
 - [path]
@@ -29,10 +31,12 @@ Do-Not-Break:
 - Treat Bone Ink / Bonecut Ink as corruption, Blight, Omen, boss, high-pressure, or late-run layer only.
 - Do not edit protected systems unless explicitly required and approved.
 - Do not claim runtime validation without running.
+- **Visual Proof Rule**: For visual tasks, mandatory screenshots/logs in `_visual_proofs/[task_name]/`.
 
 Cheap Validation:
 - Minimum checks: [commands]
 - Validation level target: [1 inspected | 2 static | 3 runtime | 4 playtest]
+- Visual Evidence: [REQUIRED for visuals | N/A]
 - If not run, state "Static-Only" and list unverified risks.
 
 Compact Report Format:

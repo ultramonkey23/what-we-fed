@@ -77,6 +77,7 @@ Godot resolution order:
 - obvious runtime boot crashes
 - **Visual Readability**: Automation cannot confirm HUD contrast or "Manga" aesthetics; use `debug_harness.bat` for manual visual truth checks.
 - **Data Integrity**: Unique IDs and valid resource paths in `data/CombatContent.gd`, `data/RouteContent.gd`, and song maps.
+- **Visual Proof Rule (Law #6)**: Automation cannot confirm aesthetics; for any visual/UI/VFX task, the agent MUST provide proof (screenshots/logs) in `_visual_proofs/`. See `docs/ai/VISUAL_TRUTH_LOOP.md`.
 
 It does not verify:
 - live gameplay feel

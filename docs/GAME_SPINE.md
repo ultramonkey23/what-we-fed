@@ -1,5 +1,7 @@
 # GAME SPINE
 
+Human-owned canon note: agents may propose game-spine changes through `docs/ai/evolution_proposals/`, but must not directly rewrite this spine without explicit approval.
+
 ## Project identity
 WHAT WE FED is a dark RPG roguelite: **combat-clean, management-rich**.
 

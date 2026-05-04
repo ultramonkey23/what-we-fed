@@ -15,6 +15,7 @@ const POTENTIAL_GATE = preload("res://systems/PotentialGate.gd")
 const CREATURE_TRAITS = preload("res://data/CreatureTraitContent.gd")
 const LAIR_RESONANCE = preload("res://data/LairResonanceContent.gd")
 const HUD_PANEL_ART = preload("res://systems/HUDPanelArt.gd")
+const LAIR_BACKGROUND_PATH: String = "res://assets/backgrounds/combat/Ruins_world.png"
 
 var _creature_cards: Array[Panel] = []
 var _card_accents: Array[ColorRect] = []
@@ -54,15 +55,16 @@ var _jitter_intensity: float = 0.0
 func _ready() -> void:
 	_sync_selection_index()
 	_archive_trait_list = GameState.archive_traits
-	
+	UI_STYLE.apply_mythical_entrance(self)
+
 	_translation_jitter = Node2D.new()
 	_translation_jitter.name = "TranslationJitter"
 	add_child(_translation_jitter)
 	
 	_build_ui()
-	
-	# Translation Burst: high jitter that decays to subtle 'intrusion' hum
-	_jitter_intensity = 8.0
+	_build_mythical_atmosphere()
+
+	# Translation Burst: high jitter that decays to subtle 'intrusion' hum	_jitter_intensity = 8.0
 	var tween := create_tween()
 	tween.tween_property(self, "_jitter_intensity", 0.15, 1.4).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
 	
@@ -229,6 +231,81 @@ func _update_breathing(t: float) -> void:
 	if is_instance_valid(accent):
 		var pulse: float = (sin(t * 2.5) + 1.0) * 0.5
 		accent.modulate.a = 0.4 + (pulse * 0.6)
+
+
+func _build_mythical_atmosphere() -> void:
+	var canvas := CanvasLayer.new()
+	canvas.name = "AtmosphereLayer"
+	canvas.layer = -1 # Behind UI but above backdrop
+	add_child(canvas)
+	
+	# --- MYTHICAL BACKGROUND (RUINS) ---
+	if ResourceLoader.exists(LAIR_BACKGROUND_PATH):
+		var bg_tex := load(LAIR_BACKGROUND_PATH) as Texture2D
+		if bg_tex:
+			var bg_rect := TextureRect.new()
+			bg_rect.texture = bg_tex
+			bg_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			bg_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+			bg_rect.size = Vector2(1280.0, 720.0)
+			bg_rect.modulate = Color(0.35, 0.32, 0.42, 0.28) # Heavy desaturation and darkness
+			canvas.add_child(bg_rect)
+	
+	# --- SPIRIT PARTICLES (DESATURATED DUST) ---
+	var particles := CPUParticles2D.new()
+	particles.name = "SpiritParticles"
+	particles.position = Vector2(640.0, 360.0)
+	particles.amount = 40
+	particles.lifetime = 6.0
+	particles.preprocess = 4.0
+	particles.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
+	particles.emission_rect_extents = Vector2(700.0, 400.0)
+	particles.gravity = Vector2(0, -10.0)
+	particles.direction = Vector2(1, 0)
+	particles.spread = 180.0
+	particles.initial_velocity_min = 5.0
+	particles.initial_velocity_max = 15.0
+	particles.scale_amount_min = 1.0
+	particles.scale_amount_max = 3.0
+	
+	# Use desaturated purple from ruins
+	particles.color = Color(0.65, 0.58, 0.72, 0.12)
+	
+	canvas.add_child(particles)
+	
+	# --- SOUL MIST (LOW DRIFT) ---
+	var mist := CPUParticles2D.new()
+	mist.name = "SoulMist"
+	mist.position = Vector2(640.0, 700.0)
+	mist.amount = 8
+	mist.lifetime = 12.0
+	mist.preprocess = 10.0
+	mist.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
+	mist.emission_rect_extents = Vector2(640.0, 20.0)
+	mist.gravity = Vector2(2, -3.0)
+	mist.initial_velocity_min = 10.0
+	mist.initial_velocity_max = 20.0
+	mist.scale_amount_min = 80.0
+	mist.scale_amount_max = 140.0
+	mist.color = Color(0.12, 0.08, 0.15, 0.18) # Dark violet mist
+	canvas.add_child(mist)
+	
+	# --- VIGNETTE SHADOWS ---
+	var grad := Gradient.new()
+	grad.colors = PackedColorArray([Color(0,0,0,0), Color(0.02, 0.01, 0.03, 0.45)])
+	grad.offsets = PackedFloat32Array([0.35, 1.0])
+	
+	var gt := GradientTexture2D.new()
+	gt.gradient = grad
+	gt.fill = GradientTexture2D.FILL_RADIAL
+	gt.fill_from = Vector2(0.5, 0.5)
+	gt.fill_to = Vector2(1.3, 1.3)
+	
+	var tr := TextureRect.new()
+	tr.texture = gt
+	tr.size = Vector2(1280.0, 720.0)
+	tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	canvas.add_child(tr)
 
 
 func _build_ui() -> void:

@@ -7,6 +7,7 @@ const LAIR_SCENE_PATH: String = "res://scenes/ui/LairScene.tscn"
 const UI_STYLE = preload("res://systems/UIStyle.gd")
 const PRESENTATION_TEXT = preload("res://data/PresentationTextContent.gd")
 const ROUTE_SIGIL_PATH: String = "res://assets/ui/shell/route_sigil.png"
+const ROUTE_BACKGROUND_PATH: String = "res://assets/backgrounds/combat/Ruins_world.png"
 
 const CARDS_PER_PAGE: int = 3
 const VIEWPORT_W: float = 1280.0
@@ -33,9 +34,10 @@ var _can_input: bool = false
 func _ready() -> void:
 	_sync_selection_from_gamestate()
 	_build_ui()
+	_build_mythical_atmosphere()
+	UI_STYLE.apply_mythical_entrance(self)
 	await get_tree().create_timer(0.12).timeout
 	_can_input = true
-
 
 func _sync_selection_from_gamestate() -> void:
 	var current_id: String = String(GameState.active_region.get("id", ""))
@@ -133,6 +135,47 @@ func _clamp_selection_to_visible_page(region_count: int) -> void:
 		_selected_index = _page_start
 	elif _selected_index > last_on_page:
 		_selected_index = last_on_page
+
+
+func _build_mythical_atmosphere() -> void:
+	var canvas := CanvasLayer.new()
+	canvas.name = "AtmosphereLayer"
+	canvas.layer = -1 # Behind UI but above backdrop
+	add_child(canvas)
+	
+	# --- MYTHICAL BACKGROUND (RUINS) ---
+	if ResourceLoader.exists(ROUTE_BACKGROUND_PATH):
+		var bg_tex := load(ROUTE_BACKGROUND_PATH) as Texture2D
+		if bg_tex:
+			var bg_rect := TextureRect.new()
+			bg_rect.texture = bg_tex
+			bg_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			bg_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+			bg_rect.size = Vector2(1280.0, 720.0)
+			bg_rect.modulate = Color(0.40, 0.38, 0.48, 0.32) # Brighter than Title/Lair
+			canvas.add_child(bg_rect)
+	
+	# --- SPIRIT PARTICLES (DESATURATED DUST) ---
+	var particles := CPUParticles2D.new()
+	particles.name = "SpiritParticles"
+	particles.position = Vector2(640.0, 360.0)
+	particles.amount = 25
+	particles.lifetime = 10.0
+	particles.preprocess = 5.0
+	particles.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
+	particles.emission_rect_extents = Vector2(700.0, 400.0)
+	particles.gravity = Vector2(0, -5.0)
+	particles.direction = Vector2(1, 0)
+	particles.spread = 180.0
+	particles.initial_velocity_min = 3.0
+	particles.initial_velocity_max = 8.0
+	particles.scale_amount_min = 1.0
+	particles.scale_amount_max = 2.0
+	
+	# Use desaturated purple from ruins
+	particles.color = Color(0.65, 0.58, 0.72, 0.06)
+	
+	canvas.add_child(particles)
 
 
 func _build_ui() -> void:

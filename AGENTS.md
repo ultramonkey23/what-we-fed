@@ -6,6 +6,7 @@ This is the MASTER contract for all AI Agents (Claude, Cursor, Gemini, Codex).
 1. Ground in the **[Sovereign Handoff](docs/ai/SOVEREIGN_HANDOFF.md)**.
 2. Choose a lead lane from **[ARCHETYPES.md](docs/ai/ARCHETYPES.md)**.
 3. SCAN the repo for **Repo Truth** (Source Code) before implementation.
+4. **Visual Proof Rule**: For any visual/UI/VFX task, produce evidence in `_visual_proofs/[task_name]/`.
 
 ## PROJECT SOUL
 - **Identity**: The Living Codex.
@@ -18,6 +19,9 @@ This is the MASTER contract for all AI Agents (Claude, Cursor, Gemini, Codex).
 - [ARCHETYPES.md](docs/ai/ARCHETYPES.md)
 - [REPO_TRUTH_PROTOCOL.md](docs/ai/REPO_TRUTH_PROTOCOL.md)
 - [REPORT_CONTRACT.md](docs/ai/REPORT_CONTRACT.md)
+- [AI_ARCHITECTURE_LEDGER.md](docs/ai/AI_ARCHITECTURE_LEDGER.md)
+- [CURRENT_PULSE.md](docs/ai/CURRENT_PULSE.md)
+- [evolution_proposals/README.md](docs/ai/evolution_proposals/README.md)
 
 ## Combat HUD refactoring (orientation)
 HUD layout still lives largely in **`CombatScene.gd`**; HUD refresh and presenter binding live in **`CombatHUDPresenter.gd`**. Grounding notes and next steps: **[SOVEREIGN_HANDOFF.md — Combat HUD presenter](docs/ai/SOVEREIGN_HANDOFF.md#combat-hud-presenter-living-boundary)** (GitHub and some viewers require matching heading slug).

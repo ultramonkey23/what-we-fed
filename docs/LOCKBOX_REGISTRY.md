@@ -136,6 +136,8 @@ WHAT WE FED uses **LEGENDARY PIXEL FABLE INK** as the core visual identity: deta
 
 Action assets are authored facing down/south by default. Use idle/base plus one branch frame. Do not require two unique authored frames per action or authored defeat frames.
 
+**Visual Proof Requirement**: All visual updates must be evidenced via screenshots/logs in `_visual_proofs/` to ensure mobile-limited readability and doctrine compliance.
+
 ---
 
 ## Proper Implementation Order

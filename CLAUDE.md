@@ -17,11 +17,15 @@ Read the **[Sovereign Handoff](docs/ai/SOVEREIGN_HANDOFF.md)** first. It defines
 1. **Pre-Flight Signal Grep**: Map consumers before changing providers.
 2. **Sequential Mutation**: No parallel edits to single files.
 3. **Micro-Validation**: Run `validate_project.bat` after logic changes.
-4. **Fable Ink Filter**: Use diegetic terminology (Lineage, Sequence, Intrusion).
+4. **Visual Proof Rule**: Produce screenshots/logs in `_visual_proofs/` for visual tasks.
+5. **Fable Ink Filter**: Use diegetic terminology (Lineage, Sequence, Intrusion).
 
 ## 4. CANONICAL DOCTRINE
-- [docs/ai/SOVEREIGN_CORE.md](docs/ai/SOVEREIGN_CORE.md) — The 5 Laws of safe autonomous execution.
+- [docs/ai/SOVEREIGN_CORE.md](docs/ai/SOVEREIGN_CORE.md) — The 6 Laws of safe autonomous execution.
 - [docs/ai/ARCHETYPES.md](docs/ai/ARCHETYPES.md) — Identify your role and lead lane.
+- [docs/ai/AI_ARCHITECTURE_LEDGER.md](docs/ai/AI_ARCHITECTURE_LEDGER.md) — Compact AI architecture boundaries.
+- [docs/ai/CURRENT_PULSE.md](docs/ai/CURRENT_PULSE.md) — Compact current context.
+- [docs/ai/evolution_proposals/README.md](docs/ai/evolution_proposals/README.md) — Proposal gate for architecture/canon changes.
 
 ## 5. VALIDATION COMMANDS
 - `smoke_project.bat`: Fast headless boot check.

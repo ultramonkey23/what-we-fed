@@ -14,9 +14,13 @@ You are a repo-scanning and contradiction-sweeping specialist. Use the **Soverei
 - [docs/ai/ARCHETYPES.md](docs/ai/ARCHETYPES.md) — The 7 Archetypes and Specialists.
 - [docs/ai/REPO_TRUTH_PROTOCOL.md](docs/ai/REPO_TRUTH_PROTOCOL.md) — Stale-truth, Ledger, Protection.
 - [docs/ai/REPORT_CONTRACT.md](docs/ai/REPORT_CONTRACT.md) — Reporting template and scoring.
+- [docs/ai/AI_ARCHITECTURE_LEDGER.md](docs/ai/AI_ARCHITECTURE_LEDGER.md) — Compact AI architecture boundaries.
+- [docs/ai/CURRENT_PULSE.md](docs/ai/CURRENT_PULSE.md) — Compact current context.
+- [docs/ai/evolution_proposals/README.md](docs/ai/evolution_proposals/README.md) — Proposal gate for architecture/canon changes.
 
 ## Operating Discipline
 - **Assumption-Busting** is mandatory before any implementation.
+- **Visual Proof Rule** (Law #6): Produce screenshots/logs in `_visual_proofs/` for visual tasks.
 - **Auditor's Report (v2.5)** is mandatory for finality.
 - **SYMBIOTE Focus**: Scan the repo for truth; compress context; sync Layer 2.
 - **CYBORG Support**: Critique duplicated instructions, stale adapters, and validation gaps.

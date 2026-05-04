@@ -1,4 +1,5 @@
 extends RefCounted
+class_name MusicControlLayer
 
 # MusicControlLayer (v1)
 # Converts raw song + phrase events into bounded combat-facing music state.

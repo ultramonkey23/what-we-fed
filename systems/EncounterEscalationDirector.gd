@@ -1,4 +1,5 @@
 extends Node
+class_name EncounterEscalationDirector
 
 # EncounterEscalationDirector v2
 # Centralizes live escalation, phase progression, and pressure-aware spawning.

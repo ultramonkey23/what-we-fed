@@ -1,4 +1,5 @@
 extends Node
+class_name CombatMeter
 
 const PASSIVE_REGEN_PER_SEC: float = 4.0
 const STAMINA_ATTACK_GAIN: float = 8.0

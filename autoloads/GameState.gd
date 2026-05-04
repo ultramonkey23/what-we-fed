@@ -25,6 +25,9 @@ var intro_bond_selected_species_id: String = ""
 # PERSISTENT META STATS
 var meta_limit_breakers: int = 0
 var meta_support_slots: int = 1
+var meta_fang_level: int = 0
+var meta_nerve_level: int = 0
+var meta_bond_level: int = 0
 
 
 func increment_meta_limit_breakers(achievement_id: String = "") -> void:

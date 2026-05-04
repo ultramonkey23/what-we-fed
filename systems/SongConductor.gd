@@ -1,4 +1,5 @@
 extends Node
+class_name SongConductor
 
 signal song_started(song_state: Dictionary)
 signal transport_state_changed(is_running: bool, song_time: float)

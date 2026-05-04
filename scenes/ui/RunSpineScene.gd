@@ -1,4 +1,5 @@
 extends Node2D
+class_name RunSpineScene
 
 signal upgrade_selected(index: int)
 signal predation_selected(index: int)

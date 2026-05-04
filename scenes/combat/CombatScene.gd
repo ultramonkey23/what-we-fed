@@ -1,13 +1,14 @@
 extends Node2D
+class_name CombatScene
 
 signal impact_fx_requested(kind: StringName, world_pos: Vector2, direction: Vector2, scale_mult: float)
 
 # ─── ONREADY NODES ───────────────────────────────────────────────────────────
 @onready var background: ColorRect = $Background
 @onready var flash_overlay: ColorRect = $FlashOverlay
-@onready var zone_manager: Node = $ZoneManager
-@onready var player_combat: Node2D = $PlayerCombat
-@onready var combat_meter: Node = $CombatMeter
+@onready var zone_manager: ZoneManager = $ZoneManager
+@onready var player_combat: PlayerCombat = $PlayerCombat
+@onready var combat_meter: CombatMeter = $CombatMeter
 @onready var camera_2d: Camera2D = $Camera2D
 @onready var ui_layer: CanvasLayer = $UI
 
@@ -50,9 +51,7 @@ const DEBUG_TRACE = preload("res://systems/DebugTrace.gd")
 const VESSEL_MODIFIER_DIRECTOR = preload("res://systems/VesselModifierDirector.gd")
 
 # ─── CONSTANTS ───────────────────────────────────────────────────────────────
-const RUN_GROWTH_SCRIPT_PATH: String = "res://systems/RunGrowth.gd"
 const PERFORMANCE_REWARD_DIRECTOR_SCRIPT_PATH: String = "res://systems/PerformanceRewardDirector.gd"
-const RUN_STATS_SCRIPT_PATH: String = "res://systems/RunStats.gd"
 const COMBAT_PERFORMANCE_HUD_SCENE: PackedScene = preload("res://scenes/ui/PowerFantasyCombatHUD.tscn")
 const COMBAT_HUD_ROOT_SCENE: PackedScene = preload("res://scenes/ui/CombatHudRoot.tscn")
 const RUN_SPINE_SCENE: PackedScene = preload("res://scenes/ui/RunSpineScene.tscn")
@@ -164,8 +163,8 @@ var _bg_sprite: Control = null
 var _bonded_creature_sprite: Sprite2D = null
 var _bonded_creature_species: String = ""
 var _presentation_runtime: RefCounted = null
-var _presentation_controller: Node = null
-var _combat_visual_rig: Node2D = null
+var _presentation_controller: CombatPresentationController = null
+var _combat_visual_rig: CombatVisualRig = null
 var _hud_presenter: RefCounted = null
 var _scouter_shell: Panel = null
 var _power_scouter_label: Label = null
@@ -206,9 +205,9 @@ var _pending_path_choice_nodes: Array[Dictionary] = []
 var _pending_path_choice_level_index: int = -1
 var _active_path_context: Dictionary = {}
 
-var _run_spine_surface: Node = null
-var _event_surface: Node = null
-var _growth_choice_surface: Node = null
+var _run_spine_surface: RunSpineScene = null
+var _event_surface: EventScene = null
+var _growth_choice_surface: GrowthChoiceIntersection = null
 var _growth_choice_context: Dictionary = {}
 
 # ─── LIVE REWARD ELEMENTS ────────────────────────────────────────────────────
@@ -236,7 +235,7 @@ var _reward_choice_made: bool = false
 var _live_reward_offer_timer: float = 0.0
 var _live_reward_queue: Array[Dictionary] = []
 
-var _performance_reward_director: Node = null
+var _performance_reward_director: Node = null  # runtime-scripted Node.new()+set_script(); cannot statically type
 var _performance_hud: Control = null
 var _quig_narrative_system: Node = null
 var _quig_tween: Tween = null
@@ -272,15 +271,15 @@ var _song_phase_index: int = -1
 var _song_boss_triggered: bool = false
 var _next_song_enemy_id: int = 100
 var _song_phases: Array = []
-var _song_conductor: Node = null
+var _song_conductor: SongConductor = null
 var _song_enemy_lanes: Dictionary = {}
 var _song_timer_label: Label = null
 var _song_phase_label: Label = null
 var _song_rng: RandomNumberGenerator = RandomNumberGenerator.new()
-var _escalation_director: Node = null
+var _escalation_director: EncounterEscalationDirector = null
 var _latest_ecology_snapshot: Dictionary = {}
 var _active_attack_authority_budget: int = 3
-var _support_resolver: RefCounted = null
+var _support_resolver: SupportEffectResolver = null
 var _collar_director: RefCounted = null
 var _song_phase_dna_award_index: int = 0
 var _song_section_spawn_mult: float = 1.0
@@ -288,9 +287,9 @@ var _song_level_start_time: float = 0.0
 var _song_level_end_time: float = 0.0
 var _base_difficulty_modifiers: Dictionary = {}
 var _difficulty_modifiers: Dictionary = {}
-var _music_control_layer: RefCounted = null
+var _music_control_layer: MusicControlLayer = null
 var _song_combat_state: Dictionary = {}
-var _difficulty_modifier_director: RefCounted = null
+var _difficulty_modifier_director: DifficultyModifierDirector = null
 var _last_beat_index: int = -1
 var _song_level_transitioning: bool = false
 var _beat_feedback_label: Label = null
@@ -374,7 +373,7 @@ func _exit_tree() -> void:
 		EventBus.vessel_shifted.disconnect(_on_vessel_shifted)
 	if EventBus.proc_feedback_requested.is_connected(_on_proc_feedback_requested):
 		EventBus.proc_feedback_requested.disconnect(_on_proc_feedback_requested)
-	if zone_manager != null and is_instance_valid(zone_manager) and zone_manager.has_method("apply_status"):
+	if zone_manager != null and is_instance_valid(zone_manager):
 		if EventBus.enemy_status_applied_requested.is_connected(zone_manager.apply_status):
 			EventBus.enemy_status_applied_requested.disconnect(zone_manager.apply_status)
 	if EventBus.ultimate_power_granted.is_connected(_on_ultimate_power_granted):
@@ -488,14 +487,25 @@ func _setup_bonded_companions() -> void:
 	for creature in GameState.roster:
 		var species_id: String = String(creature.get("species_id", ""))
 		if species_id.is_empty(): continue
-		
-		var companion_script = load("res://scenes/combat/BondedCompanion.gd")
-		if companion_script:
-			var companion = companion_script.new()
-			companion.name = "BondedCompanion_" + species_id
-			add_child(companion)
-			if companion.has_method("setup"):
-				companion.call("setup", species_id, player_combat, zone_manager)
+		_ensure_bonded_companion(species_id)
+
+
+func _ensure_bonded_companion(species_id: String) -> void:
+	if species_id.is_empty():
+		return
+	if get_node_or_null("BondedCompanion_" + species_id) != null:
+		return
+	var companion_script = load("res://scenes/combat/BondedCompanion.gd")
+	if companion_script:
+		var companion: BondedCompanion = companion_script.new() as BondedCompanion
+		companion.name = "BondedCompanion_" + species_id
+		add_child(companion)
+		companion.setup(species_id, player_combat, zone_manager)
+
+
+func _has_bonded_companion(species_id: String) -> bool:
+	var companion: Node = get_node_or_null("BondedCompanion_" + species_id)
+	return companion != null and is_instance_valid(companion)
 
 
 func _setup_run_director() -> void:
@@ -527,7 +537,7 @@ func _setup_support_resolver() -> void:
 	)
 	_support_resolver.stamina_requested.connect(func(amt):
 		if combat_meter != null: 
-			combat_meter.call("restore_stamina", amt)
+			combat_meter.restore_stamina(amt)
 			_refresh_run_build_readout()
 	)
 	_support_resolver.support_charge_requested.connect(func(amt):
@@ -559,8 +569,8 @@ func _setup_music_difficulty_layers() -> void:
 		_music_control_layer = MUSIC_CONTROL_LAYER.new()
 	if _difficulty_modifier_director == null:
 		_difficulty_modifier_director = DIFFICULTY_MODIFIER_DIRECTOR.new()
-	if _music_control_layer != null and _music_control_layer.has_method("configure"):
-		_music_control_layer.call("configure", _active_song_profile)
+	if _music_control_layer != null:
+		_music_control_layer.configure(_active_song_profile)
 
 
 func _on_escalation_ecology_state_changed(snapshot: Dictionary) -> void:
@@ -593,13 +603,11 @@ func _resolve_spawned_live_enemy(spawn_lane: int, enemy_seed: Dictionary) -> Dic
 		return {}
 
 	# Fast path: lane spawn landed directly in a striker lane.
-	var lane_enemy: Dictionary = zone_manager.call("get_enemy", spawn_lane)
+	var lane_enemy: Dictionary = zone_manager.get_enemy(spawn_lane)
 	if not lane_enemy.is_empty():
 		return lane_enemy.duplicate(true)
 
-	if not zone_manager.has_method("get_all_enemies"):
-		return {}
-	var all_live: Dictionary = Dictionary(zone_manager.call("get_all_enemies"))
+	var all_live: Dictionary = zone_manager.get_all_enemies()
 	if all_live.is_empty():
 		return {}
 
@@ -867,8 +875,8 @@ func _resolve_runtime_authority_budget(phase: Dictionary = {}, snapshot: Diction
 	var authority_budget: int = lane_count
 	if not snapshot.is_empty():
 		authority_budget = int(snapshot.get("attack_authority_budget", snapshot.get("authority_budget", authority_budget)))
-	elif _escalation_director != null and _escalation_director.has_method("get_ecology_snapshot"):
-		var live_snapshot: Dictionary = Dictionary(_escalation_director.call("get_ecology_snapshot"))
+	elif _escalation_director != null:
+		var live_snapshot: Dictionary = _escalation_director.get_ecology_snapshot()
 		authority_budget = int(live_snapshot.get("attack_authority_budget", live_snapshot.get("authority_budget", authority_budget)))
 	elif not phase.is_empty():
 		authority_budget = int(phase.get("authority_target", phase.get("max_active_threats", authority_budget)))
@@ -878,13 +886,11 @@ func _resolve_runtime_authority_budget(phase: Dictionary = {}, snapshot: Diction
 func _apply_attack_authority_budget(snapshot: Dictionary = {}, phase: Dictionary = {}) -> void:
 	if zone_manager == null or not is_instance_valid(zone_manager):
 		return
-	if not zone_manager.has_method("set_attack_authority_budget"):
-		return
 	var resolved_budget: int = _resolve_runtime_authority_budget(phase, snapshot)
 	if resolved_budget == _active_attack_authority_budget:
 		return
 	_active_attack_authority_budget = resolved_budget
-	zone_manager.call("set_attack_authority_budget", _active_attack_authority_budget)
+	zone_manager.set_attack_authority_budget(_active_attack_authority_budget)
 
 
 func _initialize_ui() -> void:
@@ -938,17 +944,17 @@ func _setup_combat_visual_rig() -> void:
 	if COMBAT_VISUAL_RIG_SCENE == null:
 		return
 	var inst: Node = COMBAT_VISUAL_RIG_SCENE.instantiate()
-	if inst == null or not (inst is Node2D):
+	if inst == null or not (inst is CombatVisualRig):
 		if inst != null:
 			inst.queue_free()
 		return
-	_combat_visual_rig = inst as Node2D
+	_combat_visual_rig = inst as CombatVisualRig
 	_combat_visual_rig.name = "CombatVisualRig"
 	add_child(_combat_visual_rig)
-	if _presentation_controller != null and _presentation_controller.has_method("set_combat_visual_rig"):
-		_presentation_controller.call("set_combat_visual_rig", _combat_visual_rig)
-	if player_combat != null and player_combat.has_method("set_combat_visual_rig"):
-		player_combat.call("set_combat_visual_rig", _combat_visual_rig)
+	if _presentation_controller != null:
+		_presentation_controller.set_combat_visual_rig(_combat_visual_rig)
+	if player_combat != null:
+		player_combat.set_combat_visual_rig(_combat_visual_rig)
 
 
 func _initialize_run_state() -> void:
@@ -1100,8 +1106,8 @@ func _track_tempo_event(family: StringName, event_id: StringName, payload: Dicti
 	if family == COMBAT_FEEL_CONTENT.TEMPO_NONE:
 		return
 	_tempo_telemetry_counts[family] = int(_tempo_telemetry_counts.get(family, 0)) + 1
-	if GameState != null and GameState.has_method("register_tempo_event"):
-		GameState.call("register_tempo_event", str(family), str(event_id), payload)
+	if GameState != null:
+		GameState.register_tempo_event(str(family), str(event_id), payload)
 
 
 func _notify_tempo_mastery(family: StringName, event_id: StringName, payload: Dictionary = {}) -> void:
@@ -1137,8 +1143,8 @@ func _enter_tempo_state(family: StringName, event_id: StringName, tempo_scale_va
 			return false
 		# Requirement: You must be at least in 'Rampage' tier to bend time.
 		var current_tier: String = "stirring"
-		if combat_meter != null and combat_meter.has_method("get_current_tier"):
-			current_tier = str(combat_meter.call("get_current_tier"))
+		if combat_meter != null:
+			current_tier = combat_meter.get_current_tier()
 		
 		if current_tier == "stirring" or current_tier == "hunting":
 			return false
@@ -1273,21 +1279,21 @@ func _resolve_song_empty_lane_near_player() -> int:
 	var total_lanes: int = int(zone_manager.THREAT_COUNT)
 
 	# Priority 1: Current lane if empty
-	if zone_manager.call("is_lane_empty", player_lane):
+	if zone_manager.is_lane_empty(player_lane):
 		return player_lane
 
 	# Priority 2: Immediate adjacent lanes (8-way circle)
 	var left_adj: int = (player_lane - 1 + total_lanes) % total_lanes
 	var right_adj: int = (player_lane + 1) % total_lanes
 
-	if zone_manager.call("is_lane_empty", left_adj):
+	if zone_manager.is_lane_empty(left_adj):
 		return left_adj
-	if zone_manager.call("is_lane_empty", right_adj):
+	if zone_manager.is_lane_empty(right_adj):
 		return right_adj
 
 	# Priority 3: Any empty lane
 	for i in range(total_lanes):
-		if zone_manager.call("is_lane_empty", i):
+		if zone_manager.is_lane_empty(i):
 			return i
 
 	return player_lane # Fallback to player lane if everything is full
@@ -1295,9 +1301,7 @@ func _resolve_song_empty_lane_near_player() -> int:
 func _get_player_focus_lane() -> int:
 	if player_combat == null:
 		return 2
-	if player_combat.has_method("get_active_focus_lane"):
-		return int(player_combat.call("get_active_focus_lane"))
-	return 2 # Fallback to East
+	return player_combat.get_active_focus_lane()
 
 
 func _lane_cardinal_token(lane: int) -> String:
@@ -1314,11 +1318,9 @@ func _lane_cardinal_token(lane: int) -> String:
 
 
 func _song_reserve_count() -> int:
-	if zone_manager != null and zone_manager.has_method("alive_count"):
+	if zone_manager != null:
 		# In the new model, 'reserve' count is basically (total alive - strikers).
-		var total = int(zone_manager.call("alive_count"))
-		var strikers = int(zone_manager.call("alive_striker_count"))
-		return max(0, total - strikers)
+		return max(0, zone_manager.alive_count() - zone_manager.alive_striker_count())
 	return 0
 
 
@@ -1397,9 +1399,9 @@ func _current_void_elapsed_seconds() -> float:
 
 func _update_presentation_layers(delta: float) -> void:
 	if _combat_visual_rig != null and is_instance_valid(_combat_visual_rig) and zone_manager != null:
-		_combat_visual_rig.global_position = zone_manager.call("get_player_pos")
-		if player_combat != null and player_combat.has_method("sync_presentation_facing_with_zone_manager"):
-			player_combat.call("sync_presentation_facing_with_zone_manager", zone_manager)
+		_combat_visual_rig.global_position = zone_manager.get_player_pos()
+		if player_combat != null:
+			player_combat.sync_presentation_facing_with_zone_manager(zone_manager)
 	if _timing_circle_container != null:
 		_update_timing_ring_proximity(delta)
 		if _presentation_runtime != null and player_combat != null:
@@ -1443,8 +1445,8 @@ func _update_performance_systems(delta: float) -> void:
 func _update_song_logic(delta: float) -> void:
 	if not _song_mode or _run_finished:
 		return
-	if _music_control_layer != null and _music_control_layer.has_method("process_tick"):
-		_music_control_layer.call("process_tick", delta)
+	if _music_control_layer != null:
+		_music_control_layer.process_tick(delta)
 	_refresh_song_combat_state()
 	_ensure_song_runtime_active()
 		
@@ -1468,8 +1470,7 @@ func _update_song_logic(delta: float) -> void:
 
 func _on_conductor_beat_pulse(beat_index: int, quality: String, intensity: float, _song_time: float) -> void:
 	_last_beat_index = beat_index
-	if GameState.has_method("set_last_beat_quality"):
-		GameState.call("set_last_beat_quality", quality)
+	GameState.set_last_beat_quality(quality)
 	var beat_intensity: float = intensity * _readability_pulse_mult
 	EventBus.emit_signal("song_beat_pulse", beat_index, beat_intensity, quality)
 
@@ -1541,8 +1542,8 @@ func _update_timing_debug() -> void:
 			accent_window,
 			escalation_window
 		]
-		if _escalation_director != null and _escalation_director.has_method("get_kill_momentum_ratio"):
-			var momentum_ratio: float = float(_escalation_director.call("get_kill_momentum_ratio"))
+		if _escalation_director != null:
+			var momentum_ratio: float = _escalation_director.get_kill_momentum_ratio()
 			var pressure_points: float = 0.0
 			var pressure_cap: float = 0.0
 			if not _latest_ecology_snapshot.is_empty():
@@ -1745,8 +1746,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			return
 
 	if not _run_finished and key_event.is_action_pressed("toggle_dna_route"):
-		if RunGrowth.has_method("toggle_dna_routing_preference"):
-			RunGrowth.call("toggle_dna_routing_preference")
+		RunGrowth.toggle_dna_routing_preference()
 		return
 
 	if _run_finished:
@@ -3225,16 +3225,14 @@ func _setup_zone_manager() -> void:
 		return
 
 	zone_manager.combat_scene = self
-	if zone_manager.has_method("set_attack_authority_budget"):
-		_active_attack_authority_budget = int(zone_manager.THREAT_COUNT)
-		zone_manager.call("set_attack_authority_budget", _active_attack_authority_budget)
+	_active_attack_authority_budget = int(zone_manager.THREAT_COUNT)
+	zone_manager.set_attack_authority_budget(_active_attack_authority_budget)
 
 
 func _setup_player_combat() -> void:
 	# Keep player silhouette above timing sigil visuals for readability.
 	player_combat.z_index = 25
-	if player_combat.has_method("setup"):
-		player_combat.call("setup", zone_manager, combat_meter)
+	player_combat.setup(zone_manager, combat_meter)
 
 
 func _start_song_run() -> void:
@@ -3257,8 +3255,8 @@ func _start_song_run() -> void:
 	_song_level_end_time = 0.0
 	_base_difficulty_modifiers = {}
 	_difficulty_modifiers = {}
-	if _music_control_layer != null and _music_control_layer.has_method("reset"):
-		_music_control_layer.call("reset")
+	if _music_control_layer != null:
+		_music_control_layer.reset()
 	_song_combat_state.clear()
 	_clear_mastery_context_cache()
 	_last_applied_hunt_pressure_step = -1
@@ -3293,8 +3291,8 @@ func _start_regular_level(level_index: int, reset_hp: bool) -> void:
 	_active_song_data = Dictionary(level_data.get("song_data", {}))
 	_active_song_profile = Dictionary(_run_director.get_active_song_profile())
 	_active_song_map = level_data.get("song_map", TRICKY_SONGMAP)
-	if _music_control_layer != null and _music_control_layer.has_method("configure"):
-		_music_control_layer.call("configure", _active_song_profile)
+	if _music_control_layer != null:
+		_music_control_layer.configure(_active_song_profile)
 	_set_song_paused(false)
 	_reset_tempo_state()
 	_song_level_transitioning = false
@@ -3313,7 +3311,7 @@ func _start_regular_level(level_index: int, reset_hp: bool) -> void:
 	_status_marker_overrides.clear()
 	if _song_mode and not _is_boss_encounter:
 		_clear_song_enemy_tracking()
-	if zone_manager != null and zone_manager.has_method("stop"):
+	if zone_manager != null:
 		zone_manager.stop()
 	zone_manager.set_song_mode_enabled(true)
 	_active_attack_authority_budget = int(zone_manager.THREAT_COUNT)
@@ -3351,8 +3349,8 @@ func _start_regular_level(level_index: int, reset_hp: bool) -> void:
 
 	if _escalation_director != null:
 		_escalation_director.setup(_region_id, _song_phases, _song_rng)
-		if "BPM" in _active_song_map and _escalation_director.has_method("set_song_bpm"):
-			_escalation_director.call("set_song_bpm", float(_active_song_map.BPM))
+		if "BPM" in _active_song_map:
+			_escalation_director.set_song_bpm(float(_active_song_map.BPM))
 		_escalation_director.start(_song_level_start_time)
 	_rebuild_music_driven_difficulty()
 
@@ -3388,7 +3386,7 @@ func _advance_to_next_regular_level() -> void:
 		_run_director.complete_level()
 
 		# Clear gains now that they've been presented
-		RunGrowth.call("clear_combat_gains")
+		RunGrowth.clear_combat_gains()
 
 		_prepare_path_context_for_level(_run_director.regular_level_index)
 		var encounter_options: Dictionary = Dictionary(_active_path_context.get("encounter_options", {}))
@@ -3397,7 +3395,7 @@ func _advance_to_next_regular_level() -> void:
 			_create_event_surface()
 			var event_type = str(encounter_options.get("event_type", "narrative"))
 			var event_id = EVENT_CONTENT.get_random_event_id_for_type(event_type)
-			_event_surface.call("present_event", event_id)
+			_event_surface.present_event(event_id)
 			return
 
 	_start_regular_level(_run_director.regular_level_index, false)
@@ -3408,7 +3406,7 @@ func _on_regular_level_complete() -> void:
 
 	# Stop combat, pacing, and song transport.
 	_set_song_paused(true)
-	if zone_manager != null and zone_manager.has_method("stop"):
+	if zone_manager != null:
 		zone_manager.stop()
 	if _escalation_director != null:
 		_escalation_director.pause()
@@ -3489,7 +3487,7 @@ func _show_translation_overlay() -> void:
 		lines.append("• Vessel Breaches: %d" % RunStats.combat_hits)
 	lines.append("")
 
-	var gains = RunGrowth.call("get_gains_this_combat")
+	var gains: Array[Dictionary] = RunGrowth.get_gains_this_combat()
 	if not gains.is_empty():
 		lines.append("[ GROWTH EVOLVED ]")
 		for gain in gains:
@@ -3545,14 +3543,14 @@ func _show_level_completion_rewards() -> void:
 			var completion_context: Dictionary = _performance_reward_director.call("get_level_completion_context")
 			completion_context["regular_level_index"] = _run_director.regular_level_index
 			completion_context["regular_level_count"] = _run_director.regular_level_windows.size()
-			completion_context["power_level"] = GameState.get_power_level() if GameState.has_method("get_power_level") else 0.0
+			completion_context["power_level"] = GameState.get_power_level()
 			completion_context["growth_level"] = RunGrowth.level if RunGrowth != null else 1
 			_performance_reward_director.call("set_level_completion_context", completion_context)
 		_pending_upgrades = _performance_reward_director.call("get_level_completion_choices", 3)
 
 	var advancing_to_boss: bool = _run_director.regular_level_index + 1 >= _run_director.regular_level_windows.size()
-	if _run_spine_surface != null and _run_spine_surface.has_method("present_level_completion"):
-		_run_spine_surface.call("present_level_completion", _pending_upgrades, RunGrowth, advancing_to_boss)
+	if _run_spine_surface != null:
+		_run_spine_surface.present_level_completion(_pending_upgrades, RunGrowth, advancing_to_boss)
 	_show_feedback("LEVEL COMPLETE", Color(0.85, 0.95, 0.75, 1.0), 0.60)
 	controls_label.text = ""
 
@@ -3597,7 +3595,7 @@ func _show_growth_choice_intersection(
 	_reward_choice_made = false
 
 	var perf_summary: Dictionary = {}
-	perf_summary = RunStats.call("get_compact_summary")
+	perf_summary = RunStats.get_compact_summary()
 
 	_growth_choice_context = {
 		"source_flow": source_flow,
@@ -3625,8 +3623,8 @@ func _show_growth_choice_intersection(
 		"species_id": str(_pending_reward_creature.get("species_id", ""))
 	})
 	
-	if _growth_choice_surface != null and is_instance_valid(_growth_choice_surface) and _growth_choice_surface.has_method("present"):
-		_growth_choice_surface.call("present")
+	if _growth_choice_surface != null and is_instance_valid(_growth_choice_surface):
+		_growth_choice_surface.present()
 	controls_label.text = ""
 	_show_feedback("GROWTH INTERSECTION", Color(0.90, 0.80, 0.64, 1.0), 0.42)
 
@@ -3634,12 +3632,11 @@ func _show_growth_choice_intersection(
 func _create_run_spine_surface() -> void:
 	if _run_spine_surface != null and is_instance_valid(_run_spine_surface):
 		return
-	_run_spine_surface = RUN_SPINE_SCENE.instantiate()
+	_run_spine_surface = RUN_SPINE_SCENE.instantiate() as RunSpineScene
 	_run_spine_surface.name = "RunSpineSurface"
 	_run_spine_surface.visible = false
 	add_child(_run_spine_surface)
-	if _run_spine_surface.has_signal("upgrade_selected"):
-		_run_spine_surface.connect("upgrade_selected", Callable(self, "_on_run_spine_upgrade_selected"))
+	_run_spine_surface.upgrade_selected.connect(_on_run_spine_upgrade_selected)
 	if _run_spine_surface.has_signal("continue_requested"):
 		_run_spine_surface.connect("continue_requested", Callable(self, "_on_run_spine_continue_requested"))
 	if _run_spine_surface.has_signal("predation_selected"):
@@ -3653,10 +3650,9 @@ func _create_run_spine_surface() -> void:
 func _create_event_surface() -> void:
 	if _event_surface != null and is_instance_valid(_event_surface):
 		return
-	_event_surface = EVENT_SCENE.instantiate()
+	_event_surface = EVENT_SCENE.instantiate() as EventScene
 	add_child(_event_surface)
-	if _event_surface.has_signal("event_completed"):
-		_event_surface.connect("event_completed", Callable(self, "_on_event_completed"))
+	_event_surface.event_completed.connect(_on_event_completed)
 
 
 func _on_event_completed(choice: Dictionary) -> void:
@@ -3670,10 +3666,10 @@ func _on_event_completed(choice: Dictionary) -> void:
 	if not cost.is_empty():
 		var type = str(cost.get("type", ""))
 		var val = float(cost.get("value", 0))
-		if type == "dna" and GameState.has_method("spend_dna"):
-			GameState.call("spend_dna", str(cost.get("species", "")), val)
-		elif type == "dna_any" and GameState.has_method("spend_dna_any"):
-			GameState.call("spend_dna_any", val)
+		if type == "dna":
+			GameState.spend_dna(str(cost.get("species", "")), val)
+		elif type == "dna_any":
+			GameState.spend_dna_any(val)
 	
 	# Apply effects
 	var effect: Dictionary = Dictionary(choice.get("effect", {}))
@@ -3692,8 +3688,7 @@ func _apply_event_effect(effect: Dictionary) -> void:
 			if GameState.world_fate_channels.has(fate_id):
 				GameState.world_fate_channels[fate_id] = clampf(GameState.world_fate_channels[fate_id] + amount, 0.0, 1.0)
 				# Trigger re-dominance check if GameState has it
-				if GameState.has_method("_resolve_world_fate_dominance"):
-					GameState.call("_resolve_world_fate_dominance")
+				GameState._resolve_world_fate_dominance()
 		"hp_restore":
 			GameState.player_hp = minf(GameState.player_hp + float(effect.get("value", 0)), GameState.player_max_hp)
 		"hp_restore_percent":
@@ -3722,12 +3717,11 @@ func _complete_event_flow() -> void:
 func _create_growth_choice_surface() -> void:
 	if _growth_choice_surface != null and is_instance_valid(_growth_choice_surface):
 		return
-	_growth_choice_surface = GROWTH_CHOICE_SCENE.instantiate()
+	_growth_choice_surface = GROWTH_CHOICE_SCENE.instantiate() as GrowthChoiceIntersection
 	_growth_choice_surface.name = "GrowthChoiceSurface"
 	_growth_choice_surface.visible = false
 	add_child(_growth_choice_surface)
-	if _growth_choice_surface.has_signal("growth_choice_selected"):
-		_growth_choice_surface.connect("growth_choice_selected", Callable(self, "_on_growth_choice_selected"))
+	_growth_choice_surface.growth_choice_selected.connect(_on_growth_choice_selected)
 
 
 func _is_growth_choice_active() -> bool:
@@ -3735,8 +3729,8 @@ func _is_growth_choice_active() -> bool:
 
 
 func _hide_growth_choice_surface() -> void:
-	if _growth_choice_surface != null and is_instance_valid(_growth_choice_surface) and _growth_choice_surface.has_method("hide_surface"):
-		_growth_choice_surface.call("hide_surface")
+	if _growth_choice_surface != null and is_instance_valid(_growth_choice_surface):
+		_growth_choice_surface.hide_surface()
 	
 	if _tempo_state_family == COMBAT_FEEL_CONTENT.TEMPO_VOID:
 		_end_void(&"growth_choice_hidden")
@@ -3765,8 +3759,8 @@ func _is_run_spine_active() -> bool:
 
 
 func _hide_run_spine_surface() -> void:
-	if _run_spine_surface != null and is_instance_valid(_run_spine_surface) and _run_spine_surface.has_method("hide_surface"):
-		_run_spine_surface.call("hide_surface")
+	if _run_spine_surface != null and is_instance_valid(_run_spine_surface):
+		_run_spine_surface.hide_surface()
 
 
 func _on_run_spine_upgrade_selected(index: int) -> void:
@@ -3781,8 +3775,8 @@ func _on_run_spine_upgrade_selected(index: int) -> void:
 	_performance_reward_director.call("consume_banked_reward")
 	_refresh_run_build_readout()
 
-	if _run_spine_surface != null and _run_spine_surface.has_method("notify_upgrade_committed"):
-		_run_spine_surface.call("notify_upgrade_committed", index)
+	if _run_spine_surface != null:
+		_run_spine_surface.notify_upgrade_committed(index)
 	_pending_upgrades.clear()
 
 
@@ -3792,8 +3786,8 @@ func _try_present_predation_after_run_spine() -> bool:
 		_pending_predation = _performance_reward_director.call("consume_pending_predation_offers", 2)
 	if _pending_predation.is_empty():
 		return false
-	if _run_spine_surface != null and is_instance_valid(_run_spine_surface) and _run_spine_surface.has_method("present_predation_pool"):
-		_run_spine_surface.call("present_predation_pool", _pending_predation)
+	if _run_spine_surface != null and is_instance_valid(_run_spine_surface):
+		_run_spine_surface.present_predation_pool(_pending_predation)
 		return true
 	return false
 
@@ -3807,8 +3801,8 @@ func _on_run_spine_predation_selected(index: int) -> void:
 	_refresh_run_build_readout()
 	_show_feedback("PREDATION TAKEN", Color(0.88, 0.62, 0.42, 1.0), 0.55)
 	_pending_predation.clear()
-	if _run_spine_surface != null and is_instance_valid(_run_spine_surface) and _run_spine_surface.has_method("notify_predation_committed"):
-		_run_spine_surface.call("notify_predation_committed", index)
+	if _run_spine_surface != null and is_instance_valid(_run_spine_surface):
+		_run_spine_surface.notify_predation_committed(index)
 	_try_present_path_choice_after_run_spine()
 
 
@@ -3823,15 +3817,14 @@ func _try_present_path_choice_after_run_spine() -> bool:
 		return false
 	_pending_path_choice_nodes = candidates
 	_pending_path_choice_level_index = next_level_index
-	if _run_spine_surface != null and is_instance_valid(_run_spine_surface) and _run_spine_surface.has_method("present_path_choice"):
+	if _run_spine_surface != null and is_instance_valid(_run_spine_surface):
 		var branch_label: String = _path_branch_label_for_level(next_level_index)
 		_show_feedback(
 			"PATH BRANCH %s  •  choose L%d" % [branch_label, next_level_index + 1],
 			Color(0.72, 0.90, 0.98, 1.0),
 			0.55
 		)
-		# Path choice always picks the next regular level; boss comes after level completion flow.
-		_run_spine_surface.call("present_path_choice", candidates, false)
+		_run_spine_surface.present_path_choice(candidates, false)
 		return true
 	return false
 
@@ -3870,8 +3863,8 @@ func _on_run_spine_path_node_selected(node_id: String) -> void:
 	)
 	_pending_path_choice_nodes.clear()
 	_pending_path_choice_level_index = -1
-	if _run_spine_surface != null and is_instance_valid(_run_spine_surface) and _run_spine_surface.has_method("notify_path_committed"):
-		_run_spine_surface.call("notify_path_committed", node_id)
+	if _run_spine_surface != null and is_instance_valid(_run_spine_surface):
+		_run_spine_surface.notify_path_committed(node_id)
 
 
 func _on_run_spine_management_action_requested(action_id: String, payload: Dictionary) -> void:
@@ -3979,7 +3972,7 @@ func _place_song_enemy_data(lane: int, enemy_data: Dictionary) -> void:
 	# It also handles ID generation if needed.
 	zone_manager.set_enemy(lane, seeded_enemy)
 
-	var enemies: Dictionary = zone_manager.call("get_all_enemies")
+	var enemies: Dictionary = zone_manager.get_all_enemies()
 	var enemy_id: int = int(seeded_enemy.get("id", -1))
 	if not enemies.has(enemy_id):
 		enemy_id = _resolve_newest_untracked_enemy_id(enemies)
@@ -4037,9 +4030,9 @@ func _trigger_boss_final_movement() -> void:
 	if _escalation_director != null:
 		_escalation_director.stop()
 	_latest_ecology_snapshot.clear()
-	if zone_manager != null and is_instance_valid(zone_manager) and zone_manager.has_method("set_attack_authority_budget"):
+	if zone_manager != null and is_instance_valid(zone_manager):
 		_active_attack_authority_budget = int(zone_manager.THREAT_COUNT)
-		zone_manager.call("set_attack_authority_budget", _active_attack_authority_budget)
+		zone_manager.set_attack_authority_budget(_active_attack_authority_budget)
 	_boss_hp_threshold_fired = false
 	_boss_decree_timeline_active = false
 	_boss_presence_timer = 0.0
@@ -4110,14 +4103,13 @@ func _start_song_conductor(start_time: float = 0.0, end_time: float = -1.0) -> v
 	_song_conductor.accent_fired.connect(_on_conductor_accent_fired)
 	_song_conductor.start(_active_song_map, start_time, end_time, false, _build_conductor_options(_active_song_profile))
 	if _music_control_layer != null:
-		if "BPM" in _active_song_map and _music_control_layer.has_method("set_bpm"):
-			_music_control_layer.call("set_bpm", float(_active_song_map.BPM))
-		if _music_control_layer.has_method("notify_section"):
-			_music_control_layer.call("notify_section", str(_song_conductor.current_section_id), {
-				"intensity": float(_song_conductor.current_intensity)
-			})
+		if "BPM" in _active_song_map:
+			_music_control_layer.set_bpm(float(_active_song_map.BPM))
+		_music_control_layer.notify_section(str(_song_conductor.current_section_id), {
+			"intensity": float(_song_conductor.current_intensity)
+		})
 	_refresh_song_combat_state()
-	player_combat.call("set_song_conductor", _song_conductor)
+	player_combat.set_song_conductor(_song_conductor)
 	if _song_conductor != null:
 		_hud_presenter.update_song_timer(max(_song_conductor.get_final_movement_time() - start_time, 0.0))
 
@@ -4156,8 +4148,8 @@ func _on_conductor_section_changed(section_id: String, data: Dictionary) -> void
 		1.0
 	)
 	_song_section_spawn_mult = float(cadence_law.get("spawn_mult", _song_section_spawn_mult))
-	if _music_control_layer != null and _music_control_layer.has_method("notify_section"):
-		_music_control_layer.call("notify_section", section_id, data)
+	if _music_control_layer != null:
+		_music_control_layer.notify_section(section_id, data)
 	_refresh_song_combat_state()
 	_rebuild_music_driven_difficulty()
 	if _song_phase_index >= 0 and _song_phase_index < _song_phases.size():
@@ -4175,8 +4167,8 @@ func _on_conductor_accent_fired() -> void:
 	# Pull forward the next authored threat cycle.
 	if not _song_mode or _run_finished:
 		return
-	if _music_control_layer != null and _music_control_layer.has_method("notify_accent"):
-		_music_control_layer.call("notify_accent")
+	if _music_control_layer != null:
+		_music_control_layer.notify_accent()
 	_refresh_song_combat_state()
 	_rebuild_music_driven_difficulty()
 		
@@ -4324,8 +4316,8 @@ func _on_boss_music_finished() -> void:
 		return
 	# Song ended while boss still lives — player loses.
 	zone_manager.stop()
-	if player_combat != null and player_combat.has_method("set_combat_enabled"):
-		player_combat.call("set_combat_enabled", false)
+	if player_combat != null:
+		player_combat.set_combat_enabled(false)
 	_show_feedback("THE SONG DEVOURED YOU", Color(1.0, 0.28, 0.22, 1.0), 0.80)
 	EventBus.emit_signal("screen_flash", Color(0.55, 0.06, 0.06, 0.28), 0.40)
 	await get_tree().create_timer(0.8).timeout
@@ -4373,7 +4365,7 @@ func get_current_song_section_id() -> String:
 	return str(_song_conductor.current_section_id)
 
 
-func get_song_conductor() -> Node:
+func get_song_conductor() -> SongConductor:
 	return _song_conductor
 
 
@@ -4476,8 +4468,8 @@ func _apply_dev_harness_post_boot_state() -> void:
 		return
 
 	var run_growth_state: Dictionary = _dev_harness_request.get("run_growth", {})
-	if not run_growth_state.is_empty() and RunGrowth.has_method("apply_debug_state"):
-		RunGrowth.call("apply_debug_state", run_growth_state)
+	if not run_growth_state.is_empty():
+		RunGrowth.apply_debug_state(run_growth_state)
 
 	if _dev_harness_request.has("player_hp_ratio"):
 		_debug_set_player_hp_ratio(float(_dev_harness_request.get("player_hp_ratio", 1.0)))
@@ -4531,19 +4523,14 @@ func _run_dev_harness_control_sequence() -> void:
 	if zone_manager == null or player_combat == null:
 		push_warning("CONTROL_FOCUS_SEQUENCE FAIL missing combat runtime")
 		return
-	if not player_combat.has_method("debug_force_focus_and_action"):
-		push_warning("CONTROL_FOCUS_SEQUENCE FAIL missing player debug action seam")
-		return
 
 	print("CONTROL_FOCUS_SEQUENCE BEGIN")
 	zone_manager.stop()
-	if zone_manager.has_method("set_song_mode_enabled"):
-		zone_manager.call("set_song_mode_enabled", false)
-	if zone_manager.has_method("set_attack_authority_budget"):
-		zone_manager.call("set_attack_authority_budget", zone_manager.THREAT_COUNT)
+	zone_manager.set_song_mode_enabled(false)
+	zone_manager.set_attack_authority_budget(zone_manager.THREAT_COUNT)
 
 	for lane in range(zone_manager.THREAT_COUNT):
-		zone_manager.call("set_enemy", lane, _build_debug_control_enemy(lane))
+		zone_manager.set_enemy(lane, _build_debug_control_enemy(lane))
 
 	var steps: Array[Dictionary] = [
 		{"lane": 0, "action": "attack", "threshold": 0.99, "label": "N_ATTACK", "expect_projectile_cleared": true},
@@ -4564,11 +4551,11 @@ func _run_dev_harness_control_sequence() -> void:
 			print("CONTROL_FOCUS_SEQUENCE %s FAIL timing" % label)
 			continue
 
-		var action_ok: bool = bool(player_combat.call("debug_force_focus_and_action", lane, str(step.get("action", ""))))
+		var action_ok: bool = player_combat.debug_force_focus_and_action(lane, str(step.get("action", "")))
 		await get_tree().create_timer(0.26).timeout
 		var focused_lane: int = _get_player_focus_lane()
 		var expect_cleared: bool = bool(step.get("expect_projectile_cleared", true))
-		var projectile_cleared: bool = zone_manager.call("get_projectile", lane) == null
+		var projectile_cleared: bool = zone_manager.get_projectile(lane) == null
 		if expect_cleared and not projectile_cleared:
 			projectile_cleared = await _debug_wait_for_projectile_clear(lane, 0.35)
 		var step_passed: bool = action_ok and focused_lane == lane and (projectile_cleared or not expect_cleared)
@@ -4610,19 +4597,17 @@ func _build_debug_control_enemy(lane: int) -> Dictionary:
 
 func _debug_fire_control_lane(lane: int) -> bool:
 	for clear_lane in range(zone_manager.THREAT_COUNT if zone_manager != null else 8):
-		var projectile = zone_manager.call("get_projectile", clear_lane)
+		var projectile = zone_manager.get_projectile(clear_lane)
 		if projectile != null and is_instance_valid(projectile):
 			projectile.call("resolve", "debug_reset")
-	if not zone_manager.has_method("debug_fire_lane"):
-		return false
-	var fired_v: Variant = zone_manager.call("debug_fire_lane", lane)
+	var fired_v: Variant = zone_manager.debug_fire_lane(lane)
 	return fired_v == true
 
 
 func _debug_wait_for_projectile_progress(lane: int, threshold: float, max_wait: float) -> bool:
 	var elapsed: float = 0.0
 	while elapsed < max_wait:
-		var projectile = zone_manager.call("get_projectile", lane)
+		var projectile = zone_manager.get_projectile(lane)
 		if projectile != null and is_instance_valid(projectile):
 			if not bool(projectile.get("is_resolved")) and float(projectile.get("progress")) >= threshold:
 				return true
@@ -4634,7 +4619,7 @@ func _debug_wait_for_projectile_progress(lane: int, threshold: float, max_wait: 
 func _debug_wait_for_projectile_clear(lane: int, max_wait: float) -> bool:
 	var elapsed: float = 0.0
 	while elapsed < max_wait:
-		var projectile = zone_manager.call("get_projectile", lane)
+		var projectile = zone_manager.get_projectile(lane)
 		if projectile == null or not is_instance_valid(projectile):
 			return true
 		await get_tree().create_timer(0.02).timeout
@@ -4831,11 +4816,9 @@ func _prepare_for_encounter(reset_hp: bool) -> void:
 
 	_hud_presenter.refresh_hp(GameState.player_hp, GameState.player_max_hp)
 
-	if player_combat.has_method("set_combat_enabled"):
-		player_combat.call("set_combat_enabled", true)
+	player_combat.set_combat_enabled(true)
 
-	if combat_meter.has_method("reset"):
-		combat_meter.call("reset")
+	combat_meter.reset()
 
 	_hide_reward_overlay()
 	result_label.visible = false
@@ -4927,11 +4910,11 @@ func _complete_current_encounter() -> void:
 	_combat_finished = true
 	_phase_transitioning = false
 
-	if zone_manager != null and zone_manager.has_method("stop"):
+	if zone_manager != null:
 		zone_manager.stop()
 
-	if player_combat != null and player_combat.has_method("set_combat_enabled"):
-		player_combat.call("set_combat_enabled", false)
+	if player_combat != null:
+		player_combat.set_combat_enabled(false)
 
 	var biome: Dictionary = _active_encounter.get("biome", {})
 	result_label.text = str(biome.get("victory_text", "VICTORY"))
@@ -5032,11 +5015,10 @@ func _advance_to_next_stage() -> void:
 			and not _run_finished
 			and _run_spine_surface != null
 			and is_instance_valid(_run_spine_surface)
-			and _run_spine_surface.has_method("present_level_completion")
 		)
 		if can_present_run_spine:
 			_pending_upgrades.clear()
-			_run_spine_surface.call("present_level_completion", _pending_upgrades, RunGrowth, GameState.boss_ready)
+			_run_spine_surface.present_level_completion(_pending_upgrades, RunGrowth, GameState.boss_ready)
 			if not _try_present_predation_after_run_spine():
 				_try_present_path_choice_after_run_spine()
 			_show_feedback("STAGE COMPLETE", Color(0.85, 0.95, 0.75, 1.0), 0.52)
@@ -5057,7 +5039,7 @@ func _finish_run(victory: bool) -> void:
 	GameState.clear_growth_choice_intersection_payload()
 	GameState.run_in_progress = false
 	var tendency_snapshot: Dictionary = {}
-	tendency_snapshot = Dictionary(RunGrowth.call("get_tendency_snapshot"))
+	tendency_snapshot = Dictionary(RunGrowth.get_tendency_snapshot())
 	if _is_boss_encounter:
 		GameState.register_world_boss_outcome(_resolve_world_boss_outcome_id(victory), {
 			"region_id": _region_id,
@@ -5069,7 +5051,7 @@ func _finish_run(victory: bool) -> void:
 		"victory": victory,
 		"is_boss_encounter": _is_boss_encounter,
 		"tendency_snapshot": tendency_snapshot,
-		"tempo_snapshot": GameState.get_run_tempo_snapshot() if GameState.has_method("get_run_tempo_snapshot") else {}
+		"tempo_snapshot": GameState.get_run_tempo_snapshot()
 	})
 	EventBus.emit_signal("run_completed", victory)
 
@@ -5078,11 +5060,11 @@ func _finish_run(victory: bool) -> void:
 	_hide_song_hud()
 	_hide_boss_bar()
 
-	if zone_manager != null and zone_manager.has_method("stop"):
+	if zone_manager != null:
 		zone_manager.stop()
 
-	if player_combat != null and player_combat.has_method("set_combat_enabled"):
-		player_combat.call("set_combat_enabled", false)
+	if player_combat != null:
+		player_combat.set_combat_enabled(false)
 
 	if victory:
 		result_label.text = "RUN COMPLETE"
@@ -5410,7 +5392,7 @@ func _show_end_stats() -> void:
 	var bonds: int = RunStats.bonds
 	var eats: int = RunStats.eats
 	var score: int = RunStats.run_score
-	var grade: String = RunStats.call("get_grade") if RunStats.has_method("get_grade") else "—"
+	var grade: String = RunStats.get_grade()
 
 	var growth_level: int = 1
 	growth_level = RunGrowth.level
@@ -5474,8 +5456,8 @@ func _on_dna_routing_changed(route_id: String, label: String) -> void:
 			_dna_route_shell.modulate = Color(1.5, 1.5, 1.5, 1.0)
 			tween.tween_property(_dna_route_shell, "modulate", Color.WHITE, 0.25)
 	_show_feedback(label, route_color, 0.20)
-	if _is_run_spine_active() and _run_spine_surface != null and _run_spine_surface.has_method("refresh_prep_summary"):
-		_run_spine_surface.call("refresh_prep_summary")
+	if _is_run_spine_active() and _run_spine_surface != null:
+		_run_spine_surface.refresh_prep_summary()
 
 
 func _on_player_took_damage(amount: float, source_sector: int) -> void:
@@ -5538,7 +5520,7 @@ func _on_ultimate_available() -> void:
 
 func _on_ultimate_fired(_power: float) -> void:
 	_hud_presenter.set_ultimate_text("0%")
-	var tier: String = str(combat_meter.call("get_current_tier"))
+	var tier: String = combat_meter.get_current_tier()
 	var ult_text: String = "DEVOUR"
 	if tier == "sovereign":
 		ult_text = "SOVEREIGN DEVOUR"
@@ -5592,7 +5574,7 @@ func _on_enemy_damaged(enemy_id: int, damage: float) -> void:
 	if lane >= 0:
 		var max_hp: float = float(_enemy_max_hp.get(enemy_id, 0))
 		if max_hp > 0.0:
-			var enemy_data: Dictionary = zone_manager.call("get_enemy_by_id", enemy_id)
+			var enemy_data: Dictionary = zone_manager.get_enemy_by_id(enemy_id)
 			var current_hp: float = float(enemy_data.get("hp", 0))
 			if current_hp / max_hp <= ENEMY_LOW_HP_THRESHOLD:
 				var marker_data = _enemy_markers_by_id.get(enemy_id, null)
@@ -5694,7 +5676,7 @@ func _refresh_enemy_marker_health(enemy_id: int) -> void:
 	if lane < 0:
 		return
 	var max_hp: float = maxf(float(_enemy_max_hp.get(enemy_id, 0.0)), 1.0)
-	var enemy_data_v: Dictionary = zone_manager.call("get_enemy", lane)
+	var enemy_data_v: Dictionary = zone_manager.get_enemy(lane)
 	var current_hp: float = clampf(float(enemy_data_v.get("hp", 0.0)), 0.0, max_hp)
 	var ratio: float = current_hp / max_hp
 	var track_node = marker_data.get("hp_track")
@@ -5730,18 +5712,14 @@ func _on_proc_feedback_requested(text: String, color: Color) -> void:
 
 
 func _on_ultimate_power_granted(amount: float) -> void:
-	if combat_meter != null and combat_meter.has_method("gain_ultimate_power"):
-		combat_meter.call("gain_ultimate_power", amount)
-
-
-func _on_boss_damaged(id: int, damage: float, is_threshold_impact: bool) -> void:
-	pass # Handling moved to dedicated boss sub-logic
+	if combat_meter != null:
+		combat_meter.gain_ultimate_power(amount)
 
 
 func _on_enemy_status_applied_requested(enemy_id: int, status_id: String, params: Dictionary) -> void:
 	if zone_manager == null: return
 	if enemy_id != -1:
-		zone_manager.call("apply_status_by_id", enemy_id, status_id, params)
+		zone_manager.apply_status_by_id(enemy_id, status_id, params)
 
 
 func _on_enemy_defeated(enemy_id: int) -> void:
@@ -5792,11 +5770,7 @@ func _process_dna_award(defeated_enemy: Dictionary) -> void:
 		return
 
 	var dna_result: Dictionary = {}
-	if RunGrowth.has_method("process_dna_gain"):
-		dna_result = RunGrowth.call("process_dna_gain", dna_species, dna_amount)
-	else:
-		GameState.add_dna(dna_species, dna_amount)
-		dna_result = {"banked": true, "total": GameState.get_dna(dna_species)}
+	dna_result = RunGrowth.process_dna_gain(dna_species, dna_amount)
 	
 	EventBus.emit_signal("dna_gained", dna_species, dna_amount, float(dna_result.get("total", GameState.get_dna(dna_species))))
 	_show_dna_feedback(dna_species, dna_amount, dna_result)
@@ -5829,8 +5803,8 @@ func _show_dna_feedback(species_id: String, _amount: float, result: Dictionary) 
 
 
 func _resolve_enemy_context(enemy_id: int) -> Dictionary:
-	if zone_manager != null and is_instance_valid(zone_manager) and zone_manager.has_method("get_all_enemies"):
-		var live_enemies: Dictionary = Dictionary(zone_manager.call("get_all_enemies"))
+	if zone_manager != null and is_instance_valid(zone_manager):
+		var live_enemies: Dictionary = zone_manager.get_all_enemies()
 		if live_enemies.has(enemy_id):
 			return Dictionary(live_enemies[enemy_id]).duplicate(true)
 	return Dictionary(_all_enemies_by_id.get(enemy_id, {})).duplicate(true)
@@ -5915,22 +5889,22 @@ func _impact_pos_lane(lane: int, t: float = 0.52) -> Vector2:
 
 
 func _lane_player_pos() -> Vector2:
-	if zone_manager != null and zone_manager.has_method("get_player_pos"):
-		return zone_manager.call("get_player_pos")
+	if zone_manager != null:
+		return zone_manager.get_player_pos()
 	if player_combat != null:
 		return player_combat.position
 	return Vector2.ZERO
 
 
 func _lane_hit_zone_pos(lane: int) -> Vector2:
-	if zone_manager != null and zone_manager.has_method("get_threat_hit_zone_pos"):
-		return zone_manager.call("get_threat_hit_zone_pos", lane)
+	if zone_manager != null:
+		return zone_manager.get_threat_hit_zone_pos(lane)
 	return _lane_player_pos() + _lane_direction_fallback(lane) * 110.0
 
 
 func _lane_spawn_pos(lane: int) -> Vector2:
-	if zone_manager != null and zone_manager.has_method("get_threat_spawn_pos"):
-		return zone_manager.call("get_threat_spawn_pos", lane)
+	if zone_manager != null:
+		return zone_manager.get_threat_spawn_pos(lane)
 	return _lane_player_pos() + _lane_direction_fallback(lane) * 260.0
 
 
@@ -6005,7 +5979,7 @@ func _on_timed_attack_resolved(sector: int, quality: String, damage: float, enem
 	var flat_bonus_effect: Dictionary = _get_growth_effect("timed_attack_bonus_flat")
 	var beat_quality: String = _get_beat_quality_for_action()
 	if not flat_bonus_effect.is_empty() and enemy_id != -1:
-		zone_manager.call("damage_enemy_by_id", enemy_id, float(flat_bonus_effect.get("value", 0.0)))
+		zone_manager.damage_enemy_by_id(enemy_id, float(flat_bonus_effect.get("value", 0.0)))
 		_presentation_runtime.spawn_attack_silhouette_to_lane(sector, Color(0.98, 0.70, 0.34, 0.30), 8.0, 0.08, 0.94)
 
 	if quality == "perfect":
@@ -6044,7 +6018,7 @@ func _try_apply_vessel_modifier_on_perfect(origin_lane: int, origin_damage: floa
 		var target_lane: int = int(target_variant)
 		var enemy_id: int = _get_enemy_id_for_lane(target_lane)
 		if enemy_id != -1:
-			zone_manager.call("damage_enemy_by_id", enemy_id, cleave_damage)
+			zone_manager.damage_enemy_by_id(enemy_id, cleave_damage)
 		_presentation_runtime.spawn_attack_silhouette_to_lane(target_lane, silhouette_color, 7.0, 0.08, 0.92)
 	_show_feedback(
 		String(plan.get("label", "")),
@@ -6358,10 +6332,12 @@ func _on_creature_bonded(creature_data: Dictionary) -> void:
 	var _level: int = int(creature_data.get("bond_level", 1))
 	var _flash_text: String = "BOND L%d" % _level if _level > 1 else "%s BONDED" % _name
 	var _flash_color: Color = Color(0.62, 0.88, 1.0, 1.0) if _level > 1 else Color(0.82, 0.94, 0.76, 1.0)
+	var species_id: String = str(creature_data.get("species_id", ""))
 	
 	_show_feedback(_flash_text, _flash_color, 0.48)
 	EventBus.emit_signal("screen_flash", _flash_color.lerp(Color.WHITE, 0.5), 0.12)
 	EventBus.emit_signal("dna_resonated", _flash_color, 1.0)
+	_ensure_bonded_companion(species_id)
 	
 	_refresh_dna_hud()
 	_refresh_run_build_readout()
@@ -6378,10 +6354,22 @@ func _refresh_bonded_creature_render(active_species_id: String = "") -> void:
 		return
 
 	var species_id: String = active_species_id
-	if species_id.is_empty() and RunGrowth.has_method("get_active_species_id"):
-		species_id = str(RunGrowth.call("get_active_species_id"))
+	if species_id.is_empty():
+		species_id = RunGrowth.get_active_species_id()
 
 	if species_id.is_empty():
+		_bonded_creature_species = ""
+		_bonded_creature_sprite.visible = false
+		_bonded_creature_sprite.texture = null
+		_bonded_creature_sprite.hframes = 1
+		_bonded_creature_sprite.vframes = 1
+		_bonded_creature_sprite.frame = 0
+		_bonded_creature_anim_accum = 0.0
+		return
+
+	if species_id == "ashclaw" and _has_bonded_companion(species_id):
+		# Ashclaw's live combat body is BondedCompanion; this legacy support sprite
+		# is only visual and has no target/attack wiring, so do not duplicate it.
 		_bonded_creature_species = ""
 		_bonded_creature_sprite.visible = false
 		_bonded_creature_sprite.texture = null
@@ -6527,8 +6515,7 @@ func _estimate_player_skill_expression() -> float:
 	var combo_norm: float = clampf(float(combat_meter.get("combo_count")) / 24.0, 0.0, 1.0)
 	var phrase_norm: float = clampf(float(combat_meter.get("phrase_count")) / 8.0, 0.0, 1.0)
 	var tier_value: float = 0.20
-	if combat_meter.has_method("get_current_tier"):
-		match str(combat_meter.call("get_current_tier")):
+	match combat_meter.get_current_tier():
 			"hunting":
 				tier_value = 0.40
 			"rampage":
@@ -6610,8 +6597,7 @@ func _rebuild_music_driven_difficulty() -> void:
 		_refresh_song_combat_state()
 	var music_state: Dictionary = _song_combat_state
 	var progression_state: Dictionary = _build_music_progression_state()
-	var new_modifiers: Dictionary = _difficulty_modifier_director.call(
-		"compute_active_modifiers",
+	var new_modifiers: Dictionary = _difficulty_modifier_director.compute_active_modifiers(
 		_base_difficulty_modifiers,
 		music_state,
 		progression_state
@@ -6625,10 +6611,10 @@ func _rebuild_music_driven_difficulty() -> void:
 
 
 func _refresh_song_combat_state() -> void:
-	if _music_control_layer == null or not _music_control_layer.has_method("build_state"):
+	if _music_control_layer == null:
 		_song_combat_state = {}
 		return
-	var built_state: Dictionary = _music_control_layer.call("build_state")
+	var built_state: Dictionary = _music_control_layer.build_state()
 	_song_combat_state = built_state.duplicate(true)
 
 
@@ -6642,13 +6628,13 @@ func _build_level_difficulty_modifiers(encounter_options: Dictionary) -> Diction
 
 
 func _apply_difficulty_modifiers_to_runtime() -> void:
-	if _escalation_director != null and is_instance_valid(_escalation_director) and _escalation_director.has_method("set_difficulty_modifiers"):
-		_escalation_director.call("set_difficulty_modifiers", _difficulty_modifiers)
+	if _escalation_director != null and is_instance_valid(_escalation_director):
+		_escalation_director.set_difficulty_modifiers(_difficulty_modifiers)
 	if _performance_reward_director != null and is_instance_valid(_performance_reward_director) and _performance_reward_director.has_method("set_difficulty_modifiers"):
 		_performance_reward_director.call("set_difficulty_modifiers", _difficulty_modifiers)
-	if zone_manager != null and is_instance_valid(zone_manager) and zone_manager.has_method("set_punish_damage_mult"):
+	if zone_manager != null and is_instance_valid(zone_manager):
 		var punish_band: Dictionary = Dictionary(_difficulty_modifiers.get("punish_severity", {}))
-		zone_manager.call("set_punish_damage_mult", float(punish_band.get("projectile_damage_mult", 1.0)))
+		zone_manager.set_punish_damage_mult(float(punish_band.get("projectile_damage_mult", 1.0)))
 
 
 func _clear_mastery_context_cache() -> void:
@@ -6683,22 +6669,20 @@ func _get_current_cadence_window() -> String:
 
 
 func _on_bonded_support_triggered(species_id: String, lane: int, effect_id: String) -> void:
-	var combo_mult: float = float(combat_meter.call("damage_multiplier"))
+	var combo_mult: float = combat_meter.damage_multiplier()
 	var active_creature: Dictionary = GameState.get_active_bonded_creature()
 	@warning_ignore("static_called_on_instance")
 	var bond_mult: float = GameState.get_bond_level_mult(int(active_creature.get("bond_level", 1)))
 	
 	# Bond Surge: next support trigger has doubled effectiveness.
 	var surge_mult: float = 1.0
-	if RunGrowth.has_method("get_runtime_effect"):
-		var surge_effect: Dictionary = Dictionary(RunGrowth.call("get_runtime_effect", "bond_trigger_mult"))
-		surge_mult = float(surge_effect.get("value", 1.0))
+	var surge_effect: Dictionary = Dictionary(RunGrowth.get_runtime_effect("bond_trigger_mult"))
+	surge_mult = float(surge_effect.get("value", 1.0))
 
 	if surge_mult > 1.0:
 		_show_feedback("SYNC ACTIVE", Color(0.44, 0.96, 0.78, 1.0), 0.42)
 
-	var mastery_context: Dictionary = _support_resolver.call(
-		"build_mastery_context",
+	var mastery_context: Dictionary = _support_resolver.build_mastery_context(
 		effect_id,
 		lane,
 		_get_mastery_window(),
@@ -6719,7 +6703,7 @@ func _on_bonded_support_triggered(species_id: String, lane: int, effect_id: Stri
 		var ctx: Dictionary = {
 			"species_id": species_id,
 			"lane": lane,
-			"targets": player_combat.call("_get_targets_in_cone") if player_combat != null else {},
+			"targets": player_combat._get_targets_in_cone() if player_combat != null else {},
 			"effect_id": effect_id,
 			"combo_mult": combo_mult,
 			"bond_mult": bond_mult,
@@ -6733,7 +6717,7 @@ func _on_bonded_support_triggered(species_id: String, lane: int, effect_id: Stri
 			"game_state": GameState
 		}
 		
-		ctx["collar_mod"] = _support_resolver.call("apply_collar_logic", ctx, GameState.get_equipped_collar(), combat_meter)
+		ctx["collar_mod"] = _support_resolver.apply_collar_logic(ctx, GameState.get_equipped_collar(), combat_meter)
 		
 		if ctx["collar_mod"].has("redirected_lane"):
 			support_enemy_id = _get_enemy_id_for_lane(int(ctx.get("lane", lane)))
@@ -6751,8 +6735,8 @@ func _on_bonded_support_triggered(species_id: String, lane: int, effect_id: Stri
 
 
 func _on_phrase_milestone(count: int) -> void:
-	if _music_control_layer != null and _music_control_layer.has_method("notify_phrase_marker"):
-		_music_control_layer.call("notify_phrase_marker", count)
+	if _music_control_layer != null:
+		_music_control_layer.notify_phrase_marker(count)
 	_rebuild_music_driven_difficulty()
 	
 	_trigger_regional_feedback("phrase_milestone", {"count": count})
@@ -6775,7 +6759,7 @@ func _on_tier_changed(new_tier: String, _old_tier: String) -> void:
 
 
 func _get_enemy_id_for_lane(lane: int) -> int:
-	var enemy: Dictionary = zone_manager.call("get_enemy", lane)
+	var enemy: Dictionary = zone_manager.get_enemy(lane)
 	if enemy.is_empty():
 		return -1
 	return int(enemy.get("id", -1))
@@ -6855,10 +6839,9 @@ func _get_growth_effect(effect_type: String) -> Dictionary:
 		var performance_effect: Dictionary = _performance_reward_director.call("get_runtime_effect", effect_type)
 		if not performance_effect.is_empty():
 			return performance_effect
-	if RunGrowth.has_method("get_runtime_effect"):
-		var runtime_effect: Dictionary = RunGrowth.call("get_runtime_effect", effect_type)
-		if not runtime_effect.is_empty():
-			return runtime_effect
+	var runtime_effect: Dictionary = RunGrowth.get_runtime_effect(effect_type)
+	if not runtime_effect.is_empty():
+		return runtime_effect
 	return {}
 
 

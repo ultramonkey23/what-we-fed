@@ -1,4 +1,5 @@
 extends RefCounted
+class_name SupportEffectResolver
 
 # SupportEffectResolver v2
 # Extracts creature-specific support resolution from CombatScene.

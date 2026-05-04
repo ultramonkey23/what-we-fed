@@ -193,10 +193,19 @@ static func apply_shell_style(
 			panel.shadow_color = shadow_color
 			panel.shadow_size = shadow_size
 			panel.shadow_offset = Vector2.ZERO
-	panel.corner_radius_top_left = corner_radius
-	panel.corner_radius_top_right = corner_radius
-	panel.corner_radius_bottom_left = corner_radius
-	panel.corner_radius_bottom_right = corner_radius
+
+	var asym_corners: Vector4 = palette.get("asym_corners", Vector4.INF)
+	if asym_corners == Vector4.INF:
+		panel.corner_radius_top_left = corner_radius
+		panel.corner_radius_top_right = corner_radius
+		panel.corner_radius_bottom_left = corner_radius
+		panel.corner_radius_bottom_right = corner_radius
+	else:
+		panel.corner_radius_top_left = int(asym_corners.x)
+		panel.corner_radius_top_right = int(asym_corners.y)
+		panel.corner_radius_bottom_right = int(asym_corners.z)
+		panel.corner_radius_bottom_left = int(asym_corners.w)
+
 	panel.border_width_left = border_width
 	panel.border_width_top = border_width
 	panel.border_width_right = border_width
@@ -206,7 +215,6 @@ static func apply_shell_style(
 	control.add_theme_stylebox_override("background", panel)
 	if control is ColorRect:
 		(control as ColorRect).color = panel.bg_color
-
 
 static func apply_bar_style(
 	bar: ProgressBar,

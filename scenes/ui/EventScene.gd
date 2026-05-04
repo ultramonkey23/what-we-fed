@@ -1,4 +1,5 @@
 extends Node2D
+class_name EventScene
 
 signal event_completed(outcome_payload: Dictionary)
 

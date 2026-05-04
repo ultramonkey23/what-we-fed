@@ -1,11 +1,12 @@
 extends Node2D
+class_name BondedCompanion
 
 const COMBAT_CONTENT = preload("res://data/CombatContent.gd")
 const MOTION_JUICE = preload("res://systems/MotionJuice.gd")
 
 var species_id: String = ""
 var player_combat: Node2D = null
-var zone_manager: Node = null
+var zone_manager: ZoneManager = null
 
 var _sprite: Sprite2D
 var _attack_timer: float = 0.0
@@ -17,7 +18,7 @@ var _follow_speed: float = 8.5
 var _is_attacking: bool = false
 var _idle_tex: Texture2D = null
 
-func setup(p_species_id: String, p_player: Node2D, p_zone_manager: Node) -> void:
+func setup(p_species_id: String, p_player: Node2D, p_zone_manager: ZoneManager) -> void:
 	species_id = p_species_id
 	player_combat = p_player
 	zone_manager = p_zone_manager
@@ -87,8 +88,8 @@ func _process(delta: float) -> void:
 		rotation = lerp_angle(rotation, angle_to_player - PI/2, 6.0 * delta)
 	else:
 		# COMBAT FACING: Focus on the specific Prey target
-		if _target_enemy_id != -1:
-			var e_pos = zone_manager.call("get_enemy_pos", _target_enemy_id)
+		if _target_enemy_id != -1 and zone_manager != null and is_instance_valid(zone_manager):
+			var e_pos = zone_manager.get_enemy_pos(_target_enemy_id)
 			var angle_to_enemy = (e_pos - global_position).angle()
 			rotation = lerp_angle(rotation, angle_to_enemy - PI/2, 14.0 * delta)
 
@@ -103,14 +104,14 @@ func _try_auto_attack() -> void:
 	if zone_manager == null or not is_instance_valid(zone_manager):
 		return
 	
-	var enemies: Dictionary = zone_manager.call("get_all_enemies")
+	var enemies: Dictionary = zone_manager.get_all_enemies()
 	if enemies.is_empty():
 		return
 	
 	var closest_id: int = -1
 	var min_dist: float = 99999.0
 	for id in enemies.keys():
-		var e_pos: Vector2 = zone_manager.call("get_enemy_pos", id)
+		var e_pos: Vector2 = zone_manager.get_enemy_pos(id)
 		var d: float = global_position.distance_to(e_pos)
 		if d < min_dist:
 			min_dist = d
@@ -125,7 +126,7 @@ func _execute_attack(enemy_id: int) -> void:
 	_is_attacking = true
 	_target_enemy_id = enemy_id
 	
-	var e_pos: Vector2 = zone_manager.call("get_enemy_pos", enemy_id)
+	var e_pos: Vector2 = zone_manager.get_enemy_pos(enemy_id)
 	var orig_pos: Vector2 = global_position
 	
 	# Visual Trail
@@ -150,10 +151,10 @@ func _execute_attack(enemy_id: int) -> void:
 		if zone_manager and is_instance_valid(zone_manager):
 			# SCALED DAMAGE: Glass Cannon doctrine
 			var base_dmg: float = 5.0 + (GameState.stat_power * 0.22)
-			zone_manager.call("damage_enemy_by_id", enemy_id, base_dmg)
+			zone_manager.damage_enemy_by_id(enemy_id, base_dmg)
 			
 			# Apply Blood-Ember synergy (Bleed)
-			zone_manager.call("apply_status_by_id", enemy_id, "bleed", {})
+			zone_manager.apply_status_by_id(enemy_id, "bleed", {})
 			
 			EventBus.emit_signal("play_sfx", "ashclaw_strike_short")
 			EventBus.emit_signal("ui_shake", 0.6, 0.06)

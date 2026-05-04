@@ -1,4 +1,5 @@
 extends Node2D
+class_name PlayerCombat
 
 @onready var sprite: ColorRect = $Sprite
 const COMBAT_FEEL_CONSTANTS = preload("res://data/CombatFeelConstants.gd")
@@ -76,8 +77,8 @@ const PARRY_SPRITE_SCALE := Vector2(1.02, 1.10)
 const DODGE_SPRITE_SCALE := Vector2(1.32, 0.68) # Massive Squash
 const HIT_SPRITE_SCALE := Vector2(0.94, 1.0)
 
-var zone_manager: Node = null
-var combat_meter: Node = null
+var zone_manager: ZoneManager = null
+var combat_meter: CombatMeter = null
 var _song_conductor: Node = null
 var _sprite_color_tween: Tween = null
 
@@ -106,7 +107,7 @@ var _world_motion_tween: Tween = null
 
 var _player_sprite: Sprite2D = null
 var _atk_effect_sprite: Sprite2D = null
-var _combat_visual_rig: Node = null
+var _combat_visual_rig: CombatVisualRig = null
 var _energy_aura: GPUParticles2D = null
 var _idle_tex: Texture2D = null
 var _attack_tex: Texture2D = null
@@ -296,13 +297,13 @@ func _get_immediate_rejection_reason(action_type: String) -> String:
 		return "missing_runtime"
 	match action_type:
 		"parry":
-			if not bool(combat_meter.call("can_parry")):
+			if not combat_meter.can_parry():
 				return "no_stamina"
 		"dodge":
-			if not bool(combat_meter.call("can_dodge")):
+			if not combat_meter.can_dodge():
 				return "no_stamina"
 		"ultimate":
-			if not bool(combat_meter.call("is_ultimate_available")):
+			if not combat_meter.is_ultimate_available():
 				return "no_charge"
 		"attack":
 			pass
@@ -345,7 +346,7 @@ func _build_input_cooldowns() -> Dictionary:
 		"chain_bypass": chain_bypass_timer if chain_bypass_available else 0.0,
 		"parry_followup": parry_followup_timer if parry_followup_active else 0.0,
 		"stamina": float(combat_meter.get("stamina")) if combat_meter != null else 0.0,
-		"ultimate_ready": bool(combat_meter.call("is_ultimate_available")) if combat_meter != null else false
+		"ultimate_ready": combat_meter.is_ultimate_available() if combat_meter != null else false
 	}
 
 
@@ -354,7 +355,7 @@ func _try_dodge_radial(_target_dir: int) -> void:
 	# For now, we reuse _try_dodge logic but map the target_dir correctly.
 	_try_dodge()
 
-func setup(new_zone_manager: Node, new_combat_meter: Node) -> void:
+func setup(new_zone_manager: ZoneManager, new_combat_meter: CombatMeter) -> void:
 	zone_manager = new_zone_manager
 	combat_meter = new_combat_meter
 	combat_enabled = true
@@ -369,9 +370,9 @@ func setup(new_zone_manager: Node, new_combat_meter: Node) -> void:
 	if not EventBus.song_beat_pulse.is_connected(_on_song_beat_pulse):
 		EventBus.song_beat_pulse.connect(_on_song_beat_pulse)
 
-	var enemies: Dictionary = zone_manager.call("get_all_enemies") if zone_manager else {}
+	var enemies: Dictionary = zone_manager.get_all_enemies() if zone_manager else {}
 	for id in enemies.keys():
-		var projectile = zone_manager.call("get_projectile_by_id", id)
+		var projectile = zone_manager.get_projectile_by_id(id)
 		if is_instance_valid(projectile):
 			_connect_projectile_signals(projectile)
 
@@ -402,7 +403,7 @@ func set_combat_visual_rig(rig: Node) -> void:
 	_combat_visual_rig = rig
 
 
-func sync_presentation_facing_with_zone_manager(lm: Node) -> void:
+func sync_presentation_facing_with_zone_manager(lm: ZoneManager) -> void:
 	if _player_sprite == null or lm == null:
 		return
 	if current_action_state == "dodge":
@@ -410,16 +411,14 @@ func sync_presentation_facing_with_zone_manager(lm: Node) -> void:
 	if _combat_visual_rig == null or not is_instance_valid(_combat_visual_rig):
 		return
 	var lane: int = clampi(active_focus_lane, 0, lm.THREAT_COUNT - 1 if lm else 3)
-	var to_threat: Vector2 = lm.call("get_threat_hit_zone_pos", lane) - lm.call("get_player_pos")
+	var to_threat: Vector2 = lm.get_threat_hit_zone_pos(lane) - lm.get_player_pos()
 	if to_threat.length_squared() < 4.0:
 		return
 	var base_angle: float = to_threat.angle()
 	var off: float = -PI * 0.5
 	var lerp_w: float = 0.22
-	if _combat_visual_rig.has_method("get_player_visual_facing_angle_offset"):
-		off = float(_combat_visual_rig.call("get_player_visual_facing_angle_offset"))
-	if _combat_visual_rig.has_method("get_player_facing_lerp_weight"):
-		lerp_w = float(_combat_visual_rig.call("get_player_facing_lerp_weight"))
+	off = _combat_visual_rig.get_player_visual_facing_angle_offset()
+	lerp_w = _combat_visual_rig.get_player_facing_lerp_weight()
 	var target: float = base_angle + off
 	_player_sprite.rotation = lerp_angle(_player_sprite.rotation, target, lerp_w)
 
@@ -433,11 +432,11 @@ func _get_beat_quality() -> String:
 func _evaluate_projectile_timing_with_forgiveness(projectile: Node) -> String:
 	# TIMING TRUTH: Priority to progress-based hit-zone alignment.
 	# Target nodes (Projectile/Melee) check proximity to their Hit Zone (radius 110).
-	var quality: String = String(projectile.call("evaluate_attack_timing"))
-	
+	var quality: String = projectile.call("evaluate_attack_timing")
+
 	if quality == "miss" or quality.is_empty():
 		# Fallback: Absolute physical contact forgiveness (for lunges or close-quarters)
-		var base_proximity: String = String(projectile.call("evaluate_proximity_timing", global_position))
+		var base_proximity: String = projectile.call("evaluate_proximity_timing", global_position)
 		if base_proximity != "miss":
 			return base_proximity
 		
@@ -562,12 +561,10 @@ func _get_targets_in_cone() -> Dictionary:
 	var min_dot: float = 0.62
 	var attack_range: float = SOVEREIGN_DAMAGE_CALCULATOR.get_attack_range()
 	var lunge_range: float = SOVEREIGN_DAMAGE_CALCULATOR.get_predatory_lunge_range()
-	var center_pos: Vector2 = zone_manager.call("get_player_pos")
-	
+	var center_pos: Vector2 = zone_manager.get_player_pos()
+
 	# 1. Projectiles in cone: Absolute Spatial Resolution
-	var all_projectiles: Array = []
-	if zone_manager.has_method("get_all_active_projectiles"):
-		all_projectiles = zone_manager.call("get_all_active_projectiles")
+	var all_projectiles: Array = zone_manager.get_all_active_projectiles()
 	
 	for projectile in all_projectiles:
 		if is_instance_valid(projectile) and not bool(projectile.get("is_resolved")):
@@ -594,13 +591,13 @@ func _get_targets_in_cone() -> Dictionary:
 
 	# 2. Enemies in honest lunge reach. Lock-on and damage share this same list.
 	# Nearest-in-range is the target truth; facing affects precision, not eligibility.
-	var enemies: Dictionary = zone_manager.call("get_all_enemies")
+	var enemies: Dictionary = zone_manager.get_all_enemies()
 	for id in enemies.keys():
 		var enemy = enemies[id]
 		if float(enemy.get("hp", 0.0)) <= 0.0:
 			continue
-			
-		var target_pos: Vector2 = zone_manager.call("get_enemy_pos", id)
+
+		var target_pos: Vector2 = zone_manager.get_enemy_pos(id)
 		var to_target: Vector2 = target_pos - free_position
 		var dist: float = to_target.length()
 		
@@ -727,7 +724,7 @@ func _select_action_lane(_target_lane: int) -> void:
 
 func _try_attack(targets: Dictionary) -> void:
 	var current_aim: int = _get_target_direction()
-	var combo_mult: float = float(combat_meter.call("damage_multiplier")) if combat_meter else 1.0
+	var combo_mult: float = combat_meter.damage_multiplier() if combat_meter else 1.0
 
 	if parry_followup_active:
 		# Parry followup still focuses on one lane's direction but hits the cone
@@ -779,7 +776,7 @@ func _try_parry(targets: Dictionary) -> void:
 	var projectiles: Array = targets.get("projectiles", [])
 
 	if projectiles.is_empty():
-		combat_meter.call("record_bad_timing")
+		combat_meter.record_bad_timing()
 		_clear_mastery_context("failed_parry", current_aim)
 		_flash_sprite_color(Color(0.82, 0.24, 0.28, 1.0), 0.12)
 		EventBus.emit_signal("proc_feedback_requested", "EMPTY PARRY", Color(1.0, 0.45, 0.45, 1.0))
@@ -787,11 +784,11 @@ func _try_parry(targets: Dictionary) -> void:
 		_lock_action(FAILED_PARRY_RECOVERY, "failed_parry")
 		return
 
-	if not combat_meter.call("can_parry"):
+	if not combat_meter.can_parry():
 		EventBus.emit_signal("player_no_stamina")
 		return
 
-	if not combat_meter.call("spend_stamina_for_parry"):
+	if not combat_meter.spend_stamina_for_parry():
 		return
 
 	# Find the best projectile to parry in the cone
@@ -802,14 +799,14 @@ func _try_parry(targets: Dictionary) -> void:
 	var target_lane: int = int(p_data.get("lane", -1))
 
 	if quality != "good" and quality != "perfect":
-		combat_meter.call("record_bad_timing")
+		combat_meter.record_bad_timing()
 		_clear_mastery_context("failed_parry", target_lane)
 		EventBus.emit_signal("screen_flash", Color(1.0, 0.2, 0.2, 0.08), 0.05)
 		_lock_action(FAILED_PARRY_RECOVERY, "failed_parry")
 		return
 
 	var beat: String = _get_beat_quality()
-	var combo_mult: float = float(combat_meter.call("damage_multiplier"))
+	var combo_mult: float = combat_meter.damage_multiplier()
 	var reflect_mult: float = GOOD_PARRY_REFLECT_MULT
 	var recovery: float = GOOD_PARRY_RECOVERY
 	var followup_window: float = COMBAT_FEEL_CONTENT.PARRY_FOLLOWUP_WINDOW_BASE
@@ -827,21 +824,21 @@ func _try_parry(targets: Dictionary) -> void:
 	if quality == "perfect":
 		var stamina_gain: float = RunGrowth.get_mutation_bonus("stamina_on_perfect_parry")
 		if stamina_gain > 0.0:
-			combat_meter.call("restore_stamina", stamina_gain)
+			combat_meter.restore_stamina(stamina_gain)
 			RunGrowth.consume_mutation_charges("stamina_on_perfect_parry", 1)
 			
 		var expose_all: float = RunGrowth.get_mutation_bonus("expose_all_on_perfect_parry")
 		if expose_all > 0.0:
-			var enemies = zone_manager.call("get_all_enemies")
+			var enemies = zone_manager.get_all_enemies()
 			for id in enemies.keys():
-				zone_manager.call("apply_status_by_id", id, "expose", {"duration": expose_all})
+				zone_manager.apply_status_by_id(id, "expose", {"duration": expose_all})
 			RunGrowth.consume_mutation_charges("expose_all_on_perfect_parry", 1)
-	
+
 	var pale_all: float = RunGrowth.get_mutation_bonus("pale_on_parry")
 	if pale_all > 0.0:
-		var enemies = zone_manager.call("get_all_enemies")
+		var enemies = zone_manager.get_all_enemies()
 		for id in enemies.keys():
-			zone_manager.call("apply_status_by_id", id, "pale", {})
+			zone_manager.apply_status_by_id(id, "pale", {})
 		RunGrowth.consume_mutation_charges("pale_on_parry", 1)
 
 	var reflect_damage: float = SOVEREIGN_DAMAGE_CALCULATOR.get_parry_reflect_damage(
@@ -854,8 +851,8 @@ func _try_parry(targets: Dictionary) -> void:
 	var enemy_id: int = int(enemy_id_raw) if enemy_id_raw != null else -1
 
 	projectile.call("reflect_to_enemy", reflect_damage)
-	combat_meter.call("record_parry", quality)
-	combat_meter.call("record_phrase_action", quality)
+	combat_meter.record_parry(quality)
+	combat_meter.record_phrase_action(quality)
 	_show_parry_image(quality)
 	_emit_mastery_context("parry", target_lane, quality, beat)
 
@@ -883,7 +880,7 @@ func _try_parry(targets: Dictionary) -> void:
 const DODGE_DISTANCE: float = 165.0
 
 func _try_dodge() -> void:
-	if not combat_meter.call("spend_stamina_for_dodge"):
+	if not combat_meter.spend_stamina_for_dodge():
 		return
 
 	# Hunting Field Dodge: Roll in the direction of movement.
@@ -900,8 +897,8 @@ func _try_dodge() -> void:
 
 	# I-frames and masteries.
 	var beat: String = _get_beat_quality()
-	combat_meter.call("record_dodge")
-	combat_meter.call("record_phrase_action", "good")
+	combat_meter.record_dodge()
+	combat_meter.record_phrase_action("good")
 	_emit_mastery_context("dodge", dodge_lane, "good", beat)
 	EventBus.emit_signal("player_dodged", -1, dodge_lane)
 
@@ -938,8 +935,8 @@ func _play_dodge_state_radial(target_pos: Vector2) -> void:
 	_play_world_motion(target_pos, DODGE_PUSH_TIME)
 	
 	# Seismic Feedback: The shell 'stomps' the ground to launch its mass
-	if is_inside_tree() and CombatFeedbackDirector.has_method("trigger_shake"):
-		CombatFeedbackDirector.call("trigger_shake", 6.0, 0.12)
+	if is_inside_tree():
+		CombatFeedbackDirector.trigger_shake(6.0, 0.12)
 	
 	var dodge_tween := create_tween().set_parallel(true).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUINT)
 	
@@ -964,7 +961,7 @@ func _play_dodge_state_radial(target_pos: Vector2) -> void:
 
 
 func _try_ultimate() -> void:
-	if not combat_meter.call("is_ultimate_available"):
+	if not combat_meter.is_ultimate_available():
 		return
 
 	_show_player_image(_attack_tex, ULTIMATE_RECOVERY)
@@ -972,15 +969,15 @@ func _try_ultimate() -> void:
 	_play_world_motion(_action_world_position(ATTACK_WORLD_X_OFFSET * 2.0), 0.1)
 
 	var beat: String = _get_beat_quality()
-	var multiplier: float = float(combat_meter.call("consume_ultimate"))
+	var multiplier: float = combat_meter.consume_ultimate()
 	if multiplier <= 0.0:
 		return
 
 	var total_damage: float = SOVEREIGN_DAMAGE_CALCULATOR.get_ultimate_damage(multiplier, beat, _sum_bond_passive("damage_on_ultimate"))
 
-	var all_enemies: Dictionary = zone_manager.call("get_all_enemies")
+	var all_enemies: Dictionary = zone_manager.get_all_enemies()
 	for id in all_enemies.keys():
-		zone_manager.call("damage_enemy_by_id", id, total_damage)
+		zone_manager.damage_enemy_by_id(id, total_damage)
 
 	EventBus.emit_signal("screen_flash", Color(1.0, 0.75, 0.3, 0.16), 0.10)
 
@@ -1002,7 +999,7 @@ func _idle_attack_on_target(target_data: Dictionary, combo_mult: float) -> void:
 	var enemy_id: int = int(target_data.get("ref", -1))
 	
 	if enemy_id != -1:
-		zone_manager.call("damage_enemy_by_id", enemy_id, idle_damage)
+		zone_manager.damage_enemy_by_id(enemy_id, idle_damage)
 		# Trigger spectacular feedback using the newly optimized runtime
 		var impact_profile: Dictionary = {
 			"shake_intensity": 1.15,
@@ -1018,7 +1015,7 @@ func _idle_attack_on_target(target_data: Dictionary, combo_mult: float) -> void:
 		# We emit a request for the presentation controller to handle this spectacular hit
 		EventBus.emit_signal("impact_burst_requested", impact_profile, target_lane, enemy_id)
 		
-	combat_meter.call("record_attack")
+	combat_meter.record_attack()
 	_clear_mastery_context("idle_attack", target_lane)
 	EventBus.emit_signal("player_attacked", target_lane, idle_damage, false)
 
@@ -1043,7 +1040,7 @@ func _play_predatory_lunge_to_target(target_data: Dictionary) -> void:
 
 func _resolve_timed_attack(projectile, combo_mult: float, quality: String) -> void:
 	var beat: String = _get_beat_quality()
-	var phrase_bonus: float = float(combat_meter.call("get_phrase_bonus"))
+	var phrase_bonus: float = combat_meter.get_phrase_bonus()
 
 	# Growth multiplier: aggression adds flat % to all timed hits;
 	# cadence adds additional flat % to good and perfect hits only.
@@ -1051,15 +1048,13 @@ func _resolve_timed_attack(projectile, combo_mult: float, quality: String) -> vo
 	# and live surges share one authoritative source.
 	var growth_mult: float = 1.0
 	var aggr_effect: Dictionary = {}
-	if RunGrowth.has_method("get_runtime_effect"):
-		aggr_effect = Dictionary(RunGrowth.call("get_runtime_effect", "timed_attack_bonus_damage"))
-	
+	aggr_effect = Dictionary(RunGrowth.get_runtime_effect("timed_attack_bonus_damage"))
+
 	growth_mult += float(aggr_effect.get("value", 0.0))
-	
+
 	if quality == "good" or quality == "perfect":
 		var cad_effect: Dictionary = {}
-		if RunGrowth.has_method("get_runtime_effect"):
-			cad_effect = Dictionary(RunGrowth.call("get_runtime_effect", "good_timed_bonus_damage"))
+		cad_effect = Dictionary(RunGrowth.get_runtime_effect("good_timed_bonus_damage"))
 		growth_mult += float(cad_effect.get("value", 0.0))
 
 	# Mutation Pass: Timed Damage
@@ -1087,10 +1082,10 @@ func _resolve_timed_attack(projectile, combo_mult: float, quality: String) -> vo
 	projectile.call("resolve", "attack_%s" % quality)
 	
 	if target_enemy_id != -1:
-		zone_manager.call("damage_enemy_by_id", target_enemy_id, timed_damage)
+		zone_manager.damage_enemy_by_id(target_enemy_id, timed_damage)
 
-	combat_meter.call("record_timed_attack")
-	combat_meter.call("record_phrase_action", quality)
+	combat_meter.record_timed_attack()
+	combat_meter.record_phrase_action(quality)
 	_emit_mastery_context("timed_attack", target_lane, quality, beat)
 
 	EventBus.emit_signal("player_attacked", target_lane, timed_damage, true)
@@ -1119,7 +1114,7 @@ func _resolve_early_attack(target_lane: int) -> void:
 		# Combo Armor triggered: do not call record_bad_timing
 		EventBus.emit_signal("proc_feedback_requested", "FORM ARMOR", Color(0.42, 0.85, 0.72, 1.0))
 	else:
-		combat_meter.call("record_bad_timing")
+		combat_meter.record_bad_timing()
 		
 	_clear_mastery_context("early_attack", target_lane)
 	EventBus.emit_signal("attack_timing_early_resolved", target_lane)
@@ -1132,7 +1127,7 @@ func _resolve_early_attack(target_lane: int) -> void:
 func _resolve_late_attack(projectile: Node, target_lane: int) -> void:
 	# Late attack means the projectile has already hit or is very close.
 	# We still allow it to resolve but with a heavy punish.
-	var combo_mult: float = float(combat_meter.call("damage_multiplier"))
+	var combo_mult: float = combat_meter.damage_multiplier()
 	var punish_damage: float = SOVEREIGN_DAMAGE_CALCULATOR.get_late_attack_damage(combo_mult)
 	
 	projectile.call("resolve", "attack_late")
@@ -1141,13 +1136,13 @@ func _resolve_late_attack(projectile: Node, target_lane: int) -> void:
 	var target_enemy_id: int = int(target_enemy_id_raw) if target_enemy_id_raw != null else -1
 	
 	if target_enemy_id != -1:
-		zone_manager.call("damage_enemy_by_id", target_enemy_id, punish_damage)
+		zone_manager.damage_enemy_by_id(target_enemy_id, punish_damage)
 
 	var armor_chance: float = clamp(GameState.stat_adaptability - 1.0, 0.0, 0.85)
 	if randf() < armor_chance:
 		EventBus.emit_signal("proc_feedback_requested", "FORM ARMOR", Color(0.42, 0.85, 0.72, 1.0))
 	else:
-		combat_meter.call("record_bad_timing")
+		combat_meter.record_bad_timing()
 
 	_clear_mastery_context("late_attack", target_lane)
 	EventBus.emit_signal("screen_flash", Color(1.0, 0.15, 0.15, 0.10), 0.06)
@@ -1166,9 +1161,9 @@ func _fire_parry_followup(combo_mult: float, targets: Dictionary) -> void:
 	
 	if not enemies.is_empty():
 		for e_data in enemies:
-			zone_manager.call("damage_enemy_by_id", int(e_data.get("ref", -1)), followup_damage)
+			zone_manager.damage_enemy_by_id(int(e_data.get("ref", -1)), followup_damage)
 		
-	combat_meter.call("record_lane_read")
+	combat_meter.record_lane_read()
 	EventBus.emit_signal("player_attacked", target_lane, followup_damage, true)
 	EventBus.emit_signal("screen_flash", Color(1.0, 0.95, 0.65, 0.08), 0.05)
 	_emit_slowmo_context("parry_followup")
@@ -1204,7 +1199,7 @@ func _trigger_parry_counter_warp(enemy_id: int, target_lane: int, damage: float,
 		
 		# Resolve the physical strike.
 		if enemy_id != -1:
-			zone_manager.call("damage_enemy_by_id", enemy_id, damage)
+			zone_manager.damage_enemy_by_id(enemy_id, damage)
 		
 		EventBus.emit_signal("player_attacked", target_lane, damage, true)
 		
@@ -1233,9 +1228,8 @@ func _take_damage(amount: float, source_sector: int) -> void:
 	_show_hurt_image()
 
 	var surge_dr: float = 0.0
-	if RunGrowth.has_method("get_runtime_effect"):
-		var effect: Dictionary = Dictionary(RunGrowth.call("get_runtime_effect", "guard_damage_reduction"))
-		surge_dr = float(effect.get("value", 0.0))
+	var effect: Dictionary = Dictionary(RunGrowth.get_runtime_effect("guard_damage_reduction"))
+	surge_dr = float(effect.get("value", 0.0))
 
 	# Mutation Pass: Damage Taken
 	var invuln: float = RunGrowth.get_mutation_bonus("invuln_hits")
@@ -1261,7 +1255,7 @@ func _take_damage(amount: float, source_sector: int) -> void:
 
 	GameState.player_hp = max(GameState.player_hp - amount, 0.0)
 	_flash_sprite_color(Color(1.0, 0.25, 0.25, 1.0), 0.18)
-	combat_meter.call("break_phrase")
+	combat_meter.break_phrase()
 	_clear_mastery_context("damage_taken", source_sector)
 	EventBus.emit_signal("player_took_damage", amount, source_sector)
 
@@ -1630,7 +1624,7 @@ func _play_world_motion(action_position: Vector2, push_time: float) -> void:
 
 
 func _on_projectile_fired(_lane: int, enemy_id: int) -> void:
-	var projectile = zone_manager.call("get_projectile_by_id", enemy_id)
+	var projectile = zone_manager.get_projectile_by_id(enemy_id)
 	if is_instance_valid(projectile):
 		_connect_projectile_signals(projectile)
 
@@ -1661,7 +1655,7 @@ func _on_projectile_player_contact(projectile: Node) -> void:
 		# Blood-Ember: Projectiles from Ashclaw apply Bleed to player
 		var e_id: Variant = projectile.get("enemy_id")
 		if e_id != null and zone_manager != null:
-			var enemy: Dictionary = zone_manager.call("get_enemy_by_id", int(e_id))
+			var enemy: Dictionary = zone_manager.get_enemy_by_id(int(e_id))
 			var species_id: String = String(enemy.get("species_id", ""))
 			if species_id == "ashclaw":
 				GameState.apply_player_bleed()

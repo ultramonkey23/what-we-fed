@@ -301,6 +301,7 @@ func _apply_route_page() -> void:
 
 		card.visible = true
 		card.position = Vector2(start_x + float(slot) * (CARD_WIDTH + CARD_GAP), CARD_ROW_Y)
+		UI_STYLE.apply_shell_style(card, "mm_mutation")
 
 		var region: Dictionary = regions[global_i]
 		controls["num_label"].text = str(slot + 1)
@@ -356,14 +357,12 @@ func _refresh_card_highlights() -> void:
 		if global_i >= n:
 			continue
 		var is_selected: bool = (global_i == _selected_index)
-		_slot_cards[slot].color = UI_STYLE.get_manga_color("blood_ember") if is_selected else UI_STYLE.get_manga_color("deep_violet")
-		if is_selected:
-			_slot_cards[slot].color.a = 0.36
-		else:
-			_slot_cards[slot].color.a = 1.0
+
+		# SELECTED: mm_apex (Red/Ember) | NORMAL: mm_mutation (Purple/Violet)
+		UI_STYLE.apply_shell_style(_slot_cards[slot], "mm_apex" if is_selected else "mm_mutation")
+
 		if slot < _slot_accents.size() and is_instance_valid(_slot_accents[slot]):
 			_slot_accents[slot].color = UI_STYLE.get_manga_color("alert_gold") if is_selected else Color(0.0, 0.0, 0.0, 0.0)
-
 
 func _build_region_song_preview(region: Dictionary) -> String:
 	var region_id: String = String(region.get("id", ""))

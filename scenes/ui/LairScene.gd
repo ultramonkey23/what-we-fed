@@ -862,14 +862,14 @@ func _refresh_card_highlights() -> void:
 		if global_index >= 0 and global_index < lair.size():
 			species_id = String(lair[global_index].get("species_id", ""))
 		var is_selected: bool = GameState.active_lair_creature_ids.has(species_id)
-		
+
 		if is_selected:
 			UI_STYLE.apply_shell_style(_creature_cards[i], "mm_apex")
 			_apply_lair_vein_panel(_creature_cards[i], 0.42, UI_STYLE.get_manga_color("blood_ember"))
 		else:
 			UI_STYLE.apply_shell_style(_creature_cards[i], "lair_card")
 			_apply_lair_vein_panel(_creature_cards[i], 0.06, UI_STYLE.get_manga_color("paper"))
-			
+
 		if i < _card_accents.size() and is_instance_valid(_card_accents[i]):
 			_card_accents[i].color = UI_STYLE.get_manga_color("alert_gold") if is_selected else Color(0.0, 0.0, 0.0, 0.0)
 			_card_accents[i].modulate.a = 1.0
@@ -877,7 +877,6 @@ func _refresh_card_highlights() -> void:
 			_active_pills[i].visible = is_selected
 		if i < _card_index_labels.size() and is_instance_valid(_card_index_labels[i]):
 			UI_STYLE.apply_label(_card_index_labels[i], "mm_choice_consume" if is_selected else "mm_caption")
-
 
 func _refresh_active_support_panel() -> void:
 	if _hub_solo_label == null and not _archive_mode:

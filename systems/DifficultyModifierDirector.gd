@@ -1,4 +1,5 @@
 extends RefCounted
+class_name DifficultyModifierDirector
 
 # DifficultyModifierDirector (v1)
 # Final layer that translates music-control + progression into active pressure.

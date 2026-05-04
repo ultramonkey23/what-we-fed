@@ -1,4 +1,5 @@
 extends Node
+class_name ZoneManager
 
 const THREAT_COUNT: int = 8
 # fire_stagger is the wait between firing successive directions in a single cycle.
@@ -54,7 +55,7 @@ const ENEMY_STATUS_FLAGS: Dictionary = {
 	"sovereign": {}
 }
 
-var combat_scene: Node = null
+var combat_scene: CombatScene = null
 
 var _viewport_size: Vector2 = Vector2.ZERO
 var _center_pos: Vector2 = Vector2.ZERO
@@ -445,7 +446,7 @@ func damage_enemy_by_id(id: int, amount: float) -> void:
 		if rend["hits_remaining"] <= 0:
 			_enemy_statuses.erase(id)
 			var lane = _find_lane_for_enemy(id)
-			if lane >= 0: EventBus.emit_signal("enemy_status_cleared", lane)
+			if lane >= 0: EventBus.emit_signal("enemy_status_cleared", id)
 
 	if float(enemy["hp"]) <= 0.0:
 		_handle_enemy_defeat(id)
@@ -593,7 +594,7 @@ func _process(delta: float) -> void:
 		_enemy_statuses.erase(id)
 		var lane = _find_lane_for_enemy(id)
 		if lane >= 0:
-			EventBus.emit_signal("enemy_status_cleared", lane)
+			EventBus.emit_signal("enemy_status_cleared", id)
 
 
 func apply_status(enemy_id: int, status_id: String, params: Dictionary = {}) -> void:
@@ -732,7 +733,7 @@ func _fire_striker(id: int) -> bool:
 	var scene: PackedScene = striker.projectile_scene
 	if scene == null:
 		return false
-	var projectile = scene.instantiate()
+	var projectile: Projectile = scene.instantiate() as Projectile
 	if projectile == null:
 		return false
 
@@ -740,7 +741,7 @@ func _fire_striker(id: int) -> bool:
 	if _enemy_statuses.has(id) and _enemy_statuses[id].get("id", "") == "pale" and _enemy_statuses[id].get("fire_pending", false):
 		pale_active = true
 		_enemy_statuses.erase(id)
-		if lane >= 0: EventBus.emit_signal("enemy_status_cleared", lane)
+		if lane >= 0: EventBus.emit_signal("enemy_status_cleared", id)
 
 	var projectile_damage: float = striker.compute_projectile_damage(_punish_damage_mult, pale_active)
 	var projectile_speed: float = striker.compute_projectile_speed(base_speed)
@@ -780,13 +781,12 @@ func _fire_striker(id: int) -> bool:
 	_active_projectiles[id] = projectile
 
 	# ABSOLUTE SONG SYNC:
-	if _song_mode and combat_scene != null and combat_scene.has_method("get_song_conductor"):
-		var conductor: Node = combat_scene.get_song_conductor()
-		if conductor != null and conductor.has_method("get_song_elapsed"):
+	if _song_mode and combat_scene != null:
+		var conductor: SongConductor = combat_scene.get_song_conductor()
+		if conductor != null:
 			var travel_time: float = _travel_time_to_hit_zone(projectile_speed)
-			var song_now: float = conductor.call("get_song_elapsed")
-			var hit_time: float = song_now + travel_time
-			projectile.call("set_song_sync", conductor, hit_time)
+			var hit_time: float = conductor.get_song_time() + travel_time
+			projectile.set_song_sync(conductor, hit_time)
 
 	EventBus.emit_signal("projectile_fired", lane, id)
 	return true
@@ -799,7 +799,7 @@ func _fire_melee_striker(id: int, enemy: Dictionary, angle: float, lane: int) ->
 	if _melee_approach_script == null:
 		return false
 
-	var melee: Node2D = _melee_approach_script.new() as Node2D
+	var melee: MeleeApproach = _melee_approach_script.new() as MeleeApproach
 	if melee == null:
 		return false
 
@@ -815,13 +815,13 @@ func _fire_melee_striker(id: int, enemy: Dictionary, angle: float, lane: int) ->
 	var dir_to_player: Vector2 = (player_pos - spawn_pos).normalized()
 	var hit_zone_pos: Vector2 = player_pos - dir_to_player * HIT_ZONE_DISTANCE
 
-	var player_combat: Node2D = null
+	var player_combat: PlayerCombat = null
 	if combat_scene != null:
-		player_combat = combat_scene.get_node_or_null("PlayerCombat") as Node2D
+		player_combat = combat_scene.get_node_or_null("PlayerCombat") as PlayerCombat
 
 	combat_scene.add_child(melee)
-	
-	melee.call("setup",
+
+	melee.setup(
 		lane,
 		id,
 		melee_damage,
@@ -996,13 +996,13 @@ func _on_projectile_resolved_id(projectile: Node, result: String, id: int, lane:
 		EventBus.emit_signal("projectile_missed", lane, float(projectile.get("damage") if "damage" in projectile else 8.0))
 
 
-func _on_projectile_enemy_contact_id(projectile: Node, id: int, _lane: int) -> void:
+func _on_projectile_enemy_contact_id(projectile: Projectile, id: int, _lane: int) -> void:
 	# Resolves reflected projectiles when they reach the enemy side.
-	if projectile == null or bool(projectile.get("is_resolved")):
+	if projectile == null or projectile.is_resolved:
 		return
 
 	damage_enemy_by_id(id, float(projectile.get("reflected_damage") if "reflected_damage" in projectile else 0.0))
-	projectile.call("resolve", "reflected_hit")
+	projectile.resolve("reflected_hit")
 
 	if _active_projectiles.get(id) == projectile:
 		_active_projectiles.erase(id)

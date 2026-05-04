@@ -140,27 +140,16 @@ func _build_ui() -> void:
 	canvas.add_child(hint_label)
 
 	_controls_panel = ColorRect.new()
-	_controls_panel.color = UI_STYLE.get_manga_color("deep_violet")
-	_controls_panel.color.a = 0.97
 	_controls_panel.size = Vector2(580.0, 370.0)
 	_controls_panel.position = Vector2(350.0, 155.0)
 	_controls_panel.visible = false
+	UI_STYLE.apply_shell_style(_controls_panel, "mm_alert")
+	HUD_PANEL_ART.apply_panel_art(_controls_panel, "", Rect2(), "ControlVeinArt", "ControlVeinBacking")
+	HUD_PANEL_ART.set_vein_color(_controls_panel, UI_STYLE.get_manga_color("blood_ember"))
+	HUD_PANEL_ART.set_vein_pulse(_controls_panel, 0.22)
 	canvas.add_child(_controls_panel)
 
-	var border: ColorRect = ColorRect.new()
-	border.color = UI_STYLE.get_manga_color("blood_ember")
-	border.size = Vector2(580.0, 370.0)
-	border.position = Vector2.ZERO
-	_controls_panel.add_child(border)
-
-	var inner_bg: ColorRect = ColorRect.new()
-	inner_bg.color = UI_STYLE.get_manga_color("ink_black")
-	inner_bg.size = Vector2(574.0, 364.0)
-	inner_bg.position = Vector2(3.0, 3.0)
-	_controls_panel.add_child(inner_bg)
-
-	var controls_text: String = (
-		PRESENTATION_TEXT.TITLE_HELP_HEADER + "\n\n"
+	var controls_text: String = (		PRESENTATION_TEXT.TITLE_HELP_HEADER + "\n\n"
 		+ "WASD / ARROWS          Free Movement & Aim\n"
 		+ "SPACE / LEFT CLICK     Extract / Attack Sector\n"
 		+ "Z / RIGHT CLICK        Stitch / Parry Sector\n"

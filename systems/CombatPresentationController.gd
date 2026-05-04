@@ -1,4 +1,5 @@
 extends Node
+class_name CombatPresentationController
 
 const COMBAT_FEEL_CONTENT = preload("res://data/CombatFeelContent.gd")
 const COMBAT_BG_CONTENT = preload("res://data/CombatBackgroundContent.gd")

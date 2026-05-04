@@ -1,4 +1,5 @@
 extends Node2D
+class_name MeleeApproach
 
 # Same timing-window interface as Projectile — PlayerCombat and LaneManager
 # interact with it through identical calls. Difference: resolve() bounces the

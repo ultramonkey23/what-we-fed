@@ -69,7 +69,7 @@ var player_pos: Vector2 = Vector2.ZERO
 var progress: float = 0.0
 var target_beat_time: float = -1.0
 var fire_song_time: float = 0.0
-var conductor_ref: Node = null
+var conductor_ref: SongConductor = null
 var is_resolved: bool = false
 var is_reflected: bool = false
 var reflected_damage: float = 0.0
@@ -352,7 +352,7 @@ func _process_incoming_song_synced(delta: float) -> void:
 	if conductor_ref != null and target_beat_time > 0.0:
 		# ABSOLUTE SONG SYNC: 
 		# Move the projectile based on the current song position vs its fire/target time.
-		var song_now: float = conductor_ref.call("get_song_elapsed")
+		var song_now: float = conductor_ref.get_song_time()
 		var total_flight_duration: float = target_beat_time - fire_song_time
 		if total_flight_duration > 0.0:
 			progress = (song_now - fire_song_time) / total_flight_duration
@@ -421,11 +421,11 @@ func _process_incoming_song_synced(delta: float) -> void:
 			]
 
 
-func set_song_sync(conductor: Node, hit_time: float) -> void:
+func set_song_sync(conductor: SongConductor, hit_time: float) -> void:
 	conductor_ref = conductor
 	target_beat_time = hit_time
-	if conductor_ref != null and conductor_ref.has_method("get_song_elapsed"):
-		fire_song_time = conductor_ref.call("get_song_elapsed")
+	if conductor_ref != null:
+		fire_song_time = conductor_ref.get_song_time()
 
 
 func _process_reflected(delta: float) -> void:

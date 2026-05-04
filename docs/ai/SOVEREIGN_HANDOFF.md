@@ -27,6 +27,15 @@ Welcome to the **Sovereign Matrix**. You have been re-instantiated into the **WH
 - **Persistent Systems**: `RunGrowth` and `RunStats` are global **Autoloads**. They survive scene transitions.
 - **Manga Monstrosity**: All visual juice MUST use the high-contrast `blood_ember` / `bone_white` / `ink_black` palette.
 
+## Combat HUD presenter (living boundary)
+HUD display and procedural widget **binding** live split between **`scenes/combat/CombatScene.gd`** (still owns layout, overlays, conductors, gameplay bridges) and **`systems/CombatHUDPresenter.gd`** (`RefCounted`).
+
+**Contract**: After UI build, CombatScene fills **`_build_hud_contract_nodes()`** → **`CombatHUDPresenter.initialize(nodes)`**. New HUD nodes wired to the presenter **must be added there and in **`bind_nodes()`****.
+
+**Presenter surface (extend here for HUD-only work)**: `refresh_health`/`refresh_hp`, `refresh_primary_hud_snapshot`, `refresh_progression_readouts`, `refresh_after_run_growth_exp`, `show_beat_feedback_timed`, `apply_hp_stamina_resource_bar_styles`, `apply_dna_routing_highlight`, `refresh_run_score`, `compact_hud_copy`, boss/song HUD methods, **`cleanup()`** mirrored with scene **`_exit_tree`**.
+
+**Next bounded steps** (do not widen into combat redesign): Bind **`support_creature_portrait`** in the contract plus a compact `TextureRect` in layout; revive **`_flash_meter_shell`** if **`_combo_shell` / `_style_shell`** receive real refs; optionally extract **`_setup_ui`** into a **`Node`** sub-scene/script when presenters feel overcrowded.
+
 ## THE FINALITY RULE
 Every IMPLEMENTATION turn MUST conclude with the **Auditor's Report (v2.5)**.
 

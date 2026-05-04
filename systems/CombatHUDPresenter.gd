@@ -1,6 +1,8 @@
 extends RefCounted
 
 const VESSEL_MODIFIER_DIRECTOR = preload("res://systems/VesselModifierDirector.gd")
+const COMBAT_FEEL_CONTENT = preload("res://data/CombatFeelContent.gd")
+const BEAT_FEEDBACK_MIN_INTERVAL_MS: int = 260
 
 # ── Bound node references ─────────────────────────────────────────────────────
 # All nodes are created and owned by CombatScene.
@@ -49,7 +51,14 @@ var _bond_value_label: Label
 var _atk_value_label: Label
 var _def_value_label: Label
 var _dna_route_label: Label
+var _dna_route_shell: ColorRect
 var _mutation_value_label: Label
+var _run_score_label: Label
+var _beat_feedback_label: Label
+
+# Beat-feedback chip (timing readout corner)
+var _beat_feedback_tween: Tween = null
+var _beat_feedback_last_ms: int = 0
 
 # DNA HUD cluster
 var _dna_shell: ColorRect
@@ -76,6 +85,11 @@ func _init(combat_content: GDScript, presentation_text: GDScript, ui_style: GDSc
 	_combat_content = combat_content
 	_presentation_text = presentation_text
 	_ui_style = ui_style
+
+
+## Preferred binding entry — delegates to bind_nodes().
+func initialize(nodes: Dictionary) -> void:
+	bind_nodes(nodes)
 
 
 func bind_nodes(nodes: Dictionary) -> void:
@@ -107,7 +121,10 @@ func bind_nodes(nodes: Dictionary) -> void:
 	_atk_value_label = nodes.get("atk_value_label")
 	_def_value_label = nodes.get("def_value_label")
 	_dna_route_label = nodes.get("dna_route_label")
+	_dna_route_shell = nodes.get("dna_route_shell")
 	_mutation_value_label = nodes.get("mutation_value_label")
+	_run_score_label = nodes.get("run_score_label")
+	_beat_feedback_label = nodes.get("beat_feedback_label")
 	# DNA HUD cluster
 	_dna_shell = nodes.get("dna_shell")
 	_dna_emblem = nodes.get("dna_emblem")
@@ -140,6 +157,9 @@ func bind_nodes(nodes: Dictionary) -> void:
 
 
 func cleanup() -> void:
+	if _beat_feedback_tween != null and is_instance_valid(_beat_feedback_tween):
+		_beat_feedback_tween.kill()
+	_beat_feedback_tween = null
 	if EventBus.combat_started.is_connected(_on_combat_started):
 		EventBus.combat_started.disconnect(_on_combat_started)
 	if EventBus.player_teleported.is_connected(_on_player_teleported):
@@ -193,6 +213,10 @@ func refresh_hp(hp: float, max_hp: float) -> void:
 		else:
 			_hp_value_label.text = "%d/%d" % [int(hp), int(max_hp)]
 			_hp_value_label.modulate = Color.WHITE
+
+
+func refresh_health(hp: float, max_hp: float) -> void:
+	refresh_hp(hp, max_hp)
 
 
 func refresh_stamina(current: float, maximum: float) -> void:
@@ -346,6 +370,24 @@ func refresh_combo(count: int, tier: String = "") -> void:
 	refresh_power_level()
 
 
+## Primary HUD reconciliation used by CombatScene.run snapshot (Orchestration only).
+func refresh_primary_hud_snapshot(
+	score_value: int,
+	style_tier: String,
+	run_growth: Node,
+	song_mode: bool,
+	song_phase_index: int,
+	song_phases: Array,
+	pending_creature: Dictionary
+) -> void:
+	refresh_hp(GameState.player_hp, GameState.player_max_hp)
+	if run_growth != null and is_instance_valid(run_growth):
+		set_exp_text(int(run_growth.level), float(run_growth.current_exp), float(run_growth.exp_to_next))
+	refresh_progression_readouts(run_growth, song_mode, song_phase_index, song_phases, pending_creature)
+	refresh_combo(score_value, style_tier)
+	refresh_style(style_tier)
+
+
 func refresh_style(tier: String) -> void:
 	if _style_label != null:
 		var compact: String = _ui_style.get_tier_label(tier)
@@ -374,6 +416,47 @@ func set_exp_text(level: int, current_exp: float, exp_to_next: float = -1.0) -> 
 func set_controls_text(text: String) -> void:
 	if _controls_label != null:
 		_controls_label.text = text
+
+
+func show_beat_feedback_timed(text: String, color: Color, critical_threat_pressure: float) -> void:
+	if _beat_feedback_label == null or not is_instance_valid(_beat_feedback_label):
+		return
+	var now_ms: int = Time.get_ticks_msec()
+	if critical_threat_pressure > 0.58 and now_ms - _beat_feedback_last_ms < BEAT_FEEDBACK_MIN_INTERVAL_MS:
+		return
+	_beat_feedback_last_ms = now_ms
+	if _beat_feedback_tween != null and is_instance_valid(_beat_feedback_tween):
+		_beat_feedback_tween.kill()
+	_beat_feedback_label.text = text
+	_beat_feedback_label.modulate = Color(color.r, color.g, color.b, 1.0)
+	_beat_feedback_label.visible = true
+	_beat_feedback_tween = _beat_feedback_label.create_tween()
+	_beat_feedback_tween.tween_interval(COMBAT_FEEL_CONTENT.BEAT_FEEDBACK_HOLD_TIME)
+	_beat_feedback_tween.tween_property(_beat_feedback_label, "modulate:a", 0.0, COMBAT_FEEL_CONTENT.BEAT_FEEDBACK_FADE_TIME)
+	_beat_feedback_tween.tween_callback(func() -> void:
+		_beat_feedback_label.visible = false
+		_beat_feedback_label.modulate.a = 1.0
+	)
+
+
+func refresh_run_score(display_score: int) -> void:
+	if _run_score_label != null:
+		_run_score_label.text = "%d" % display_score
+
+
+func dna_route_accent_color(route_id: String) -> Color:
+	return Color(0.82, 0.96, 0.82, 1.0) if route_id == "bond" else Color(0.96, 0.84, 0.62, 1.0)
+
+
+func apply_dna_routing_highlight(route_id: String, label: String) -> void:
+	var route_color: Color = dna_route_accent_color(route_id)
+	if _dna_route_label != null:
+		_dna_route_label.text = label
+		_dna_route_label.modulate = route_color
+	if _dna_route_shell != null and is_instance_valid(_dna_route_shell):
+		var tween := _dna_route_shell.create_tween()
+		_dna_route_shell.modulate = Color(1.5, 1.5, 1.5, 1.0)
+		tween.tween_property(_dna_route_shell, "modulate", Color.WHITE, 0.25)
 
 
 func refresh_stats(atk: float, def: float) -> void:
@@ -539,6 +622,31 @@ func refresh_run_build(run_growth: Node) -> void:
 	refresh_power_level(run_growth)
 
 
+func refresh_progression_readouts(
+	run_growth: Node,
+	song_mode: bool,
+	song_phase_index: int,
+	song_phases: Array,
+	pending_creature: Dictionary
+) -> void:
+	refresh_run_build(run_growth)
+	refresh_dna_hud(song_mode, song_phase_index, song_phases, pending_creature)
+
+
+func refresh_after_run_growth_exp(
+	run_growth: Node,
+	level: int,
+	current_exp: float,
+	exp_to_next: float,
+	song_mode: bool,
+	song_phase_index: int,
+	song_phases: Array,
+	pending_creature: Dictionary
+) -> void:
+	set_exp_text(level, current_exp, exp_to_next)
+	refresh_progression_readouts(run_growth, song_mode, song_phase_index, song_phases, pending_creature)
+
+
 # ── DNA HUD ───────────────────────────────────────────────────────────────────
 
 func refresh_dna_hud(song_mode: bool, song_phase_index: int, song_phases: Array, pending_creature: Dictionary) -> void:
@@ -671,6 +779,71 @@ func update_boss_race_timer(remaining: float, total: float) -> void:
 	var urgency: float = clampf((0.5 - frac) / 0.5, 0.0, 1.0)
 	_song_timer_label.add_theme_color_override("font_color",
 		Color(lerpf(0.70, 1.0, urgency), lerpf(0.55, 0.20, urgency), lerpf(0.44, 0.20, urgency), 0.92))
+
+
+# ── Resource bar visuals (after bind_nodes from CombatScene) ──────────────────
+
+func apply_hp_stamina_resource_bar_styles(hp_bar: ProgressBar, stamina_bar: ProgressBar) -> void:
+	if hp_bar != null:
+		_style_progress_bar(hp_bar, Color(0.18, 0.06, 0.08, 0.88), Color(0.73, 0.24, 0.26, 1.0), 6)
+	if stamina_bar != null:
+		_style_progress_bar(stamina_bar, Color(0.08, 0.09, 0.10, 0.82), Color(0.44, 0.66, 0.58, 1.0), 5)
+
+
+func _style_progress_bar(bar: ProgressBar, under_color: Color, fill_color: Color, corner_radius: int) -> void:
+	var role: String = ""
+	if bar == _support_bar:
+		role = "support_idle"
+	elif bar == _boss_hp_bar:
+		role = "boss"
+
+	if not role.is_empty():
+		_ui_style.apply_bar_style(bar, role)
+		return
+
+	var track_path: String = COMBAT_FEEL_CONTENT.resolved_bar_track_path()
+	var under: StyleBox
+	if not track_path.is_empty():
+		var sb_tex: StyleBoxTexture = (
+			_ui_style.stylebox_texture_from_path(
+				track_path,
+				COMBAT_FEEL_CONTENT.hud_bar_track_texture_region(),
+				COMBAT_FEEL_CONTENT.HUD_BAR_TRACK_NINE_SLICE,
+				Vector4.ZERO,
+				Color(1.0, 1.0, 1.0, 1.0)
+			) as StyleBoxTexture
+		)
+		if sb_tex != null:
+			under = sb_tex
+		else:
+			under = _style_progress_bar_flat_under(under_color, corner_radius)
+	else:
+		under = _style_progress_bar_flat_under(under_color, corner_radius)
+
+	var fill := StyleBoxFlat.new()
+	fill.bg_color = fill_color
+	fill.corner_radius_top_left = corner_radius
+	fill.corner_radius_top_right = corner_radius
+	fill.corner_radius_bottom_left = corner_radius
+	fill.corner_radius_bottom_right = corner_radius
+
+	bar.add_theme_stylebox_override("background", under)
+	bar.add_theme_stylebox_override("fill", fill)
+
+
+func _style_progress_bar_flat_under(under_color: Color, corner_radius: int) -> StyleBoxFlat:
+	var under := StyleBoxFlat.new()
+	under.bg_color = under_color
+	under.corner_radius_top_left = corner_radius
+	under.corner_radius_top_right = corner_radius
+	under.corner_radius_bottom_left = corner_radius
+	under.corner_radius_bottom_right = corner_radius
+	under.border_width_left = 1
+	under.border_width_top = 1
+	under.border_width_right = 1
+	under.border_width_bottom = 1
+	under.border_color = Color(0.17, 0.16, 0.16, 0.94)
+	return under
 
 
 # ── Public formatting helpers (callable from CombatScene for reward overlay) ─

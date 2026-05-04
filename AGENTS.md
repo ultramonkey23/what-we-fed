@@ -19,6 +19,9 @@ This is the MASTER contract for all AI Agents (Claude, Cursor, Gemini, Codex).
 - [REPO_TRUTH_PROTOCOL.md](docs/ai/REPO_TRUTH_PROTOCOL.md)
 - [REPORT_CONTRACT.md](docs/ai/REPORT_CONTRACT.md)
 
+## Combat HUD refactoring (orientation)
+HUD layout still lives largely in **`CombatScene.gd`**; HUD refresh and presenter binding live in **`CombatHUDPresenter.gd`**. Grounding notes and next steps: **[SOVEREIGN_HANDOFF.md — Combat HUD presenter](docs/ai/SOVEREIGN_HANDOFF.md#combat-hud-presenter-living-boundary)** (GitHub and some viewers require matching heading slug).
+
 ## OPERATING RULE
 End every IMPLEMENTATION turn with the **Auditor's Report (v2.5)**.
 ---

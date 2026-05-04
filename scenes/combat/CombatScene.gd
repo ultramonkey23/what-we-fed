@@ -317,15 +317,12 @@ var _active_song_data: Dictionary = {}
 var _active_song_profile: Dictionary = SONG_COMBAT_PROFILE_CONTENT.get_profile("")
 var _boss_song_profile: Dictionary = SONG_COMBAT_PROFILE_CONTENT.get_profile("boss_1")
 var _last_applied_hunt_pressure_step: int = -1
-var _beat_feedback_tween: Tween = null
-var _beat_feedback_last_ms: int = 0
 var _critical_threat_pressure: float = 0.0
 var _critical_threat_lane: int = -1
 var _readability_pulse_mult: float = 1.0
 var _critical_warning_cooldown_until_ms: int = 0
 var _feedback_shell: RefCounted = null
 
-const BEAT_FEEDBACK_MIN_INTERVAL_MS: int = 260
 const CRITICAL_WARNING_COOLDOWN_MS: int = 900
 
 
@@ -912,6 +909,8 @@ func _initialize_ui() -> void:
 	_create_growth_choice_surface()
 	_create_live_reward_shell()
 	_create_hud_presenter()
+	if _hud_presenter != null:
+		_hud_presenter.apply_hp_stamina_resource_bar_styles(hp_bar, stamina_bar)
 	_setup_performance_hud()
 	if not get_viewport().size_changed.is_connected(_sync_compact_transient_hud_layout):
 		get_viewport().size_changed.connect(_sync_compact_transient_hud_layout)
@@ -1940,8 +1939,6 @@ func _setup_ui() -> void:
 	_presentation_controller.apply_text_role(controls_label, "hint", HORIZONTAL_ALIGNMENT_CENTER)
 	controls_label.add_theme_font_size_override("font_size", 16)
 
-	_style_progress_bar(hp_bar, Color(0.18, 0.06, 0.08, 0.88), Color(0.73, 0.24, 0.26, 1.0), 6)
-	_style_progress_bar(stamina_bar, Color(0.08, 0.09, 0.10, 0.82), Color(0.44, 0.66, 0.58, 1.0), 5)
 	_build_quig_anchor()
 	_build_dna_shell()
 	_build_song_hud()
@@ -2599,62 +2596,6 @@ func _build_meter_shell() -> void:
 	UI_STYLE.apply_bar_style(_boss_hp_bar, "boss")
 
 
-func _style_progress_bar(bar: ProgressBar, under_color: Color, fill_color: Color, corner_radius: int) -> void:
-	var role: String = ""
-	if bar == _support_bar:
-		role = "support_idle"
-	elif bar == _boss_hp_bar:
-		role = "boss"
-
-	if not role.is_empty():
-		UI_STYLE.apply_bar_style(bar, role)
-		return
-
-	var track_path: String = COMBAT_FEEL_CONTENT.resolved_bar_track_path()
-	var under: StyleBox
-	if not track_path.is_empty():
-		var sb_tex: StyleBoxTexture = (
-			UI_STYLE.stylebox_texture_from_path(
-				track_path,
-				COMBAT_FEEL_CONTENT.hud_bar_track_texture_region(),
-				COMBAT_FEEL_CONTENT.HUD_BAR_TRACK_NINE_SLICE,
-				Vector4.ZERO,
-				Color(1.0, 1.0, 1.0, 1.0)
-			) as StyleBoxTexture
-		)
-		if sb_tex != null:
-			under = sb_tex
-		else:
-			under = _style_progress_bar_flat_under(under_color, corner_radius)
-	else:
-		under = _style_progress_bar_flat_under(under_color, corner_radius)
-
-	var fill := StyleBoxFlat.new()
-	fill.bg_color = fill_color
-	fill.corner_radius_top_left = corner_radius
-	fill.corner_radius_top_right = corner_radius
-	fill.corner_radius_bottom_left = corner_radius
-	fill.corner_radius_bottom_right = corner_radius
-
-	bar.add_theme_stylebox_override("background", under)
-	bar.add_theme_stylebox_override("fill", fill)
-
-
-func _style_progress_bar_flat_under(under_color: Color, corner_radius: int) -> StyleBoxFlat:
-	var under := StyleBoxFlat.new()
-	under.bg_color = under_color
-	under.corner_radius_top_left = corner_radius
-	under.corner_radius_top_right = corner_radius
-	under.corner_radius_bottom_left = corner_radius
-	under.corner_radius_bottom_right = corner_radius
-	under.border_width_left = 1
-	under.border_width_top = 1
-	under.border_width_right = 1
-	under.border_width_bottom = 1
-	under.border_color = Color(0.17, 0.16, 0.16, 0.94)
-	return under
-
-
 func _create_panel_backing(
 	node_name: String,
 	texture_path: String,
@@ -2874,12 +2815,18 @@ func _build_dna_shell() -> void:
 		_dna_slot_labels.append(label)
 
 
-func _refresh_hud_snapshot(score_value: int, exp_value: float, style_tier: String) -> void:
-	_hud_presenter.refresh_hp(GameState.player_hp, GameState.player_max_hp)
-	_hud_presenter.set_exp_text(RunGrowth.level, float(RunGrowth.current_exp), float(RunGrowth.exp_to_next))
-	_refresh_run_build_readout()
-	_hud_presenter.refresh_combo(score_value, style_tier)
-	_hud_presenter.refresh_style(style_tier)
+func _refresh_hud_snapshot(score_value: int, _exp_value: float, style_tier: String) -> void:
+	if _hud_presenter == null:
+		return
+	_hud_presenter.refresh_primary_hud_snapshot(
+		score_value,
+		style_tier,
+		RunGrowth,
+		_song_mode,
+		_song_phase_index,
+		_song_phases,
+		_pending_creature_snapshot()
+	)
 
 
 func _create_feedback_label() -> void:
@@ -3073,12 +3020,13 @@ func _create_live_reward_shell() -> void:
 func _create_hud_presenter() -> void:
 	_hud_presenter = COMBAT_HUD_PRESENTER.new(COMBAT_CONTENT, PRESENTATION_TEXT, UI_STYLE)
 	var nodes: Dictionary = _build_hud_contract_nodes()
-	_hud_presenter.bind_nodes(nodes)
+	_hud_presenter.initialize(nodes)
 
 
 func _build_hud_contract_nodes() -> Dictionary:
 	# Centralized node contract to keep CombatScene and CombatHUDPresenter synchronized.
 	return {
+		"combat_meter": combat_meter if combat_meter != null and is_instance_valid(combat_meter) else null,
 		"combo_label": combo_label,
 		"style_label": style_label,
 		"stamina_bar": stamina_bar,
@@ -3102,6 +3050,7 @@ func _build_hud_contract_nodes() -> Dictionary:
 		"atk_value_label": _atk_value_label,
 		"def_value_label": _def_value_label,
 		"dna_route_label": _dna_route_label,
+		"dna_route_shell": _dna_route_shell,
 		"mutation_value_label": _mutation_value_label,
 		"dna_shell": _dna_shell,
 		"dna_emblem": _dna_emblem,
@@ -3112,6 +3061,8 @@ func _build_hud_contract_nodes() -> Dictionary:
 		"boss_state_label": _boss_state_label,
 		"song_timer_label": _song_timer_label,
 		"song_phase_label": _song_phase_label,
+		"run_score_label": _run_score_label,
+		"beat_feedback_label": _beat_feedback_label,
 	}
 
 
@@ -5277,26 +5228,8 @@ func _get_beat_quality_for_action() -> String:
 
 
 func _show_beat_feedback(text: String, color: Color) -> void:
-	# Shows a brief beat-quality label (IN SYNC / ON BEAT / LOCKED IN / SLIP) near
-	# the timing rings. Fades out quickly so it does not crowd the main feedback.
-	if _beat_feedback_label == null:
-		return
-	var now_ms: int = Time.get_ticks_msec()
-	if _critical_threat_pressure > 0.58 and now_ms - _beat_feedback_last_ms < BEAT_FEEDBACK_MIN_INTERVAL_MS:
-		return
-	_beat_feedback_last_ms = now_ms
-	if _beat_feedback_tween != null and is_instance_valid(_beat_feedback_tween):
-		_beat_feedback_tween.kill()
-	_beat_feedback_label.text = text
-	_beat_feedback_label.modulate = Color(color.r, color.g, color.b, 1.0)
-	_beat_feedback_label.visible = true
-	_beat_feedback_tween = create_tween()
-	_beat_feedback_tween.tween_interval(COMBAT_FEEL_CONTENT.BEAT_FEEDBACK_HOLD_TIME)
-	_beat_feedback_tween.tween_property(_beat_feedback_label, "modulate:a", 0.0, COMBAT_FEEL_CONTENT.BEAT_FEEDBACK_FADE_TIME)
-	_beat_feedback_tween.tween_callback(func() -> void:
-		_beat_feedback_label.visible = false
-		_beat_feedback_label.modulate.a = 1.0
-	)
+	if _hud_presenter != null:
+		_hud_presenter.show_beat_feedback_timed(text, color, _critical_threat_pressure)
 
 
 func _flash_meter_shell(color: Color, duration: float) -> void:
@@ -5337,15 +5270,21 @@ func _hide_reward_overlay() -> void:
 
 
 func _refresh_run_build_readout() -> void:
-	_hud_presenter.refresh_run_build(RunGrowth)
-	_refresh_dna_hud()
+	if _hud_presenter == null:
+		return
+	_hud_presenter.refresh_progression_readouts(RunGrowth, _song_mode, _song_phase_index, _song_phases, _pending_creature_snapshot())
+
+
+func _pending_creature_snapshot() -> Dictionary:
+	if _victory_reward_director == null:
+		return {}
+	return _victory_reward_director.get_pending_creature()
 
 
 func _refresh_dna_hud() -> void:
-	var pending_creature: Dictionary = {}
-	if _victory_reward_director != null:
-		pending_creature = _victory_reward_director.get_pending_creature()
-	_hud_presenter.refresh_dna_hud(_song_mode, _song_phase_index, _song_phases, pending_creature)
+	if _hud_presenter == null:
+		return
+	_hud_presenter.refresh_dna_hud(_song_mode, _song_phase_index, _song_phases, _pending_creature_snapshot())
 
 
 func _show_live_reward_offer(creature_data: Dictionary) -> void:
@@ -5450,8 +5389,8 @@ func _on_combo_changed(count: int, tier: String) -> void:
 
 
 func _on_run_score_changed(score: int) -> void:
-	if _run_score_label != null:
-		_run_score_label.text = "%d" % score
+	if _hud_presenter != null:
+		_hud_presenter.refresh_run_score(score)
 
 
 func _show_end_stats() -> void:
@@ -5521,16 +5460,19 @@ func _build_post_run_summary_payload() -> Dictionary:
 
 
 func _on_dna_routing_changed(route_id: String, label: String) -> void:
-	var route_color: Color = Color(0.82, 0.96, 0.82, 1.0) if route_id == "bond" else Color(0.96, 0.84, 0.62, 1.0)
-	if _dna_route_label != null:
-		_dna_route_label.text = label
-		_dna_route_label.modulate = route_color
-	
-	if _dna_route_shell != null:
-		var tween := create_tween()
-		_dna_route_shell.modulate = Color(1.5, 1.5, 1.5, 1.0)
-		tween.tween_property(_dna_route_shell, "modulate", Color.WHITE, 0.25)
-	
+	var route_color: Color
+	if _hud_presenter != null:
+		route_color = _hud_presenter.dna_route_accent_color(route_id)
+		_hud_presenter.apply_dna_routing_highlight(route_id, label)
+	else:
+		route_color = Color(0.82, 0.96, 0.82, 1.0) if route_id == "bond" else Color(0.96, 0.84, 0.62, 1.0)
+		if _dna_route_label != null:
+			_dna_route_label.text = label
+			_dna_route_label.modulate = route_color
+		if _dna_route_shell != null:
+			var tween := create_tween()
+			_dna_route_shell.modulate = Color(1.5, 1.5, 1.5, 1.0)
+			tween.tween_property(_dna_route_shell, "modulate", Color.WHITE, 0.25)
 	_show_feedback(label, route_color, 0.20)
 	if _is_run_spine_active() and _run_spine_surface != null and _run_spine_surface.has_method("refresh_prep_summary"):
 		_run_spine_surface.call("refresh_prep_summary")
@@ -6233,8 +6175,18 @@ func _on_combo_broken(_lost: int) -> void:
 
 
 func _on_run_growth_changed(level: int, current_exp: float, exp_to_next: float) -> void:
-	_hud_presenter.set_exp_text(level, current_exp, exp_to_next)
-	_refresh_run_build_readout()
+	if _hud_presenter == null:
+		return
+	_hud_presenter.refresh_after_run_growth_exp(
+		RunGrowth,
+		level,
+		current_exp,
+		exp_to_next,
+		_song_mode,
+		_song_phase_index,
+		_song_phases,
+		_pending_creature_snapshot()
+	)
 
 
 func _on_run_growth_level_resolved(result: Dictionary) -> void:

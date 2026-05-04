@@ -60,8 +60,8 @@ var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
 var _escalation_rules: Dictionary = {}
 
-var zone_manager: Node = null
-var player_combat: Node2D = null
+var zone_manager: ZoneManager = null
+var player_combat: PlayerCombat = null
 
 var _player_hp_ratio: float = 1.0
 var _boss_hp_ratio: float = 1.0
@@ -228,13 +228,12 @@ func _seed_initial_phase_enemies(phase: Dictionary) -> void:
 
 	var empty_lanes: Array = []
 	for lane in range(zone_manager.THREAT_COUNT):
-		if zone_manager.call("is_lane_empty", lane):
+		if zone_manager.is_lane_empty(lane):
 			empty_lanes.append(lane)
 
 	var player_lane: int = 1 # Default fallback
 	if player_combat != null:
-		if player_combat.has_method("get_active_focus_lane"):
-			player_lane = int(player_combat.call("get_active_focus_lane"))
+		player_lane = player_combat.get_active_focus_lane()
 	var ordered_lanes: Array = ENCOUNTER_IDENTITY_RUNTIME.order_empty_lanes(
 		_region_id,
 		phase,
@@ -257,8 +256,7 @@ func _sync_budgets_to_zone_manager() -> void:
 	var budget: int = _resolve_authority_budget(get_current_phase_data())
 	if budget != _last_synced_budget:
 		_last_synced_budget = budget
-		if zone_manager.has_method("set_attack_authority_budget"):
-			zone_manager.call("set_attack_authority_budget", budget)
+		zone_manager.set_attack_authority_budget(budget)
 
 	# Frequency scaling (only if boss escalation hasn't taken over)
 	if not _boss_escalation_fired:
@@ -268,8 +266,7 @@ func _sync_budgets_to_zone_manager() -> void:
 		if _player_hp_ratio <= LOW_HP_RELIEF_RATIO or _recent_hit_timer > 0.0:
 			interval += 0.85 # Visible relief
 		
-		if zone_manager.has_method("set_cycle_interval"):
-			zone_manager.call("set_cycle_interval", clampf(interval, 1.2, 3.5))
+		zone_manager.set_cycle_interval(clampf(interval, 1.2, 3.5))
 
 func notify_enemy_defeated(enemy_id: int, lane: int, replaced_immediately: bool = false) -> void:
 	if not _running or _current_phase_index < 0:
@@ -372,7 +369,7 @@ func _pick_best_empty_lane(exclude_lane: int) -> int:
 	var empty_lanes: Array = []
 	var any_empty_lanes: Array = []
 	for lane in range(zone_manager.THREAT_COUNT):
-		if zone_manager.call("is_lane_empty", lane):
+		if zone_manager.is_lane_empty(lane):
 			any_empty_lanes.append(lane)
 			if lane != exclude_lane:
 				empty_lanes.append(lane)
@@ -542,10 +539,8 @@ func _trigger_boss_escalation() -> void:
 		
 	feedback_requested.emit("SOVEREIGN UNLEASH", Color(0.92, 0.42, 0.12, 1.0), 0.70)
 	
-	if zone_manager.has_method("set_cycle_interval"):
-		zone_manager.call("set_cycle_interval", 0.60)
-	if zone_manager.has_method("set_fire_stagger"):
-		zone_manager.call("set_fire_stagger", 0.44)
+	zone_manager.set_cycle_interval(0.60)
+	zone_manager.set_fire_stagger(0.44)
 
 func get_kill_momentum_ratio() -> float:
 	return _resolve_effective_momentum_ratio()
@@ -603,13 +598,13 @@ func _resolve_current_pressure_points() -> float:
 	if zone_manager == null or not is_instance_valid(zone_manager):
 		return 0.0
 	var total: float = 0.0
-	var all_enemies: Dictionary = zone_manager.call("get_all_enemies")
+	var all_enemies: Dictionary = zone_manager.get_all_enemies()
 	for id in all_enemies.keys():
 		var enemy: Dictionary = all_enemies[id]
 		if not enemy.is_empty() and float(enemy.get("hp", 0.0)) > 0.0:
 			total += _estimate_enemy_pressure_points(enemy) * 0.52
 			
-		var projectile = zone_manager.call("get_projectile_by_id", id)
+		var projectile = zone_manager.get_projectile_by_id(id)
 		if projectile != null:
 			var projectile_damage: float = float(projectile.get("damage"))
 			var projectile_speed: float = float(projectile.get("speed"))

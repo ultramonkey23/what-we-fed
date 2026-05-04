@@ -8,7 +8,7 @@ const BEAT_FEEDBACK_MIN_INTERVAL_MS: int = 260
 # All nodes are created and owned by CombatScene.
 # This presenter holds references only — it never frees them.
 
-var _combat_meter: Node # Bound to CombatMeter for real-time multipliers
+var _combat_meter: CombatMeter # Bound to CombatMeter for real-time multipliers
 
 # Static HUD nodes (from @onready in CombatScene)
 var _combo_label: Label
@@ -225,15 +225,14 @@ func refresh_stamina(current: float, maximum: float) -> void:
 		_stamina_bar.value = current
 
 
-func refresh_power_level(run_growth: Node = null) -> void:
+func refresh_power_level(_run_growth: Node = null) -> void:
 	var power_level: float = GameState.get_power_level()
-	if run_growth != null and is_instance_valid(run_growth) and run_growth.has_method("get_runtime_effect"):
-		var aggression_effect: Dictionary = Dictionary(run_growth.call("get_runtime_effect", "timed_attack_bonus_damage"))
-		var cadence_effect: Dictionary = Dictionary(run_growth.call("get_runtime_effect", "good_timed_bonus_damage"))
-		power_level *= 1.0 + maxf(float(aggression_effect.get("value", 0.0)), 0.0) + maxf(float(cadence_effect.get("value", 0.0)), 0.0)
-	
-	if _combat_meter != null and is_instance_valid(_combat_meter) and _combat_meter.has_method("damage_multiplier"):
-		power_level *= maxf(float(_combat_meter.call("damage_multiplier")), 1.0)
+	var aggression_effect: Dictionary = RunGrowth.get_runtime_effect("timed_attack_bonus_damage")
+	var cadence_effect: Dictionary = RunGrowth.get_runtime_effect("good_timed_bonus_damage")
+	power_level *= 1.0 + maxf(float(aggression_effect.get("value", 0.0)), 0.0) + maxf(float(cadence_effect.get("value", 0.0)), 0.0)
+
+	if _combat_meter != null and is_instance_valid(_combat_meter):
+		power_level *= maxf(_combat_meter.damage_multiplier(), 1.0)
 
 	_last_power_level = power_level
 	if _power_scouter_label == null:
@@ -494,8 +493,8 @@ func refresh_support(current: float, maximum: float, active_species_id: String, 
 
 
 	if _support_name_label != null:
-		if run_growth != null and is_instance_valid(run_growth) and run_growth.has_method("get_active_display_name"):
-			var display_name: String = String(run_growth.call("get_active_display_name"))
+		if run_growth != null and is_instance_valid(run_growth):
+			var display_name: String = RunGrowth.get_active_display_name()
 			var bonded: Dictionary = GameState.get_active_bonded_creature()
 			var bond_level: int = int(bonded.get("bond_level", 1))
 			var identity_tag: String = _bond_identity_tag(String(Dictionary(bonded.get("bond_passive", {})).get("type", "")))
@@ -612,8 +611,8 @@ func refresh_run_build(run_growth: Node) -> void:
 		_atk_value_label.text = "%.0f" % GameState.get_attack_damage()
 	if _def_value_label != null:
 		_def_value_label.text = "%.0f" % GameState.player_defense
-	if _dna_route_label != null and run_growth != null and is_instance_valid(run_growth) and run_growth.has_method("get_dna_routing_label"):
-		_dna_route_label.text = String(run_growth.call("get_dna_routing_label"))
+	if _dna_route_label != null and run_growth != null and is_instance_valid(run_growth):
+		_dna_route_label.text = RunGrowth.get_dna_routing_label()
 
 	if _run_build_shell != null:
 		var has_build: bool = not GameState.absorbed_types.is_empty() or not GameState.active_mutations.is_empty()
@@ -939,9 +938,7 @@ func _format_mutation_summary() -> String:
 	return _join_compact_tokens(chips)
 
 
-func _format_upgrade_summary(run_growth: Node) -> String:
-	if run_growth != null and is_instance_valid(run_growth) and run_growth.has_method("get_tendency_summary"):
-		return String(run_growth.call("get_tendency_summary"))
+func _format_upgrade_summary(_run_growth: Node) -> String:
 	return "--"
 
 

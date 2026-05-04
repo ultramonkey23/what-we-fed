@@ -187,8 +187,7 @@ static func apply_choice(choice: Dictionary, run_growth: Node) -> bool:
 			return true
 		KIND_SUPPORT:
 			GameState.spend_dna(sid, cost)
-			if run_growth != null and is_instance_valid(run_growth) and run_growth.has_method("gain_reward_support_charge"):
-				run_growth.call("gain_reward_support_charge", 38.0)
+			RunGrowth.gain_reward_support_charge(38.0)
 			return true
 		KIND_MUTATION:
 			var mid: String = String(choice.get("mutation_id", ""))

@@ -202,18 +202,17 @@ func _camera_metadata(camera: Camera2D) -> Dictionary:
 	}
 
 
-func _combat_metadata(combat_meter: Node, player_combat: Node) -> Dictionary:
+func _combat_metadata(combat_meter: CombatMeter, player_combat: PlayerCombat) -> Dictionary:
 	var tier: String = "unknown"
 	var combo_count: int = -1
 	var style_score: float = -1.0
 	if combat_meter != null:
-		if combat_meter.has_method("get_current_tier"):
-			tier = String(combat_meter.call("get_current_tier"))
+		tier = combat_meter.get_current_tier()
 		combo_count = int(_get_object_property(combat_meter, "combo_count", -1))
 		style_score = float(_get_object_property(combat_meter, "style_score", -1.0))
 	var active_lane: int = -1
-	if player_combat != null and player_combat.has_method("get_active_focus_lane"):
-		active_lane = int(player_combat.call("get_active_focus_lane"))
+	if player_combat != null:
+		active_lane = player_combat.get_active_focus_lane()
 	return {"tier": tier, "combo_count": combo_count, "style_score": style_score, "active_lane": active_lane}
 
 
@@ -239,20 +238,20 @@ func _song_metadata(song_conductor: Node, game_state: Node, scene: Node) -> Dict
 	}
 
 
-func _lane_metadata(zone_manager: Node, player_combat: Node, context: Dictionary) -> Dictionary:
+func _lane_metadata(zone_manager: ZoneManager, player_combat: PlayerCombat, context: Dictionary) -> Dictionary:
 	var cardinal_positions: Array[Dictionary] = []
-	if zone_manager != null and zone_manager.has_method("get_threat_spawn_pos") and zone_manager.has_method("get_threat_hit_zone_pos"):
+	if zone_manager != null:
 		for lane in range(4):
-			var spawn_pos: Vector2 = zone_manager.call("get_threat_spawn_pos", lane)
-			var hit_pos: Vector2 = zone_manager.call("get_threat_hit_zone_pos", lane)
+			var spawn_pos: Vector2 = zone_manager.get_threat_spawn_pos(lane)
+			var hit_pos: Vector2 = zone_manager.get_threat_hit_zone_pos(lane)
 			cardinal_positions.append({
 				"lane": lane,
 				"spawn": _vec2_dict(spawn_pos),
 				"hit_zone": _vec2_dict(hit_pos)
 			})
 	var active_lane: int = -1
-	if player_combat != null and player_combat.has_method("get_active_focus_lane"):
-		active_lane = int(player_combat.call("get_active_focus_lane"))
+	if player_combat != null:
+		active_lane = player_combat.get_active_focus_lane()
 	return {
 		"active": active_lane,
 		"source": int(context.get("source_lane", context.get("lane", _last_damage_lane))),
@@ -264,9 +263,8 @@ func _lane_metadata(zone_manager: Node, player_combat: Node, context: Dictionary
 func _support_metadata(game_state: Node, run_growth: Node, context: Dictionary) -> Dictionary:
 	var active_species_id: String = String(context.get("species_id", _last_support_species_id))
 	var support_charge: float = -1.0
-	if game_state != null and game_state.has_method("get_active_bonded_creature"):
-		var active_creature: Dictionary = Dictionary(game_state.call("get_active_bonded_creature"))
-		active_species_id = String(active_creature.get("species_id", active_species_id))
+	var active_creature: Dictionary = GameState.get_active_bonded_creature()
+	active_species_id = String(active_creature.get("species_id", active_species_id))
 	support_charge = float(_get_object_property(run_growth, "support_charge", -1.0))
 	return {
 		"species_id": active_species_id,

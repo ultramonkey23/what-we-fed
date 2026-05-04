@@ -184,8 +184,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 
 	if key_event.is_action_pressed("toggle_dna_route"):
-		if RunGrowth != null and is_instance_valid(RunGrowth) and RunGrowth.has_method("toggle_dna_routing_preference"):
-			RunGrowth.call("toggle_dna_routing_preference")
+		RunGrowth.toggle_dna_routing_preference()
 		_refresh_prep_body()
 		get_viewport().set_input_as_handled()
 		return
@@ -588,9 +587,7 @@ func _compose_run_prep_body() -> String:
 		]
 	vessel_lines.append(growth_line)
 
-	var route_line: String = "DNA harvest  |  %s" % PRESENTATION_TEXT.DNA_ROUTE_BOND_LABEL
-	if RunGrowth != null and is_instance_valid(RunGrowth) and RunGrowth.has_method("get_dna_routing_label"):
-		route_line = "DNA harvest  |  %s" % RunGrowth.call("get_dna_routing_label")
+	var route_line: String = "DNA harvest  |  %s" % RunGrowth.get_dna_routing_label()
 	vessel_lines.append(route_line)
 	
 	var resonance: Dictionary = GameState.get_current_resonance_perk()
@@ -857,10 +854,10 @@ func _commit_collar_action(action_id: String) -> void:
 	var collar: Dictionary = rows[_collar_menu_index]
 	var collar_id: String = str(collar.get("id", ""))
 	var ok: bool = false
-	if action_id == "unlock" and GameState.has_method("unlock_collar"):
-		ok = bool(GameState.call("unlock_collar", collar_id))
-	elif action_id == "equip" and GameState.has_method("equip_collar"):
-		ok = bool(GameState.call("equip_collar", collar_id))
+	if action_id == "unlock":
+		ok = GameState.unlock_collar(collar_id)
+	elif action_id == "equip":
+		ok = GameState.equip_collar(collar_id)
 	var status: String = "ok" if ok else "failed"
 	_management_status_line = "%s collar: %s" % [action_id.capitalize(), str(collar.get("title", collar_id))]
 	emit_signal("management_action_requested", "collar_" + action_id, {
@@ -966,10 +963,10 @@ func _commit_management_action(action_id: String) -> void:
 	idx = clampi(idx, 0, items.size() - 1)
 	var reward_id: String = str(items[idx])
 	var ok: bool = false
-	if action_id == "equip" and GameState.has_method("set_reward_slot_primary"):
-		ok = bool(GameState.call("set_reward_slot_primary", lane, slot, reward_id))
-	elif action_id == "salvage" and GameState.has_method("salvage_reward_from_slot"):
-		ok = bool(GameState.call("salvage_reward_from_slot", lane, slot, reward_id))
+	if action_id == "equip":
+		ok = GameState.set_reward_slot_primary(lane, slot, reward_id)
+	elif action_id == "salvage":
+		ok = GameState.salvage_reward_from_slot(lane, slot, reward_id)
 	if ok:
 		_management_status_line = "%s %s -> %s" % [action_id.capitalize(), str(section.get("label", "slot")), _reward_title_from_id(reward_id)]
 		emit_signal("management_action_requested", action_id, {

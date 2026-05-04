@@ -1049,10 +1049,7 @@ func _refresh_active_support_panel() -> void:
 
 
 func _trait_splicing_cost(species_id: String) -> float:
-	if GameState.has_method("get_trait_splicing_cost"):
-		return float(GameState.call("get_trait_splicing_cost", species_id))
-	var perk: Dictionary = GameState.get_current_resonance_perk()
-	return 250.0 * float(perk.get("splicing_cost_mult", 1.0))
+	return GameState.get_trait_splicing_cost(species_id)
 
 
 func _set_lair_action_detail_text(text: String) -> void:
@@ -1072,18 +1069,7 @@ func _fit_label_to_bounds(label: Label) -> void:
 
 
 func _get_ascension_status(species_id: String) -> Dictionary:
-	if GameState.has_method("get_ascension_status"):
-		return Dictionary(GameState.call("get_ascension_status", species_id))
-	var mastery: Dictionary = LAIR_RESONANCE.get_mastery_trait(species_id)
-	return {
-		"can_ascend": false,
-		"cost": LAIR_RESONANCE.ASCENSION_DNA_COST,
-		"current_dna": GameState.get_dna(species_id),
-		"required_fate": LAIR_RESONANCE.get_species_affinity(species_id),
-		"current_fate": GameState.world_dominant_fate,
-		"mastery": mastery,
-		"reason": "Ascension status unavailable."
-	}
+	return GameState.get_ascension_status(species_id)
 
 
 func _ascension_status_line(species_id: String) -> String:

@@ -92,7 +92,7 @@ func _populate_extraction_summary() -> void:
 		lines.append("")
 
 	if RunGrowth:
-		var gains = RunGrowth.call("get_gains_this_combat")
+		var gains = RunGrowth.get_gains_this_combat()
 		if not gains.is_empty():
 			lines.append("[ GROWTH EVOLVED ]")
 			for gain in gains:
@@ -118,7 +118,7 @@ func _on_timer_timeout() -> void:
 func _transition_to_combat() -> void:
 	# Before leaving, clear the combat-specific gains
 	if RunGrowth:
-		RunGrowth.call("clear_combat_gains")
+		RunGrowth.clear_combat_gains()
 		
 	get_tree().change_scene_to_file(COMBAT_SCENE_PATH)
 

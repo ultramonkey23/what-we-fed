@@ -42,10 +42,6 @@ const PARRY_STREAK_PROGRESS_BONUS: float = 12.0
 const DODGE_STREAK_PROGRESS_BONUS: float = 8.0
 const DODGE_STREAK_SUPPORT_CHARGE: float = 4.0
 const KILL_STREAK_SUPPORT_CHARGE: float = 5.0
-var RunGrowth: Node:
-	get: return get_node_or_null("/root/RunGrowth")
-var RunStats: Node:
-	get: return get_node_or_null("/root/RunStats")
 
 # Predatory Tempo Architecture v1 mapping:
 # - puncture: micro-time combat punctuation
@@ -77,7 +73,7 @@ signal reward_claimed(reward_data: Dictionary, source: String)
 signal proc_feedback(text: String, color: Color)
 signal pressure_bias_changed(snapshot: Dictionary)
 
-var _combat_meter: Node = null
+var _combat_meter: CombatMeter = null
 
 var _song_started: bool = false
 var _phase_index: int = -1
@@ -131,7 +127,7 @@ var _tempo_mastery_claimed_per_phase: Dictionary = {
 var _tempo_decree_event_claims: Dictionary = {}
 
 
-func bind_runtime(combat_meter_ref: Node, _run_growth_ref: Node = null, _run_stats_ref: Node = null) -> void:
+func bind_runtime(combat_meter_ref: CombatMeter, _run_growth_ref: Node = null, _run_stats_ref: Node = null) -> void:
 	_combat_meter = combat_meter_ref
 	_connect_eventbus()
 	_connect_run_stats()
@@ -349,7 +345,7 @@ func get_status_snapshot() -> Dictionary:
 		claimed_tags.append(String(reward.get("readout", reward.get("title", ""))))
 	var score_grade: String = "--"
 	if RunStats.has_method("get_grade"):
-		score_grade = String(RunStats.call("get_grade"))
+		score_grade = String(RunStats.get_grade())
 	return {
 		"phase_index": _phase_index,
 		"run_progress": _run_progress,
@@ -860,7 +856,7 @@ func _get_active_affinity() -> String:
 func _get_leading_tendency_id() -> String:
 	if not RunGrowth.has_method("get_tendency_snapshot"):
 		return ""
-	var snapshot: Dictionary = RunGrowth.call("get_tendency_snapshot")
+	var snapshot: Dictionary = RunGrowth.get_tendency_snapshot()
 	var points: Dictionary = snapshot.get("points", {})
 	var levels: Dictionary = snapshot.get("levels", {})
 	var best_id: String = ""
@@ -984,7 +980,7 @@ func _on_enemy_defeated(_enemy_id: int) -> void:
 	if _kill_streak > 0 and _kill_streak % 4 == 0:
 		_add_bonus_progress(KILL_STREAK_PROGRESS_BONUS)
 		if RunGrowth.has_method("gain_reward_support_charge"):
-			RunGrowth.call("gain_reward_support_charge", KILL_STREAK_SUPPORT_CHARGE)
+			RunGrowth.gain_reward_support_charge(KILL_STREAK_SUPPORT_CHARGE)
 		emit_signal("proc_feedback", "HUNT SURGES", Color(0.92, 0.50, 0.26, 1.0))
 
 	# Carrion Brand: 3 kills → mend + charge
@@ -998,7 +994,7 @@ func _on_enemy_defeated(_enemy_id: int) -> void:
 			if healed > 0.0:
 				EventBus.emit_signal("player_healed", healed)
 			if RunGrowth.has_method("gain_reward_support_charge"):
-				RunGrowth.call("gain_reward_support_charge", float(pulse_effect.get("support_charge", 0.0)))
+				RunGrowth.gain_reward_support_charge(float(pulse_effect.get("support_charge", 0.0)))
 			emit_signal("proc_feedback", "BRAND FEEDS", Color(0.92, 0.58, 0.30, 1.0))
 	# Flayed Vessel: 5 kills → mend 8 + charge 25
 	var heavy_effect: Dictionary = get_runtime_effect("kill_chain_heavy")
@@ -1011,7 +1007,7 @@ func _on_enemy_defeated(_enemy_id: int) -> void:
 			if healed > 0.0:
 				EventBus.emit_signal("player_healed", healed)
 			if RunGrowth.has_method("gain_reward_support_charge"):
-				RunGrowth.call("gain_reward_support_charge", float(heavy_effect.get("support_charge", 0.0)))
+				RunGrowth.gain_reward_support_charge(float(heavy_effect.get("support_charge", 0.0)))
 			emit_signal("proc_feedback", "VESSEL FEEDS", Color(0.96, 0.48, 0.28, 1.0))
 
 
@@ -1034,7 +1030,7 @@ func _on_timed_attack_resolved(_lane: int, quality: String, _damage: float, _ene
 			if _perfect_strike_streak >= streak_required:
 				_perfect_strike_streak = 0
 				if RunGrowth.has_method("gain_reward_support_charge"):
-					RunGrowth.call("gain_reward_support_charge", float(chain_effect.get("support_charge", 0.0)))
+					RunGrowth.gain_reward_support_charge(float(chain_effect.get("support_charge", 0.0)))
 				emit_signal("proc_feedback", "CHAIN FIRES", Color(0.78, 0.94, 0.62, 1.0))
 
 
@@ -1047,7 +1043,7 @@ func _on_player_parried(_lane: int, quality: String, _reflect_damage: float) -> 
 				_add_bonus_progress(PARRY_STREAK_PROGRESS_BONUS)
 			var support_effect: Dictionary = get_runtime_effect("perfect_parry_support_charge")
 			if not support_effect.is_empty() and RunGrowth.has_method("gain_reward_support_charge"):
-				RunGrowth.call("gain_reward_support_charge", float(support_effect.get("value", 0.0)))
+				RunGrowth.gain_reward_support_charge(float(support_effect.get("value", 0.0)))
 				emit_signal("proc_feedback", "HOOK PRIES OPEN", Color(0.86, 0.88, 0.40, 1.0))
 		"good":
 			_parry_streak = 0
@@ -1074,15 +1070,15 @@ func _on_player_took_damage(_amount: float, _source_lane: int) -> void:
 			var healed: float = GameState.heal_player(float(clutch_effect.get("heal_value", 0.0)))
 			if healed > 0.0:
 				EventBus.emit_signal("player_healed", healed)
-			if _combat_meter != null and is_instance_valid(_combat_meter) and _combat_meter.has_method("restore_stamina"):
-				_combat_meter.call("restore_stamina", float(clutch_effect.get("stamina_value", 0.0)))
+			if _combat_meter != null and is_instance_valid(_combat_meter):
+				_combat_meter.restore_stamina(float(clutch_effect.get("stamina_value", 0.0)))
 			emit_signal("proc_feedback", "GRAVESLIP HOLDS", Color(0.62, 0.86, 1.0, 1.0))
 	# Wound Hunger: every hit taken → support charge
 	var wound_effect: Dictionary = get_runtime_effect("damage_to_charge")
 	if not wound_effect.is_empty() and _wound_hunger_cooldown <= 0.0:
 		_wound_hunger_cooldown = WOUND_HUNGER_COOLDOWN
 		if RunGrowth.has_method("gain_reward_support_charge"):
-			RunGrowth.call("gain_reward_support_charge", float(wound_effect.get("value", 0.0)))
+			RunGrowth.gain_reward_support_charge(float(wound_effect.get("value", 0.0)))
 		emit_signal("proc_feedback", "HUNGER RISES", Color(0.92, 0.40, 0.36, 1.0))
 
 
@@ -1099,7 +1095,7 @@ func notify_dodge_timing_quality(_from_lane: int, _to_lane: int, quality: String
 		if _dodge_streak > 0 and _dodge_streak % 3 == 0:
 			_add_bonus_progress(DODGE_STREAK_PROGRESS_BONUS)
 			if RunGrowth.has_method("gain_reward_support_charge"):
-				RunGrowth.call("gain_reward_support_charge", DODGE_STREAK_SUPPORT_CHARGE)
+				RunGrowth.gain_reward_support_charge(DODGE_STREAK_SUPPORT_CHARGE)
 			emit_signal("proc_feedback", "SLIP FEEDS", Color(0.58, 0.80, 1.0, 1.0))
 	elif quality != "good":
 		_dodge_streak = 0
@@ -1128,7 +1124,7 @@ func _on_combat_started(_enemy_data: Array) -> void:
 	if healed > 0.0:
 		EventBus.emit_signal("player_healed", healed)
 	if RunGrowth.has_method("gain_reward_support_charge"):
-		RunGrowth.call("gain_reward_support_charge", float(pact_effect.get("support_charge", 0.0)))
+		RunGrowth.gain_reward_support_charge(float(pact_effect.get("support_charge", 0.0)))
 	emit_signal("proc_feedback", "PACT HOLDS", Color(0.62, 0.78, 0.98, 1.0))
 
 

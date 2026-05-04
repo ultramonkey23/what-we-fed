@@ -196,7 +196,7 @@ func _test_collar_mechanics() -> void:
 	print("--- TEST SUPPORT COLLAR MECHANICS ---")
 	var og_collar = GameState.get("equipped_collar_id")
 	GameState.set("equipped_collar_id", "iron_doctrine")
-	var collar_data = GameState.call("get_equipped_collar")
+	var collar_data = GameState.get_equipped_collar()
 	print("Equipped Collar: ", collar_data.get("title", ""))
 	
 	var ctx: Dictionary = {

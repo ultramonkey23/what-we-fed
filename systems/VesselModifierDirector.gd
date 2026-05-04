@@ -7,7 +7,7 @@ extends Node
 const VESSEL_CLASS_CONTENT = preload("res://data/VesselClassContent.gd")
 const SOVEREIGN_DAMAGE_CALCULATOR = preload("res://systems/SovereignDamageCalculator.gd")
 
-var _zone_manager: Node = null
+var _zone_manager: ZoneManager = null
 var _active_class_data: Dictionary = {}
 
 # ── Static ───────────────────────────────────────────────────────────────────
@@ -75,7 +75,7 @@ static func get_modifier_readout(species_id: String) -> Dictionary:
 
 # ── Runtime ──────────────────────────────────────────────────────────────────
 
-func bind_runtime(zone_manager_ref: Node) -> void:
+func bind_runtime(zone_manager_ref: ZoneManager) -> void:
 	_zone_manager = zone_manager_ref
 	
 	if not EventBus.timed_attack_resolved.is_connected(_on_timed_attack_resolved):
@@ -162,31 +162,31 @@ func _apply_vessel_effect(mod: Dictionary, context: Dictionary) -> void:
 			var to_sector: int = int(context.get("to", -1))
 			var stun_dur: float = float(mod.get("stun_duration", 0.5))
 			if to_sector >= 0 and _zone_manager != null:
-				var enemy: Dictionary = _zone_manager.call("get_enemy", to_sector)
+				var enemy: Dictionary = _zone_manager.get_enemy(to_sector)
 				if not enemy.is_empty():
-					_zone_manager.call("apply_status_by_id", int(enemy.get("id", -1)), "slow", {"duration": stun_dur})
+					_zone_manager.apply_status_by_id(int(enemy.get("id", -1)), "slow", {"duration": stun_dur})
 				EventBus.play_sfx.emit("static_pulse")
 
 		"vessel_rupture":
 			var enemy_id: int = int(context.get("enemy_id", -1))
 			var damage: float = float(context.get("damage", 0.0))
 			if enemy_id != -1 and _zone_manager != null:
-				var current_stacks: int = int(_zone_manager.call("get_enemy_bleed_stacks", enemy_id))
+				var current_stacks: int = int(_zone_manager.get_enemy_bleed_stacks(enemy_id))
 				
 				if current_stacks >= 5: # BLEED_MAX_STACKS
 					# Rupture!
-					_zone_manager.call("clear_enemy_status_by_id", enemy_id)
+					_zone_manager.clear_enemy_status_by_id(enemy_id)
 					var mult: float = float(mod.get("rupture_damage_mult", 2.5))
 					var aoe_damage: float = damage * mult
 					
 					# Global AoE (Sector-independent ID-based loop)
-					var all_enemies: Dictionary = _zone_manager.call("get_all_enemies")
+					var all_enemies: Dictionary = _zone_manager.get_all_enemies()
 					for id in all_enemies.keys():
-						_zone_manager.call("damage_enemy_by_id", id, aoe_damage)
+						_zone_manager.damage_enemy_by_id(id, aoe_damage)
 					
 					EventBus.enemy_ruptured.emit(enemy_id, aoe_damage)
 					EventBus.proc_feedback_requested.emit("RUPTURE", Color(1.0, 0.22, 0.14, 1.0))
 					EventBus.play_sfx.emit("rupture_burst")
 				else:
 					# Apply Bleed stack (ID based application)
-					_zone_manager.call("apply_status_by_id", enemy_id, "bleed", {})
+					_zone_manager.apply_status_by_id(enemy_id, "bleed", {})

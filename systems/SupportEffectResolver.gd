@@ -28,8 +28,8 @@ func resolve(ctx: Dictionary) -> void:
 	var bond_surge: bool = bool(ctx.get("bond_surge", false))
 	var is_hollow_active: bool = bool(ctx.get("is_hollow_active", false))
 	
-	var zone_manager: Node = ctx.get("zone_manager")
-	var combat_meter: Node = ctx.get("combat_meter")
+	var zone_manager: ZoneManager = ctx.get("zone_manager") as ZoneManager
+	var combat_meter: CombatMeter = ctx.get("combat_meter") as CombatMeter
 	var game_state: Node = ctx.get("game_state")
 	var collar_mod: Dictionary = Dictionary(ctx.get("collar_mod", {}))
 	
@@ -49,31 +49,31 @@ func resolve(ctx: Dictionary) -> void:
 		"ashclaw_strike":
 			# BLOOD-EMBER REDESIGN: Applies stacks globally, triggers Rupture chain.
 			# Using positional/ID based lookup (Spawn Zone Manager doctrine).
-			var all_enemies: Dictionary = zone_manager.call("get_all_enemies")
+			var all_enemies: Dictionary = zone_manager.get_all_enemies()
 			var triggered_rupture: bool = false
 			var base_val: float = float(support_role.get("effect_value", 10.0))
 			
 			for id in all_enemies.keys():
-				var current_stacks: int = int(zone_manager.call("get_enemy_bleed_stacks", id))
+				var current_stacks: int = int(zone_manager.get_enemy_bleed_stacks(id))
 				var added_stacks: int = 3
 				if cadence_surge: added_stacks = 4
 				
 				if (current_stacks + added_stacks) >= 5:
 					# Rupture!
-					zone_manager.call("clear_enemy_status_by_id", id)
+					zone_manager.clear_enemy_status_by_id(id)
 					var rupture_dmg: float = base_val * 2.2 * bond_mult * surge_mult
-					zone_manager.call("damage_enemy_by_id", id, rupture_dmg)
+					zone_manager.damage_enemy_by_id(id, rupture_dmg)
 					
 					# Global Cleave (Sector-wide impact)
 					for aoe_id in all_enemies.keys():
 						if aoe_id != id:
-							zone_manager.call("damage_enemy_by_id", aoe_id, rupture_dmg * 0.45)
+							zone_manager.damage_enemy_by_id(aoe_id, rupture_dmg * 0.45)
 					
 					EventBus.enemy_ruptured.emit(id, rupture_dmg)
 					triggered_rupture = true
 				else:
 					for s in range(added_stacks):
-						zone_manager.call("apply_status_by_id", id, "bleed", {})
+						zone_manager.apply_status_by_id(id, "bleed", {})
 			
 			if triggered_rupture:
 				feedback_requested.emit("ASHCLAW RUPTURE", Color(1.0, 0.25, 0.15, 1.0), 0.48)
@@ -121,12 +121,12 @@ func resolve(ctx: Dictionary) -> void:
 			if cadence_surge:
 				gorge_damage *= 1.18
 			
-			var all_enemies: Dictionary = zone_manager.call("get_all_enemies")
+			var all_enemies: Dictionary = zone_manager.get_all_enemies()
 			for id in all_enemies.keys():
-				zone_manager.call("damage_enemy_by_id", id, gorge_damage)
-				var surviving: Dictionary = zone_manager.call("get_enemy_by_id", id)
+				zone_manager.damage_enemy_by_id(id, gorge_damage)
+				var surviving: Dictionary = zone_manager.get_enemy_by_id(id)
 				if not surviving.is_empty() and float(surviving.get("hp", 0.0)) > 0.0:
-					zone_manager.call("apply_status_by_id", id, "gorge_mark", {})
+					zone_manager.apply_status_by_id(id, "gorge_mark", {})
 					
 			if cadence_surge:
 				heal_requested.emit(6.0 * bond_mult * surge_mult)
@@ -148,8 +148,8 @@ func resolve(ctx: Dictionary) -> void:
 			var enemies: Array = ctx.get("targets", {}).get("enemies", [])
 			if not enemies.is_empty():
 				for e_data in enemies:
-					zone_manager.call("damage_enemy_by_id", int(e_data.ref), phase_damage)
-					zone_manager.call("apply_status_by_id", int(e_data.ref), "pale", {})
+					zone_manager.damage_enemy_by_id(int(e_data.ref), phase_damage)
+					zone_manager.apply_status_by_id(int(e_data.ref), "pale", {})
 			
 			var stamina_amount: float = 25.0
 			var phase_text: String = String(support_role.get("feedback_text", "PHASE"))
@@ -158,13 +158,13 @@ func resolve(ctx: Dictionary) -> void:
 			if cadence_surge:
 				for pale_sector in range(threat_count):
 					var id: int = _find_enemy_id_in_sector(zone_manager, pale_sector)
-					if id != -1: zone_manager.call("apply_status_by_id", id, "pale", {})
+					if id != -1: zone_manager.apply_status_by_id(id, "pale", {})
 				stamina_amount = 40.0
 				phase_text = "VEIL CASCADE"
 			elif mastery == "flow_state":
 				for pale_sector in range(threat_count):
 					var id: int = _find_enemy_id_in_sector(zone_manager, pale_sector)
-					if id != -1: zone_manager.call("apply_status_by_id", id, "pale", {})
+					if id != -1: zone_manager.apply_status_by_id(id, "pale", {})
 				stamina_amount = 35.0
 				phase_text = "FULL PHASE"
 			elif mastery == "in_pocket":
@@ -186,11 +186,11 @@ func resolve(ctx: Dictionary) -> void:
 			var enemies: Array = ctx.get("targets", {}).get("enemies", [])
 			if not enemies.is_empty():
 				for e_data in enemies:
-					zone_manager.call("damage_enemy_by_id", int(e_data.ref), peal_damage)
+					zone_manager.damage_enemy_by_id(int(e_data.ref), peal_damage)
 					if cadence_surge:
-						zone_manager.call("apply_status_by_id", int(e_data.ref), "expose", {"duration": 3.0})
+						zone_manager.apply_status_by_id(int(e_data.ref), "expose", {"duration": 3.0})
 					elif mastery == "flow_state":
-						zone_manager.call("apply_status_by_id", int(e_data.ref), "expose", {"duration": 2.5})
+						zone_manager.apply_status_by_id(int(e_data.ref), "expose", {"duration": 2.5})
 
 			if cadence_surge:
 				peal_damage *= 1.25
@@ -215,7 +215,7 @@ func resolve(ctx: Dictionary) -> void:
 			
 			for pale_sector in range(threat_count):
 				var id: int = _find_enemy_id_in_sector(zone_manager, pale_sector)
-				if id != -1: zone_manager.call("apply_status_by_id", id, "pale", {})
+				if id != -1: zone_manager.apply_status_by_id(id, "pale", {})
 			if cadence_surge:
 				ward_heal *= 1.5
 				ward_stamina = 32.0
@@ -248,9 +248,9 @@ func resolve(ctx: Dictionary) -> void:
 			var enemies: Array = ctx.get("targets", {}).get("enemies", [])
 			if not enemies.is_empty():
 				for e_data in enemies:
-					zone_manager.call("damage_enemy_by_id", int(e_data.ref), maul_damage)
+					zone_manager.damage_enemy_by_id(int(e_data.ref), maul_damage)
 					for i in range(maul_stacks):
-						zone_manager.call("apply_status_by_id", int(e_data.ref), "bleed", {})
+						zone_manager.apply_status_by_id(int(e_data.ref), "bleed", {})
 					
 			feedback_requested.emit(maul_text, Color(0.96, 0.44, 0.20, 1.0), 0.40)
 			var threat_count: int = zone_manager.THREAT_COUNT if zone_manager else 8
@@ -267,15 +267,15 @@ func resolve(ctx: Dictionary) -> void:
 			var enemies: Array = ctx.get("targets", {}).get("enemies", [])
 			if not enemies.is_empty():
 				for e_data in enemies:
-					zone_manager.call("damage_enemy_by_id", int(e_data.ref), lull_damage)
+					zone_manager.damage_enemy_by_id(int(e_data.ref), lull_damage)
 					if cadence_surge:
-						zone_manager.call("apply_status_by_id", int(e_data.ref), "expose", {"duration": 3.0})
+						zone_manager.apply_status_by_id(int(e_data.ref), "expose", {"duration": 3.0})
 					elif mastery == "flow_state":
-						zone_manager.call("apply_status_by_id", int(e_data.ref), "expose", {"duration": 2.5})
+						zone_manager.apply_status_by_id(int(e_data.ref), "expose", {"duration": 2.5})
 
 			for pale_sector in range(threat_count):
 				var id: int = _find_enemy_id_in_sector(zone_manager, pale_sector)
-				if id != -1: zone_manager.call("apply_status_by_id", id, "pale", {})
+				if id != -1: zone_manager.apply_status_by_id(id, "pale", {})
 
 			if cadence_surge:
 				stamina_requested.emit(18.0)
@@ -313,9 +313,9 @@ func resolve(ctx: Dictionary) -> void:
 			var enemies: Array = ctx.get("targets", {}).get("enemies", [])
 			if not enemies.is_empty():
 				for e_data in enemies:
-					zone_manager.call("damage_enemy_by_id", int(e_data.ref), bleed_damage)
+					zone_manager.damage_enemy_by_id(int(e_data.ref), bleed_damage)
 					for i in range(mastery_stacks):
-						zone_manager.call("apply_status_by_id", int(e_data.ref), "bleed", {})
+						zone_manager.apply_status_by_id(int(e_data.ref), "bleed", {})
 				
 			feedback_requested.emit(bleed_text, bleed_color, 0.36)
 			highlight_ring_requested.emit(sector, Color(0.94, 0.72, 0.34, 1.0), 7.5)
@@ -333,16 +333,16 @@ func resolve(ctx: Dictionary) -> void:
 			var enemies: Array = ctx.get("targets", {}).get("enemies", [])
 			if not enemies.is_empty():
 				for e_data in enemies:
-					zone_manager.call("damage_enemy_by_id", int(e_data.ref), cold_damage)
-					zone_manager.call("apply_status_by_id", int(e_data.ref), "expose", {"duration": cold_expose_time})
+					zone_manager.damage_enemy_by_id(int(e_data.ref), cold_damage)
+					zone_manager.apply_status_by_id(int(e_data.ref), "expose", {"duration": cold_expose_time})
 					if mastery == "flow_state":
-						zone_manager.call("apply_status_by_id", int(e_data.ref), "pale", {})
+						zone_manager.apply_status_by_id(int(e_data.ref), "pale", {})
 			
 			if cadence_surge:
 				var threat_count: int = zone_manager.THREAT_COUNT if zone_manager else 8
 				for cold_sector in range(threat_count):
 					var id: int = _find_enemy_id_in_sector(zone_manager, cold_sector)
-					if id != -1: zone_manager.call("apply_status_by_id", id, "pale", {})
+					if id != -1: zone_manager.apply_status_by_id(id, "pale", {})
 				cold_text = "COLD CASCADE"
 				feedback_requested.emit(cold_text, Color(0.72, 0.94, 1.0, 1.0), 0.42)
 			else:
@@ -371,7 +371,7 @@ func resolve(ctx: Dictionary) -> void:
 				for e_data in enemies:
 					# Apply Bleed stacks instead of Rend
 					for i in range(silt_stacks):
-						zone_manager.call("apply_status_by_id", int(e_data.ref), "bleed", {})
+						zone_manager.apply_status_by_id(int(e_data.ref), "bleed", {})
 			
 			if cadence_surge:
 				feedback_requested.emit(silt_text, Color(0.44, 0.84, 0.66, 1.0), 0.42)
@@ -390,7 +390,7 @@ func resolve(ctx: Dictionary) -> void:
 func _apply_collar_behavior(ctx: Dictionary, collar_mod: Dictionary) -> void:
 	if collar_mod.is_empty():
 		return
-	var zone_manager: Node = ctx.get("zone_manager")
+	var zone_manager: ZoneManager = ctx.get("zone_manager") as ZoneManager
 	var satisfied: bool = bool(collar_mod.get("satisfied", false))
 	var text: String = String(collar_mod.get("feedback_text", "COLLAR"))
 
@@ -418,13 +418,13 @@ func _apply_collar_behavior(ctx: Dictionary, collar_mod: Dictionary) -> void:
 	if not status_id.is_empty() and zone_manager != null:
 		var enemies: Array = ctx.get("targets", {}).get("enemies", [])
 		for e_data in enemies:
-			zone_manager.call("apply_status_by_id", int(e_data.ref), status_id, {})
+			zone_manager.apply_status_by_id(int(e_data.ref), status_id, {})
 
 	feedback_requested.emit(text, Color(0.72, 0.88, 1.0, 1.0), 0.32)
 
 
 func _find_enemy_id_in_sector(zone_manager: Node, sector: int) -> int:
-	var enemy: Dictionary = zone_manager.call("get_enemy", sector)
+	var enemy: Dictionary = zone_manager.get_enemy(sector)
 	return int(enemy.get("id", -1)) if not enemy.is_empty() else -1
 
 

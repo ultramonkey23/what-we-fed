@@ -73,5 +73,4 @@ func _trigger_limit_breaker(achievement_id: String) -> void:
 	_achieved_this_run.append(achievement_id)
 	
 	# Increment the meta-stat in GameState
-	if GameState.has_method("increment_meta_limit_breakers"):
-		GameState.call("increment_meta_limit_breakers", achievement_id)
+	GameState.increment_meta_limit_breakers(achievement_id)

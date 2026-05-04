@@ -168,9 +168,9 @@ static func _can_afford_entry_cost(cost: Dictionary, game_state: Node) -> bool:
 			return float(game_state.get("player_hp")) >= value
 		"dna":
 			var species_id: String = String(cost.get("species", ""))
-			if species_id.is_empty() or not game_state.has_method("get_dna"):
+			if species_id.is_empty():
 				return false
-			return float(game_state.call("get_dna", species_id)) >= value
+			return GameState.get_dna(species_id) >= value
 		_:
 			return true
 
@@ -187,8 +187,8 @@ static func _apply_entry_cost(cost: Dictionary, game_state: Node) -> void:
 			game_state.set("player_hp", maxf(float(game_state.get("player_hp")) - value, 0.0))
 		"dna":
 			var species_id: String = String(cost.get("species", ""))
-			if not species_id.is_empty() and game_state.has_method("spend_dna"):
-				game_state.call("spend_dna", species_id, value)
+			if not species_id.is_empty():
+				GameState.spend_dna(species_id, value)
 
 
 static func _apply_bond_rite_entry(state: Node, run_growth: Node, node: Dictionary) -> void:
@@ -200,10 +200,10 @@ static func _apply_bond_rite_entry(state: Node, run_growth: Node, node: Dictiona
 		_raise_active_bond_level(gain)
 
 	var support_floor: float = float(effects.get("support_floor", 0.0))
-	if support_floor > 0.0 and run_growth != null and is_instance_valid(run_growth):
-		var current: float = float(run_growth.get("support_charge"))
-		if current < support_floor and run_growth.has_method("gain_support_charge_direct"):
-			run_growth.call("gain_support_charge_direct", support_floor - current)
+	if support_floor > 0.0:
+		var current: float = RunGrowth.support_charge
+		if current < support_floor:
+			RunGrowth.gain_support_charge_direct(support_floor - current)
 
 
 static func _raise_active_bond_level(gain: int) -> void:

@@ -20,7 +20,7 @@ BRAIN operates as a five-part integrated stack. Do not collapse these layers.
 ## 2. THE AUTHORITY HIERARCHY
 BRAIN governs the project's evolution through the hierarchy defined in `docs/ai/SYSTEM_KERNEL.md`:
 1. **User / Creator Intent**: Highest authority.
-2. **Current Repo Truth (Layer 2)**: Implementation reality. (Grounded by `docs/ai/CURRENT_TRUTH_SNAPSHOT.md`)
+2. **Current Repo Truth (Layer 2)**: Implementation reality. (Grounded by `docs/ai/CURRENT_PULSE.md`; optional generated snapshot: `docs/ai/archive_legacy/truth_history/CURRENT_TRUTH_SNAPSHOT.md`)
 3. **Current Live-Build Truth**: Runtime truth.
 4. **Evolving Spine (Layer 3)**: Current mutation space.
 5. **Older Canon / Source Docs (Layer 1)**: Memory and guidance.

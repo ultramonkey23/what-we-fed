@@ -74,7 +74,7 @@ Compact boundary map for WHAT WE FED agent architecture. This file is active con
 ## Known Documentation Risks
 - The repo contains hundreds of markdown files, including legacy and archived plans.
 - Authority rules are repeated across multiple entrypoints.
-- `docs/CURRENT_REPO_TRUTH_LEDGER.md` is too large for active context and remains historical/reference until controlled migration.
+- `docs/ai/archive_legacy/truth_history/CURRENT_REPO_TRUTH_LEDGER.md` is too large for active context; kept archived, not deleted (Phase 1 prune, 2026-05-04).
 - Engineering rules are fragmented across AI, validation, Godot, and workflow docs.
 - Duplicate docs and worktrees can confuse agents.
 - Some historical docs contain superseded base-style terms.

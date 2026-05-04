@@ -11,7 +11,7 @@ Tool: `tools/ai/score_agent_report.py`
 
 ## When To Use
 - After any GODLY run, implementation task, or bug fix that produced an agent report.
-- Before accepting a report as CURRENT_TRUTH_SNAPSHOT input.
+- Before accepting a report as authoritative input for `docs/ai/CURRENT_PULSE.md` updates.
 - When a report's validation level or scope feels uncertain.
 - Required before commit in medium / sprintlet GODLY runs (Firmware Yield Gate).
 

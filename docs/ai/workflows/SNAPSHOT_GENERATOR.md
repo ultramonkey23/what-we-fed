@@ -4,7 +4,7 @@
 The Snapshot Generator is a **SYMBIOTE (Scout)** protocol designed to maintain a high-signal, compact "State Vector" of the repository. It prevents context degradation and "prompt bloat" by providing agents with an instant, fresh summary of the live repo truth.
 
 ## 1. THE CURRENT PULSE
-The primary output is `docs/ai/CURRENT_TRUTH_SNAPSHOT.md`. This file acts as the repository's **Working Memory**.
+The generator writes `docs/ai/archive_legacy/truth_history/CURRENT_TRUTH_SNAPSHOT.md` (archived path; optional machine refresh). Default agent **Working Memory** for human-curated pulse is `docs/ai/CURRENT_PULSE.md`.
 
 ## 2. GENERATION TRIGGER
 The snapshot should be refreshed:

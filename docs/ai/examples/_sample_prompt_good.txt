@@ -1,6 +1,6 @@
 Route: Codex
 
-Repo truth source: docs/ai/CURRENT_TRUTH_SNAPSHOT.md
+Repo truth source: docs/ai/CURRENT_PULSE.md (active); optional generated snapshot: docs/ai/archive_legacy/truth_history/CURRENT_TRUTH_SNAPSHOT.md
 
 Allowed files:
 - docs/ai/**

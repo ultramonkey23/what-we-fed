@@ -47,7 +47,11 @@ Compact active context for WHAT WE FED agents. Use this before loading massive h
 - Enemy Purity Phase 1 established `EnemyStriker` as the HOW boundary while ZoneManager / `LaneManager.gd` owns WHEN and WHO coordination.
 - ZoneManager naming was adopted for current doctrine while `LaneManager.gd` filename remains for Godot UID safety.
 
-## Historical Ledger Status
-`docs/CURRENT_REPO_TRUTH_LEDGER.md` remains historical/reference material. It must not be deleted, archived, replaced, or treated as the active quick-context source until a later controlled migration is explicitly approved.
+## Historical ledger status
+Phase 1 documentation prune (2026-05-04) **moved** the long repo truth ledger and related truth snapshots into archive (not deleted):
 
-Use `docs/ai/AI_ARCHITECTURE_LEDGER.md` for current AI architecture boundaries and `docs/ai/evolution_proposals/README.md` for proposed changes.
+- `docs/ai/archive_legacy/truth_history/CURRENT_REPO_TRUTH_LEDGER.md`
+- `docs/ai/archive_legacy/truth_history/CURRENT_TRUTH_SNAPSHOT.md`
+- `docs/ai/archive_legacy/truth_history/SOVEREIGN_HANDOFF.md`
+
+Treat **`docs/ai/CURRENT_PULSE.md`** (this file) plus **`docs/ai/AI_ARCHITECTURE_LEDGER.md`** as the default quick context. Use `docs/ai/AI_ARCHITECTURE_LEDGER.md` for architecture boundaries and `docs/ai/evolution_proposals/README.md` for proposed changes.

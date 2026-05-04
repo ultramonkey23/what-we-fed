@@ -1,32 +1,27 @@
-# AGENTS — WHAT WE FED (v3.4)
+# AGENTS — WHAT WE FED
 
-This is the MASTER contract for all AI Agents (Claude, Cursor, Gemini, Codex).
+Master contract for AI agents (Claude, Cursor, Gemini, Codex, Cline). **Read the Trinity first**, then branch as needed.
 
-## MISSION START
-1. Ground in the **[Sovereign Handoff](docs/ai/SOVEREIGN_HANDOFF.md)**.
-2. Choose a lead lane from **[ARCHETYPES.md](docs/ai/ARCHETYPES.md)**.
-3. SCAN the repo for **Repo Truth** (Source Code) before implementation.
-4. **Visual Proof Rule**: For any visual/UI/VFX task, produce evidence in `_visual_proofs/[task_name]/`.
+## Read first (Trinity)
+1. [docs/ai/SOVEREIGN_CORE.md](docs/ai/SOVEREIGN_CORE.md) — laws, routing, validation posture  
+2. [docs/ai/AI_ARCHITECTURE_LEDGER.md](docs/ai/AI_ARCHITECTURE_LEDGER.md) — AI architecture boundaries  
+3. [docs/ai/CURRENT_PULSE.md](docs/ai/CURRENT_PULSE.md) — compact **active** current truth (prefer over historical ledgers)
 
-## PROJECT SOUL
-- **Identity**: The Living Codex.
-- **Art**: Legendary Pixel Fable Ink.
-- **Tone**: Mythic, weird, punchy.
-- **Rules**: Timing Truth, Spatial Purity, Sequential Mutation.
+Then: pick a lead lane from [ARCHETYPES.md](docs/ai/ARCHETYPES.md), scan real repo files before implementation, and follow [REPO_TRUTH_PROTOCOL.md](docs/ai/REPO_TRUTH_PROTOCOL.md).
 
-## CANONICAL PILLARS
-- [SOVEREIGN_CORE.md](docs/ai/SOVEREIGN_CORE.md)
-- [ARCHETYPES.md](docs/ai/ARCHETYPES.md)
-- [REPO_TRUTH_PROTOCOL.md](docs/ai/REPO_TRUTH_PROTOCOL.md)
-- [REPORT_CONTRACT.md](docs/ai/REPORT_CONTRACT.md)
-- [AI_ARCHITECTURE_LEDGER.md](docs/ai/AI_ARCHITECTURE_LEDGER.md)
-- [CURRENT_PULSE.md](docs/ai/CURRENT_PULSE.md)
-- [evolution_proposals/README.md](docs/ai/evolution_proposals/README.md)
+## Project soul
+- **Identity**: The Living Codex. **Art**: Legendary Pixel Fable Ink. **Tone**: Mythic, weird, punchy.  
+- **Rules**: Timing truth, spatial purity, sequential mutation (see Sovereign Core).
 
-## Combat HUD refactoring (orientation)
-HUD layout still lives largely in **`CombatScene.gd`**; HUD refresh and presenter binding live in **`CombatHUDPresenter.gd`**. Grounding notes and next steps: **[SOVEREIGN_HANDOFF.md — Combat HUD presenter](docs/ai/SOVEREIGN_HANDOFF.md#combat-hud-presenter-living-boundary)** (GitHub and some viewers require matching heading slug).
+## Visual proof
+For visual/UI/VFX work, produce evidence under `_visual_proofs/[task_name]/`.
 
-## OPERATING RULE
-End every IMPLEMENTATION turn with the **Auditor's Report (v2.5)**.
----
-**Status: Patterns extracted. Ready for re-instantiation.**
+## Controlled evolution
+Architecture, canon, or doctrine changes go through [docs/ai/evolution_proposals/README.md](docs/ai/evolution_proposals/README.md) — do not silently rewrite canon.
+
+## Combat HUD (orientation)
+HUD layout largely in `CombatScene.gd`; refresh/presenter binding in `CombatHUDPresenter.gd`. Extra HUD handoff detail (archived): [SOVEREIGN_HANDOFF.md — Combat HUD presenter](docs/ai/archive_legacy/truth_history/SOVEREIGN_HANDOFF.md#combat-hud-presenter-living-boundary).
+
+## Reporting & validation
+- End implementation turns with the **Auditor's Report** per [REPORT_CONTRACT.md](docs/ai/REPORT_CONTRACT.md).  
+- Run `smoke_project.bat` / `validate_project.bat` when applicable; never claim validation you did not run.

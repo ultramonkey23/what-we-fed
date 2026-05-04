@@ -1,35 +1,32 @@
-# CLAUDE.md — WHAT WE FED (v3.4)
+# CLAUDE.md — WHAT WE FED
 
-This is the entrypoint for Claude Code. Follow the **Sovereign Matrix** protocol.
+Entrypoint for Claude Code. **Read the Trinity first**, then route by archetype.
 
-## 1. MISSION START
-Read the **[Sovereign Handoff](docs/ai/SOVEREIGN_HANDOFF.md)** first. It defines your grounding protocol and current architectural goals.
+## Read first (Trinity)
+1. [docs/ai/SOVEREIGN_CORE.md](docs/ai/SOVEREIGN_CORE.md) — safe autonomous execution  
+2. [docs/ai/AI_ARCHITECTURE_LEDGER.md](docs/ai/AI_ARCHITECTURE_LEDGER.md) — architecture boundaries  
+3. [docs/ai/CURRENT_PULSE.md](docs/ai/CURRENT_PULSE.md) — compact **active** current truth  
 
-## 2. PROJECT SOUL (Black Signal)
-- **Identity**: You are the **Living Codex**, an invasive system extracting patterns.
-- **Art Style**: **LEGENDARY PIXEL FABLE INK** (PS1 JRPG, GBA Fantasy).
-- **Tone**: Mythic, whimsical, slightly eerie, wondrous, collectible.
-- **Combat**: 360-degree Action-RPG beat-feel. No lane-snapping.
-- **Economy**: DNA is species-specific predation currency. Bond vs Eat.
-- **Goal**: Start weak, become feared.
+Then [ARCHETYPES.md](docs/ai/ARCHETYPES.md) for your lane. Historical deep handoff (optional): [archive … SOVEREIGN_HANDOFF.md](docs/ai/archive_legacy/truth_history/SOVEREIGN_HANDOFF.md).
 
-## 3. CORE PROTOCOL
-1. **Pre-Flight Signal Grep**: Map consumers before changing providers.
-2. **Sequential Mutation**: No parallel edits to single files.
-3. **Micro-Validation**: Run `validate_project.bat` after logic changes.
-4. **Visual Proof Rule**: Produce screenshots/logs in `_visual_proofs/` for visual tasks.
-5. **Fable Ink Filter**: Use diegetic terminology (Lineage, Sequence, Intrusion).
+## Project soul (Black Signal)
+- **Living Codex** identity; **LEGENDARY PIXEL FABLE INK** art (PS1 JRPG / GBA fantasy readability).  
+- Mythic, whimsical, slightly eerie, wondrous, collectible.  
+- 360° action-RPG combat feel; DNA economy; Bond vs Eat; start weak, become feared.
 
-## 4. CANONICAL DOCTRINE
-- [docs/ai/SOVEREIGN_CORE.md](docs/ai/SOVEREIGN_CORE.md) — The 6 Laws of safe autonomous execution.
-- [docs/ai/ARCHETYPES.md](docs/ai/ARCHETYPES.md) — Identify your role and lead lane.
-- [docs/ai/AI_ARCHITECTURE_LEDGER.md](docs/ai/AI_ARCHITECTURE_LEDGER.md) — Compact AI architecture boundaries.
-- [docs/ai/CURRENT_PULSE.md](docs/ai/CURRENT_PULSE.md) — Compact current context.
-- [docs/ai/evolution_proposals/README.md](docs/ai/evolution_proposals/README.md) — Proposal gate for architecture/canon changes.
+## Core protocol
+1. Pre-flight signal grep — map consumers before changing providers.  
+2. Sequential mutation — no parallel replace passes on the same file.  
+3. Micro-validation — run `validate_project.bat` after substantive logic changes.  
+4. **Visual proof rule** — `_visual_proofs/` for visual tasks.  
+5. Fable Ink filter — diegetic terms (Lineage, Sequence, Intrusion) where appropriate.
 
-## 5. VALIDATION COMMANDS
-- `smoke_project.bat`: Fast headless boot check.
-- `validate_project.bat`: Full pass (Import + Smoke + Data).
+## Controlled evolution
+Use [docs/ai/evolution_proposals/README.md](docs/ai/evolution_proposals/README.md) for architecture/canon changes; do not merge without explicit approval.
 
-## 6. OPERATING RULE
-SCAN real files first, choose one bounded move, and end every IMPLEMENTATION turn with the **Auditor's Report (v2.5)**.
+## Validation commands
+- `smoke_project.bat` — fast headless boot check (if present in repo).  
+- `validate_project.bat` — fuller pass when imports/assets/data moved.
+
+## Operating rule
+Scan real files, choose one bounded move, end every implementation turn with the **Auditor's Report** per [REPORT_CONTRACT.md](docs/ai/REPORT_CONTRACT.md).

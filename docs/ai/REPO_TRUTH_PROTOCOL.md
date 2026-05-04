@@ -12,7 +12,7 @@ Repo truth is considered "Stale" if:
 **If Stale**: Do not implement. Request or generate a fresh repo audit.
 
 ## 2. THE LEDGER DISCIPLINE
-- All significant architectural changes must be appended to `docs/CURRENT_REPO_TRUTH_LEDGER.md`.
+- All significant architectural changes must be appended to `docs/ai/archive_legacy/truth_history/CURRENT_REPO_TRUTH_LEDGER.md` (archived path; historical ledger, not default active context — prefer updating `docs/ai/CURRENT_PULSE.md` for compact current truth when appropriate).
 - Ledger entries must be grounded in **Evidence Tier 2 or 3** (Static or Runtime).
 - Distinguish clearly between "Static-Only" and "Runtime-Verified" implementation.
 

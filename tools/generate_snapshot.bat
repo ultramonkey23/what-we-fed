@@ -2,9 +2,9 @@
 setlocal enabledelayedexpansion
 
 :: SNAPSHOT GENERATOR (v1.0)
-:: Generates docs/ai/CURRENT_TRUTH_SNAPSHOT.md
+:: Generates docs/ai/archive_legacy/truth_history/CURRENT_TRUTH_SNAPSHOT.md (archived working-memory slot; active quick context is docs/ai/CURRENT_PULSE.md)
 
-set SNAPSHOT_FILE=docs\ai\CURRENT_TRUTH_SNAPSHOT.md
+set SNAPSHOT_FILE=docs\ai\archive_legacy\truth_history\CURRENT_TRUTH_SNAPSHOT.md
 
 echo # CURRENT TRUTH SNAPSHOT > %SNAPSHOT_FILE%
 echo *Generated on %DATE% %TIME%* >> %SNAPSHOT_FILE%

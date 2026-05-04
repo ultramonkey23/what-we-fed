@@ -1,33 +1,33 @@
-# WHAT WE FED - Cline Rules
+# WHAT WE FED — Cline rules
 
-Use this as Cline's repo-local operating contract. For the full cross-AI layer, read `docs/ai/SOVEREIGN_CORE.md`.
+**Read the Trinity first:** `docs/ai/SOVEREIGN_CORE.md`, `docs/ai/AI_ARCHITECTURE_LEDGER.md`, `docs/ai/CURRENT_PULSE.md` (active current truth). Then `docs/ai/ARCHETYPES.md` for lane routing.
 
 ## Authority
-1. Creator authority.
-2. Current repo truth.
-3. Current live-build truth.
-4. Evolving spine.
-5. Older canon/source docs.
-6. Dream scope.
+1. Creator authority.  
+2. Current repo truth.  
+3. Current live-build truth.  
+4. Evolving spine.  
+5. Older canon / source docs (including `docs/ai/archive_legacy/`).
 
-## Required Behavior
-- Inspect real files before patching.
-- Pick one bounded move.
-- Preserve timing truth, lane readability, support readability, combat honesty, species-specific DNA economy, bond vs eat meaning, realtime pressure, and "start weak, become feared."
-- Do not reintroduce pause-era reward/growth flow as the combat spine.
-- Do not drift into generic survivor, collector, roguelite, rhythm gimmick, spreadsheet sludge, or unreadable spectacle.
+## Required behavior
+- Inspect real files before patching; one bounded move.  
+- Preserve timing truth, lane/support readability, combat honesty, species-specific DNA economy, Bond vs Eat meaning, realtime pressure, “start weak, become feared.”  
+- **Visual proof rule**: `_visual_proofs/` for visual tasks.  
+- Do not reintroduce pause-era reward/growth flow as the combat spine.  
+- Do not drift into generic survivor/collector tropes or unreadable spectacle.
 
-## Agent Routing
-- BRAIN decides strategy and authority conflicts.
-- SYMBIOTE connects repo truth and dependency maps.
-- CYBORG upgrades validation, hardening, extraction, and workflow infrastructure.
-- ALFRED simplifies implementation and local fixes.
-- INSPECTOR handles visual/readability judgment from screenshots or captures.
+## Agent routing (from Sovereign Core)
+BRAIN / SYMBIOTE / CYBORG / ALFRED / INSPECTOR — see `docs/ai/SOVEREIGN_CORE.md` and `docs/ai/ARCHETYPES.md`.
+
+## Controlled evolution
+Use `docs/ai/evolution_proposals/README.md` for architecture or canon changes; no silent doctrine rewrites.
 
 ## Validation
-- Use `smoke_project.bat` for fast runtime boot validation.
-- Use `validate_data.bat` for data/content changes.
-- Use `validate_project.bat` for imports/assets/handoff-ready changes.
-- Use `debug_harness.bat` for combat-state checks.
-- Use `run_project.bat` or visual evidence for feel/readability/input claims.
-- Never claim validation that was not performed.
+- `smoke_project.bat` — fast headless boot (if present).  
+- `validate_data.bat` — data/content.  
+- `validate_project.bat` — imports/assets/handoff-ready.  
+- `debug_harness.bat` — combat-state checks.  
+Never claim validation you did not run.
+
+## Reporting
+End substantive work with the **Auditor's Report** per `docs/ai/REPORT_CONTRACT.md`.

@@ -5,6 +5,12 @@ class_name ThreatBase
 # Owns the properties and virtual methods that PlayerCombat dispatches on the
 # hot path so those calls can be statically typed instead of duck-typed .call().
 
+signal reached_hit_zone(threat: ThreatBase)
+signal player_contact(threat: ThreatBase)
+@warning_ignore("unused_signal")
+signal enemy_contact(threat: ThreatBase)
+signal resolved(threat: ThreatBase, result: String)
+
 var lane: int = 0
 var enemy_id: int = -1
 var damage: float = 0.0

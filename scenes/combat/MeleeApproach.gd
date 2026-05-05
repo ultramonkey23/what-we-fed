@@ -7,12 +7,6 @@ class_name MeleeApproach
 
 const COMBAT_FEEL_CONTENT = preload("res://data/CombatFeelContent.gd")
 
-signal reached_hit_zone(melee)
-signal player_contact(melee)
-@warning_ignore("unused_signal")
-signal enemy_contact(melee)
-signal resolved(melee, result: String)
-
 const ATTACK_GOOD_MIN: float = 0.96
 const ATTACK_PERFECT_MIN: float = 0.98
 const ATTACK_PERFECT_MAX: float = 1.02

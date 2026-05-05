@@ -1,13 +1,8 @@
-extends Node2D
+extends ThreatBase
 class_name Projectile
 
 const COMBAT_FEEL_CONTENT = preload("res://data/CombatFeelContent.gd")
 const SOVEREIGN_DAMAGE_CALCULATOR = preload("res://systems/SovereignDamageCalculator.gd")
-
-signal reached_hit_zone(projectile)
-signal player_contact(projectile)
-signal enemy_contact(projectile)
-signal resolved(projectile, result: String)
 
 # Set to true to show live progress and zone labels on each projectile while testing.
 # Disable before shipping — leaving this false has zero runtime cost.
@@ -58,28 +53,17 @@ const SHOT_BASE_SCALE: Vector2 = Vector2(0.61, 0.31)
 const DEFAULT_PROJECTILE_COLOR: Color = Color(0.95, 0.58, 0.22, 1.0)
 const DEFAULT_REFLECT_COLOR: Color = Color(0.55, 1.0, 0.78, 1.0)
 
-var lane: int = 0
-var enemy_id: int = -1
-var damage: float = 10.0
-var speed: float = 265.0
-
 var enemy_pos: Vector2 = Vector2.ZERO
 var hit_zone_pos: Vector2 = Vector2.ZERO
 var player_pos: Vector2 = Vector2.ZERO
 
-var progress: float = 0.0
 var target_beat_time: float = -1.0
 var fire_song_time: float = 0.0
 var conductor_ref: SongConductor = null
-var is_resolved: bool = false
-var is_reflected: bool = false
-var reflected_damage: float = 0.0
-var telegraph_profile: Dictionary = {}
 
 # Projectile Doctrine: Soft Tracking
 var max_turn_rate: float = 1.5
 var commit_threshold: float = 0.75
-var player_ref: Node2D = null
 var _is_committed: bool = false
 var _current_radial_vector: Vector2 = Vector2.ZERO
 var _initial_distance_to_center: float = 0.0

@@ -33,7 +33,7 @@ const SLOW_MOTION_SCALES := {
 	"ultimate_good": 0.62,
 	"ultimate_base": 0.72,
 	"counter_warp_perfect": 0.05,
-	"counter_warp_good": 0.12,
+	"counter_warp_good": 0.05,
 	"hit_stop": 0.05
 }
 

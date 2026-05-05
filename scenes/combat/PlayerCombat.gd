@@ -429,14 +429,14 @@ func _get_beat_quality() -> String:
 	return String(_song_conductor.get_beat_quality())
 
 
-func _evaluate_projectile_timing_with_forgiveness(projectile: Node) -> String:
+func _evaluate_projectile_timing_with_forgiveness(projectile: ThreatBase) -> String:
 	# TIMING TRUTH: Priority to progress-based hit-zone alignment.
 	# Target nodes (Projectile/Melee) check proximity to their Hit Zone (radius 110).
-	var quality: String = projectile.call("evaluate_attack_timing")
+	var quality: String = projectile.evaluate_attack_timing()
 
 	if quality == "miss" or quality.is_empty():
 		# Fallback: Absolute physical contact forgiveness (for lunges or close-quarters)
-		var base_proximity: String = projectile.call("evaluate_proximity_timing", global_position)
+		var base_proximity: String = projectile.evaluate_proximity_timing(global_position)
 		if base_proximity != "miss":
 			return base_proximity
 		
@@ -566,27 +566,25 @@ func _get_targets_in_cone() -> Dictionary:
 	# 1. Projectiles in cone: Absolute Spatial Resolution
 	var all_projectiles: Array = zone_manager.get_all_active_projectiles()
 	
-	for projectile in all_projectiles:
-		if is_instance_valid(projectile) and not bool(projectile.get("is_resolved")):
-			var to_target: Vector2 = projectile.global_position - free_position
+	for raw_threat in all_projectiles:
+		var threat: ThreatBase = raw_threat as ThreatBase
+		if threat != null and is_instance_valid(threat) and not threat.is_resolved:
+			var to_target: Vector2 = threat.global_position - free_position
 			var dist: float = to_target.length()
 			if dist <= attack_range:
 				var dot: float = _facing_direction.dot(to_target.normalized())
 				if dot >= min_dot:
-					var lane_val = projectile.get("lane")
-					var lane_id: int = int(lane_val) if lane_val != null else -1
-					
+					var lane_id: int = threat.lane
 					if lane_id == -1:
-						lane_id = _get_lane_from_vector(projectile.global_position - center_pos)
-						
+						lane_id = _get_lane_from_vector(threat.global_position - center_pos)
 					found_projectiles.append({
-						"ref": projectile,
+						"ref": threat,
 						"lane": lane_id,
 						"distance": dist,
 						"dot": dot,
-						"pos": projectile.global_position,
+						"pos": threat.global_position,
 						"precision": _target_lock_score(dot, dist, attack_range),
-						"progress": float(projectile.get("progress"))
+						"progress": threat.progress
 					})
 
 	# 2. Enemies in honest lunge reach. Lock-on and damage share this same list.
@@ -740,7 +738,7 @@ func _try_attack(targets: Dictionary) -> void:
 		projectiles.sort_custom(func(a, b): return float(a.get("precision", 0.0)) > float(b.get("precision", 0.0)))
 		var p_data = projectiles[0]
 		_play_attack_state(current_aim, p_data)
-		var projectile = p_data.get("ref")
+		var projectile: ThreatBase = p_data.get("ref") as ThreatBase
 		var quality: String = _evaluate_projectile_timing_with_forgiveness(projectile)
 		
 		match quality:
@@ -794,7 +792,7 @@ func _try_parry(targets: Dictionary) -> void:
 	# Find the best projectile to parry in the cone
 	projectiles.sort_custom(func(a, b): return float(a.get("precision", 0.0)) > float(b.get("precision", 0.0)))
 	var p_data = projectiles[0]
-	var projectile = p_data.get("ref")
+	var projectile: ThreatBase = p_data.get("ref") as ThreatBase
 	var quality: String = _evaluate_projectile_timing_with_forgiveness(projectile)
 	var target_lane: int = int(p_data.get("lane", -1))
 
@@ -842,15 +840,14 @@ func _try_parry(targets: Dictionary) -> void:
 		RunGrowth.consume_mutation_charges("pale_on_parry", 1)
 
 	var reflect_damage: float = SOVEREIGN_DAMAGE_CALCULATOR.get_parry_reflect_damage(
-		float(projectile.get("damage")),
+		projectile.damage,
 		reflect_mult,
 		combo_mult,
 		_sum_bond_passive("parry_reflect_mult")
 	)
-	var enemy_id_raw = projectile.get("enemy_id")
-	var enemy_id: int = int(enemy_id_raw) if enemy_id_raw != null else -1
+	var enemy_id: int = projectile.enemy_id
 
-	projectile.call("reflect_to_enemy", reflect_damage)
+	projectile.reflect_to_enemy(reflect_damage)
 	combat_meter.record_parry(quality)
 	combat_meter.record_phrase_action(quality)
 	_show_parry_image(quality)
@@ -1034,7 +1031,7 @@ func _play_predatory_lunge_to_target(target_data: Dictionary) -> void:
 	_play_world_motion(free_position + lunge_dir * lunge_distance, PREDATORY_LUNGE_PUSH_TIME)
 
 
-func _resolve_timed_attack(projectile, combo_mult: float, quality: String) -> void:
+func _resolve_timed_attack(projectile: ThreatBase, combo_mult: float, quality: String) -> void:
 	var beat: String = _get_beat_quality()
 	var phrase_bonus: float = combat_meter.get_phrase_bonus()
 
@@ -1071,11 +1068,10 @@ func _resolve_timed_attack(projectile, combo_mult: float, quality: String) -> vo
 	)
 	var recovery: float = TIMED_ATTACK_RECOVERY
 
-	var target_lane: int = int(projectile.get("lane"))
-	var target_enemy_id_raw = projectile.get("enemy_id")
-	var target_enemy_id: int = int(target_enemy_id_raw) if target_enemy_id_raw != null else -1
+	var target_lane: int = projectile.lane
+	var target_enemy_id: int = projectile.enemy_id
 
-	projectile.call("resolve", "attack_%s" % quality)
+	projectile.resolve("attack_%s" % quality)
 	
 	if target_enemy_id != -1:
 		zone_manager.damage_enemy_by_id(target_enemy_id, timed_damage)
@@ -1120,16 +1116,15 @@ func _resolve_early_attack(target_lane: int) -> void:
 	_lock_action(EARLY_ATTACK_RECOVERY, "early_attack")
 
 
-func _resolve_late_attack(projectile: Node, target_lane: int) -> void:
+func _resolve_late_attack(projectile: ThreatBase, target_lane: int) -> void:
 	# Late attack means the projectile has already hit or is very close.
 	# We still allow it to resolve but with a heavy punish.
 	var combo_mult: float = combat_meter.damage_multiplier()
 	var punish_damage: float = SOVEREIGN_DAMAGE_CALCULATOR.get_late_attack_damage(combo_mult)
 	
-	projectile.call("resolve", "attack_late")
-	
-	var target_enemy_id_raw = projectile.get("enemy_id")
-	var target_enemy_id: int = int(target_enemy_id_raw) if target_enemy_id_raw != null else -1
+	projectile.resolve("attack_late")
+
+	var target_enemy_id: int = projectile.enemy_id
 	
 	if target_enemy_id != -1:
 		zone_manager.damage_enemy_by_id(target_enemy_id, punish_damage)
@@ -1634,24 +1629,23 @@ func _connect_projectile_signals(projectile) -> void:
 
 
 func _on_projectile_player_contact(projectile: Node) -> void:
-	if not is_instance_valid(projectile) or bool(projectile.get("is_resolved")):
+	if not is_instance_valid(projectile):
+		return
+	var threat: ThreatBase = projectile as ThreatBase
+	if threat == null or threat.is_resolved:
 		return
 
-	var proj_damage: float = float(projectile.get("damage"))
-	var proj_lane: int = int(projectile.get("lane"))
-
 	if dodge_invuln_timer > 0.0:
-		projectile.call("resolve", "dodged_through")
+		threat.resolve("dodged_through")
 		EventBus.emit_signal("screen_flash", Color(0.50, 0.70, 1.0, 0.04), 0.03)
 		return
 
 	if combat_enabled:
-		_take_damage(proj_damage, proj_lane)
-		
+		_take_damage(threat.damage, threat.lane)
+
 		# Blood-Ember: Projectiles from Ashclaw apply Bleed to player
-		var e_id: Variant = projectile.get("enemy_id")
-		if e_id != null and zone_manager != null:
-			var enemy: Dictionary = zone_manager.get_enemy_by_id(int(e_id))
+		if threat.enemy_id != -1 and zone_manager != null:
+			var enemy: Dictionary = zone_manager.get_enemy_by_id(threat.enemy_id)
 			var species_id: String = String(enemy.get("species_id", ""))
 			if species_id == "ashclaw":
 				GameState.apply_player_bleed()

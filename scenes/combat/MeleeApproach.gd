@@ -1,4 +1,4 @@
-extends Node2D
+extends ThreatBase
 class_name MeleeApproach
 
 # Same timing-window interface as Projectile — PlayerCombat and LaneManager
@@ -27,18 +27,6 @@ const PLAYER_CONTACT_RADIUS: float = 38.0
 # Duck-typing flag for LaneManager.clear_slot() guard.
 const is_melee_approach: bool = true
 
-var lane: int = 0
-var enemy_id: int = -1
-var damage: float = 12.0
-var speed: float = 80.0
-var reflected_damage: float = 0.0  # Projectile interface compat
-var telegraph_profile: Dictionary = {}
-var player_ref: Node2D = null
-
-var is_resolved: bool = false
-var is_reflected: bool = false # Projectile interface compat
-
-var progress: float = 0.0
 var _state: String = "approaching"
 var _spawn_pos: Vector2
 var _hit_zone_pos: Vector2

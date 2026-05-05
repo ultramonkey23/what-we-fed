@@ -6331,7 +6331,7 @@ func _on_vessel_shifted(class_data: Dictionary) -> void:
 	
 	# Visual feedback
 	EventBus.screen_flash.emit(vibe_color.lerp(Color.WHITE, 0.4), 0.1)
-	EventBus.slow_motion.emit(0.2, 0.08)
+	EventBus.slow_motion.emit(0.05, 0.05)
 	EventBus.play_sfx.emit("vessel_shift")
 
 

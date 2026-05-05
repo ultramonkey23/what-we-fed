@@ -23,14 +23,15 @@ const DEBUG_TIMING: bool = false
 # - outer ring = success boundary (0.96..1.04)
 # - inner ring = perfect boundary (0.98..1.02)
 # - beat mark at progress 1.0 = center of perfect truth
-# There is no hidden late grace zone outside the visible ring truth.
+# There is no hidden late grace zone; close-quarters proximity grace is centralized
+# in CombatFeelContent and kept small enough to read as physical contact.
 const ATTACK_GOOD_MIN: float = 0.96
 const ATTACK_PERFECT_MIN: float = 0.98
 const ATTACK_PERFECT_MAX: float = 1.02
 const ATTACK_GOOD_MAX: float = 1.04
 
 # Parry timing bands: ring-exact. Good = inside the outer ring. Perfect = inner ring only.
-# Outside all rings = failed parry. No hidden timing beyond what the circles show.
+# Outside all rings = failed parry, except for the same tiny contact grace used by attacks.
 const PARRY_GOOD_MIN: float = 0.96
 const PARRY_PERFECT_MIN: float = 0.98
 const PARRY_PERFECT_MAX: float = 1.02
@@ -38,7 +39,7 @@ const PARRY_GOOD_MAX: float = 1.04
 
 # Reflected projectiles travel back a little faster to feel punchy.
 const REFLECT_SPEED_MULT: float = 1.25
-const PLAYER_CONTACT_RADIUS: float = 24.0 # Tightened from 34.0 for less floaty feel
+const PLAYER_CONTACT_RADIUS: float = 21.0 # Tight enough that visual contact reads as honest.
 
 # Body: per-enemy art under res://assets/sprites/projectile_bodies/<species_id or type>.png (see generator).
 # Modifier: song-section preset — grayscale overlay (shot1–6) + trail/glow tuning (shot_modifier).
@@ -339,10 +340,10 @@ func evaluate_proximity_timing(attacker_pos: Vector2) -> String:
 	# CONTACT TRUTH: Absolute physical proximity check.
 	var dist: float = global_position.distance_to(attacker_pos)
 	
-	# Radius-based forgiveness for close-quarters interaction
-	if dist <= COMBAT_FEEL_CONTENT.RING_PERFECT_RADIUS + 4.0:
+	var proximity_grace: float = COMBAT_FEEL_CONTENT.RING_PROXIMITY_FORGIVENESS
+	if dist <= COMBAT_FEEL_CONTENT.RING_PERFECT_RADIUS + proximity_grace * 0.45:
 		return "perfect"
-	if dist <= COMBAT_FEEL_CONTENT.RING_OUTER_RADIUS + 12.0:
+	if dist <= COMBAT_FEEL_CONTENT.RING_OUTER_RADIUS + proximity_grace:
 		return "good"
 		
 	return "miss"

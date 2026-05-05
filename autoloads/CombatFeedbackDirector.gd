@@ -43,14 +43,13 @@ func _on_impact(_lane: int, quality: String, _damage: float, _enemy_id: int) -> 
 			trigger_shake(SHAKE_INTENSITY_WEAK, 0.05)
 
 func _on_player_hit(_amount: float, _source_lane: int) -> void:
-	trigger_hit_stop(0.15, 0.15)
+	trigger_hit_stop(0.08, 0.045)  # brief bite, not a full tempo drag
 	trigger_shake(SHAKE_INTENSITY_HEAVY, SHAKE_DURATION_LONG)
 	EventBus.emit_signal("screen_flash", COLOR_BLOOD_EMBER, 0.18)
 
 func _on_player_parried(_lane: int, quality: String, _reflect_damage: float) -> void:
 	if quality == "perfect":
-		trigger_hit_stop(0.02, 0.12)
-		trigger_shake(SHAKE_INTENSITY_SOVEREIGN, SHAKE_DURATION_SOVEREIGN)
+		trigger_shake(SHAKE_INTENSITY_HEAVY, SHAKE_DURATION_LONG)
 		EventBus.emit_signal("screen_flash", COLOR_INK_BLACK, 0.12)
 	elif quality == "good":
 		trigger_shake(SHAKE_INTENSITY_NORMAL, SHAKE_DURATION_LONG)

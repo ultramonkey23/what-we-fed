@@ -21,11 +21,11 @@ const GOOD_PARRY_RECOVERY: float = 0.22
 const PERFECT_PARRY_RECOVERY: float = 0.14
 const FAILED_PARRY_RECOVERY: float = 0.32
 
-const DODGE_RECOVERY: float = 0.65 # Increased for Massive Weight
-const DODGE_GOOD_RECOVERY: float = 0.45 
+const DODGE_RECOVERY: float = 0.48
+const DODGE_GOOD_RECOVERY: float = 0.34
 const DODGE_IFRAME_WINDOW: float = 0.22
 const DODGE_IFRAME_WINDOW_ON_BEAT: float = 0.28
-const DODGE_PUSH_TIME: float = 0.42 # Massive "Apex" Roll duration
+const DODGE_PUSH_TIME: float = 0.26
 const ULTIMATE_RECOVERY: float = 0.45
 
 const CHAIN_BYPASS_WINDOW: float = 0.60
@@ -59,7 +59,7 @@ const DEFAULT_FOCUS_LANE: int = 2
 # Neutral stance rules.
 const ATTACK_WORLD_X_OFFSET: float = 18.0
 const PARRY_WORLD_X_OFFSET: float = -6.0
-const DODGE_WORLD_X_OFFSET: float = -22.0 # More pushback on heavy roll
+const DODGE_WORLD_X_OFFSET: float = -16.0
 const HIT_WORLD_X_OFFSET: float = -10.0
 
 # Sprite-local pose offsets. Neutral is centered on the logical origin so the
@@ -74,7 +74,7 @@ const HIT_SPRITE_POSITION := Vector2(-3.0, 1.5)
 const NEUTRAL_SPRITE_SCALE := Vector2(1.0, 1.0)
 const ATTACK_SPRITE_SCALE := Vector2(1.14, 0.90)
 const PARRY_SPRITE_SCALE := Vector2(1.02, 1.10)
-const DODGE_SPRITE_SCALE := Vector2(1.32, 0.68) # Massive Squash
+const DODGE_SPRITE_SCALE := Vector2(1.18, 0.78)
 const HIT_SPRITE_SCALE := Vector2(0.94, 1.0)
 
 var zone_manager: ZoneManager = null
@@ -928,25 +928,21 @@ func _play_dodge_state_radial(target_pos: Vector2) -> void:
 	_spawn_dodge_afterimage()
 	_play_sprite_pose(DODGE_SPRITE_POSITION, DODGE_SPRITE_SCALE, 0.10)
 	
-	# APEX VESSEL ROLL: Massive Physics + Seismic Feedback
+	# Predatory slip: readable displacement without freezing the song-run flow.
 	var vis_node: CanvasItem = (_player_sprite as CanvasItem) if _player_sprite != null else (sprite as CanvasItem)
 	
-	# Movement: Use QUINT for a truly massive, explosive launch that grinds to a halt
 	_play_world_motion(target_pos, DODGE_PUSH_TIME)
 	
-	# Seismic Feedback: The shell 'stomps' the ground to launch its mass
 	if is_inside_tree():
-		CombatFeedbackDirector.trigger_shake(6.0, 0.12)
+		CombatFeedbackDirector.trigger_shake(3.0, 0.07)
 	
 	var dodge_tween := create_tween().set_parallel(true).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUINT)
 	
-	# Shell Spin: Single rotation over the roll
-	dodge_tween.tween_property(vis_node, "rotation", vis_node.rotation + TAU, DODGE_PUSH_TIME)
+	dodge_tween.tween_property(vis_node, "rotation", vis_node.rotation + PI * 0.42, DODGE_PUSH_TIME)
 	
-	# Massive Shell Tuck: Physically compress the armor into a dense kinetic ball
-	var roll_scale = NEUTRAL_SPRITE_SCALE * (PLAYER_SPRITE_SCALE_BASE if _player_sprite != null else 1.0) * 0.68
-	dodge_tween.tween_property(vis_node, "scale", roll_scale, DODGE_PUSH_TIME * 0.4).set_trans(Tween.TRANS_SINE)
-	dodge_tween.chain().tween_property(vis_node, "scale", NEUTRAL_SPRITE_SCALE * (PLAYER_SPRITE_SCALE_BASE if _player_sprite != null else 1.0), DODGE_PUSH_TIME * 0.6).set_trans(Tween.TRANS_BACK)
+	var roll_scale = NEUTRAL_SPRITE_SCALE * (PLAYER_SPRITE_SCALE_BASE if _player_sprite != null else 1.0) * 0.82
+	dodge_tween.tween_property(vis_node, "scale", roll_scale, DODGE_PUSH_TIME * 0.35).set_trans(Tween.TRANS_SINE)
+	dodge_tween.chain().tween_property(vis_node, "scale", NEUTRAL_SPRITE_SCALE * (PLAYER_SPRITE_SCALE_BASE if _player_sprite != null else 1.0), DODGE_PUSH_TIME * 0.65).set_trans(Tween.TRANS_BACK)
 	
 	# Reflex Flare: Over-brightened burst at start (High-contrast Manga)
 	var flare_col = Color(2.0, 2.5, 3.0, 1.0) 

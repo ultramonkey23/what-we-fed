@@ -6,8 +6,8 @@ const COMBAT_BG_CONTENT = preload("res://data/CombatBackgroundContent.gd")
 const UI_STYLE = preload("res://systems/UIStyle.gd")
 const HUD_PANEL_ART = preload("res://systems/HUDPanelArt.gd")
 
-const PLAYER_SIGIL_OUTER_RADIUS: float = 62.0
-const PLAYER_SIGIL_INNER_RADIUS: float = 42.0
+const PLAYER_SIGIL_OUTER_RADIUS: float = COMBAT_FEEL_CONTENT.RING_OUTER_RADIUS * COMBAT_FEEL_CONTENT.RING_VISUAL_SCALE
+const PLAYER_SIGIL_INNER_RADIUS: float = COMBAT_FEEL_CONTENT.RING_PERFECT_RADIUS * COMBAT_FEEL_CONTENT.RING_VISUAL_SCALE
 const PLAYER_SIGIL_CORE_RADIUS: float = 13.0
 const SIGIL_FOLLOW_LERP: float = 0.12 # Subtle follow speed
 
@@ -441,17 +441,20 @@ func draw_timing_circles(
 	if player_combat != null:
 		sigil_group.position = player_combat.position
 	
-	# Multi-layered sketched fill
-	var receiver_fill := _make_disc_polygon(PLAYER_SIGIL_CORE_RADIUS + 12.0, Color(active_color, 0.08), 2.5)
+	var receiver_fill := _make_disc_polygon(PLAYER_SIGIL_OUTER_RADIUS + 4.0, Color(active_color, 0.07), 2.5)
 	receiver_fill.name = "ReceiverFill"
 	sigil_group.add_child(receiver_fill)
 	
-	var perfect_ring := _make_anomaly_sigil_ring(PLAYER_SIGIL_INNER_RADIUS, active_color.lightened(0.20), 3.2, 3.0)
+	var good_ring := _make_anomaly_sigil_ring(PLAYER_SIGIL_OUTER_RADIUS, Color(active_color, 0.52), 1.8, 2.5)
+	good_ring.name = "Good"
+	sigil_group.add_child(good_ring)
+
+	var perfect_ring := _make_anomaly_sigil_ring(PLAYER_SIGIL_INNER_RADIUS, active_color.lightened(0.20), 3.0, 1.6)
 	perfect_ring.name = "Perfect"
 	sigil_group.add_child(perfect_ring)
 	
 	# Secondary outer scribble ring for depth
-	var scribble := _make_anomaly_sigil_ring(PLAYER_SIGIL_INNER_RADIUS + 8.0, Color(active_color, 0.15), 1.0, 5.0)
+	var scribble := _make_anomaly_sigil_ring(PLAYER_SIGIL_OUTER_RADIUS + 7.0, Color(active_color, 0.12), 1.0, 4.5)
 	scribble.name = "Scribble"
 	sigil_group.add_child(scribble)
 	
@@ -523,6 +526,7 @@ func draw_timing_circles(
 		
 	timing_rings_cache.append({
 		"root": sigil_group,
+		"outer": good_ring,
 		"perfect": perfect_ring,
 		"fill": receiver_fill
 	})
@@ -722,6 +726,7 @@ func update_timing_ring_proximity(
 	var root: Node2D = cache["root"]
 	var receiver_fill: Polygon2D = cache["fill"]
 	var perfect_ring: Line2D = cache["perfect"]
+	var good_ring: Line2D = cache.get("outer", null) as Line2D
 	var scribble_ring: Line2D = root.get_node_or_null("Scribble")
 
 	# 1. CORE SIGIL: Heartbeat and Follow
@@ -732,8 +737,11 @@ func update_timing_ring_proximity(
 		var bp: float = song_conductor.get_beat_phase()
 		if bp < 0.18: beat_pulse = (1.0 - bp / 0.18) * 0.15
 	
-	perfect_ring.width = 3.2 + beat_pulse * 4.0
-	receiver_fill.color.a = 0.12 + beat_pulse * 0.2
+	perfect_ring.width = 3.0 + beat_pulse * 3.4
+	if good_ring:
+		good_ring.width = 1.8 + beat_pulse * 2.2
+		good_ring.default_color = Color(active_color, 0.45 + beat_pulse * 1.8)
+	receiver_fill.color.a = 0.07 + beat_pulse * 0.16
 	if scribble_ring:
 		scribble_ring.width = 1.0 + beat_pulse * 6.5
 		scribble_ring.rotation += delta * 0.8 # Slow erratic spin

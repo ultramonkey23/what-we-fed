@@ -5461,10 +5461,15 @@ func _on_dna_routing_changed(route_id: String, label: String) -> void:
 
 
 func _on_player_took_damage(amount: float, source_sector: int) -> void:
+	_kill_tempo_recovery_tween()
+	if _tempo_state_family == COMBAT_FEEL_CONTENT.TEMPO_STRETCH:
+		_exit_tempo_state(COMBAT_FEEL_CONTENT.TEMPO_STRETCH, true)
+	else:
+		_apply_tempo_time_scale(_base_time_scale)
 	if _escalation_director != null:
 		_escalation_director.notify_player_hp_changed(GameState.get_hp_percent())
 		_escalation_director.notify_player_took_damage(amount, source_sector)
-	
+
 	_trigger_regional_feedback("player_damaged", {"sector": source_sector})
 
 
@@ -6068,6 +6073,9 @@ func _on_player_parried(lane: int, quality: String, _reflect_damage: float) -> v
 
 
 func _on_player_dodged(from_sector: int, to_sector: int) -> void:
+	if _tempo_state_family == COMBAT_FEEL_CONTENT.TEMPO_NONE:
+		_kill_tempo_recovery_tween()
+		_apply_tempo_time_scale(_base_time_scale)
 	_show_feedback("DODGE", Color(0.65, 0.85, 1.0, 1.0), 0.28)
 	_presentation_runtime.highlight_timing_ring(to_sector, Color(0.65, 0.85, 1.0, 1.0), 4.0)
 	var slip: Vector2 = Vector2(0.26, float(to_sector - from_sector))

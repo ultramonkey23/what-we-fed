@@ -1,10 +1,12 @@
 extends RefCounted
 
 # ─── TIMING RINGS ────────────────────────────────────────────────────────────
-const RING_OUTER_RADIUS: float = 18.0 # Strong pass: tighter good window, matches smaller sigil.
-const RING_PERFECT_RADIUS: float = 9.0 # Inner perfect window aligned to reduced outer ring.
+const RING_OUTER_RADIUS: float = 22.0 # Honest good window for 360-degree spatial combat.
+const RING_PERFECT_RADIUS: float = 10.5 # Inner bite point: readable, but still earned.
 const RING_POINT_COUNT: int = 32
 const EDGE_STATE_WIDTH: float = 0.016
+const RING_VISUAL_SCALE: float = 1.45 # Presentation scale only; gameplay radii stay authoritative.
+const RING_PROXIMITY_FORGIVENESS: float = 6.0 # Small close-quarters grace outside the visible good band.
 
 # ─── LANE VISUALS ────────────────────────────────────────────────────────────
 const LANE_BAND_HEIGHT: float = 18.0

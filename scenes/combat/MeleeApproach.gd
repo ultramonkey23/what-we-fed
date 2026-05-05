@@ -93,9 +93,10 @@ func evaluate_proximity_timing(attacker_pos: Vector2) -> String:
 	# CONTACT TRUTH: Absolute physical proximity check.
 	var dist: float = global_position.distance_to(attacker_pos)
 	
-	if dist <= COMBAT_FEEL_CONTENT.RING_PERFECT_RADIUS + 4.0:
+	var proximity_grace: float = COMBAT_FEEL_CONTENT.RING_PROXIMITY_FORGIVENESS
+	if dist <= COMBAT_FEEL_CONTENT.RING_PERFECT_RADIUS + proximity_grace * 0.45:
 		return "perfect"
-	if dist <= COMBAT_FEEL_CONTENT.RING_OUTER_RADIUS + 12.0:
+	if dist <= COMBAT_FEEL_CONTENT.RING_OUTER_RADIUS + proximity_grace:
 		return "good"
 
 	return "miss"
@@ -283,9 +284,9 @@ func _flash_hit() -> void:
 		_hit_tween.kill()
 	_hit_tween = create_tween()
 	_hit_tween.tween_property(_body, "color", Color(1.0, 1.0, 1.0, 0.95), 0.04)
-	_hit_tween.tween_property(_body, "color", _base_color, 0.14)
 	_hit_tween.parallel().tween_property(_inner_shard, "color", Color(1.0, 1.0, 1.0, 0.95), 0.04)
-	_hit_tween.tween_property(_inner_shard, "color", Color(1.0, 0.75, 0.50, 0.85), 0.14)
+	_hit_tween.tween_property(_body, "color", _base_color, 0.14)
+	_hit_tween.parallel().tween_property(_inner_shard, "color", Color(1.0, 0.75, 0.50, 0.85), 0.14)
 
 
 func _update_visuals() -> void:

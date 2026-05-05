@@ -311,7 +311,7 @@ func resolve(result: String) -> void:
 		return
 
 	is_resolved = true
-	resolved.emit(self, result)
+	emit_signal("resolved", self, result)
 
 	var timer: SceneTreeTimer = get_tree().create_timer(0.10)
 	timer.timeout.connect(queue_free)
@@ -382,16 +382,16 @@ func _process_incoming_song_synced(delta: float) -> void:
 
 	if not _reported_hit_zone and progress >= 1.0:
 		_reported_hit_zone = true
-		reached_hit_zone.emit(self)
+		emit_signal("reached_hit_zone", self)
 
 	if not _reported_player_contact:
 		var actual_player_pos: Vector2 = player_pos
 		if player_ref != null and is_instance_valid(player_ref):
 			actual_player_pos = player_ref.global_position
-			
+
 		if global_position.distance_to(actual_player_pos) <= PLAYER_CONTACT_RADIUS:
 			_reported_player_contact = true
-			player_contact.emit(self)
+			emit_signal("player_contact", self)
 
 	_update_visual_state(false)
 
@@ -425,7 +425,7 @@ func _process_reflected(delta: float) -> void:
 		# Check if the dot product of motion vs direction to origin flipped.
 		if dist_to_origin < 25.0:
 			_reported_enemy_contact = true
-			enemy_contact.emit(self)
+			emit_signal("enemy_contact", self)
 
 
 func _apply_projectile_palette(body_color: Color, reflected: bool) -> void:

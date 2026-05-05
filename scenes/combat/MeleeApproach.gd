@@ -201,12 +201,12 @@ func _process_approach(delta: float) -> void:
 
 	if not _reported_hit_zone and progress >= 1.0:
 		_reported_hit_zone = true
-		reached_hit_zone.emit(self)
+		emit_signal("reached_hit_zone", self)
 
 	if not _reported_player_contact:
 		if global_position.distance_to(current_player_pos) <= PLAYER_CONTACT_RADIUS:
 			_reported_player_contact = true
-			player_contact.emit(self)
+			emit_signal("player_contact", self)
 			_start_bounce()
 
 
@@ -243,7 +243,7 @@ func resolve(result: String) -> void:
 		return
 	if result == "enemy_defeated":
 		is_resolved = true
-		resolved.emit(self, result)
+		emit_signal("resolved", self, result)
 		var timer: SceneTreeTimer = get_tree().create_timer(0.10)
 		timer.timeout.connect(queue_free)
 	else:

@@ -129,7 +129,7 @@ func _demo_mutation_tracking() -> void:
 func _demo_combat_feel_constants() -> void:
 	print("\n=== DEMO 3: Combat Feel Constants ===")
 	
-	const COMBAT_FEEL_CONSTANTS = preload("res://data/CombatFeelConstants.gd")
+	const COMBAT_FEEL_CONTENT = preload("res://data/CombatFeelContent.gd")
 	
 	# Demonstrate getting various combat feel parameters
 	var test_params: Array[String] = [
@@ -137,10 +137,10 @@ func _demo_combat_feel_constants() -> void:
 	]
 	
 	for param in test_params:
-		var slow_mo: float = COMBAT_FEEL_CONSTANTS.get_slow_motion_duration(param)
-		var hit_stop: float = COMBAT_FEEL_CONSTANTS.get_hit_stop_duration(param)
-		var camera_shake: Dictionary = COMBAT_FEEL_CONSTANTS.get_camera_shake_params(param)
-		var _screen_flash: Dictionary = COMBAT_FEEL_CONSTANTS.get_screen_flash_params(param)
+		var slow_mo: float = COMBAT_FEEL_CONTENT.get_slow_motion_duration(param)
+		var hit_stop: float = COMBAT_FEEL_CONTENT.get_hit_stop_duration(param)
+		var camera_shake: Dictionary = COMBAT_FEEL_CONTENT.get_camera_shake_params(param)
+		var _screen_flash: Dictionary = COMBAT_FEEL_CONTENT.get_screen_flash_params(param)
 		
 		print("Combat Feel - %s:" % param)
 		print("  Slow Motion: %.2fs" % slow_mo)
@@ -155,8 +155,8 @@ func _demo_combat_feel_constants() -> void:
 	print("\nDifficulty Scaling Example (base value: %.1f):" % base_value)
 	var difficulties: Array[String] = ["easy", "medium", "hard", "extreme"]
 	for diff in difficulties:
-		var scaled_damage: float = COMBAT_FEEL_CONSTANTS.apply_difficulty_scaling(base_value, diff, "damage")
-		var scaled_timing: float = COMBAT_FEEL_CONSTANTS.apply_difficulty_scaling(base_value, diff, "timing")
+		var scaled_damage: float = COMBAT_FEEL_CONTENT.apply_difficulty_scaling(base_value, diff, "damage")
+		var scaled_timing: float = COMBAT_FEEL_CONTENT.apply_difficulty_scaling(base_value, diff, "timing")
 		print("  %s: damage=%.2f, timing=%.2f" % [diff, scaled_damage, scaled_timing])
 	
 	demo_results["combat_feel_demo"] = "completed"
@@ -225,8 +225,8 @@ func run_quick_test() -> void:
 	print("Added test mutation")
 	
 	# Test combat feel constants
-	const COMBAT_FEEL_CONSTANTS = preload("res://data/CombatFeelConstants.gd")
-	var shake_params: Dictionary = COMBAT_FEEL_CONSTANTS.get_camera_shake_params("perfect_parry")
+	const COMBAT_FEEL_CONTENT = preload("res://data/CombatFeelContent.gd")
+	var shake_params: Dictionary = COMBAT_FEEL_CONTENT.get_camera_shake_params("perfect_parry")
 	print("Camera shake params: intensity=%.1f, duration=%.2f" % [
 		shake_params.get("intensity", 0.0),
 		shake_params.get("duration", 0.0)

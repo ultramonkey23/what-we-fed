@@ -8,7 +8,6 @@ const HUD_PANEL_ART = preload("res://systems/HUDPanelArt.gd")
 
 const PLAYER_SIGIL_OUTER_RADIUS: float = COMBAT_FEEL_CONTENT.RING_OUTER_RADIUS * COMBAT_FEEL_CONTENT.RING_VISUAL_SCALE
 const PLAYER_SIGIL_INNER_RADIUS: float = COMBAT_FEEL_CONTENT.RING_PERFECT_RADIUS * COMBAT_FEEL_CONTENT.RING_VISUAL_SCALE
-const PLAYER_SIGIL_CORE_RADIUS: float = 13.0
 const SIGIL_FOLLOW_LERP: float = 0.12 # Subtle follow speed
 
 var _active_bg_env: Dictionary = {}
@@ -323,8 +322,8 @@ func update_background_parallax(bg_sprite: Control, focus_pos: Vector2, pulse_sc
 	
 	# SIGNAL: Pulse the Living Restraint HUD panels on beat
 	# This syncs the biological HUD to the project's Timing Truth pulse.
-	_sync_hud_vein_pulses(bg_sprite.get_parent(), beat_pulse * 15.0)
-	
+	HUD_PANEL_ART.pulse_registered_panels(beat_pulse * 15.0)
+
 	for child in bg_sprite.get_children():
 		if child is TextureRect:
 			var layer_id = child.name
@@ -478,7 +477,9 @@ func draw_timing_circles(
 			])
 			splinter.polygon = s_pts
 			splinter.color = Color(active_color, 0.15)
-			splinter.position = Vector2(randf_range(5, 15), randf_range(-10, 10))
+			var init_pos := Vector2(randf_range(5, 15), randf_range(-10, 10))
+			splinter.position = init_pos
+			splinter.set_meta("base_pos", init_pos)
 			grave_ring.add_child(splinter)
 			
 			var outline := Line2D.new()
@@ -602,86 +603,6 @@ func _make_anomaly_sigil_ring(radius: float, color: Color, width: float, jitter:
 		if i % 8 == 0:
 			noise -= jitter * 1.8 # Deeper notches
 		
-		points.append(Vector2(cos(a), sin(a)) * (radius + noise))
-	line.points = points
-	return line
-
-
-func _make_sigil_fault_lines(inner_radius: float, outer_radius: float, color: Color, width: float) -> Line2D:
-	var line := Line2D.new()
-	line.default_color = color
-	line.width = width
-	line.joint_mode = Line2D.LINE_JOINT_SHARP
-	line.begin_cap_mode = Line2D.LINE_CAP_ROUND
-	line.end_cap_mode = Line2D.LINE_CAP_ROUND
-	var points: PackedVector2Array = PackedVector2Array()
-	for i in range(8):
-		var a: float = (float(i) / 8.0) * TAU + (0.18 if i % 2 == 0 else -0.07)
-		var b: float = a + 0.16 + (0.07 if i % 3 == 0 else 0.0)
-		points.append(Vector2(cos(a), sin(a)) * inner_radius)
-		points.append(Vector2(cos(b), sin(b)) * outer_radius)
-		points.append(Vector2(cos(b + 0.05), sin(b + 0.05)) * (inner_radius + 8.0))
-	line.points = points
-	return line
-
-
-func _make_sigil_chords(radius: float, color: Color, width: float) -> Line2D:
-	var line := Line2D.new()
-	line.default_color = color
-	line.width = width
-	line.closed = true
-	line.joint_mode = Line2D.LINE_JOINT_SHARP
-	var points: PackedVector2Array = PackedVector2Array()
-	for i in [0, 3, 6, 1, 4, 7, 2, 5]:
-		var a: float = (float(i) / 8.0) * TAU
-		points.append(Vector2(cos(a), sin(a)) * radius)
-	line.points = points
-	return line
-
-
-func _make_sigil_cardinal_arms(inner_radius: float, outer_radius: float, color: Color, _width: float) -> Node2D:
-	var group := Node2D.new()
-	for i in range(8):
-		var a: float = (float(i) / 8.0) * TAU - PI/2.0
-		var dir := Vector2(cos(a), sin(a))
-		
-		# Create a stylized "fang" or "manga-ink" shard polygon
-		var fang := Polygon2D.new()
-		fang.name = "Fang_%d" % i
-		fang.color = color
-		
-		var pts := PackedVector2Array()
-		var base_width: float = 14.0
-		var inner: float = inner_radius - 10.0
-		var outer: float = outer_radius + 15.0
-		var ortho := dir.orthogonal()
-		
-		# Shard shape: wide base, slightly jagged mid-section, sharp point
-		pts.append(dir * inner + ortho * base_width * 0.45) # Base Left
-		pts.append(dir * (inner + (outer - inner) * 0.4) + ortho * base_width * 0.35) # Jagged notch 1
-		pts.append(dir * (inner + (outer - inner) * 0.5) + ortho * base_width * 0.6) # Jagged flare
-		pts.append(dir * outer) # Tip
-		pts.append(dir * (inner + (outer - inner) * 0.6) - ortho * base_width * 0.2) # Jagged notch 2
-		pts.append(dir * inner - ortho * base_width * 0.45) # Base Right
-		
-		fang.polygon = pts
-		group.add_child(fang)
-	return group
-
-
-func _make_ring_line(radius: float, color: Color, width: float, jitter: float = 0.0) -> Line2D:
-	var line := Line2D.new()
-	line.default_color = color
-	line.width = width
-	line.closed = true
-	line.joint_mode = Line2D.LINE_JOINT_ROUND
-	line.begin_cap_mode = Line2D.LINE_CAP_ROUND
-	line.end_cap_mode = Line2D.LINE_CAP_ROUND
-	var points: PackedVector2Array = PackedVector2Array()
-	var sides := 32
-	for i in range(sides):
-		var a: float = (float(i) / float(sides)) * TAU
-		var noise := randf_range(-jitter, jitter) if jitter > 0.0 else 0.0
 		points.append(Vector2(cos(a), sin(a)) * (radius + noise))
 	line.points = points
 	return line
@@ -845,9 +766,11 @@ func update_timing_ring_proximity(
 						outline.width = (1.2 + beat_pulse * 1.5) * (1.2 if is_singular_target else 0.8) # Thicker outlines
 					
 					# Splinter Jitter & Orbit
-					var drift_angle := delta * 2.0 + float(j) * 2.1
+					var base_pos: Vector2 = splinter.get_meta("base_pos", Vector2.ZERO)
+					var time_sec: float = Time.get_ticks_msec() * 0.001
+					var drift_angle := time_sec * 2.0 + float(j) * 2.1
 					var drift := Vector2(cos(drift_angle), sin(drift_angle)) * 3.5 # More aggressive jitter
-					splinter.position = (drift * delta) + glitch_offset # Apply Sovereign Glitch
+					splinter.position = base_pos + drift + glitch_offset # Apply Sovereign Glitch
 					
 					# Intercardinal shards are "sharper" (thinner)
 					var shard_scale: float = urgency_scale * 0.62 + beat_pulse * 0.12 # Base scale boosted
@@ -1407,17 +1330,6 @@ func _lane_direction_fallback(lane: int) -> Vector2:
 
 func _lane_intercept_distance(zone_manager: ZoneManager, lane: int, player_node: Node2D = null) -> float:
 	return maxf(_lane_enemy_pos(zone_manager, lane, player_node).distance_to(_lane_hit_zone_pos(zone_manager, lane, player_node)), 1.0)
-
-
-func _lane_logical_intercept_distance(zone_manager: ZoneManager, lane: int, player_node: Node2D = null) -> float:
-	if zone_manager != null:
-		var spawn_v: Variant = zone_manager.get_threat_spawn_pos(lane)
-		var hit_v: Variant = zone_manager.get_threat_hit_zone_pos(lane)
-		if spawn_v is Vector2 and hit_v is Vector2:
-			var spawn_pos: Vector2 = spawn_v
-			var hit_pos: Vector2 = hit_v
-			return maxf(spawn_pos.distance_to(hit_pos), 1.0)
-	return _lane_intercept_distance(zone_manager, lane, player_node)
 
 
 func _radial_lane_strip_position(zone_manager: ZoneManager, lane: int, strip_size: Vector2, player_node: Node2D = null) -> Vector2:
@@ -1980,11 +1892,8 @@ func _hud_attach_combat_panel_art(panel: Control, texture_path: String, region: 
 	HUD_PANEL_ART.apply_panel_art(panel, texture_path, region, "Art", "Backing", Color(0.0, 0.0, 0.0, 0.0))
 
 
-func _sync_hud_vein_pulses(host: Node, pulse_intensity: float) -> void:
-	if host == null: return
-	# Broad recursive search for any panel with the Vibe Forge backing
-	for child in host.get_children():
-		if child is Control:
-			HUD_PANEL_ART.set_vein_pulse(child, pulse_intensity)
-		if child.get_child_count() > 0:
-			_sync_hud_vein_pulses(child, pulse_intensity)
+## Premium Menace — scales a subtle ember "interface wound" rim on HUD shells with combo pressure.
+func update_hud_interface_wound_glow(top_left: Control, top_right: Control, combo_normalized: float) -> void:
+	var t: float = clampf(combo_normalized, 0.0, 1.0)
+	HUD_PANEL_ART.set_interface_wound_intensity(top_left, t)
+	HUD_PANEL_ART.set_interface_wound_intensity(top_right, t)

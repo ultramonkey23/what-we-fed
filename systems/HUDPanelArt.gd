@@ -3,6 +3,7 @@ extends RefCounted
 const HUD_PANEL_VISIBLE_ALPHA_THRESHOLD: float = 0.08
 
 static var _visible_region_cache: Dictionary = {}
+static var _registered_vein_panels: Array[Control] = []
 
 # SIGNAL: Jagged Geometry + Vein Pulsing Shader
 # This is the "Living Restraint" core. It replaces flat boxes with predatory geometry.
@@ -12,6 +13,7 @@ shader_type canvas_item;
 uniform vec4 base_color : source_color = vec4(0.03, 0.03, 0.04, 0.72);
 uniform vec4 vein_color : source_color = vec4(0.8, 0.1, 0.15, 1.0);
 uniform float vein_pulse : hint_range(0.0, 1.0) = 0.0;
+uniform float wound_emissive : hint_range(0.0, 1.0) = 0.0;
 uniform float jagged_depth : hint_range(0.0, 50.0) = 8.0;
 uniform float pixel_size : hint_range(1.0, 10.0) = 2.0;
 uniform float time_offset = 0.0;
@@ -37,29 +39,37 @@ void fragment() {
 
 	// Jagged Edge Logic: Distort UVs at boundaries
 	float edge_dist = min(min(uv.x, 1.0 - uv.x), min(uv.y, 1.0 - uv.y));
-	float noise_val = noise(uv * 12.0 + (TIME + time_offset) * 0.15);
+	float noise_val = noise(uv * 14.0 + (TIME + time_offset) * 0.12);
 
 	if (edge_dist < (jagged_depth / 100.0) * noise_val) {
 		discard;
 	}
 
 	// Vein Pulsing: Procedural "biological" channels with dithered feel
-	float v1 = noise(uv * 15.0 + (TIME + time_offset) * 1.8);
-	float v2 = noise(uv * 22.0 - (TIME + time_offset) * 1.2);
-	float v = smoothstep(0.45, 0.55, v1 * v2);
+	float v1 = noise(uv * 18.0 + (TIME + time_offset) * 2.2);
+	float v2 = noise(uv * 26.0 - (TIME + time_offset) * 1.4);
+	float v = smoothstep(0.42, 0.58, v1 * v2);
 
 	// Dithered shadow blend
-	float dither = hash(uv * 512.0 + TIME);
-	vec4 final_color = mix(base_color, vein_color, v * vein_pulse * 0.65);
+	float dither = hash(uv * 1024.0 + TIME);
+	vec4 final_color = mix(base_color, vein_color, v * vein_pulse * 0.72);
 
-	if (v * vein_pulse > 0.1 && dither > 0.85) {
-		final_color = mix(final_color, vein_color, 0.3);
+	if (v * vein_pulse > 0.12 && dither > 0.82) {
+		final_color = mix(final_color, vein_color, 0.38);
 	}
 
-	// Add a sharp predatory border
-	if (edge_dist < 0.012) {
-		final_color = mix(final_color, vein_color, vein_pulse);
+	// Add a sharp predatory border (Manga outline)
+	float border_th = 0.015;
+	if (edge_dist < border_th) {
+		float border_pulse = 0.5 + 0.5 * sin(TIME * 4.0 + time_offset);
+		final_color = mix(final_color, vein_color, clamp(vein_pulse + border_pulse * 0.15, 0.0, 1.0));
 	}
+
+	// Interface Wound rim: subtle blood ember halo that scales with wound_emissive / combo tension
+	float rim_sharp = smoothstep(-0.01, 0.05, edge_dist) * smoothstep(0.14, 0.02, edge_dist);
+	vec3 wound_hue = mix(vein_color.rgb, vec3(1.0, 0.44, 0.12), 0.62);
+	final_color.rgb += wound_hue * rim_sharp * wound_emissive * 0.55;
+	final_color.a = clamp(final_color.a + rim_sharp * wound_emissive * 0.12, 0.0, 1.0);
 
 	COLOR = final_color;
 }
@@ -95,8 +105,15 @@ static func apply_panel_art(panel: Control, texture_path: String, requested_regi
 	mat.shader = sh
 	mat.set_shader_parameter("base_color", backing_color)
 	mat.set_shader_parameter("time_offset", randf() * 100.0)
+	mat.set_shader_parameter("wound_emissive", 0.0)
 	backing.material = mat
 	panel.add_child(backing)
+
+	# REGISTER for optimized pulse updates
+	if not _registered_vein_panels.has(panel):
+		_registered_vein_panels.append(panel)
+		if not panel.tree_exiting.is_connected(_on_panel_exiting_tree.bind(panel)):
+			panel.tree_exiting.connect(_on_panel_exiting_tree.bind(panel))
 
 	# Handle Foreground Art
 	if not texture_path.is_empty() and ResourceLoader.exists(texture_path):
@@ -108,7 +125,8 @@ static func apply_panel_art(panel: Control, texture_path: String, requested_regi
 			art.ignore_texture_size = true
 			art.stretch_mode = TextureRect.STRETCH_SCALE
 			art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-			art.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+			art.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+			art.texture_repeat = CanvasItem.TEXTURE_REPEAT_DISABLED
 			art.set_anchors_preset(Control.PRESET_FULL_RECT)
 			art.offset_left = 0.0
 			art.offset_top = 0.0
@@ -130,16 +148,39 @@ static func apply_panel_art(panel: Control, texture_path: String, requested_regi
 	panel.move_child(backing, 0)
 
 # SIGNAL: Utility to trigger pulse from gameplay events
+static func set_interface_wound_intensity(panel: Control, wound_norm: float, backing_name: String = "HudPanelBacking") -> void:
+	if panel == null or not is_instance_valid(panel):
+		return
+	var wound: float = clampf(wound_norm, 0.0, 1.0)
+	wound *= wound
+	var backing = panel.get_node_or_null(backing_name)
+	if backing is ColorRect and backing.material is ShaderMaterial:
+		(backing.material as ShaderMaterial).set_shader_parameter(
+			"wound_emissive", lerpf(0.04, 0.92, wound)
+		)
+
+
 static func set_vein_pulse(panel: Control, intensity: float, backing_name: String = "HudPanelBacking") -> void:
+	if not is_instance_valid(panel): return
 	var backing = panel.get_node_or_null(backing_name)
 	if backing is ColorRect and backing.material is ShaderMaterial:
 		backing.material.set_shader_parameter("vein_pulse", clampf(intensity, 0.0, 1.0))
 
 
 static func set_vein_color(panel: Control, color: Color, backing_name: String = "HudPanelBacking") -> void:
+	if not is_instance_valid(panel): return
 	var backing = panel.get_node_or_null(backing_name)
 	if backing is ColorRect and backing.material is ShaderMaterial:
 		backing.material.set_shader_parameter("vein_color", color)
+
+
+static func pulse_registered_panels(intensity: float) -> void:
+	for panel in _registered_vein_panels:
+		set_vein_pulse(panel, intensity)
+
+
+static func _on_panel_exiting_tree(panel: Control) -> void:
+	_registered_vein_panels.erase(panel)
 
 
 static func pulse_recursive(node: Node, intensity: float, color: Color = Color.TRANSPARENT) -> void:

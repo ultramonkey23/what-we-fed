@@ -10,7 +10,7 @@ signal mutation_depleted(mutation_id: String)
 signal mutation_synergy_detected(synergy_data: Dictionary)
 signal mutation_feedback_requested(text: String, color: Color)
 
-const COMBAT_FEEL_CONSTANTS = preload("res://data/CombatFeelConstants.gd")
+const COMBAT_FEEL_CONTENT = preload("res://data/CombatFeelContent.gd")
 
 # Enhanced mutation data structure
 var active_mutations: Array[Dictionary] = []

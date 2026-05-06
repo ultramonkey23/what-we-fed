@@ -30,10 +30,14 @@ func _ready() -> void:
 	if not EventBus.ultimate_fired.is_connected(_on_ultimate_fired):
 		EventBus.ultimate_fired.connect(_on_ultimate_fired)
 
+const COMBAT_FEEL_CONTENT = preload("res://data/CombatFeelContent.gd")
+
 func _on_impact(_lane: int, quality: String, _damage: float, _enemy_id: int) -> void:
 	match quality:
 		"perfect":
-			trigger_hit_stop(0.04, 0.10)
+			var preset = COMBAT_FEEL_CONTENT.SLOW_MOTION_SCALES.get("timed_attack_perfect_beat_perfect", 0.65)
+			var dur = COMBAT_FEEL_CONTENT.SLOW_MOTION_DURATION.get("timed_attack_perfect_beat_perfect", 0.8)
+			trigger_hit_stop(preset, dur)
 			trigger_shake(SHAKE_INTENSITY_HEAVY, SHAKE_DURATION_LONG)
 			EventBus.emit_signal("screen_flash", COLOR_BONE_WHITE, 0.10)
 		"good":
@@ -43,12 +47,15 @@ func _on_impact(_lane: int, quality: String, _damage: float, _enemy_id: int) -> 
 			trigger_shake(SHAKE_INTENSITY_WEAK, 0.05)
 
 func _on_player_hit(_amount: float, _source_lane: int) -> void:
-	trigger_hit_stop(0.08, 0.045)  # brief bite, not a full tempo drag
+	trigger_hit_stop(0.35, 0.15)  # Witch Time Floor: active biological stall, not a freeze
 	trigger_shake(SHAKE_INTENSITY_HEAVY, SHAKE_DURATION_LONG)
 	EventBus.emit_signal("screen_flash", COLOR_BLOOD_EMBER, 0.18)
 
 func _on_player_parried(_lane: int, quality: String, _reflect_damage: float) -> void:
 	if quality == "perfect":
+		var preset = COMBAT_FEEL_CONTENT.SLOW_MOTION_SCALES.get("parry_perfect_beat_perfect", 0.65)
+		var dur = COMBAT_FEEL_CONTENT.SLOW_MOTION_DURATION.get("parry_perfect_beat_perfect", 1.2)
+		trigger_hit_stop(preset, dur)
 		trigger_shake(SHAKE_INTENSITY_HEAVY, SHAKE_DURATION_LONG)
 		EventBus.emit_signal("screen_flash", COLOR_INK_BLACK, 0.12)
 	elif quality == "good":
@@ -56,7 +63,7 @@ func _on_player_parried(_lane: int, quality: String, _reflect_damage: float) -> 
 		EventBus.emit_signal("screen_flash", COLOR_BONE_WHITE, 0.08)
 
 func _on_ultimate_fired(_power: float) -> void:
-	trigger_hit_stop(0.01, 0.20)
+	trigger_hit_stop(0.45, 0.8) # Weighty activation, but keeps the Vessel moving
 	trigger_shake(SHAKE_INTENSITY_SOVEREIGN, SHAKE_DURATION_SOVEREIGN)
 	EventBus.emit_signal("screen_flash", COLOR_BLOOD_EMBER, 0.25)
 

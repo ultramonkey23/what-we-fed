@@ -551,7 +551,6 @@ func apply_impact_profile(profile: Dictionary, lane: int = -1, enemy_id: int = -
 		EventBus.emit_signal("screen_shake", intensity, float(profile.get("shake_duration", 0.08)))
 		EventBus.emit_signal("ui_shake", intensity * 0.75, float(profile.get("shake_duration", 0.08)) * 1.25)
 	var hs: float = float(profile.get("hitstop_scale", 1.0))
-	if hs > 0.0 and hs < 0.999: EventBus.emit_signal("slow_motion", hs, float(profile.get("hitstop_duration", 0.10)))
 	if enemy_id >= 0:
 		flash_enemy_damage(enemy_id, profile)
 		animate_enemy_damage(enemy_id, profile)

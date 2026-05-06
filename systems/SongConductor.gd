@@ -128,12 +128,29 @@ func start(song_map_script, start_time: float = 0.0, window_end_time: float = -1
 	transport_state_changed.emit(true, clamped_start_time)
 
 
+func set_tempo_distortion(scale: float) -> void:
+	# Scale Pitch: Slow down playback tempo
+	if _stream_player != null and is_instance_valid(_stream_player):
+		# We clamp pitch slightly higher than engine scale to avoid total audio mud,
+		# but keeping it close to the engine scale for 'exact' synchronization feel.
+		_stream_player.pitch_scale = clampf(scale, 0.45, 1.0)
+	
+	# Scale Low-Pass Filter: Muffle the sound during dilation
+	if _bus_index != -1 and _low_pass_idx != -1:
+		var lp: AudioEffectLowPassFilter = AudioServer.get_bus_effect(_bus_index, _low_pass_idx) as AudioEffectLowPassFilter
+		if lp != null:
+			# Map scale [0.35 (floor), 1.0 (standard)] to cutoff [1200Hz (muffled), 20000Hz (full open)]
+			var t: float = clampf((scale - 0.35) / (1.0 - 0.35), 0.0, 1.0)
+			lp.cutoff_hz = lerpf(1200.0, 20000.0, t)
+
+
 func set_void_filter(active: bool) -> void:
-	if _bus_index == -1 or _low_pass_idx == -1:
-		return
-	var lp: AudioEffectLowPassFilter = AudioServer.get_bus_effect(_bus_index, _low_pass_idx) as AudioEffectLowPassFilter
-	if lp != null:
-		lp.cutoff_hz = 1200.0 if active else 20000.0
+	# Void filter is a hard LPF for tactical pauses.
+	# We delegate to the new distortion method if possible, otherwise use hard values.
+	if active:
+		set_tempo_distortion(0.35)
+	else:
+		set_tempo_distortion(1.0)
 
 
 func pause() -> void:

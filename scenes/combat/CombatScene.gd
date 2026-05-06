@@ -22,7 +22,6 @@ signal impact_fx_requested(kind: StringName, world_pos: Vector2, direction: Vect
 @onready var controls_label: Label = $UI/ControlsLabel
 
 # ─── PRELOADS ────────────────────────────────────────────────────────────────
-const COMBAT_FEEL_CONSTANTS = preload("res://data/CombatFeelConstants.gd")
 const COMBAT_FEEL_CONTENT = preload("res://data/CombatFeelContent.gd")
 const PRESENTATION_TEXT = preload("res://data/PresentationTextContent.gd")
 const AUDIO_CONTENT = preload("res://data/AudioContent.gd")
@@ -91,6 +90,9 @@ var _tempo_state_family: StringName = COMBAT_FEEL_CONTENT.TEMPO_NONE
 var _tempo_state_id: StringName = &""
 var _tempo_state_until_ms: int = 0
 var _tempo_state_started_ms: int = 0
+var _tempo_recovery_start_ms: int = 0
+var _tempo_recovery_duration_ms: int = 0
+var _tempo_recovery_from_scale: float = 1.0
 var _tempo_puncture_cooldown_until_ms: int = 0
 var _tempo_stretch_cooldown_until_ms: int = 0
 var _tempo_distortion_window: Array[Dictionary] = []
@@ -130,7 +132,6 @@ var _enemy_marker_container: Node2D = null
 var _lane_marker_container: Node2D = null
 var _texture_cache: Dictionary = {}
 var _attack_fx_container: Node2D = null
-var _meter_shell: ColorRect = null
 var _combo_shell: ColorRect = null
 var _style_shell: ColorRect = null
 var _resource_shell: ColorRect = null
@@ -1010,14 +1011,29 @@ func _update_timers(delta: float) -> void:
 
 
 func _update_tempo_state() -> void:
-	if _tempo_state_family == COMBAT_FEEL_CONTENT.TEMPO_NONE:
-		return
-	if _tempo_state_family == COMBAT_FEEL_CONTENT.TEMPO_VOID:
-		# Void exits through reward resolution or expiry, not a fixed timer.
-		return
 	var now: int = Time.get_ticks_msec()
-	if _tempo_state_until_ms > 0 and now >= _tempo_state_until_ms:
-		_exit_tempo_state(_tempo_state_family, false)
+	
+	# 1. Process Active State Expiry
+	if _tempo_state_family != COMBAT_FEEL_CONTENT.TEMPO_NONE:
+		if _tempo_state_family == COMBAT_FEEL_CONTENT.TEMPO_VOID:
+			# Void exits through reward resolution or expiry, not a fixed timer.
+			pass
+		elif _tempo_state_until_ms > 0 and now >= _tempo_state_until_ms:
+			_exit_tempo_state(_tempo_state_family, false)
+			return
+
+	# 2. Process Manual Recovery Ramp (Wall-Clock Based)
+	if _tempo_recovery_duration_ms > 0:
+		var elapsed: int = now - _tempo_recovery_start_ms
+		if elapsed >= _tempo_recovery_duration_ms:
+			_apply_tempo_time_scale(_base_time_scale)
+			_tempo_recovery_duration_ms = 0
+		else:
+			var t: float = float(elapsed) / float(_tempo_recovery_duration_ms)
+			# SINE_OUT transition for fluid return to speed
+			var eased_t: float = sin(t * PI * 0.5)
+			var target_scale: float = lerpf(_tempo_recovery_from_scale, _base_time_scale, eased_t)
+			_apply_tempo_time_scale(target_scale)
 
 
 func _resolve_void_timer_delta(delta: float) -> float:
@@ -1049,10 +1065,6 @@ func _tempo_priority(family: StringName) -> int:
 	return int(COMBAT_FEEL_CONTENT.TEMPO_PRIORITY.get(family, 0))
 
 
-func _tempo_state_active(family: StringName) -> bool:
-	return _tempo_state_family == family
-
-
 func _tempo_distortion_available(family: StringName, tempo_scale_value: float, duration: float) -> bool:
 	if family != COMBAT_FEEL_CONTENT.TEMPO_PUNCTURE:
 		# Anti-spam budget applies only to repeated micro-puncture effects.
@@ -1081,25 +1093,31 @@ func _register_tempo_distortion(family: StringName, tempo_scale_value: float, du
 
 
 func _apply_tempo_time_scale(tempo_scale_value: float) -> void:
-	Engine.time_scale = clampf(tempo_scale_value, 0.01, 1.0)
+	# SOVEREIGN FINAL PASS: Physically prevent engine freezes. 
+	# Floor 0.35 ensures Witch Time remains fluid and active.
+	Engine.time_scale = clampf(tempo_scale_value, 0.35, 1.0)
+	
+	# Sync Music Dilation: LPF + Pitch Shift
+	if _song_conductor != null and is_instance_valid(_song_conductor):
+		_song_conductor.set_tempo_distortion(tempo_scale_value)
+	
+	# Direct player pitch sync if not using conductor's player (Boss tracks)
+	if _boss_music_player != null and is_instance_valid(_boss_music_player):
+		_boss_music_player.pitch_scale = clampf(tempo_scale_value, 0.45, 1.0)
 
 
 func _kill_tempo_recovery_tween() -> void:
 	if _tempo_recovery_tween != null:
 		_tempo_recovery_tween.kill()
 		_tempo_recovery_tween = null
+	_tempo_recovery_duration_ms = 0
 
 
-func _ramp_to_base_time_scale(duration: float = 0.12) -> void:
+func _ramp_to_base_time_scale(duration: float = 0.25) -> void:
 	_kill_tempo_recovery_tween()
-	var from_scale: float = clampf(Engine.time_scale, 0.01, 1.0)
-	_tempo_recovery_tween = create_tween()
-	_tempo_recovery_tween.set_trans(Tween.TRANS_EXPO)
-	_tempo_recovery_tween.set_ease(Tween.EASE_IN)
-	_tempo_recovery_tween.tween_method(Callable(self, "_apply_tempo_time_scale"), from_scale, _base_time_scale, maxf(duration, 0.01))
-	_tempo_recovery_tween.finished.connect(func() -> void:
-		_tempo_recovery_tween = null
-	)
+	_tempo_recovery_from_scale = clampf(Engine.time_scale, 0.35, 1.0)
+	_tempo_recovery_start_ms = Time.get_ticks_msec()
+	_tempo_recovery_duration_ms = int(duration * 1000.0)
 
 
 func _track_tempo_event(family: StringName, event_id: StringName, payload: Dictionary = {}) -> void:
@@ -1141,14 +1159,7 @@ func _enter_tempo_state(family: StringName, event_id: StringName, tempo_scale_va
 	if family == COMBAT_FEEL_CONTENT.TEMPO_STRETCH:
 		if now < _tempo_stretch_cooldown_until_ms:
 			return false
-		# Requirement: You must be at least in 'Rampage' tier to bend time.
-		var current_tier: String = "stirring"
-		if combat_meter != null:
-			current_tier = combat_meter.get_current_tier()
-		
-		if current_tier == "stirring" or current_tier == "hunting":
-			return false
-
+		# Relaxed: Always allow time-bending on skill actions regardless of tier.
 	if family_priority < current_priority:
 		return false
 	if not _tempo_distortion_available(family, tempo_scale_value, duration):
@@ -1168,8 +1179,10 @@ func _enter_tempo_state(family: StringName, event_id: StringName, tempo_scale_va
 		COMBAT_FEEL_CONTENT.TEMPO_PUNCTURE:
 			_tempo_puncture_cooldown_until_ms = now + int(COMBAT_FEEL_CONTENT.PUNCTURE_COOLDOWN_SECONDS * 1000.0)
 		COMBAT_FEEL_CONTENT.TEMPO_STRETCH:
-			# Long cooldown for tactical slo-mo so it remains a "rush" moment.
-			_tempo_stretch_cooldown_until_ms = now + 6000 
+			# Skill feedback: amber pulse to telegraph Witch Time entry
+			EventBus.emit_signal("screen_flash", Color(1.0, 0.65, 0.0, 0.12), 0.08)
+			# Brief cooldown so it doesn't overlap constantly, but remains reliable.
+			_tempo_stretch_cooldown_until_ms = now + 1000 
 		COMBAT_FEEL_CONTENT.TEMPO_VOID:
 			if _song_conductor != null:
 				_song_conductor.set_void_filter(true)
@@ -1330,45 +1343,12 @@ func _continue_after_non_song_reward_resolution() -> void:
 	_check_for_upgrade_choices()
 
 
-func _finalize_resolved_reward_choice(
-	choice_id: String,
-	void_elapsed: float,
-	song_feedback_text: String = "",
-	song_feedback_color: Color = Color(1.0, 1.0, 1.0, 1.0),
-	song_feedback_lifetime: float = 0.24,
-	emit_mastery: bool = true
-) -> void:
-	if emit_mastery:
-		_notify_tempo_mastery(COMBAT_FEEL_CONTENT.TEMPO_VOID, "choice_commit", {
-			"choice": choice_id,
-			"elapsed_seconds": void_elapsed,
-			"window_seconds": LIVE_REWARD_WINDOW
-		})
-	if _is_song_live_reward_runtime_active() or _song_reward_pending:
-		if not song_feedback_text.is_empty():
-			_show_feedback(song_feedback_text, song_feedback_color, song_feedback_lifetime)
-		_resume_song_after_reward()
-		return
-	_continue_after_non_song_reward_resolution()
-
-
 func _trigger_puncture(event_id: StringName, tempo_scale_value: float, duration: float, payload: Dictionary = {}) -> bool:
 	if _tempo_state_family == COMBAT_FEEL_CONTENT.TEMPO_DECREE or _tempo_state_family == COMBAT_FEEL_CONTENT.TEMPO_VOID:
 		return false
 	var clamped_scale: float = clampf(tempo_scale_value, COMBAT_FEEL_CONTENT.PUNCTURE_MIN_SCALE, COMBAT_FEEL_CONTENT.PUNCTURE_MAX_SCALE)
 	var clamped_duration: float = clampf(duration, 0.04, COMBAT_FEEL_CONTENT.PUNCTURE_MAX_DURATION)
 	return _enter_tempo_state(COMBAT_FEEL_CONTENT.TEMPO_PUNCTURE, event_id, clamped_scale, clamped_duration, payload)
-
-
-func _begin_stretch(event_id: StringName, payload: Dictionary = {}) -> void:
-	_enter_tempo_state(COMBAT_FEEL_CONTENT.TEMPO_STRETCH, event_id, COMBAT_FEEL_CONTENT.STRETCH_SCALE, COMBAT_FEEL_CONTENT.STRETCH_MAX_DURATION, payload)
-
-
-func _end_stretch(event_id: StringName, payload: Dictionary = {}) -> void:
-	if _tempo_state_family != COMBAT_FEEL_CONTENT.TEMPO_STRETCH:
-		return
-	_track_tempo_event(COMBAT_FEEL_CONTENT.TEMPO_STRETCH, event_id, payload)
-	_exit_tempo_state(COMBAT_FEEL_CONTENT.TEMPO_STRETCH, false)
 
 
 func _begin_void(event_id: StringName, payload: Dictionary = {}) -> void:
@@ -1853,13 +1833,8 @@ func _setup_ui() -> void:
 	hp_bar.min_value = 0.0
 	hp_bar.max_value = GameState.player_max_hp
 	hp_bar.value = GameState.player_hp
-	var bar_w: float = _safe_inner_width(
-		COMBAT_FEEL_CONTENT.HUD_TOP_PANEL_WIDTH,
-		COMBAT_FEEL_CONTENT.HUD_TOP_LEFT_CONTENT_MARGIN,
-		Vector4(14.0, 8.0, 12.0, 6.0)
-	) - 6.0
 	hp_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	hp_bar.custom_minimum_size = Vector2(bar_w, 14.0)
+	hp_bar.custom_minimum_size = Vector2(0.0, 14.0)
 	hp_bar.show_percentage = false
 
 	var stamina_row := HBoxContainer.new()
@@ -1884,24 +1859,18 @@ func _setup_ui() -> void:
 	stamina_bar.show_percentage = false
 
 	# Dedicated Biomass Power Scouter (Diegetic Element)
-	_scouter_shell = Panel.new() # Use Panel for better children containment
+	_scouter_shell = Panel.new()
 	_scouter_shell.name = "ScouterShell"
-	_scouter_shell.z_index = 45
-	_scouter_shell.position = Vector2(COMBAT_FEEL_CONTENT.HUD_OUTER_MARGIN, COMBAT_FEEL_CONTENT.HUD_TOP_BAND_Y + COMBAT_FEEL_CONTENT.HUD_TOP_BAND_HEIGHT + 6.0)
-	_scouter_shell.size = Vector2(210.0, 28.0) # Slightly wider for "POWER LEVEL" text
-	# Digital Lens style: Dark teal with glowing border
-	UI_STYLE.apply_shell_style(_scouter_shell, "hud_accent", "", Color(0.01, 0.08, 0.07, 0.65), Color(0.3, 0.9, 0.75, 0.9))
-
-	if _hud_primary_layer != null:
-		_hud_primary_layer.add_child(_scouter_shell)
-	else:
-		ui_layer.add_child(_scouter_shell)
+	_scouter_shell.custom_minimum_size = Vector2(210.0, 32.0)
+	UI_STYLE.apply_shell_style(_scouter_shell, "hud_accent")
+	_hud_top_left_container.add_child(_scouter_shell)
 
 	_power_scouter_label = Label.new()
 	_power_scouter_label.name = "PowerScouterLabel"
-	_power_scouter_label.custom_minimum_size = Vector2(194.0, 24.0)
-	_power_scouter_label.position = Vector2(8.0, 2.0)
-	_presentation_controller.apply_text_role(_power_scouter_label, "scouter", HORIZONTAL_ALIGNMENT_LEFT)
+	_power_scouter_label.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_power_scouter_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_power_scouter_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_presentation_controller.apply_text_role(_power_scouter_label, "scouter")
 	_power_scouter_label.text = "POWER LEVEL: 0"
 	_scouter_shell.add_child(_power_scouter_label)
 
@@ -2018,7 +1987,7 @@ func _build_hud_containers() -> void:
 
 	_hud_top_left_container = VBoxContainer.new()
 	_hud_top_left_container.name = "TopLeftVBox"
-	_hud_top_left_container.add_theme_constant_override("separation", 4)
+	_hud_top_left_container.add_theme_constant_override("separation", 10)
 	_hud_top_left_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_hud_top_left_container.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	tl_body.add_child(_hud_top_left_container)
@@ -2081,7 +2050,7 @@ func _build_hud_containers() -> void:
 
 	_hud_top_right_container = VBoxContainer.new()
 	_hud_top_right_container.name = "TopRightVBox"
-	_hud_top_right_container.add_theme_constant_override("separation", 3)
+	_hud_top_right_container.add_theme_constant_override("separation", 10)
 	_hud_top_right_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_hud_top_right_container.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	tr_stack.add_child(_hud_top_right_container)
@@ -2159,17 +2128,17 @@ func _enforce_top_left_panel_rect() -> void:
 	_hud_top_left_panel.size = Vector2(hud_tl_w, hud_th)
 
 
-func _build_meter_shell() -> void:
-	_meter_shell = ColorRect.new()
-	_meter_shell.name = "MeterShell"
-	_meter_shell.position = Vector2.ZERO
-	_meter_shell.size = Vector2.ZERO
-	_meter_shell.color = Color(0.0, 0.0, 0.0, 0.0)
-	if _hud_secondary_layer != null:
-		_hud_secondary_layer.add_child(_meter_shell)
-	else:
-		ui_layer.add_child(_meter_shell)
+func _sync_hud_shell_interface_wound_glow() -> void:
+	if _presentation_controller == null or not is_instance_valid(_presentation_controller):
+		return
+	var c: int = 0
+	if combat_meter != null and is_instance_valid(combat_meter):
+		c = int(combat_meter.combo_count)
+	var norm: float = clampf(float(c) / float(CombatMeter.ULTIMATE_THRESHOLD), 0.0, 1.0)
+	_presentation_controller.update_hud_interface_wound_glow(_hud_top_left_panel, _hud_top_right_panel, norm)
 
+
+func _build_meter_shell() -> void:
 	_resource_shell = ColorRect.new()
 	_resource_shell.name = "RightHudAccent"
 	_resource_shell.z_index = 42
@@ -2706,6 +2675,8 @@ func _build_song_hud() -> void:
 	_beat_feedback_label.add_theme_font_size_override("font_size", 16)
 	_beat_feedback_label.visible = false
 	_hud_top_left_container.add_child(_beat_feedback_label)
+
+	_sync_hud_shell_interface_wound_glow()
 
 
 func _build_quig_anchor() -> void:
@@ -4211,6 +4182,7 @@ func _start_boss_music() -> void:
 	_boss_music_player = AudioStreamPlayer.new()
 	_boss_music_player.name = "BossMusicPlayer"
 	_boss_music_player.stream = stream
+	_boss_music_player.bus = "MusicAnalysis"
 	_boss_music_player.volume_db = 0.0
 	add_child(_boss_music_player)
 	_boss_music_duration = stream.get_length()
@@ -5082,9 +5054,6 @@ func _finish_run(victory: bool) -> void:
 	_hide_live_reward_shell()
 	_live_reward_queue.clear()
 
-func _show_boss_bar() -> void:
-	_hud_presenter.show_boss_bar()
-
 
 func _resolve_world_boss_outcome_id(victory: bool) -> String:
 	if victory:
@@ -5116,7 +5085,7 @@ func _show_boss_intro(boss_name: String) -> void:
 	if not is_inside_tree(): return
 	
 	# First strike: flash + shake + all rings flare to threat color.
-	var flash_1: Dictionary = COMBAT_FEEL_CONSTANTS.get_screen_flash_params("boss_intro_1")
+	var flash_1: Dictionary = COMBAT_FEEL_CONTENT.get_screen_flash_params("boss_intro_1")
 	EventBus.emit_signal("screen_flash", flash_1.color, flash_1.duration)
 	EventBus.emit_signal("screen_shake", 2.2, 0.16)
 	
@@ -5140,7 +5109,7 @@ func _show_boss_intro(boss_name: String) -> void:
 	tween.tween_interval(0.16)
 	# Second impact flash as subtitle reveals.
 	tween.tween_callback(func() -> void:
-		var flash_2: Dictionary = COMBAT_FEEL_CONSTANTS.get_screen_flash_params("boss_intro_2")
+		var flash_2: Dictionary = COMBAT_FEEL_CONTENT.get_screen_flash_params("boss_intro_2")
 		EventBus.emit_signal("screen_flash", flash_2.color, flash_2.duration)
 	)
 	tween.tween_property(_subtitle_card, "modulate:a", 0.80, 0.18)
@@ -5170,7 +5139,7 @@ func _trigger_boss_threshold_spectacle() -> void:
 	for _thresh_lane in range(zone_manager.THREAT_COUNT):
 		_presentation_runtime.highlight_timing_ring(_thresh_lane, Color(0.94, 0.38, 0.08, 1.0), 7.2)
 
-	var flash_1: Dictionary = COMBAT_FEEL_CONSTANTS.get_screen_flash_params("boss_threshold")
+	var flash_1: Dictionary = COMBAT_FEEL_CONTENT.get_screen_flash_params("boss_threshold")
 	EventBus.emit_signal("screen_flash", flash_1.color, flash_1.duration)
 	EventBus.emit_signal("screen_shake", 2.4, 0.14)
 
@@ -5178,7 +5147,7 @@ func _trigger_boss_threshold_spectacle() -> void:
 	pulse_tween.tween_interval(0.26)
 	pulse_tween.tween_callback(func() -> void:
 		if not is_instance_valid(self): return
-		var flash_2: Dictionary = COMBAT_FEEL_CONSTANTS.get_screen_flash_params("boss_threshold_pulse")
+		var flash_2: Dictionary = COMBAT_FEEL_CONTENT.get_screen_flash_params("boss_threshold_pulse")
 		EventBus.emit_signal("screen_flash", flash_2.color, flash_2.duration)
 		EventBus.emit_signal("screen_shake", 1.6, 0.10)
 	)
@@ -5368,6 +5337,7 @@ func _pass_reward() -> void:
 
 func _on_combo_changed(count: int, tier: String) -> void:
 	_hud_presenter.refresh_combo(count, tier)
+	_sync_hud_shell_interface_wound_glow()
 
 
 func _on_run_score_changed(score: int) -> void:
@@ -5854,6 +5824,10 @@ func _maybe_show_dna_pickup_flavor(species_id: String, dna_result: Dictionary) -
 
 
 func _on_slow_motion(requested_scale: float, duration: float) -> void:
+	# SOVEREIGN SAFETY: Never allow a scale below the active biological floor 
+	# unless it is an explicit PUNCTURE event.
+	var safe_scale: float = maxf(requested_scale, 0.35)
+	
 	if _tempo_state_family == COMBAT_FEEL_CONTENT.TEMPO_VOID:
 		_track_tempo_event(COMBAT_FEEL_CONTENT.TEMPO_PUNCTURE, &"suppressed_by_void")
 		return
@@ -5861,15 +5835,16 @@ func _on_slow_motion(requested_scale: float, duration: float) -> void:
 	# Mapping incoming requests to high-impact tiers v1.
 	var puncture_max_scale: float = float(COMBAT_FEEL_CONTENT.SLOWMO_TIER_THRESHOLDS.get("puncture_max_scale", 0.1))
 	var stretch_max_scale: float = float(COMBAT_FEEL_CONTENT.SLOWMO_TIER_THRESHOLDS.get("stretch_max_scale", 0.7))
+
 	if requested_scale < puncture_max_scale:
-		# Very heavy slowdown (e.g. killing blow freeze)
+		# PUNCTURE: Very heavy slowdown (killing blow freeze). 
+		# We allow the original low scale but keep it extremely brief.
 		_trigger_puncture(&"combat_puncture", requested_scale, duration, {
-			"impact_weight": true 
+			"impact_weight": true
 		})
-	elif requested_scale <= stretch_max_scale:
-		# Medium-heavy slowdown (e.g. perfect parry/dodge)
-		# _enter_tempo_state handles the 'Rampage' tier check and 6s cooldown for STRETCH.
-		_enter_tempo_state(COMBAT_FEEL_CONTENT.TEMPO_STRETCH, &"combat_stretch", COMBAT_FEEL_CONTENT.STRETCH_SCALE, duration, {})
+	elif safe_scale <= stretch_max_scale:
+		# STRETCH: Witch Time dilation (perfect parry/dodge/hits).
+		_enter_tempo_state(COMBAT_FEEL_CONTENT.TEMPO_STRETCH, &"combat_stretch", safe_scale, duration, {})
 	else:
 		# Standard execution feedback (0.7+ scale) is now suppressed to keep
 		# the game feeling high-pressure and fast. Only rare distortion allowed.
@@ -6331,7 +6306,7 @@ func _on_vessel_shifted(class_data: Dictionary) -> void:
 	
 	# Visual feedback
 	EventBus.screen_flash.emit(vibe_color.lerp(Color.WHITE, 0.4), 0.1)
-	EventBus.slow_motion.emit(0.05, 0.05)
+	EventBus.slow_motion.emit(0.35, 0.12)
 	EventBus.play_sfx.emit("vessel_shift")
 
 

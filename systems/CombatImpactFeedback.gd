@@ -3,7 +3,7 @@ extends RefCounted
 # Small impact/readability helper for CombatScene.
 # Now uses centralized CombatFeelConstants for consistent feel across all systems.
 
-const COMBAT_FEEL_CONSTANTS = preload("res://data/CombatFeelConstants.gd")
+const COMBAT_FEEL_CONTENT = preload("res://data/CombatFeelContent.gd")
 const COMBAT_DATA = preload("res://data/CombatContent.gd")
 
 static var _last_scanned_species: String = ""
@@ -14,10 +14,10 @@ static func set_scanned_species(species_id: String) -> void:
 
 
 static func build_timed_attack_profile(quality: String, _beat_quality: String) -> Dictionary:
-	var base_flash: Dictionary = COMBAT_FEEL_CONSTANTS.get_screen_flash_params("light_damage")
-	var base_shake: Dictionary = COMBAT_FEEL_CONSTANTS.get_camera_shake_params("light_hit")
-	var base_hitstop: float = COMBAT_FEEL_CONSTANTS.get_hit_stop_duration("light_attack")
-	var base_impact: Dictionary = COMBAT_FEEL_CONSTANTS.get_impact_scaling("light_hit")
+	var base_flash: Dictionary = COMBAT_FEEL_CONTENT.get_screen_flash_params("light_damage")
+	var base_shake: Dictionary = COMBAT_FEEL_CONTENT.get_camera_shake_params("light_hit")
+	var base_hitstop: float = COMBAT_FEEL_CONTENT.get_hit_stop_duration("light_attack")
+	var base_impact: Dictionary = COMBAT_FEEL_CONTENT.get_impact_scaling("light_hit")
 	
 	# SIGNAL: Cold Silver + Ink Seams
 	var profile: Dictionary = {
@@ -36,18 +36,18 @@ static func build_timed_attack_profile(quality: String, _beat_quality: String) -
 	}
 
 	if quality == "perfect":
-		var perfect_flash: Dictionary = COMBAT_FEEL_CONSTANTS.get_screen_flash_params("perfect_parry")
-		var perfect_shake: Dictionary = COMBAT_FEEL_CONSTANTS.get_camera_shake_params("perfect_parry")
-		var perfect_hitstop: float = COMBAT_FEEL_CONSTANTS.get_hit_stop_duration("perfect_parry")
-		var perfect_impact: Dictionary = COMBAT_FEEL_CONSTANTS.get_impact_scaling("critical_hit")
+		var perfect_flash: Dictionary = COMBAT_FEEL_CONTENT.get_screen_flash_params("perfect_parry")
+		var perfect_shake: Dictionary = COMBAT_FEEL_CONTENT.get_camera_shake_params("perfect_parry")
+		var perfect_hitstop: float = COMBAT_FEEL_CONTENT.get_hit_stop_duration("perfect_parry")
+		var perfect_impact: Dictionary = COMBAT_FEEL_CONTENT.get_impact_scaling("critical_hit")
 		
 		# SIGNAL: Alert Gold + Void Ink
 		profile["flash_color"] = Color(1.0, 0.95, 0.45, 0.22)
 		profile["flash_duration"] = perfect_flash.get("duration", 0.10)
 		profile["shake_intensity"] = 2.45 # Violent shake for perfect hit
 		profile["shake_duration"] = 0.18
-		profile["hitstop_scale"] = 0.40 # Dramatic freeze
-		profile["hitstop_duration"] = 0.24 # Longer freeze for maximum punch
+		profile["hitstop_scale"] = 0.65 # Witch Time Floor (was 0.40)
+		profile["hitstop_duration"] = 0.35 # Balanced duration for punch
 		profile["ring_width"] = 6.8
 		profile["burst_color"] = Color(0.0, 0.0, 0.0, 1.0) # Pure Void Ink
 		profile["burst_scale"] = 1.85
@@ -74,12 +74,12 @@ static func build_parry_profile(quality: String, _beat_quality: String) -> Dicti
 	}
 
 	if quality == "perfect":
-		var perf_flash: Dictionary = COMBAT_FEEL_CONSTANTS.get_screen_flash_params("perfect_parry")
+		var perf_flash: Dictionary = COMBAT_FEEL_CONTENT.get_screen_flash_params("perfect_parry")
 		profile["flash_color"] = Color(1.0, 1.0, 1.0, 0.99)
 		profile["flash_duration"] = perf_flash.get("duration", 0.12)
 		profile["shake_intensity"] = 2.85 # Violent shatter
 		profile["shake_duration"] = 0.24
-		profile["hitstop_scale"] = 0.35 # Extreme freeze
+		profile["hitstop_scale"] = 0.65 # Witch Time Floor (was 0.35)
 		profile["hitstop_duration"] = 0.45 # Maximum punch for perfect parry
 		profile["ring_width"] = 8.5
 		profile["burst_color"] = Color(0.0, 0.0, 0.0, 1.0) # Void Shatter
@@ -153,7 +153,7 @@ static func build_enemy_hit_profile(damage: float, is_boss_target: bool, species
 			var creature: Dictionary = creatures[target_species]
 			var affinity: String = creature.get("affinity", "")
 			if affinity != "":
-				var affinity_color: Color = COMBAT_FEEL_CONSTANTS.get_affinity_color(affinity)
+				var affinity_color: Color = COMBAT_FEEL_CONTENT.get_affinity_color(affinity)
 				profile["flash_color"] = affinity_color
 				profile["burst_color"] = affinity_color
 				profile["flash_color"].a = 0.065 # Keep it subtle

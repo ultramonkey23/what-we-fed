@@ -2,6 +2,7 @@ extends RefCounted
 
 const VESSEL_MODIFIER_DIRECTOR = preload("res://systems/VesselModifierDirector.gd")
 const COMBAT_FEEL_CONTENT = preload("res://data/CombatFeelContent.gd")
+const HUD_BAR_BIO_FLOW_SHADER: Shader = preload("res://assets/ui/shaders/hud_bar_bio_flow.gdshader")
 const BEAT_FEEDBACK_MIN_INTERVAL_MS: int = 260
 
 # ── Bound node references ─────────────────────────────────────────────────────
@@ -199,6 +200,7 @@ func refresh_hp(hp: float, max_hp: float) -> void:
 	if _hp_bar != null:
 		_hp_bar.max_value = max_hp
 		_hp_bar.value = hp
+		_sync_hp_stamina_ink_flow_bar(_hp_bar)
 		# Bleed tint
 		if GameState.player_bleed_stacks > 0:
 			_hp_bar.modulate = Color(1.0, 0.45, 0.25, 1.0)
@@ -223,6 +225,7 @@ func refresh_stamina(current: float, maximum: float) -> void:
 	if _stamina_bar != null:
 		_stamina_bar.max_value = maximum
 		_stamina_bar.value = current
+		_sync_hp_stamina_ink_flow_bar(_stamina_bar)
 
 
 func refresh_power_level(_run_growth: Node = null) -> void:
@@ -784,9 +787,52 @@ func update_boss_race_timer(remaining: float, total: float) -> void:
 
 func apply_hp_stamina_resource_bar_styles(hp_bar: ProgressBar, stamina_bar: ProgressBar) -> void:
 	if hp_bar != null:
-		_style_progress_bar(hp_bar, Color(0.18, 0.06, 0.08, 0.88), Color(0.73, 0.24, 0.26, 1.0), 6)
+		_style_hp_stamina_bio_flow_bar(hp_bar, Color(0.18, 0.06, 0.08, 0.88), Color(0.73, 0.24, 0.26, 1.0))
 	if stamina_bar != null:
-		_style_progress_bar(stamina_bar, Color(0.08, 0.09, 0.10, 0.82), Color(0.44, 0.66, 0.58, 1.0), 5)
+		_style_hp_stamina_bio_flow_bar(stamina_bar, Color(0.08, 0.09, 0.10, 0.82), Color(0.44, 0.66, 0.58, 1.0))
+
+
+func _style_hp_stamina_bio_flow_bar(bar: ProgressBar, under_color: Color, fill_color: Color) -> void:
+	if bar == null:
+		return
+
+	var hollow := StyleBoxFlat.new()
+	hollow.bg_color = Color(0.0, 0.0, 0.0, 0.0)
+	hollow.border_width_left = 0
+	hollow.border_width_top = 0
+	hollow.border_width_right = 0
+	hollow.border_width_bottom = 0
+	bar.remove_theme_stylebox_override("fill")
+	bar.remove_theme_stylebox_override("background")
+	bar.add_theme_stylebox_override("background", hollow)
+	var hollow_fill := StyleBoxFlat.new()
+	hollow_fill.bg_color = Color(0.0, 0.0, 0.0, 0.0)
+	bar.add_theme_stylebox_override("fill", hollow_fill)
+
+	var mat := ShaderMaterial.new()
+	mat.shader = HUD_BAR_BIO_FLOW_SHADER
+	mat.set_shader_parameter("under_color", under_color)
+	mat.set_shader_parameter("fill_color", fill_color)
+	bar.material = mat
+	_sync_hp_stamina_ink_flow_bar(bar)
+	if bar.get_meta("wwf_ink_flow_resized", false) != true:
+		bar.set_meta("wwf_ink_flow_resized", true)
+		bar.resized.connect(func() -> void: _sync_hp_stamina_ink_flow_bar(bar))
+
+
+func _sync_hp_stamina_ink_flow_bar(bar: ProgressBar) -> void:
+	if bar == null:
+		return
+	if not bar.material is ShaderMaterial:
+		return
+	var denom: float = maxf(bar.max_value - bar.min_value, 0.001)
+	var t: float = clampf((bar.value - bar.min_value) / denom, 0.0, 1.0)
+	var m: ShaderMaterial = bar.material as ShaderMaterial
+	m.set_shader_parameter("fill_ratio", t)
+	var sz: Vector2 = bar.size
+	if sz.x <= 2.0 or sz.y <= 2.0:
+		sz = bar.get_combined_minimum_size()
+	m.set_shader_parameter("bar_size_px", sz)
 
 
 func _style_progress_bar(bar: ProgressBar, under_color: Color, fill_color: Color, corner_radius: int) -> void:

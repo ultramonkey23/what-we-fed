@@ -2,7 +2,6 @@ extends Node2D
 class_name PlayerCombat
 
 @onready var sprite: ColorRect = $Sprite
-const COMBAT_FEEL_CONSTANTS = preload("res://data/CombatFeelConstants.gd")
 const COMBAT_FEEL_CONTENT = preload("res://data/CombatFeelContent.gd")
 const SOVEREIGN_DAMAGE_CALCULATOR = preload("res://systems/SovereignDamageCalculator.gd")
 
@@ -481,8 +480,8 @@ func _get_cadence_window() -> String:
 
 
 func _emit_slowmo_context(context_id: String) -> void:
-	var base_scale: float = COMBAT_FEEL_CONSTANTS.get_slow_motion_scale(context_id)
-	var base_duration: float = COMBAT_FEEL_CONSTANTS.get_slow_motion_duration(context_id)
+	var base_scale: float = COMBAT_FEEL_CONTENT.get_slow_motion_scale(context_id)
+	var base_duration: float = COMBAT_FEEL_CONTENT.get_slow_motion_duration(context_id)
 	
 	var preset: Dictionary = COMBAT_FEEL_CONTENT.get_slowmo_preset(context_id, {
 		"scale": base_scale,
@@ -714,10 +713,6 @@ func _lock_action(duration: float, state: String) -> void:
 	if state == "dodge" or state == "timed_dodge":
 		var beat: String = _get_beat_quality()
 		dodge_invuln_timer = DODGE_IFRAME_WINDOW_ON_BEAT if beat == "perfect" else DODGE_IFRAME_WINDOW
-
-
-func _select_action_lane(_target_lane: int) -> void:
-	pass # Action-RPG resolution no longer requires lane-index snapping.
 
 
 func _try_attack(targets: Dictionary) -> void:

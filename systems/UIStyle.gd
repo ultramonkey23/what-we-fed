@@ -477,28 +477,33 @@ static func _shell_palette_for_role(role: String) -> Dictionary:
 			}
 		"hud_left":
 			return {
-				"bg_color": Color(0.04, 0.03, 0.06, 0.94), # Increased alpha
-				"border_color": Color(0.60, 0.30, 0.22, 0.92),
-				"corner_radius": 9,
-				"border_width": 2, # Thicker border
-				"shadow_color": Color(0.04, 0.02, 0.03, 0.45),
-				"shadow_size": 3
+				"bg_color": MM_INK_BLACK.lightened(0.01),
+				"border_color": Color(0.65, 0.28, 0.20, 0.95),
+				"corner_radius": 0,
+				"asym_corners": Vector4(12, 0, 8, 0), # Predatory slant
+				"border_width": 3,
+				"shadow_color": MM_INK_BLACK.darkened(0.6),
+				"shadow_size": 5
 			}
 		"hud_right":
 			return {
-				"bg_color": Color(0.04, 0.03, 0.07, 0.94), # Increased alpha
-				"border_color": Color(0.60, 0.30, 0.24, 0.92),
-				"corner_radius": 9,
-				"border_width": 2, # Thicker border
-				"shadow_color": Color(0.05, 0.02, 0.05, 0.45),
-				"shadow_size": 3
+				"bg_color": MM_INK_BLACK.lightened(0.01),
+				"border_color": Color(0.65, 0.28, 0.20, 0.95),
+				"corner_radius": 0,
+				"asym_corners": Vector4(0, 12, 0, 8), # Mirrored predatory slant
+				"border_width": 3,
+				"shadow_color": MM_INK_BLACK.darkened(0.6),
+				"shadow_size": 5
 			}
 		"hud_accent":
 			return {
-				"bg_color": Color(0.15, 0.05, 0.06, 0.48),
-				"border_color": Color(0.78, 0.40, 0.20, 0.72),
-				"corner_radius": 6,
-				"border_width": 1
+				"bg_color": Color(MM_DEEP_VIOLET, 0.65),
+				"border_color": Color(MM_BOND_TEAL, 0.85),
+				"corner_radius": 0,
+				"asym_corners": Vector4(4, 4, 4, 4),
+				"border_width": 2,
+				"shadow_color": Color(0, 0, 0, 0.4),
+				"shadow_size": 3
 			}
 		"support_idle":
 			return {

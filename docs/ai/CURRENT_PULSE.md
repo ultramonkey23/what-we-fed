@@ -46,6 +46,7 @@ Compact active context for WHAT WE FED agents. Use this before loading massive h
 - Visual Proof Rule became active doctrine for visual, UI, VFX, art, readability, enemy/boss presentation, reward presentation, and demo polish tasks.
 - Enemy Purity Phase 1 established `EnemyStriker` as the HOW boundary while ZoneManager / `LaneManager.gd` owns WHEN and WHO coordination.
 - ZoneManager naming was adopted for current doctrine while `LaneManager.gd` filename remains for Godot UID safety.
+- **Input System Expansion (2026-05-06):** Controller support added. `project.godot` now has full joypad bindings: A/B/X/Y for attack/parry/dodge/support, LB+RB for ultimate, Left Stick for all `mod_*` movement. Tutorial strings in `PresentationTextContent.gd` use tokens (`[ATTACK]`, `[PARRY]`, `[DODGE]`, `[SUPPORT]`, `[ULTIMATE]`, `[MOVE]`) resolved at emit time. `systems/InputHelper.gd` (new) is the static device-detection helper. `systems/QuigNarrativeSystem.gd` gained `trigger_tutorial_line(subcategory)` + `_resolve_tokens()` + `_input()` for device tracking. No combat logic was changed.
 
 ## Historical ledger status
 Phase 1 documentation prune (2026-05-04) **moved** the long repo truth ledger and related truth snapshots into archive (not deleted):

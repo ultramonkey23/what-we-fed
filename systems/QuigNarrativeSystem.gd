@@ -4,6 +4,7 @@ extends Node
 ## Reactive narrative guide that comments on combat performance and choices.
 
 const PRESENTATION_TEXT = preload("res://data/PresentationTextContent.gd")
+const INPUT_HELPER = preload("res://systems/InputHelper.gd")
 
 var _last_line_time: float = -99.0
 var _cooldown: float = 12.0 # Standard cooldown to prevent narrative sludge
@@ -13,6 +14,10 @@ var _is_sovereign_active: bool = false
 func _ready() -> void:
 	_rng.randomize()
 	_connect_signals()
+
+
+func _input(event: InputEvent) -> void:
+	INPUT_HELPER.mark_device_from_event(event)
 
 
 func _connect_signals() -> void:
@@ -100,3 +105,21 @@ func _trigger_line(category: String, subcategory: String, override_cooldown: flo
 	_last_line_time = now
 
 	EventBus.emit_signal("quig_narrative_triggered", "Quig: \"" + line + "\"", 3.5)
+
+
+func trigger_tutorial_line(subcategory: String) -> void:
+	var pool: Array = PRESENTATION_TEXT.QUIG_REACTIVE_LINES.get("tutorials", {}).get(subcategory, [])
+	if pool.is_empty():
+		return
+	var line: String = pool[_rng.randi_range(0, pool.size() - 1)]
+	EventBus.emit_signal("quig_narrative_triggered", _resolve_tokens(line), 3.5)
+
+
+func _resolve_tokens(text: String) -> String:
+	return text \
+		.replace("[ATTACK]", INPUT_HELPER.get_label_for_action(&"action_attack")) \
+		.replace("[PARRY]", INPUT_HELPER.get_label_for_action(&"action_parry")) \
+		.replace("[DODGE]", INPUT_HELPER.get_label_for_action(&"action_dodge")) \
+		.replace("[SUPPORT]", INPUT_HELPER.get_label_for_action(&"action_support")) \
+		.replace("[ULTIMATE]", INPUT_HELPER.get_label_for_action(&"action_ultimate")) \
+		.replace("[MOVE]", INPUT_HELPER.get_label_for_action(&"mod_left"))

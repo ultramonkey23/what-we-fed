@@ -196,15 +196,15 @@ const QUIG_REACTIVE_LINES := {
 	},
 	"tutorials": {
 		"movement": [
-			"Quig: \"Use the ARROW KEYS to move the Vessel. Don't be static.\"",
+			"Quig: \"Use [MOVE] to move the Vessel. Don't be static.\"",
 			"Quig: \"Navigation is survival. Move with the pulse.\""
 		],
 		"combat": [
-			"Quig: \"SPACE to attack. Timing is everything here.\"",
-			"Quig: \"Z to parry. Rejection is a predatory act.\"",
-			"Quig: \"SHIFT to dodge. Own your distance.\"",
-			"Quig: \"X to invoke support. Use your debt.\"",
-			"Quig: \"C for Apex. Let the pattern collapse.\""
+			"Quig: \"[ATTACK] to attack. Timing is everything here.\"",
+			"Quig: \"[PARRY] to parry. Rejection is a predatory act.\"",
+			"Quig: \"[DODGE] to dodge. Own your distance.\"",
+			"Quig: \"[SUPPORT] to invoke support. Use your debt.\"",
+			"Quig: \"[ULTIMATE] for Apex. Let the pattern collapse.\""
 		]
 	},
 	"bond_eat": {

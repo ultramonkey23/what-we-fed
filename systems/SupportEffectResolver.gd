@@ -28,8 +28,8 @@ func resolve(ctx: Dictionary) -> void:
 	var bond_surge: bool = bool(ctx.get("bond_surge", false))
 	var is_hollow_active: bool = bool(ctx.get("is_hollow_active", false))
 	
-	var zone_manager: ZoneManager = ctx.get("zone_manager") as ZoneManager
-	var combat_meter: CombatMeter = ctx.get("combat_meter") as CombatMeter
+	var zone_manager: Node = ctx.get("zone_manager")
+	var combat_meter: Node = ctx.get("combat_meter")
 	var game_state: Node = ctx.get("game_state")
 	var collar_mod: Dictionary = Dictionary(ctx.get("collar_mod", {}))
 	
@@ -390,7 +390,7 @@ func resolve(ctx: Dictionary) -> void:
 func _apply_collar_behavior(ctx: Dictionary, collar_mod: Dictionary) -> void:
 	if collar_mod.is_empty():
 		return
-	var zone_manager: ZoneManager = ctx.get("zone_manager") as ZoneManager
+	var zone_manager: Node = ctx.get("zone_manager")
 	var satisfied: bool = bool(collar_mod.get("satisfied", false))
 	var text: String = String(collar_mod.get("feedback_text", "COLLAR"))
 

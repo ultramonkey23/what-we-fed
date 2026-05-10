@@ -191,7 +191,7 @@ static func _apply_entry_cost(cost: Dictionary, game_state: Node) -> void:
 				GameState.spend_dna(species_id, value)
 
 
-static func _apply_bond_rite_entry(state: Node, run_growth: Node, node: Dictionary) -> void:
+static func _apply_bond_rite_entry(state: Node, _run_growth: Node, node: Dictionary) -> void:
 	if state == null or not is_instance_valid(state):
 		return
 	var effects: Dictionary = Dictionary(node.get("entry_effects", {}))

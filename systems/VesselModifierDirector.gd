@@ -7,7 +7,7 @@ extends Node
 const VESSEL_CLASS_CONTENT = preload("res://data/VesselClassContent.gd")
 const SOVEREIGN_DAMAGE_CALCULATOR = preload("res://systems/SovereignDamageCalculator.gd")
 
-var _zone_manager: ZoneManager = null
+var _zone_manager: Node = null
 var _active_class_data: Dictionary = {}
 
 # ── Static ───────────────────────────────────────────────────────────────────
@@ -75,7 +75,7 @@ static func get_modifier_readout(species_id: String) -> Dictionary:
 
 # ── Runtime ──────────────────────────────────────────────────────────────────
 
-func bind_runtime(zone_manager_ref: ZoneManager) -> void:
+func bind_runtime(zone_manager_ref: Node) -> void:
 	_zone_manager = zone_manager_ref
 	
 	if not EventBus.timed_attack_resolved.is_connected(_on_timed_attack_resolved):
@@ -120,7 +120,7 @@ func _on_timed_attack_resolved(sector: int, quality: String, damage: float, enem
 		_apply_vessel_effect(mod, {"sector": sector, "damage": damage, "quality": quality, "enemy_id": enemy_id})
 
 
-func _on_player_parried(sector: int, quality: String, reflect_damage: float) -> void:
+func _on_player_parried(sector: int, quality: String, reflect_damage: float, _heading: Vector2) -> void:
 	if _active_class_data.is_empty():
 		return
 		
@@ -132,7 +132,7 @@ func _on_player_parried(sector: int, quality: String, reflect_damage: float) -> 
 		_apply_vessel_effect(mod, {"sector": sector, "reflect_damage": reflect_damage})
 
 
-func _on_player_dodged(from_sector: int, to_sector: int) -> void:
+func _on_player_dodged(from_sector: int, to_sector: int, _heading: Vector2) -> void:
 	if _active_class_data.is_empty():
 		return
 		

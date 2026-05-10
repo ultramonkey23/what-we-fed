@@ -1,5 +1,5 @@
 extends Node2D
-class_name CombatVisualRig
+
 ## Editor-authorable presentation rig for combat. Parent node is snapped to the lane logical
 ## center each frame so Marker2D children act as stable world-space anchors relative to the player.
 ##
@@ -24,7 +24,7 @@ class_name CombatVisualRig
 @onready var sigil_direction_pivot: Node2D = $SigilDirectionPivot
 
 
-func resolve_enemy_marker_world_pos(lane: int, baseline: Vector2, zone_manager: ZoneManager) -> Vector2:
+func resolve_enemy_marker_world_pos(lane: int, baseline: Vector2, zone_manager: Node) -> Vector2:
 	if not apply_east_west_anchor_offsets:
 		return baseline
 	if zone_manager == null:

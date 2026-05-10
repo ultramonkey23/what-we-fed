@@ -1,12 +1,11 @@
 extends Node2D
-class_name BondedCompanion
 
-const COMBAT_CONTENT = preload("res://data/CombatContent.gd")
+const COMBAT_DATA_CONTENT = preload("res://data/CombatContent.gd")
 const MOTION_JUICE = preload("res://systems/MotionJuice.gd")
 
 var species_id: String = ""
 var player_combat: Node2D = null
-var zone_manager: ZoneManager = null
+var zone_manager: Node = null
 
 var _sprite: Sprite2D
 var _attack_timer: float = 0.0
@@ -18,7 +17,7 @@ var _follow_speed: float = 8.5
 var _is_attacking: bool = false
 var _idle_tex: Texture2D = null
 
-func setup(p_species_id: String, p_player: Node2D, p_zone_manager: ZoneManager) -> void:
+func setup(p_species_id: String, p_player: Node2D, p_zone_manager: Node) -> void:
 	species_id = p_species_id
 	player_combat = p_player
 	zone_manager = p_zone_manager
@@ -47,9 +46,9 @@ func _setup_visuals() -> void:
 	_sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	add_child(_sprite)
 	
-	var path: String = COMBAT_CONTENT.get_creature_art_path(species_id, "battlefield", "adult")
+	var path: String = COMBAT_DATA_CONTENT.get_creature_art_path(species_id, "battlefield", "adult")
 	if not ResourceLoader.exists(path):
-		path = COMBAT_CONTENT.get_creature_art_path(species_id, "battlefield", "teen")
+		path = COMBAT_DATA_CONTENT.get_creature_art_path(species_id, "battlefield", "teen")
 		
 	if ResourceLoader.exists(path):
 		_idle_tex = load(path) as Texture2D
@@ -58,7 +57,7 @@ func _setup_visuals() -> void:
 			_sprite.hframes = clampi(int(float(_idle_tex.get_width()) / _idle_tex.get_height()), 1, 64)
 			_sprite.frame = 0
 		
-	var render = COMBAT_CONTENT.get_creature_combat_render(species_id)
+	var render = COMBAT_DATA_CONTENT.get_creature_combat_render(species_id)
 	
 	# DYNAMIC GROWTH SCALING: Size increases with bond level (Age)
 	var bond_level: int = 1

@@ -50,7 +50,7 @@ func _on_tempo_state_entered(state_id: String) -> void:
 		_trigger_line("timing", "puncture")
 
 
-func _on_player_parried(_lane: int, quality: String, _damage: float) -> void:
+func _on_player_parried(_lane: int, quality: String, _damage: float, _heading: Vector2) -> void:
 	if quality == "perfect":
 		_trigger_line("timing", "perfect_parry")
 
@@ -108,11 +108,16 @@ func _trigger_line(category: String, subcategory: String, override_cooldown: flo
 
 
 func trigger_tutorial_line(subcategory: String) -> void:
+	# Tutorials bypass the initial cooldown check but reset it
 	var pool: Array = PRESENTATION_TEXT.QUIG_REACTIVE_LINES.get("tutorials", {}).get(subcategory, [])
 	if pool.is_empty():
 		return
+	
+	var now := Time.get_ticks_msec() / 1000.0
 	var line: String = pool[_rng.randi_range(0, pool.size() - 1)]
-	EventBus.emit_signal("quig_narrative_triggered", _resolve_tokens(line), 3.5)
+	_last_line_time = now # Tutorials consume the next cooldown window
+	
+	EventBus.emit_signal("quig_narrative_triggered", _resolve_tokens(line), 4.5)
 
 
 func _resolve_tokens(text: String) -> String:

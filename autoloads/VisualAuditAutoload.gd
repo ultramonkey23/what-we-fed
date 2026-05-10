@@ -189,10 +189,10 @@ func _combat_metadata(combat_meter: Node, player_combat: Node) -> Dictionary:
 			tier = String(combat_meter.call("get_current_tier"))
 		combo_count = int(_get_object_property(combat_meter, "combo_count", -1))
 		style_score = float(_get_object_property(combat_meter, "style_score", -1.0))
-	var active_lane: int = -1
-	if player_combat != null and player_combat.has_method("get_active_focus_lane"):
-		active_lane = int(player_combat.call("get_active_focus_lane"))
-	return {"tier": tier, "combo_count": combo_count, "style_score": style_score, "active_lane": active_lane}
+	var active_sector: int = -1
+	if player_combat != null and player_combat.has_method("get_active_focus_sector"):
+		active_sector = int(player_combat.call("get_active_focus_sector"))
+	return {"tier": tier, "combo_count": combo_count, "style_score": style_score, "active_lane": active_sector}
 
 
 func _song_metadata(song_conductor: Node, game_state: Node, scene: Node) -> Dictionary:
@@ -228,11 +228,11 @@ func _lane_metadata(zone_manager: Node, player_combat: Node, context: Dictionary
 				"spawn": _vec2_dict(spawn_pos),
 				"hit_zone": _vec2_dict(hit_pos)
 			})
-	var active_lane: int = -1
-	if player_combat != null and player_combat.has_method("get_active_focus_lane"):
-		active_lane = int(player_combat.call("get_active_focus_lane"))
+	var active_sector: int = -1
+	if player_combat != null and player_combat.has_method("get_active_focus_sector"):
+		active_sector = int(player_combat.call("get_active_focus_sector"))
 	return {
-		"active": active_lane,
+		"active": active_sector,
 		"source": int(context.get("source_lane", context.get("lane", -1))),
 		"support": int(context.get("lane", -1)),
 		"cardinal_positions": cardinal_positions

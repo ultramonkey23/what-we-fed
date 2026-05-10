@@ -1,0 +1,108 @@
+{
+	"audit_id": "2026-05-06_14_48_36_combat_ended",
+	"camera": {
+		"global_position": {
+			"x": 0.0,
+			"y": 0.0
+		},
+		"offset": {
+			"x": 23.6346168518066,
+			"y": 26.9836883544922
+		},
+		"zoom": {
+			"x": 1.0,
+			"y": 1.0
+		}
+	},
+	"capture_source": "eventbus_auto",
+	"combat": {
+		"active_lane": 6,
+		"combo_count": 33,
+		"style_score": 148.0,
+		"tier": "apex"
+	},
+	"event_payload": {
+		"moment_id": "combat_ended",
+		"victory": true
+	},
+	"game_state": {
+		"active_mutations": [],
+		"available": true,
+		"in_combat": false,
+		"run_number": 2
+	},
+	"image_path": "res://docs/ai/visual_audits/pending/20260506 144836_combat_ended.png",
+	"lane": {
+		"active": 6,
+		"cardinal_positions": [
+			{
+				"hit_zone": {
+					"x": 640.0,
+					"y": 250.0
+				},
+				"lane": 0,
+				"spawn": {
+					"x": 640.0,
+					"y": 57.6000061035156
+				}
+			},
+			{
+				"hit_zone": {
+					"x": 717.78173828125,
+					"y": 282.21826171875
+				},
+				"lane": 1,
+				"spawn": {
+					"x": 853.8291015625,
+					"y": 146.170913696289
+				}
+			},
+			{
+				"hit_zone": {
+					"x": 750.0,
+					"y": 360.0
+				},
+				"lane": 2,
+				"spawn": {
+					"x": 942.400024414063,
+					"y": 360.0
+				}
+			},
+			{
+				"hit_zone": {
+					"x": 717.78173828125,
+					"y": 437.78173828125
+				},
+				"lane": 3,
+				"spawn": {
+					"x": 853.8291015625,
+					"y": 573.8291015625
+				}
+			}
+		],
+		"source": -1,
+		"support": -1
+	},
+	"metadata_path": "res://docs/ai/visual_audits/pending/20260506 144836_combat_ended.json",
+	"moment_id": "combat_ended",
+	"png_error": 0,
+	"scene": "res://scenes/combat/CombatScene.tscn",
+	"schema_version": "visual_audit_capture.v3",
+	"song": {
+		"beat_index": 27,
+		"beat_quality": "perfect",
+		"id": "newness",
+		"intensity": 0.3,
+		"resonance_tier": "steady",
+		"section_id": "opening"
+	},
+	"support": {
+		"charge": -1.0,
+		"effect_id": "unknown",
+		"species_id": "ashclaw"
+	},
+	"viewport": {
+		"height": 720,
+		"width": 1280
+	}
+}

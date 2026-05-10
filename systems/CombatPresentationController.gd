@@ -1,5 +1,4 @@
 extends Node
-class_name CombatPresentationController
 
 const COMBAT_FEEL_CONTENT = preload("res://data/CombatFeelContent.gd")
 const COMBAT_BG_CONTENT = preload("res://data/CombatBackgroundContent.gd")
@@ -14,14 +13,14 @@ var _active_bg_env: Dictionary = {}
 var _shared_noise_tex: NoiseTexture2D = null
 var _vessel_vibe_color: Color = Color(1.0, 0.95, 0.55, 1.0) # Default Amber
 ## Optional `CombatVisualRig` (or compatible Node) parented under CombatScene for editor anchors.
-var _combat_visual_rig: CombatVisualRig = null
+var _combat_visual_rig: Node2D = null
 
 
-func set_combat_visual_rig(rig: CombatVisualRig) -> void:
+func set_combat_visual_rig(rig: Node2D) -> void:
 	_combat_visual_rig = rig
 
 
-func _apply_visual_rig_enemy_present_pos(lane: int, baseline: Vector2, zone_manager: ZoneManager) -> Vector2:
+func _apply_visual_rig_enemy_present_pos(lane: int, baseline: Vector2, zone_manager: Node) -> Vector2:
 	if _combat_visual_rig == null or not is_instance_valid(_combat_visual_rig):
 		return baseline
 	return _combat_visual_rig.resolve_enemy_marker_world_pos(lane, baseline, zone_manager)
@@ -423,8 +422,8 @@ func draw_timing_circles(
 	timing_circle_container: Node2D,
 	timing_rings_cache: Array[Dictionary],
 	active_encounter: Dictionary,
-	zone_manager: ZoneManager,
-	player_combat: PlayerCombat
+	zone_manager: Node,
+	player_combat: Node2D
 ) -> void:
 	for child in timing_circle_container.get_children():
 		timing_circle_container.remove_child(child)
@@ -623,9 +622,9 @@ func _make_disc_polygon(radius: float, color: Color, jitter: float = 0.0) -> Pol
 
 func update_timing_ring_proximity(
 	active_encounter: Dictionary,
-	zone_manager: ZoneManager,
-	player_combat: PlayerCombat,
-	song_conductor: SongConductor,
+	zone_manager: Node,
+	player_combat: Node2D,
+	song_conductor: Node,
 	timing_rings_cache: Array[Dictionary],
 	ring_highlight_timers: Array[float],
 	surge_window_timer: float,
@@ -831,8 +830,8 @@ func update_timing_ring_proximity(
 func build_arena_visuals(
 	host: Node2D,
 	active_encounter: Dictionary,
-	zone_manager: ZoneManager,
-	player_combat: PlayerCombat,
+	zone_manager: Node,
+	player_combat: Node2D,
 	all_enemies_by_id: Dictionary,
 	enemy_phase_by_id: Dictionary,
 	enemy_markers_by_id: Dictionary,
@@ -1066,7 +1065,7 @@ func _build_enemy_marker(
 	enemy: Dictionary,
 	marker_size: float,
 	base_color: Color,
-	zone_manager: ZoneManager,
+	zone_manager: Node,
 	texture_cache: Dictionary,
 	player_node: Node2D = null
 ) -> Dictionary:
@@ -1279,7 +1278,7 @@ func _build_enemy_marker(
 	}
 
 
-func _lane_enemy_pos(zone_manager: ZoneManager, lane: int, player_node: Node2D = null) -> Vector2:
+func _lane_enemy_pos(zone_manager: Node, lane: int, player_node: Node2D = null) -> Vector2:
 	var baseline: Vector2 = Vector2.ZERO
 	if zone_manager != null:
 		var enemy_id: int = -1
@@ -1299,7 +1298,7 @@ func _lane_enemy_pos(zone_manager: ZoneManager, lane: int, player_node: Node2D =
 	return _apply_visual_rig_enemy_present_pos(lane, baseline, zone_manager)
 
 
-func _lane_hit_zone_pos(zone_manager: ZoneManager, lane: int, player_node: Node2D = null) -> Vector2:
+func _lane_hit_zone_pos(zone_manager: Node, lane: int, player_node: Node2D = null) -> Vector2:
 	if zone_manager != null:
 		return zone_manager.get_threat_hit_zone_pos(lane)
 	
@@ -1307,13 +1306,13 @@ func _lane_hit_zone_pos(zone_manager: ZoneManager, lane: int, player_node: Node2
 	return p_pos + _lane_direction_fallback(lane) * 110.0
 
 
-func _lane_player_pos(zone_manager: ZoneManager) -> Vector2:
+func _lane_player_pos(zone_manager: Node) -> Vector2:
 	if zone_manager != null:
 		return zone_manager.get_player_pos()
 	return Vector2.ZERO
 
 
-func _lane_direction(zone_manager: ZoneManager, lane: int, player_node: Node2D = null) -> Vector2:
+func _lane_direction(zone_manager: Node, lane: int, player_node: Node2D = null) -> Vector2:
 	var p_pos: Vector2 = player_node.position if player_node != null else _lane_player_pos(zone_manager)
 	var dir: Vector2 = _lane_hit_zone_pos(zone_manager, lane, player_node) - p_pos
 	if dir.length_squared() < 1.0:
@@ -1328,11 +1327,11 @@ func _lane_direction_fallback(lane: int) -> Vector2:
 	return Vector2(cos(angle), sin(angle))
 
 
-func _lane_intercept_distance(zone_manager: ZoneManager, lane: int, player_node: Node2D = null) -> float:
+func _lane_intercept_distance(zone_manager: Node, lane: int, player_node: Node2D = null) -> float:
 	return maxf(_lane_enemy_pos(zone_manager, lane, player_node).distance_to(_lane_hit_zone_pos(zone_manager, lane, player_node)), 1.0)
 
 
-func _radial_lane_strip_position(zone_manager: ZoneManager, lane: int, strip_size: Vector2, player_node: Node2D = null) -> Vector2:
+func _radial_lane_strip_position(zone_manager: Node, lane: int, strip_size: Vector2, player_node: Node2D = null) -> Vector2:
 	var hit_zone: Vector2 = _lane_hit_zone_pos(zone_manager, lane, player_node)
 	var enemy_pos: Vector2 = _lane_enemy_pos(zone_manager, lane, player_node)
 	var midpoint: Vector2 = hit_zone.lerp(enemy_pos, 0.5)
@@ -1457,7 +1456,7 @@ func update_enemy_marker_threat_states(
 		core.color = Color(accent_color.r, accent_color.g, accent_color.b, 0.08 + pressure * 0.08 + imminent * 0.06)
 
 
-func _resolve_live_lane_for_enemy(zone_manager: ZoneManager, enemy_id: int) -> int:
+func _resolve_live_lane_for_enemy(zone_manager: Node, enemy_id: int) -> int:
 	if zone_manager == null or not zone_manager != null:
 		return -1
 	var lane_count: int = int(zone_manager.get("THREAT_COUNT")) if "THREAT_COUNT" in zone_manager else 8

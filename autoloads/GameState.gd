@@ -5,7 +5,7 @@ const RITUAL_CONTENT = preload("res://data/RitualConsumableContent.gd")
 const CREATURE_TRAITS = preload("res://data/CreatureTraitContent.gd")
 const COLLAR_CONTENT = preload("res://data/CollarContent.gd")
 const LAIR_RESONANCE = preload("res://data/LairResonanceContent.gd")
-const COMBAT_CONTENT = preload("res://data/CombatContent.gd")
+const COMBAT_DATA_CONTENT = preload("res://data/CombatContent.gd")
 
 # Sub-state Components
 var player := PlayerState.new()
@@ -23,11 +23,19 @@ var intro_bond_choice_completed: bool = false
 var intro_bond_selected_species_id: String = ""
 
 # PERSISTENT META STATS
+var meta_tutorial_completed: bool = false
 var meta_limit_breakers: int = 0
 var meta_support_slots: int = 1
 var meta_fang_level: int = 0
 var meta_nerve_level: int = 0
 var meta_bond_level: int = 0
+
+const CREATURE_LEVEL_MAX_BY_GRADE: Dictionary = {
+	"brood": 4,
+	"mature": 6,
+	"alpha": 8
+}
+const CREATURE_LEVEL_SUPPORT_MULT_PER_LEVEL: float = 0.04
 
 
 func increment_meta_limit_breakers(achievement_id: String = "") -> void:
@@ -201,6 +209,10 @@ func calculate_encounters_before_boss(diff_key: String = "", ws_key: String = ""
 	return clampi(base + modifier, 5, 15)
 
 
+func get_run_level_count() -> int:
+	return current_encounter_index
+
+
 func start_new_run() -> void:
 	run_number += 1
 	reset_run_state()
@@ -335,6 +347,29 @@ func get_bond_level_stats_readout(bond_level: int) -> Dictionary:
 	}
 
 
+func get_creature_level_mult(creature_level: int) -> float:
+	return 1.0 + max(0, creature_level - 1) * CREATURE_LEVEL_SUPPORT_MULT_PER_LEVEL
+
+
+func get_creature_level_cap(species_id: String) -> int:
+	var creature_template: Dictionary = COMBAT_DATA_CONTENT.get_creature(species_id)
+	var grade_id: String = String(creature_template.get("potential_max_grade", "alpha")).to_lower()
+	return int(CREATURE_LEVEL_MAX_BY_GRADE.get(grade_id, CREATURE_LEVEL_MAX_BY_GRADE["alpha"]))
+
+
+func get_creature_level_stats_readout(species_id: String, creature_level: int) -> Dictionary:
+	var cap: int = get_creature_level_cap(species_id)
+	var current_mult: float = get_creature_level_mult(creature_level)
+	var next_level: int = mini(creature_level + 1, cap)
+	return {
+		"level": creature_level,
+		"cap": cap,
+		"current_mult": current_mult,
+		"next_mult": get_creature_level_mult(next_level),
+		"is_max": creature_level >= cap
+	}
+
+
 func is_species_bonded(species_id: String) -> bool:
 	return creatures.is_species_bonded(species_id)
 
@@ -358,12 +393,18 @@ func add_bonded_creature(creature_data: Dictionary) -> Dictionary:
 		if String(entry.get("species_id", "")) == species_id:
 			true_level = int(entry.get("bond_level", 1))
 			break
+	var true_creature_level: int = 1
+	for entry in lair_roster:
+		if String(entry.get("species_id", "")) == species_id:
+			true_creature_level = int(entry.get("creature_level", 1))
+			break
 
 	for i in range(roster.size()):
 		var creature: Dictionary = roster[i]
 		if String(creature.get("species_id", "")) == species_id:
 			# Just sync level and update order; no increment here.
 			creature["bond_level"] = true_level
+			creature["creature_level"] = true_creature_level
 			if true_level >= 5:
 				creature["is_exceptional"] = true
 				creature["variant_id"] = "exceptional_alpha"
@@ -375,6 +416,11 @@ func add_bonded_creature(creature_data: Dictionary) -> Dictionary:
 
 	var new_creature: Dictionary = creature_data.duplicate(true)
 	new_creature["bond_level"] = true_level
+	new_creature["creature_level"] = true_creature_level
+	if not new_creature.has("creature_exp"):
+		new_creature["creature_exp"] = 0.0
+	if not new_creature.has("creature_exp_to_next"):
+		new_creature["creature_exp_to_next"] = creatures.get_creature_exp_threshold(true_creature_level)
 	if true_level >= 5:
 		new_creature["is_exceptional"] = true
 		new_creature["variant_id"] = "exceptional_alpha"
@@ -416,7 +462,8 @@ func toggle_active_lair_creature(species_id: String) -> bool:
 
 
 func get_support_slot_count() -> int:
-	return clampi(meta_support_slots, 1, 4)
+	var root_slots: int = 1 + int(floor(float(meta_bond_level) / 3.0))
+	return clampi(maxi(meta_support_slots, root_slots), 1, 4)
 
 
 func unlock_support_slot() -> bool:
@@ -438,12 +485,17 @@ func _sync_to_lair(creature: Dictionary) -> void:
 			var existing_level: int = int(lair_roster[i].get("bond_level", 1))
 			var new_level: int = int(creature.get("bond_level", 1))
 			lair_roster[i]["bond_level"] = max(existing_level, new_level)
+			var existing_creature_level: int = int(lair_roster[i].get("creature_level", 1))
+			var incoming_creature_level: int = int(creature.get("creature_level", 1))
+			lair_roster[i]["creature_level"] = max(existing_creature_level, incoming_creature_level)
 			if creature.get("is_exceptional", false):
 				lair_roster[i]["is_exceptional"] = true
 				lair_roster[i]["variant_id"] = String(creature.get("variant_id", ""))
 			return
 	var lair_entry: Dictionary = creature.duplicate(true)
 	lair_entry.erase("bond_order")
+	if not lair_entry.has("creature_level"):
+		lair_entry["creature_level"] = 1
 	lair_roster.append(lair_entry)
 
 
@@ -493,7 +545,7 @@ func get_creature_predation_debt(species_id: String) -> int:
 
 
 func get_effective_dna_threshold(species_id: String) -> float:
-	var creature_data: Dictionary = COMBAT_CONTENT.get_creature(species_id)
+	var creature_data: Dictionary = COMBAT_DATA_CONTENT.get_creature(species_id)
 	if creature_data.is_empty(): return 999.0
 	var base_threshold: float = float(creature_data.get("dna_threshold", 999.0))
 	var debt_mult: float = 1.0
@@ -846,6 +898,11 @@ func get_dna(species_id: String) -> float:
 	return creatures.get_dna(species_id)
 
 
+func grant_creature_exp(species_id: String, amount: float) -> int:
+	var cap: int = get_creature_level_cap(species_id)
+	return creatures.grant_creature_exp(species_id, amount, stat_potential, cap)
+
+
 func spend_dna(species_id: String, amount: float) -> void:
 	creatures.spend_dna(species_id, amount)
 
@@ -913,10 +970,24 @@ func clear_growth_choice_intersection_payload() -> void:
 # --- Ranch Logic ---
 
 func get_lair_training_cost(species_id: String) -> int:
+	return get_lair_bond_rite_cost(species_id)
+
+
+func get_lair_bond_rite_cost(species_id: String) -> int:
 	for entry in lair_roster:
 		if String(entry.get("species_id", "")) == species_id:
 			var bond: int = int(entry.get("bond_level", 1))
 			return bond * 100
+	return 0
+
+
+func get_creature_level_cost(species_id: String) -> int:
+	for entry in lair_roster:
+		if String(entry.get("species_id", "")) == species_id:
+			var creature_level: int = int(entry.get("creature_level", 1))
+			if creature_level >= get_creature_level_cap(species_id):
+				return 0
+			return 60 + creature_level * 45
 	return 0
 
 
@@ -929,12 +1000,45 @@ func get_lair_release_refund(species_id: String) -> int:
 
 
 func train_lair_creature(species_id: String) -> bool:
-	var cost: int = get_lair_training_cost(species_id)
+	return request_lair_bond_rite(species_id)
+
+
+func request_lair_bond_rite(species_id: String) -> bool:
+	var cost: int = get_lair_bond_rite_cost(species_id)
 	if not has_dna_for(species_id, float(cost)): return false
 	var updated: Dictionary = deepen_lair_bond(species_id, 1)
 	if updated.is_empty(): return false
 	spend_dna(species_id, float(cost))
 	return true
+
+
+func calibrate_lair_creature(species_id: String) -> bool:
+	var cost: int = get_creature_level_cost(species_id)
+	if cost <= 0: return false
+	if not has_dna_for(species_id, float(cost)): return false
+	for i in range(lair_roster.size()):
+		if String(lair_roster[i].get("species_id", "")) != species_id:
+			continue
+		var cap: int = get_creature_level_cap(species_id)
+		var current_level: int = int(lair_roster[i].get("creature_level", 1))
+		if current_level >= cap:
+			return false
+		var next_level: int = mini(current_level + 1, cap)
+		spend_dna(species_id, float(cost))
+		lair_roster[i]["creature_level"] = next_level
+		lair_roster[i]["creature_exp_to_next"] = creatures.get_creature_exp_threshold(next_level)
+		_sync_creature_level_to_roster(species_id, next_level)
+		EventBus.emit_signal("proc_feedback_requested", "CALIBRATION DEEPENED", Color(0.72, 0.88, 1.0, 1.0))
+		return true
+	return false
+
+
+func _sync_creature_level_to_roster(species_id: String, creature_level: int) -> void:
+	for i in range(roster.size()):
+		if String(roster[i].get("species_id", "")) == species_id:
+			roster[i]["creature_level"] = creature_level
+			roster[i]["creature_exp_to_next"] = creatures.get_creature_exp_threshold(creature_level)
+			return
 
 
 func release_lair_creature(species_id: String) -> void:
@@ -981,6 +1085,13 @@ func reset_run_state() -> void:
 	creatures.reset_run_state(get_support_slot_count())
 	run.reset_run_state()
 
+	# Heartroot meta growth: permanent root pressure becomes practical run stats.
+	player.stat_power += float(meta_fang_level) * 0.35
+	player.stat_swiftness += float(meta_nerve_level) * 0.035
+	player.stat_endurance += float(meta_nerve_level) * 1.50
+	player.stat_potential += float(meta_bond_level) * 0.025
+	player.stat_adaptability += float(meta_bond_level) * 0.020
+
 	# 2. RESOLUTION TRUTH: Data-Driven Creature Classes & Meta-Potential.
 	# We pull 'Class' profiles from CombatContent. Every permanent bonded creature 
 	# applies its specific stat package, scaled by meta-potential.
@@ -991,7 +1102,7 @@ func reset_run_state() -> void:
 		var level: int = int(entry.get("bond_level", 1))
 		var bonus_mult: float = float(level) * meta_pot
 		
-		var profile: Dictionary = COMBAT_CONTENT.CREATURE_CLASS_PROFILES.get(species, {})
+		var profile: Dictionary = COMBAT_DATA_CONTENT.CREATURE_CLASS_PROFILES.get(species, {})
 		var mods: Dictionary = profile.get("stat_modifiers", {})
 		
 		for stat_id in mods.keys():
@@ -1001,15 +1112,17 @@ func reset_run_state() -> void:
 
 	# 3. Finalization: Safety clamp and initial refresh.
 	player.stat_carapace = max(player.stat_carapace, 0.0)
-	player.max_hp = player.stat_vitality
-	player.base_damage = player.stat_power
-	player.defense = player.stat_carapace
 	
+	var hp_bonus: float = 0.0
 	var modifier: Dictionary = active_region.get("modifier", {})
 	match modifier.get("type", ""):
 		"attack_bonus": player_base_damage += float(modifier.get("value", 0.0))
-		"max_hp_bonus": player_max_hp += float(modifier.get("value", 0.0))
+		"max_hp_bonus": hp_bonus = float(modifier.get("value", 0.0))
+	
+	player.recalculate_max_hp(hp_bonus)
 	player_hp = player_max_hp
+	player.base_damage = player.stat_power
+	player.defense = player.stat_carapace
 
 	_world_reset_run_trackers()
 

@@ -196,15 +196,20 @@ const QUIG_REACTIVE_LINES := {
 	},
 	"tutorials": {
 		"movement": [
-			"Quig: \"Use [MOVE] to move the Vessel. Don't be static.\"",
-			"Quig: \"Navigation is survival. Move with the pulse.\""
+			"Quig: \"Stop posing. Use [MOVE] to actually move. The monkeydog didn't build a museum.\"",
+			"Quig: \"Wiggle the [MOVE]. If you're a sitting duck, at least be a fast one.\""
 		],
-		"combat": [
-			"Quig: \"[ATTACK] to attack. Timing is everything here.\"",
-			"Quig: \"[PARRY] to parry. Rejection is a predatory act.\"",
-			"Quig: \"[DODGE] to dodge. Own your distance.\"",
-			"Quig: \"[SUPPORT] to invoke support. Use your debt.\"",
-			"Quig: \"[ULTIMATE] for Apex. Let the pattern collapse.\""
+		"attack": [
+			"Quig: \"Mash [ATTACK] if you must, but rhythm is what keeps the monkeydog happy.\"",
+			"Quig: \"Hit [ATTACK] on the beat. Don't make the monkeydog come down there.\""
+		],
+		"defense": [
+			"Quig: \"[PARRY] isn't a suggestion. It's a 'no' with teeth.\"",
+			"Quig: \"Use [DODGE] to not be where the pain is. Simple, right?\""
+		],
+		"apex": [
+			"Quig: \"Your debt is calling. Use [SUPPORT] to make it useful.\"",
+			"Quig: \"[ULTIMATE] is for when you want the world to stop talking. Use it.\""
 		]
 	},
 	"bond_eat": {
@@ -291,9 +296,11 @@ static func dna_status_line(species_id: String) -> String:
 	var current: float = GameState.get_dna(species_id)
 	
 	if GameState.is_species_ever_bonded(species_id):
-		var cost: float = float(GameState.get_lair_training_cost(species_id))
-		if cost > 0:
-			return "DNA COLLECTION: %.0f / %.0f (NEXT LEVEL)" % [current, cost]
+		var cal_cost: float = float(GameState.get_creature_level_cost(species_id))
+		var rite_cost: float = float(GameState.get_lair_bond_rite_cost(species_id))
+		var cal_text: String = "MAX" if cal_cost <= 0.0 else "%.0f" % cal_cost
+		var rite_text: String = "MAX" if rite_cost <= 0.0 else "%.0f" % rite_cost
+		return "DNA COLLECTION: %.0f  |  CAL %s  RITE %s" % [current, cal_text, rite_text]
 
 	var threshold: float = GameState.get_effective_dna_threshold(species_id)
 	var base: float = float(COMBAT_DATA.get_creature(species_id).get("dna_threshold", 0.0))

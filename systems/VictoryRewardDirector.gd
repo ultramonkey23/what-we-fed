@@ -133,6 +133,9 @@ func get_pending_creature() -> Dictionary:
 func is_awaiting_choice() -> bool:
 	return _is_awaiting_choice and not _choice_made
 
+func is_choice_made() -> bool:
+	return _choice_made
+
 func is_dna_locked() -> bool:
 	if not _pending_creature.is_empty():
 		var species_id: String = String(_pending_creature.get("species_id", ""))

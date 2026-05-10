@@ -51,7 +51,7 @@ func _on_player_hit(_amount: float, _source_lane: int) -> void:
 	trigger_shake(SHAKE_INTENSITY_HEAVY, SHAKE_DURATION_LONG)
 	EventBus.emit_signal("screen_flash", COLOR_BLOOD_EMBER, 0.18)
 
-func _on_player_parried(_lane: int, quality: String, _reflect_damage: float) -> void:
+func _on_player_parried(_lane: int, quality: String, _reflect_damage: float, _heading: Vector2) -> void:
 	if quality == "perfect":
 		var preset = COMBAT_FEEL_CONTENT.SLOW_MOTION_SCALES.get("parry_perfect_beat_perfect", 0.65)
 		var dur = COMBAT_FEEL_CONTENT.SLOW_MOTION_DURATION.get("parry_perfect_beat_perfect", 1.2)

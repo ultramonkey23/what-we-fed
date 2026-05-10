@@ -1,0 +1,109 @@
+{
+	"audit_id": "2026-05-05_00_46_11_player_took_damage",
+	"camera": {
+		"global_position": {
+			"x": 0.0,
+			"y": 0.0
+		},
+		"offset": {
+			"x": 16.4315490722656,
+			"y": 2.96233725547791
+		},
+		"zoom": {
+			"x": 1.0,
+			"y": 1.0
+		}
+	},
+	"capture_source": "eventbus_auto",
+	"combat": {
+		"active_lane": 6,
+		"combo_count": 55,
+		"style_score": 250.0,
+		"tier": "sovereign"
+	},
+	"event_payload": {
+		"amount": 9.68,
+		"moment_id": "player_took_damage",
+		"source_lane": 3
+	},
+	"game_state": {
+		"active_mutations": [],
+		"available": true,
+		"in_combat": false,
+		"run_number": 2
+	},
+	"image_path": "res://docs/ai/visual_audits/pending/20260505 004610_player_took_damage.png",
+	"lane": {
+		"active": 6,
+		"cardinal_positions": [
+			{
+				"hit_zone": {
+					"x": 640.0,
+					"y": 250.0
+				},
+				"lane": 0,
+				"spawn": {
+					"x": 640.0,
+					"y": 57.6000061035156
+				}
+			},
+			{
+				"hit_zone": {
+					"x": 717.78173828125,
+					"y": 282.21826171875
+				},
+				"lane": 1,
+				"spawn": {
+					"x": 853.8291015625,
+					"y": 146.170913696289
+				}
+			},
+			{
+				"hit_zone": {
+					"x": 750.0,
+					"y": 360.0
+				},
+				"lane": 2,
+				"spawn": {
+					"x": 942.400024414063,
+					"y": 360.0
+				}
+			},
+			{
+				"hit_zone": {
+					"x": 717.78173828125,
+					"y": 437.78173828125
+				},
+				"lane": 3,
+				"spawn": {
+					"x": 853.8291015625,
+					"y": 573.8291015625
+				}
+			}
+		],
+		"source": 3,
+		"support": -1
+	},
+	"metadata_path": "res://docs/ai/visual_audits/pending/20260505 004610_player_took_damage.json",
+	"moment_id": "player_took_damage",
+	"png_error": 0,
+	"scene": "res://scenes/combat/CombatScene.tscn",
+	"schema_version": "visual_audit_capture.v2",
+	"song": {
+		"beat_index": 64,
+		"beat_quality": "perfect",
+		"id": "tricky",
+		"intensity": 0.44,
+		"resonance_tier": "steady",
+		"section_id": "rising"
+	},
+	"support": {
+		"charge": -1.0,
+		"effect_id": "unknown",
+		"species_id": "ashclaw"
+	},
+	"viewport": {
+		"height": 720,
+		"width": 1280
+	}
+}

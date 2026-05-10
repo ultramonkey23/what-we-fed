@@ -1,5 +1,4 @@
 extends Node2D
-class_name PlayerCombat
 
 @onready var sprite: ColorRect = $Sprite
 const COMBAT_FEEL_CONTENT = preload("res://data/CombatFeelContent.gd")
@@ -10,7 +9,7 @@ const GOOD_PARRY_REFLECT_MULT: float = 1.2
 const PERFECT_PARRY_REFLECT_MULT: float = 2.0
 
 # Recovery / anti-spam tuning.
-const BASIC_ATTACK_RECOVERY: float = 0.45
+const BASIC_ATTACK_RECOVERY: float = 0.50
 const TIMED_ATTACK_RECOVERY: float = 0.30
 const PERFECT_ATTACK_RECOVERY: float = 0.20
 const EARLY_ATTACK_RECOVERY: float = 0.40
@@ -19,6 +18,9 @@ const LATE_ATTACK_RECOVERY: float = 0.50
 const GOOD_PARRY_RECOVERY: float = 0.22
 const PERFECT_PARRY_RECOVERY: float = 0.14
 const FAILED_PARRY_RECOVERY: float = 0.32
+const PARRY_CAPTURE_RADIUS: float = 150.0
+const PARRY_CAPTURE_CONE_DOT: float = 0.28
+const PARRY_PANIC_RADIUS: float = 42.0
 
 const DODGE_RECOVERY: float = 0.48
 const DODGE_GOOD_RECOVERY: float = 0.34
@@ -53,7 +55,7 @@ const PARRY_IMAGE_DURATION: float = 0.22
 const HURT_IMAGE_DURATION: float = 0.30
 
 # Cardinal focus rules.
-const DEFAULT_FOCUS_LANE: int = 2
+const DEFAULT_FOCUS_SECTOR: int = 2
 
 # Neutral stance rules.
 const ATTACK_WORLD_X_OFFSET: float = 18.0
@@ -76,8 +78,8 @@ const PARRY_SPRITE_SCALE := Vector2(1.02, 1.10)
 const DODGE_SPRITE_SCALE := Vector2(1.18, 0.78)
 const HIT_SPRITE_SCALE := Vector2(0.94, 1.0)
 
-var zone_manager: ZoneManager = null
-var combat_meter: CombatMeter = null
+var zone_manager: Node = null
+var combat_meter: Node = null
 var _song_conductor: Node = null
 var _sprite_color_tween: Tween = null
 
@@ -95,9 +97,12 @@ var combat_enabled: bool = true
 
 # Free Movement Tuning
 const MOVEMENT_SPEED: float = 240.0
+const MOVE_ACCELERATION: float = 1200.0
+const MOVE_FRICTION: float = 800.0
 const FOCUS_SNAP_THRESHOLD: float = 0.2 # Minimum joystick deflection to change focus
 
 var free_position: Vector2 = Vector2.ZERO
+var _move_velocity: Vector2 = Vector2.ZERO
 var _facing_direction: Vector2 = Vector2.DOWN # Start facing SOUTH
 var movement_enabled: bool = true
 
@@ -106,7 +111,7 @@ var _world_motion_tween: Tween = null
 
 var _player_sprite: Sprite2D = null
 var _atk_effect_sprite: Sprite2D = null
-var _combat_visual_rig: CombatVisualRig = null
+var _combat_visual_rig: Node2D = null
 var _energy_aura: GPUParticles2D = null
 var _idle_tex: Texture2D = null
 var _attack_tex: Texture2D = null
@@ -116,7 +121,7 @@ var _hurt_tex: Texture2D = null
 var _image_restore_tween: Tween = null
 var _atk_effect_pulse_tween: Tween = null
 var _input_buffer: Dictionary = {}
-var active_focus_lane: int = DEFAULT_FOCUS_LANE
+var active_focus_sector: int = DEFAULT_FOCUS_SECTOR
 
 
 func _ready() -> void:
@@ -151,7 +156,7 @@ func _process(delta: float) -> void:
 		if _input_buffer["time_left"] <= 0.0:
 			_emit_input_report(
 				String(_input_buffer.get("action", "")),
-				int(_input_buffer.get("lane", active_focus_lane)),
+				int(_input_buffer.get("lane", active_focus_sector)),
 				false,
 				false,
 				"buffer_expired"
@@ -195,33 +200,33 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _get_target_direction() -> int:
-	# Returns a lane index for visual/HUD purposes based on facing, 
+	# Returns a sector index for visual/HUD purposes based on facing,
 	# but does not dictate combat resolution.
-	return _get_lane_from_vector(_facing_direction)
+	return _get_sector_from_vector(_facing_direction)
 
 
-func get_active_focus_lane() -> int:
+func get_active_focus_sector() -> int:
 	return _get_target_direction()
 
 
-func debug_force_focus_and_action(lane: int, action_type: String) -> bool:
+func debug_force_focus_and_action(sector: int, action_type: String) -> bool:
 	if not OS.is_debug_build():
 		return false
 	if zone_manager == null or combat_meter == null:
 		return false
-	# For debug, we temporarily force the facing to the lane's direction
-	var angle: float = (float(lane) / 8.0) * TAU - PI/2.0
+	# For debug, we temporarily force the facing to the sector's direction
+	var angle: float = (float(sector) / 8.0) * TAU - PI/2.0
 	_facing_direction = Vector2(cos(angle), sin(angle))
 	return _handle_combat_action(action_type)
 
 
-func _set_active_focus_lane(lane: int, show_ring_feedback: bool = true) -> void:
-	lane = clampi(lane, 0, zone_manager.THREAT_COUNT - 1 if zone_manager != null else 7)
-	if active_focus_lane == lane:
+func _set_active_focus_sector(sector: int, show_ring_feedback: bool = true) -> void:
+	sector = clampi(sector, 0, (zone_manager.THREAT_COUNT - 1) if zone_manager != null else 7)
+	if active_focus_sector == sector:
 		return
-	active_focus_lane = lane
+	active_focus_sector = sector
 	if show_ring_feedback:
-		EventBus.emit_signal("timing_ring_pressed", active_focus_lane)
+		EventBus.emit_signal("timing_ring_pressed", active_focus_sector)
 
 
 func _get_combat_action_from_event(event: InputEvent) -> String:
@@ -324,12 +329,12 @@ func _emit_rejected_input_feedback(action_type: String, reason: String) -> void:
 			EventBus.emit_signal("proc_feedback_requested", action_type.to_upper() + " DENIED", Color(1.0, 0.45, 0.45, 1.0))
 
 
-func _emit_input_report(action_type: String, lane: int, accepted: bool, buffered: bool, reason: String) -> void:
+func _emit_input_report(action_type: String, sector: int, accepted: bool, buffered: bool, reason: String) -> void:
 	var cooldowns: Dictionary = _build_input_cooldowns()
 	EventBus.emit_signal(
 		"combat_input_resolved",
 		action_type,
-		lane,
+		sector,
 		accepted,
 		buffered,
 		reason,
@@ -354,11 +359,11 @@ func _try_dodge_radial(_target_dir: int) -> void:
 	# For now, we reuse _try_dodge logic but map the target_dir correctly.
 	_try_dodge()
 
-func setup(new_zone_manager: ZoneManager, new_combat_meter: CombatMeter) -> void:
+func setup(new_zone_manager: Node, new_combat_meter: Node) -> void:
 	zone_manager = new_zone_manager
 	combat_meter = new_combat_meter
 	combat_enabled = true
-	active_focus_lane = DEFAULT_FOCUS_LANE
+	active_focus_sector = DEFAULT_FOCUS_SECTOR
 
 	if not EventBus.projectile_fired.is_connected(_on_projectile_fired):
 		EventBus.projectile_fired.connect(_on_projectile_fired)
@@ -384,6 +389,7 @@ func set_combat_enabled(enabled: bool) -> void:
 	if not combat_enabled:
 		action_lock_timer = 0.0
 		current_action_state = "idle"
+		_move_velocity = Vector2.ZERO
 		dodge_invuln_timer = 0.0
 		chain_bypass_available = false
 		chain_bypass_timer = 0.0
@@ -402,14 +408,14 @@ func set_combat_visual_rig(rig: Node) -> void:
 	_combat_visual_rig = rig
 
 
-func sync_presentation_facing_with_zone_manager(lm: ZoneManager) -> void:
+func sync_presentation_facing_with_zone_manager(lm: Node) -> void:
 	if _player_sprite == null or lm == null:
 		return
 	if current_action_state == "dodge":
 		return # ABSOLUTE TIMING TRUTH: Dodge handles its own rotation/spin visual.
 	if _combat_visual_rig == null or not is_instance_valid(_combat_visual_rig):
 		return
-	var lane: int = clampi(active_focus_lane, 0, lm.THREAT_COUNT - 1 if lm else 3)
+	var lane: int = clampi(active_focus_sector, 0, lm.THREAT_COUNT - 1 if lm else 3)
 	var to_threat: Vector2 = lm.get_threat_hit_zone_pos(lane) - lm.get_player_pos()
 	if to_threat.length_squared() < 4.0:
 		return
@@ -453,6 +459,25 @@ func _evaluate_projectile_timing_with_forgiveness(projectile: ThreatBase) -> Str
 	return quality
 
 
+func _evaluate_parry_timing_with_forgiveness(projectile: ThreatBase) -> String:
+	var quality: String = projectile.evaluate_parry_timing()
+
+	if quality == "miss" or quality.is_empty():
+		var base_proximity: String = projectile.evaluate_proximity_timing(global_position)
+		if base_proximity != "miss":
+			return base_proximity
+
+		var hit_zone_raw: Variant = projectile.get("hit_zone_pos")
+		if typeof(hit_zone_raw) == TYPE_VECTOR2:
+			var hit_zone_pos: Vector2 = hit_zone_raw
+			var dist: float = projectile.global_position.distance_to(hit_zone_pos)
+			var bonus: float = SOVEREIGN_DAMAGE_CALCULATOR.get_parry_forgiveness_radius_bonus()
+			if dist <= COMBAT_FEEL_CONTENT.RING_OUTER_RADIUS + bonus + 10.0:
+				return "good"
+
+	return quality
+
+
 func _get_phrase_window() -> String:
 	if combat_meter == null:
 		return ""
@@ -490,10 +515,10 @@ func _emit_slowmo_context(context_id: String) -> void:
 	EventBus.emit_signal("slow_motion", float(preset.get("scale", base_scale)), float(preset.get("duration", base_duration)))
 
 
-func _emit_mastery_context(event_id: String, lane: int, action_quality: String, beat_quality: String) -> void:
+func _emit_mastery_context(event_id: String, sector: int, action_quality: String, beat_quality: String) -> void:
 	EventBus.emit_signal("mastery_context_updated", {
 		"event_id": event_id,
-		"lane": lane,
+		"lane": sector,
 		"action_quality": action_quality,
 		"beat_quality": beat_quality,
 		"phrase_window": _get_phrase_window(),
@@ -502,10 +527,10 @@ func _emit_mastery_context(event_id: String, lane: int, action_quality: String, 
 	})
 
 
-func _clear_mastery_context(event_id: String, lane: int) -> void:
+func _clear_mastery_context(event_id: String, sector: int) -> void:
 	EventBus.emit_signal("mastery_context_updated", {
 		"event_id": event_id,
-		"lane": lane,
+		"lane": sector,
 		"action_quality": "",
 		"beat_quality": "off",
 		"phrase_window": "",
@@ -534,19 +559,23 @@ func _can_accept_action() -> bool:
 
 func _handle_free_movement(delta: float) -> void:
 	var input_vector: Vector2 = Input.get_vector("mod_left", "mod_right", "mod_up", "mod_down")
-	
-	if input_vector.length() > 0.0:
-		# Update position
-		free_position += input_vector * MOVEMENT_SPEED * delta
-		global_position = free_position
-		
+	var input_len: float = input_vector.length()
+
+	if input_len > 0.0:
+		var wish: Vector2 = input_vector / input_len * MOVEMENT_SPEED
+		_move_velocity = _move_velocity.move_toward(wish, MOVE_ACCELERATION * delta)
+	else:
+		_move_velocity = _move_velocity.move_toward(Vector2.ZERO, MOVE_FRICTION * delta)
+
+	free_position += _move_velocity * delta
+	global_position = free_position
+
+	if input_len > 0.0:
 		# Update facing direction (continuous 360-degree aim)
-		_facing_direction = input_vector.normalized()
-		
-		# Update focus lane only for HUD/visual scaffolding if input is strong enough
-		if input_vector.length() > FOCUS_SNAP_THRESHOLD:
-			var target_lane: int = _get_lane_from_vector(input_vector)
-			_set_active_focus_lane(target_lane, false) # No ring feedback every frame
+		_facing_direction = input_vector / input_len
+		if input_len > FOCUS_SNAP_THRESHOLD:
+			var target_sector: int = _get_sector_from_vector(input_vector)
+			_set_active_focus_sector(target_sector, false) # No ring feedback every frame
 
 
 func _get_targets_in_cone() -> Dictionary:
@@ -575,7 +604,7 @@ func _get_targets_in_cone() -> Dictionary:
 				if dot >= min_dot:
 					var lane_id: int = threat.lane
 					if lane_id == -1:
-						lane_id = _get_lane_from_vector(threat.global_position - center_pos)
+						lane_id = _get_sector_from_vector(threat.global_position - center_pos)
 					found_projectiles.append({
 						"ref": threat,
 						"lane": lane_id,
@@ -603,7 +632,7 @@ func _get_targets_in_cone() -> Dictionary:
 			var dot: float = _facing_direction.dot(dir_to_enemy)
 			var enemy_lane = int(enemy.get("lane", -1))
 			if enemy_lane == -1:
-				enemy_lane = _get_lane_from_vector(target_pos - center_pos)
+				enemy_lane = _get_sector_from_vector(target_pos - center_pos)
 
 			found_enemies.append({
 				"ref": id,
@@ -615,6 +644,78 @@ func _get_targets_in_cone() -> Dictionary:
 			})
 						
 	return {"projectiles": found_projectiles, "enemies": found_enemies}
+
+
+func _get_parry_targets() -> Array:
+	var candidates: Array = []
+	if zone_manager == null:
+		return candidates
+
+	var all_projectiles: Array = zone_manager.get_all_active_projectiles()
+	var center_pos: Vector2 = zone_manager.get_player_pos()
+	var radius: float = PARRY_CAPTURE_RADIUS + SOVEREIGN_DAMAGE_CALCULATOR.get_parry_forgiveness_radius_bonus()
+	for raw_threat in all_projectiles:
+		var threat: ThreatBase = raw_threat as ThreatBase
+		if threat == null or not is_instance_valid(threat) or threat.is_resolved or threat.is_reflected:
+			continue
+
+		var to_target: Vector2 = threat.global_position - free_position
+		var dist: float = to_target.length()
+		if dist > radius:
+			continue
+
+		var dot: float = 1.0
+		if dist > 0.01:
+			dot = _facing_direction.dot(to_target / dist)
+		var panic_catch: bool = dist <= PARRY_PANIC_RADIUS
+		if dot < PARRY_CAPTURE_CONE_DOT and not panic_catch:
+			continue
+
+		var lane_id: int = threat.lane
+		if lane_id == -1:
+			lane_id = _get_sector_from_vector(threat.global_position - center_pos)
+		var urgency: float = clampf(float(threat.progress), 0.0, 1.25)
+		candidates.append({
+			"ref": threat,
+			"lane": lane_id,
+			"distance": dist,
+			"dot": dot,
+			"pos": threat.global_position,
+			"precision": _target_lock_score(maxf(dot, 0.0), dist, radius) + urgency,
+			"progress": threat.progress
+		})
+	return candidates
+
+
+func _resolve_parry_miss_feedback() -> String:
+	if zone_manager == null:
+		return "NO THREAT CAUGHT"
+
+	var closest_distance: float = INF
+	var best_dot: float = -1.0
+	var best_quality: String = "miss"
+	for raw_threat in zone_manager.get_all_active_projectiles():
+		var threat: ThreatBase = raw_threat as ThreatBase
+		if threat == null or not is_instance_valid(threat) or threat.is_resolved or threat.is_reflected:
+			continue
+		var to_target: Vector2 = threat.global_position - free_position
+		var dist: float = to_target.length()
+		if dist < closest_distance:
+			closest_distance = dist
+			best_dot = _facing_direction.dot(to_target.normalized()) if dist > 0.01 else 1.0
+			best_quality = _evaluate_parry_timing_with_forgiveness(threat)
+
+	if closest_distance == INF:
+		return "NO THREAT CAUGHT"
+	if closest_distance > PARRY_CAPTURE_RADIUS + SOVEREIGN_DAMAGE_CALCULATOR.get_parry_forgiveness_radius_bonus():
+		return "OUT OF REACH"
+	if best_dot < PARRY_CAPTURE_CONE_DOT:
+		return "BAD ANGLE"
+	if best_quality == "early":
+		return "TOO EARLY"
+	if best_quality == "late" or best_quality == "miss":
+		return "TOO LATE"
+	return "NO THREAT CAUGHT"
 
 
 func _target_lock_score(dot: float, distance: float, max_range: float) -> float:
@@ -679,18 +780,17 @@ func get_primary_action_target() -> Dictionary:
 	return candidates[0]
 
 
-func _get_lane_from_vector(dir: Vector2) -> int:
+func _get_sector_from_vector(dir: Vector2) -> int:
 	if dir.length_squared() < 0.01:
-		return active_focus_lane
-	
+		return active_focus_sector
+
 	var angle: float = dir.angle() # -PI to PI
 	# Map angle to 0..7 index, where 0 is North (-PI/2)
 	# Sector size is TAU/8 (45 degrees)
-	var sector: float = TAU / 8.0
+	var sector_size: float = TAU / 8.0
 	# Offset so sector 0 is centered on -PI/2
-	var norm_angle: float = fposmod(angle + PI/2.0 + sector/2.0, TAU)
-	return int(floor(norm_angle / sector)) % 8
-
+	var norm_angle: float = fposmod(angle + PI/2.0 + sector_size/2.0, TAU)
+	return int(floor(norm_angle / sector_size)) % 8
 func _consume_chain_bypass_if_needed() -> void:
 	if chain_bypass_available:
 		chain_bypass_available = false
@@ -762,17 +862,17 @@ func _try_attack(targets: Dictionary) -> void:
 		_idle_attack_on_target({}, combo_mult)
 
 
-func _try_parry(targets: Dictionary) -> void:
+func _try_parry(_targets: Dictionary) -> void:
 	var current_aim: int = _get_target_direction()
 	_play_parry_state(current_aim)
 	
-	var projectiles: Array = targets.get("projectiles", [])
+	var projectiles: Array = _get_parry_targets()
 
 	if projectiles.is_empty():
 		combat_meter.record_bad_timing()
 		_clear_mastery_context("failed_parry", current_aim)
 		_flash_sprite_color(Color(0.82, 0.24, 0.28, 1.0), 0.12)
-		EventBus.emit_signal("proc_feedback_requested", "EMPTY PARRY", Color(1.0, 0.45, 0.45, 1.0))
+		EventBus.emit_signal("proc_feedback_requested", _resolve_parry_miss_feedback(), Color(1.0, 0.45, 0.45, 1.0))
 		EventBus.emit_signal("screen_flash", Color(1.0, 0.2, 0.2, 0.06), 0.04)
 		_lock_action(FAILED_PARRY_RECOVERY, "failed_parry")
 		return
@@ -788,12 +888,14 @@ func _try_parry(targets: Dictionary) -> void:
 	projectiles.sort_custom(func(a, b): return float(a.get("precision", 0.0)) > float(b.get("precision", 0.0)))
 	var p_data = projectiles[0]
 	var projectile: ThreatBase = p_data.get("ref") as ThreatBase
-	var quality: String = _evaluate_projectile_timing_with_forgiveness(projectile)
-	var target_lane: int = int(p_data.get("lane", -1))
+	var quality: String = _evaluate_parry_timing_with_forgiveness(projectile)
+	var target_sector: int = int(p_data.get("lane", -1))
 
 	if quality != "good" and quality != "perfect":
 		combat_meter.record_bad_timing()
-		_clear_mastery_context("failed_parry", target_lane)
+		_clear_mastery_context("failed_parry", target_sector)
+		var miss_text: String = "TOO EARLY" if quality == "early" else "TOO LATE"
+		EventBus.emit_signal("proc_feedback_requested", miss_text, Color(1.0, 0.45, 0.45, 1.0))
 		EventBus.emit_signal("screen_flash", Color(1.0, 0.2, 0.2, 0.08), 0.05)
 		_lock_action(FAILED_PARRY_RECOVERY, "failed_parry")
 		return
@@ -846,12 +948,12 @@ func _try_parry(targets: Dictionary) -> void:
 	combat_meter.record_parry(quality)
 	combat_meter.record_phrase_action(quality)
 	_show_parry_image(quality)
-	_emit_mastery_context("parry", target_lane, quality, beat)
+	_emit_mastery_context("parry", target_sector, quality, beat)
 
 	# Consolidate parry/counter into one flow
-	_trigger_parry_counter_warp(enemy_id, target_lane, reflect_damage, quality)
+	_trigger_parry_counter_warp(enemy_id, target_sector, reflect_damage, quality)
 
-	EventBus.emit_signal("player_parried", target_lane, quality, reflect_damage)
+	EventBus.emit_signal("player_parried", target_sector, quality, reflect_damage, _facing_direction)
 
 	if quality == "perfect":
 		_flash_sprite_color(Color(0.55, 1.0, 0.72, 1.0), 0.14)
@@ -882,8 +984,8 @@ func _try_dodge() -> void:
 	
 	var to_pos: Vector2 = global_position + dodge_dir_vec * DODGE_DISTANCE
 	
-	# Derive lane index for visual/signal compatibility
-	var dodge_lane: int = _get_lane_from_vector(dodge_dir_vec)
+	# Derive sector index for visual/signal compatibility
+	var dodge_sector: int = _get_sector_from_vector(dodge_dir_vec)
 
 	_play_dodge_state_radial(to_pos)
 
@@ -891,8 +993,8 @@ func _try_dodge() -> void:
 	var beat: String = _get_beat_quality()
 	combat_meter.record_dodge()
 	combat_meter.record_phrase_action("good")
-	_emit_mastery_context("dodge", dodge_lane, "good", beat)
-	EventBus.emit_signal("player_dodged", -1, dodge_lane)
+	_emit_mastery_context("dodge", dodge_sector, "good", beat)
+	EventBus.emit_signal("player_dodged", -1, dodge_sector, _facing_direction)
 
 	if beat == "perfect" or beat == "good":
 		_flash_sprite_color(Color(0.55, 0.82, 1.0, 1.0), 0.10)
@@ -903,11 +1005,11 @@ func _try_dodge() -> void:
 		_lock_action(DODGE_RECOVERY, "dodge")
 
 
-func _try_support_activation(target_lane: int) -> void:
+func _try_support_activation(target_sector: int) -> void:
 	# Active Creature Support: Trigger the bonded creature's support move manually.
 	# This move consumes support charge (handled in RunGrowth).
 	var beat: String = _get_beat_quality()
-	EventBus.support_manual_activation_requested.emit(target_lane, beat)
+	EventBus.support_manual_activation_requested.emit(target_sector, beat)
 	
 	if beat == "perfect":
 		_flash_sprite_color(Color(1.0, 1.0, 1.0, 1.0), 0.12)
@@ -982,7 +1084,7 @@ func _try_ultimate() -> void:
 
 
 func _idle_attack_on_target(target_data: Dictionary, combo_mult: float) -> void:
-	var target_lane: int = int(target_data.get("lane", -1))
+	var target_sector: int = int(target_data.get("lane", -1))
 	var idle_damage: float = SOVEREIGN_DAMAGE_CALCULATOR.get_idle_attack_damage(combo_mult)
 	var enemy_id: int = int(target_data.get("ref", -1))
 	
@@ -1001,11 +1103,11 @@ func _idle_attack_on_target(target_data: Dictionary, combo_mult: float) -> void:
 			"sfx_cue": "timed_hit"
 		}
 		# We emit a request for the presentation controller to handle this spectacular hit
-		EventBus.emit_signal("impact_burst_requested", impact_profile, target_lane, enemy_id)
+		EventBus.emit_signal("impact_burst_requested", impact_profile, target_sector, enemy_id)
 		
 	combat_meter.record_attack()
-	_clear_mastery_context("idle_attack", target_lane)
-	EventBus.emit_signal("player_attacked", target_lane, idle_damage, false)
+	_clear_mastery_context("idle_attack", target_sector)
+	EventBus.emit_signal("player_attacked", target_sector, idle_damage, false, _facing_direction)
 
 	_lock_action(BASIC_ATTACK_RECOVERY, "idle_attack")
 
@@ -1063,7 +1165,7 @@ func _resolve_timed_attack(projectile: ThreatBase, combo_mult: float, quality: S
 	)
 	var recovery: float = TIMED_ATTACK_RECOVERY
 
-	var target_lane: int = projectile.lane
+	var target_sector: int = projectile.lane
 	var target_enemy_id: int = projectile.enemy_id
 
 	projectile.resolve("attack_%s" % quality)
@@ -1073,10 +1175,10 @@ func _resolve_timed_attack(projectile: ThreatBase, combo_mult: float, quality: S
 
 	combat_meter.record_timed_attack()
 	combat_meter.record_phrase_action(quality)
-	_emit_mastery_context("timed_attack", target_lane, quality, beat)
+	_emit_mastery_context("timed_attack", target_sector, quality, beat)
 
-	EventBus.emit_signal("player_attacked", target_lane, timed_damage, true)
-	EventBus.emit_signal("timed_attack_resolved", target_lane, quality, timed_damage, target_enemy_id)
+	EventBus.emit_signal("player_attacked", target_sector, timed_damage, true, _facing_direction)
+	EventBus.emit_signal("timed_attack_resolved", target_sector, quality, timed_damage, target_enemy_id)
 
 	if quality == "perfect":
 		# Visual flash handled by CombatFeedbackDirector
@@ -1095,7 +1197,7 @@ func _resolve_timed_attack(projectile: ThreatBase, combo_mult: float, quality: S
 	_lock_action(recovery, "timed_attack")
 
 
-func _resolve_early_attack(target_lane: int) -> void:
+func _resolve_early_attack(target_sector: int) -> void:
 	var armor_chance: float = clamp(GameState.stat_adaptability - 1.0, 0.0, 0.85)
 	if randf() < armor_chance:
 		# Combo Armor triggered: do not call record_bad_timing
@@ -1103,15 +1205,15 @@ func _resolve_early_attack(target_lane: int) -> void:
 	else:
 		combat_meter.record_bad_timing()
 		
-	_clear_mastery_context("early_attack", target_lane)
-	EventBus.emit_signal("attack_timing_early_resolved", target_lane)
+	_clear_mastery_context("early_attack", target_sector)
+	EventBus.emit_signal("attack_timing_early_resolved", target_sector)
 	EventBus.emit_signal("screen_flash", Color(1.0, 0.15, 0.15, 0.05), 0.04)
 	chain_bypass_available = false
 	chain_bypass_timer = 0.0
 	_lock_action(EARLY_ATTACK_RECOVERY, "early_attack")
 
 
-func _resolve_late_attack(projectile: ThreatBase, target_lane: int) -> void:
+func _resolve_late_attack(projectile: ThreatBase, target_sector: int) -> void:
 	# Late attack means the projectile has already hit or is very close.
 	# We still allow it to resolve but with a heavy punish.
 	var combo_mult: float = combat_meter.damage_multiplier()
@@ -1130,7 +1232,7 @@ func _resolve_late_attack(projectile: ThreatBase, target_lane: int) -> void:
 	else:
 		combat_meter.record_bad_timing()
 
-	_clear_mastery_context("late_attack", target_lane)
+	_clear_mastery_context("late_attack", target_sector)
 	EventBus.emit_signal("screen_flash", Color(1.0, 0.15, 0.15, 0.10), 0.06)
 	chain_bypass_available = false
 	chain_bypass_timer = 0.0
@@ -1138,19 +1240,19 @@ func _resolve_late_attack(projectile: ThreatBase, target_lane: int) -> void:
 
 
 func _fire_parry_followup(combo_mult: float, targets: Dictionary) -> void:
-	var target_lane: int = _get_target_direction()
+	var target_sector: int = _get_target_direction()
 
 	var followup_damage: float = max(parry_followup_damage, GameState.get_attack_damage()) * combo_mult
 	var enemies: Array = get_attack_lock_targets()
 	var primary_target: Dictionary = enemies[0] if not enemies.is_empty() else {}
-	_play_attack_state(target_lane, primary_target)
+	_play_attack_state(target_sector, primary_target)
 	
 	if not enemies.is_empty():
 		for e_data in enemies:
 			zone_manager.damage_enemy_by_id(int(e_data.get("ref", -1)), followup_damage)
 		
 	combat_meter.record_lane_read()
-	EventBus.emit_signal("player_attacked", target_lane, followup_damage, true)
+	EventBus.emit_signal("player_attacked", target_sector, followup_damage, true)
 	EventBus.emit_signal("screen_flash", Color(1.0, 0.95, 0.65, 0.08), 0.05)
 	_emit_slowmo_context("parry_followup")
 
@@ -1162,7 +1264,7 @@ func _fire_parry_followup(combo_mult: float, targets: Dictionary) -> void:
 	_lock_action(TIMED_ATTACK_RECOVERY, "parry_followup")
 
 
-func _trigger_parry_counter_warp(enemy_id: int, target_lane: int, damage: float, quality: String) -> void:
+func _trigger_parry_counter_warp(enemy_id: int, target_sector: int, damage: float, quality: String) -> void:
 	# Automated physical counter-strike on projectile parry.
 	# Sequencing: Parry Impact -> Short Freeze (Hit-Stop) -> Warp Strike.
 	
@@ -1187,7 +1289,7 @@ func _trigger_parry_counter_warp(enemy_id: int, target_lane: int, damage: float,
 		if enemy_id != -1:
 			zone_manager.damage_enemy_by_id(enemy_id, damage)
 		
-		EventBus.emit_signal("player_attacked", target_lane, damage, true)
+		EventBus.emit_signal("player_attacked", target_sector, damage, true)
 		
 		# Feedback: Strong punch for the actual hit resolution.
 		EventBus.emit_signal("screen_shake", 5.0 if is_perfect else 3.0, 0.12 if is_perfect else 0.08)
@@ -1465,6 +1567,7 @@ func _return_to_neutral_state(immediate: bool = false) -> void:
 	if immediate:
 		# Note: We keep global_position sync for immediate resets (start/restart)
 		global_position = _neutral_world_position()
+		_move_velocity = Vector2.ZERO
 		vis_node.position = NEUTRAL_SPRITE_POSITION
 		vis_node.scale = neutral_s
 		return
@@ -1473,7 +1576,7 @@ func _return_to_neutral_state(immediate: bool = false) -> void:
 	# World motion snap-back removed to allow player to own their position.
 
 
-func _play_attack_state(_target_lane: int, target_data: Dictionary = {}) -> void:
+func _play_attack_state(_target_sector: int, target_data: Dictionary = {}) -> void:
 	_apply_sprite_facing()
 	_show_attack_image()
 	_pulse_attack_effect(target_data)
@@ -1550,19 +1653,19 @@ func _spawn_attack_impact_sparks(aim_dir: Vector2, visible_length: float) -> voi
 		tween.tween_callback(spark.queue_free)
 
 
-func _play_parry_state(_target_lane: int) -> void:
+func _play_parry_state(_target_sector: int) -> void:
 	_apply_sprite_facing()
 	_play_sprite_pose(PARRY_SPRITE_POSITION, PARRY_SPRITE_SCALE, 0.10)
 	_play_world_motion(_action_world_position(PARRY_WORLD_X_OFFSET), 0.04)
 
 
-func _play_dodge_state(_target_lane: int) -> void:
+func _play_dodge_state(_target_sector: int) -> void:
 	_spawn_dodge_afterimage()
 	_play_sprite_pose(DODGE_SPRITE_POSITION, DODGE_SPRITE_SCALE, 0.10)
 	_play_world_motion(_action_world_position(DODGE_WORLD_X_OFFSET), 0.05)
 
 
-func _play_hit_state(_target_lane: int) -> void:
+func _play_hit_state(_target_sector: int) -> void:
 	_apply_sprite_facing()
 	_play_sprite_pose(HIT_SPRITE_POSITION, HIT_SPRITE_SCALE, 0.12)
 	_play_world_motion(_action_world_position(HIT_WORLD_X_OFFSET), 0.02)
@@ -1605,6 +1708,7 @@ func _play_world_motion(action_position: Vector2, push_time: float) -> void:
 	# Permissive Recovery: Once the push is finished, the player owns their new position.
 	_world_motion_tween.tween_callback(func() -> void:
 		free_position = global_position
+		_move_velocity = Vector2.ZERO
 		movement_enabled = true 
 	)
 

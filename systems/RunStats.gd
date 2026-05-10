@@ -184,7 +184,7 @@ func _on_enemy_damaged(_enemy_id: int, damage: float) -> void:
 	combat_damage += damage
 
 
-func _on_timed_attack_resolved(_lane: int, quality: String, _damage: float, _enemy_id: int) -> void:
+func _on_timed_attack_resolved(_sector: int, quality: String, _damage: float, _enemy_id: int) -> void:
 	if quality == "perfect":
 		perfect_attacks += 1
 		combat_perfects += 1
@@ -194,7 +194,7 @@ func _on_timed_attack_resolved(_lane: int, quality: String, _damage: float, _ene
 		_add_score(SCORE_GOOD_ATTACK)
 
 
-func _on_player_parried(_lane: int, quality: String, _reflect_damage: float) -> void:
+func _on_player_parried(_sector: int, quality: String, _reflect_damage: float, _heading: Vector2) -> void:
 	if quality == "perfect":
 		perfect_parries += 1
 		combat_perfects += 1
@@ -209,7 +209,7 @@ func _on_ultimate_fired(_power: float) -> void:
 	_add_score(SCORE_ULTIMATE)
 
 
-func _on_bonded_support_triggered(_species_id: String, _lane: int, _effect_id: String) -> void:
+func _on_bonded_support_triggered(_species_id: String, _sector: int, _effect_id: String) -> void:
 	support_triggers += 1
 	_add_score(SCORE_SUPPORT_TRIGGER)
 
@@ -219,7 +219,7 @@ func _on_tendency_growth_resolved(_tendency_id: String, _title: String, _summary
 	_add_score(SCORE_TENDENCY_SURGE)
 
 
-func _on_player_took_damage(amount: float, _source_lane: int) -> void:
+func _on_player_took_damage(amount: float, _source_sector: int) -> void:
 	if amount > 0.0:
 		times_hit += 1
 		combat_hits += 1

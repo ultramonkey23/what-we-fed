@@ -1,5 +1,15 @@
 extends RefCounted
 
+# ─── LIVE COMBAT CADENCE (defaults + clamps; directors apply overrides) ──────
+# Slower baseline cadence and tighter simultaneous-fire caps for deliberate swarm readability.
+const DEFAULT_FIRE_CYCLE_INTERVAL: float = 2.2
+const DEFAULT_FIRE_STAGGER: float = 0.52
+const DEFAULT_ATTACK_AUTHORITY_BUDGET: int = 2
+const ENCOUNTER_ESCALATION_CYCLE_INTERVAL_FLOOR: float = 1.8
+const SONG_PHASE_CYCLE_INTERVAL_ABSOLUTE_FLOOR: float = 1.12
+const FIRE_STAGGER_AUTHORED_MIN: float = 0.48
+const FIRE_STAGGER_AUTHORED_MAX: float = 0.92
+
 # ─── TIMING RINGS ────────────────────────────────────────────────────────────
 const RING_OUTER_RADIUS: float = 22.0 # Honest good window for 360-degree spatial combat.
 const RING_PERFECT_RADIUS: float = 10.5 # Inner bite point: readable, but still earned.

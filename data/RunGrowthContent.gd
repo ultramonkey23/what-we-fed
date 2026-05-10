@@ -20,6 +20,7 @@ const CHARGE_MASTERY_ACTION: float = 12.0
 const GORGE_MARK_BONUS_CHARGE: float = 15.0
 
 const EXP_KILL: float = 12.0
+const EXP_CREATURE_KILL: float = 8.0
 const EXP_TIMED_ATTACK: float = 2.0
 const EXP_PARRY: float = 3.5
 const EXP_PHRASE_COMPLETE: float = 15.0

@@ -1,6 +1,7 @@
 extends Node
 
 const GROWTH_CONTENT = preload("res://data/RunGrowthContent.gd")
+const COMBAT_DATA = preload("res://data/CombatContent.gd")
 const PRESENTATION_TEXT = preload("res://data/PresentationTextContent.gd")
 
 # Modular Managers
@@ -91,6 +92,8 @@ func _exit_tree() -> void:
 		EventBus.creature_bonded.disconnect(_on_creature_bonded)
 	if EventBus.creature_eaten.is_connected(_on_creature_eaten):
 		EventBus.creature_eaten.disconnect(_on_creature_eaten)
+	if EventBus.support_manual_activation_requested.is_connected(_on_support_activation_requested):
+		EventBus.support_manual_activation_requested.disconnect(_on_support_activation_requested)
 
 
 func get_runtime_effect(type: String) -> Dictionary:
@@ -256,6 +259,14 @@ func _on_combat_started(_enemy_data: Array) -> void:
 
 func _on_enemy_defeated(_enemy_id: int) -> void:
 	_grant_exp(GROWTH_CONTENT.EXP_KILL)
+	
+	var active_species_id: String = get_active_species_id()
+	if not active_species_id.is_empty():
+		var creature_levels_gained: int = GameState.grant_creature_exp(active_species_id, GROWTH_CONTENT.EXP_CREATURE_KILL)
+		if creature_levels_gained > 0:
+			var creature_name: String = get_active_display_name()
+			EventBus.proc_feedback_requested.emit(creature_name.to_upper() + " CALIBRATED", Color(0.44, 0.92, 1.0, 1.0))
+
 	var kill_charge: float = GROWTH_CONTENT.CHARGE_ENEMY_DEFEAT
 	var charge_mult: float = get_mutation_bonus("support_charge_mult_on_kill")
 	if charge_mult > 0.0:
@@ -302,7 +313,7 @@ func _on_timed_attack_resolved(_lane: int, quality: String, _damage: float, _ene
 		_grant_tendency("aggression", 0.25)
 
 
-func _on_player_parried(_lane: int, quality: String, _reflect_damage: float) -> void:
+func _on_player_parried(_lane: int, quality: String, _reflect_damage: float, _heading: Vector2) -> void:
 	_grant_exp(GROWTH_CONTENT.EXP_PARRY)
 	_gain_support_charge(GROWTH_CONTENT.get_charge_parry(quality))
 	_grant_tendency("guard", 1.5 if quality == "perfect" else 0.75)
@@ -347,6 +358,32 @@ func _on_creature_eaten(_creature_data: Dictionary) -> void:
 	_grant_exp(GROWTH_CONTENT.EXP_EAT)
 	_grant_tendency("aggression", 3.0)
 	_gain_support_charge(15.0)
+
+
+func _on_support_activation_requested(sector: int, quality: String) -> void:
+	if not support.is_ready():
+		return
+	
+	var active_creature: Dictionary = GameState.get_active_bonded_creature()
+	if active_creature.is_empty():
+		return
+		
+	var species_id: String = String(active_creature.get("species_id", ""))
+	var support_role: Dictionary = COMBAT_DATA.get_support_role(species_id)
+	var effect_id: String = String(support_role.get("effect_id", ""))
+	
+	if effect_id.is_empty():
+		return
+		
+	support.consume()
+	_emit_support_state()
+	
+	EventBus.bonded_support_triggered.emit(species_id, sector, effect_id)
+	# Also record the quality for performance rewards if needed
+	if quality == "perfect":
+		_grant_tendency("bond", 1.5)
+	else:
+		_grant_tendency("bond", 0.75)
 
 
 func _grant_exp(amount: float) -> void:
@@ -489,7 +526,9 @@ func _apply_level_up_effect(eff: Dictionary, _lvl: int) -> Dictionary:
 func _refresh_primary_combat_stats(heal_amount: float) -> float:
 	var old_max: float = GameState.player_max_hp
 	var bonus_max: float = _level_bonus_max_hp + get_mutation_bonus("max_hp_flat")
-	GameState.player_max_hp = 100.0 + (GameState.stat_vitality * 10.0) + bonus_max
+	
+	# SOVEREIGN TRUTH: PlayerState is the single authority for HP math.
+	GameState.player.recalculate_max_hp(bonus_max)
 	
 	if heal_amount > 0.0:
 		return GameState.heal_player(heal_amount)

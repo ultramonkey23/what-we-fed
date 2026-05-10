@@ -38,9 +38,9 @@ func _connect_monitoring() -> void:
 
 
 # --- PULSE MONITORING ---
-func _monitor_input_timing(action: String, lane: int, accepted: bool, _buffered: bool, reason: String, _state: String, _cooldowns: Dictionary) -> void:
+func _monitor_input_timing(action: String, sector: int, accepted: bool, _buffered: bool, reason: String, _state: String, _cooldowns: Dictionary) -> void:
 	if not accepted and reason != "no_stamina":
-		_record_fracture("INPUT_REJECTION", {"action": action, "lane": lane, "reason": reason})
+		_record_fracture("INPUT_REJECTION", {"action": action, "lane": sector, "reason": reason})
 
 
 func _monitor_beat_alignment(_beat_index: int, intensity: float, quality: String) -> void:
@@ -57,13 +57,13 @@ func _record_fracture(type: String, data: Dictionary) -> void:
 		"timestamp": (Time.get_ticks_msec() - _start_time_msec) / 1000.0,
 		"type": type,
 		"data": data,
-		"scene": get_tree().current_scene.name if get_tree() else "UNKNOWN"
+		"scene": str(get_tree().current_scene.name) if get_tree() != null and get_tree().current_scene != null else "UNKNOWN"
 	}
 	_signal_fractures.append(entry)
 	if _signal_fractures.size() > FRACTURE_LIMIT:
 		_signal_fractures.remove_at(0)
 	
-	printerr("[SOVEREIGN FRACTURE] %s: %s" % [type, JSON.stringify(data)])
+	print("[SOVEREIGN FRACTURE] %s: %s" % [type, JSON.stringify(data)])
 
 
 # --- PUBLIC API (FOR AGENTS) ---

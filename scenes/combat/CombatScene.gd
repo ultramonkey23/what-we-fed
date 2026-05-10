@@ -1,14 +1,13 @@
 extends Node2D
-class_name CombatScene
 
 signal impact_fx_requested(kind: StringName, world_pos: Vector2, direction: Vector2, scale_mult: float)
 
 # ─── ONREADY NODES ───────────────────────────────────────────────────────────
 @onready var background: ColorRect = $Background
 @onready var flash_overlay: ColorRect = $FlashOverlay
-@onready var zone_manager: ZoneManager = $ZoneManager
-@onready var player_combat: PlayerCombat = $PlayerCombat
-@onready var combat_meter: CombatMeter = $CombatMeter
+@onready var zone_manager: Node = $ZoneManager
+@onready var player_combat: Node2D = $PlayerCombat
+@onready var combat_meter: Node = $CombatMeter
 @onready var camera_2d: Camera2D = $Camera2D
 @onready var ui_layer: CanvasLayer = $UI
 
@@ -70,38 +69,28 @@ const SONG_REWARD_STALL_GUARD_SECONDS: float = 0.75
 const REWARD_RUNTIME_NONE: StringName = &"none"
 const REWARD_RUNTIME_SONG_LIVE: StringName = &"song_live"
 
+const TUTORIAL_DIRECTOR = preload("res://systems/TutorialDirector.gd")
+const TEMPO_DIRECTOR = preload("res://systems/TimeDistortionDirector.gd")
 const VICTORY_REWARD_DIRECTOR = preload("res://systems/VictoryRewardDirector.gd")
 const COMBAT_RUN_DIRECTOR = preload("res://systems/CombatRunDirector.gd")
 const ENCOUNTER_GENERATOR_SCRIPT_PATH: String = "res://examples/demo_encounter_stack/EncounterGenerator.gd"
 const COMBAT_HUD_PRESENTER = preload("res://systems/CombatHUDPresenter.gd")
 const COMBAT_FEEDBACK_SHELL = preload("res://scenes/ui/CombatFeedbackShell.gd")
+const COMBAT_METER_SCRIPT = preload("res://systems/CombatMeter.gd")
 const IMPACT_FX_RUNTIME_SCENE: PackedScene = preload("res://systems/presentation/ImpactFxRuntime.tscn")
 const COMBAT_VISUAL_RIG_SCENE: PackedScene = preload("res://scenes/combat/CombatVisualRig.tscn")
 
 # ─── STATE VARIABLES ─────────────────────────────────────────────────────────
 var _run_director: Node = null
+var _escalation_director: Node = null
+var _tutorial_director: Node = null
+var _tempo_director: Node = null
 var _victory_reward_director: Node = null
 var _vessel_modifier_director: Node = null
 var _base_time_scale: float = 1.0
 var _ring_highlight_timers: Array[float] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 var _surge_window_tendency: String = ""
 var _surge_window_timer: float = 0.0
-var _tempo_state_family: StringName = COMBAT_FEEL_CONTENT.TEMPO_NONE
-var _tempo_state_id: StringName = &""
-var _tempo_state_until_ms: int = 0
-var _tempo_state_started_ms: int = 0
-var _tempo_recovery_start_ms: int = 0
-var _tempo_recovery_duration_ms: int = 0
-var _tempo_recovery_from_scale: float = 1.0
-var _tempo_puncture_cooldown_until_ms: int = 0
-var _tempo_stretch_cooldown_until_ms: int = 0
-var _tempo_distortion_window: Array[Dictionary] = []
-var _tempo_telemetry_counts: Dictionary = {
-	COMBAT_FEEL_CONTENT.TEMPO_PUNCTURE: 0,
-	COMBAT_FEEL_CONTENT.TEMPO_STRETCH: 0,
-	COMBAT_FEEL_CONTENT.TEMPO_VOID: 0,
-	COMBAT_FEEL_CONTENT.TEMPO_DECREE: 0
-}
 
 # ─── TRANSLATION OVERLAY ──────────────────────────────────────────────────────
 var _translation_overlay: ColorRect = null
@@ -109,7 +98,6 @@ var _translation_header: Label = null
 var _translation_body: Label = null
 var _translation_hint: Label = null
 var _translation_can_continue: bool = false
-var _tempo_recovery_tween: Tween = null
 
 # ─── UI NODES (DYNAMICALLY CREATED) ──────────────────────────────────────────
 var _hud_top_left_container: VBoxContainer = null
@@ -164,8 +152,8 @@ var _bg_sprite: Control = null
 var _bonded_creature_sprite: Sprite2D = null
 var _bonded_creature_species: String = ""
 var _presentation_runtime: RefCounted = null
-var _presentation_controller: CombatPresentationController = null
-var _combat_visual_rig: CombatVisualRig = null
+var _presentation_controller: Node = null
+var _combat_visual_rig: Node2D = null
 var _hud_presenter: RefCounted = null
 var _scouter_shell: Panel = null
 var _power_scouter_label: Label = null
@@ -206,9 +194,9 @@ var _pending_path_choice_nodes: Array[Dictionary] = []
 var _pending_path_choice_level_index: int = -1
 var _active_path_context: Dictionary = {}
 
-var _run_spine_surface: RunSpineScene = null
-var _event_surface: EventScene = null
-var _growth_choice_surface: GrowthChoiceIntersection = null
+var _run_spine_surface: Node2D = null
+var _event_surface: Node2D = null
+var _growth_choice_surface: Node2D = null
 var _growth_choice_context: Dictionary = {}
 
 # ─── LIVE REWARD ELEMENTS ────────────────────────────────────────────────────
@@ -218,6 +206,10 @@ var _live_reward_body_label: Label = null
 var _live_reward_dna_label: Label = null
 var _live_reward_hint_label: Label = null
 var _song_reward_stall_guard: float = 0.0
+var _pending_reward_dna_locked: bool = false
+var _reward_choice_made: bool = false
+var _live_reward_offer_timer: float = 0.0
+var _live_reward_queue: Array[Dictionary] = []
 var _between_level_growth_queue: Array[Dictionary] = []
 var _between_level_growth_stored_this_level: bool = false
 
@@ -229,14 +221,8 @@ var _phase_transitioning: bool = false
 var _run_finished: bool = false
 var _active_reward_runtime: StringName = REWARD_RUNTIME_NONE
 
-var _pending_reward_creature: Dictionary = {}
-var _pending_reward_dna_locked: bool = false
-var _awaiting_reward_choice: bool = false
-var _reward_choice_made: bool = false
-var _live_reward_offer_timer: float = 0.0
-var _live_reward_queue: Array[Dictionary] = []
-
-var _performance_reward_director: Node = null  # runtime-scripted Node.new()+set_script(); cannot statically type
+var _performance_reward_director: Node = null
+  # runtime-scripted Node.new()+set_script(); cannot statically type
 var _performance_hud: Control = null
 var _quig_narrative_system: Node = null
 var _quig_tween: Tween = null
@@ -272,15 +258,14 @@ var _song_phase_index: int = -1
 var _song_boss_triggered: bool = false
 var _next_song_enemy_id: int = 100
 var _song_phases: Array = []
-var _song_conductor: SongConductor = null
+var _song_conductor: Node = null
 var _song_enemy_lanes: Dictionary = {}
 var _song_timer_label: Label = null
 var _song_phase_label: Label = null
 var _song_rng: RandomNumberGenerator = RandomNumberGenerator.new()
-var _escalation_director: EncounterEscalationDirector = null
 var _latest_ecology_snapshot: Dictionary = {}
-var _active_attack_authority_budget: int = 3
-var _support_resolver: SupportEffectResolver = null
+var _active_attack_authority_budget: int = 2
+var _support_resolver: RefCounted = null
 var _collar_director: RefCounted = null
 var _song_phase_dna_award_index: int = 0
 var _song_section_spawn_mult: float = 1.0
@@ -288,9 +273,9 @@ var _song_level_start_time: float = 0.0
 var _song_level_end_time: float = 0.0
 var _base_difficulty_modifiers: Dictionary = {}
 var _difficulty_modifiers: Dictionary = {}
-var _music_control_layer: MusicControlLayer = null
+var _music_control_layer: RefCounted = null
 var _song_combat_state: Dictionary = {}
-var _difficulty_modifier_director: DifficultyModifierDirector = null
+var _difficulty_modifier_director: RefCounted = null
 var _last_beat_index: int = -1
 var _song_level_transitioning: bool = false
 var _beat_feedback_label: Label = null
@@ -318,7 +303,7 @@ var _active_song_profile: Dictionary = SONG_COMBAT_PROFILE_CONTENT.get_profile("
 var _boss_song_profile: Dictionary = SONG_COMBAT_PROFILE_CONTENT.get_profile("boss_1")
 var _last_applied_hunt_pressure_step: int = -1
 var _critical_threat_pressure: float = 0.0
-var _critical_threat_lane: int = -1
+var _critical_threat_sector: int = -1
 var _readability_pulse_mult: float = 1.0
 var _critical_warning_cooldown_until_ms: int = 0
 var _feedback_shell: RefCounted = null
@@ -344,7 +329,11 @@ func _ready() -> void:
 
 
 func _exit_tree() -> void:
-	_reset_tempo_state()
+	if _tutorial_director != null:
+		_tutorial_director.cleanup()
+	if _tempo_director != null:
+		_tempo_director.cleanup()
+
 	var vp: Viewport = get_viewport()
 	if vp.size_changed.is_connected(_sync_fullscreen_underlay_controls):
 		vp.size_changed.disconnect(_sync_fullscreen_underlay_controls)
@@ -395,10 +384,10 @@ func _exit_tree() -> void:
 			EventBus.dna_resonated.disconnect(_presentation_runtime.on_dna_resonated)
 		if EventBus.projectile_fired.is_connected(_presentation_runtime.on_projectile_fired):
 			EventBus.projectile_fired.disconnect(_presentation_runtime.on_projectile_fired)
+		if EventBus.enemy_attack_telegraphed.is_connected(_presentation_runtime.on_enemy_attack_telegraphed):
+			EventBus.enemy_attack_telegraphed.disconnect(_presentation_runtime.on_enemy_attack_telegraphed)
 		_presentation_runtime.set_readability_stress(0.0)
 
-	if EventBus.slow_motion.is_connected(_on_slow_motion):
-		EventBus.slow_motion.disconnect(_on_slow_motion)
 	if EventBus.player_attacked.is_connected(_on_player_attacked):
 		EventBus.player_attacked.disconnect(_on_player_attacked)
 	if EventBus.timed_attack_resolved.is_connected(_on_timed_attack_resolved):
@@ -467,6 +456,14 @@ func _initialize_systems() -> void:
 	_setup_quig_narrative()
 	_setup_bonded_companions()
 
+	_tutorial_director = TUTORIAL_DIRECTOR.new()
+	add_child(_tutorial_director)
+	_tutorial_director.setup(_quig_narrative_system)
+
+	_tempo_director = TEMPO_DIRECTOR.new()
+	add_child(_tempo_director)
+	_tempo_director.setup(_performance_reward_director)
+
 	if RunStats and RunStats.has_signal("score_changed"):		RunStats.score_changed.connect(_on_run_score_changed)
 
 
@@ -497,9 +494,10 @@ func _ensure_bonded_companion(species_id: String) -> void:
 	if get_node_or_null("BondedCompanion_" + species_id) != null:
 		return
 	var companion_script = load("res://scenes/combat/BondedCompanion.gd")
-	if companion_script:
-		var companion: BondedCompanion = companion_script.new() as BondedCompanion
+	if companion_script != null:
+		var companion: Node = companion_script.new()
 		companion.name = "BondedCompanion_" + species_id
+
 		add_child(companion)
 		companion.setup(species_id, player_combat, zone_manager)
 
@@ -583,52 +581,19 @@ func _on_escalation_phase_changed(index: int, _phase_data: Dictionary) -> void:
 	_enter_song_phase(index)
 
 
-func _on_escalation_spawn_requested(lane: int, enemy_data: Dictionary) -> void:
+func _on_escalation_spawn_requested(angle: float, enemy_data: Dictionary) -> void:
 	if zone_manager != null and is_instance_valid(zone_manager):
-		zone_manager.set_enemy(lane, enemy_data)
-		var live_enemy: Dictionary = _resolve_spawned_live_enemy(lane, enemy_data)
+		var enemy_id: int = zone_manager.spawn_enemy_at_angle(angle, enemy_data)
+		var live_enemy: Dictionary = zone_manager.get_enemy_by_id(enemy_id)
+
 		if live_enemy.is_empty():
 			return
-		var enemy_id: int = int(live_enemy.get("id", -1))
-		if enemy_id < 0:
-			return
+
 		_all_enemies_by_id[enemy_id] = live_enemy.duplicate(true)
 		_enemy_max_hp[enemy_id] = float(live_enemy.get("max_hp", live_enemy.get("hp", 1.0)))
 		if not _enemy_phase_by_id.has(enemy_id):
 			_enemy_phase_by_id[enemy_id] = _current_phase_index
 		_ensure_enemy_marker_for_live_enemy(enemy_id, live_enemy)
-
-
-func _resolve_spawned_live_enemy(spawn_lane: int, enemy_seed: Dictionary) -> Dictionary:
-	if zone_manager == null or not is_instance_valid(zone_manager):
-		return {}
-
-	# Fast path: lane spawn landed directly in a striker lane.
-	var lane_enemy: Dictionary = zone_manager.get_enemy(spawn_lane)
-	if not lane_enemy.is_empty():
-		return lane_enemy.duplicate(true)
-
-	var all_live: Dictionary = zone_manager.get_all_enemies()
-	if all_live.is_empty():
-		return {}
-
-	# Preferred path: reuse seeded id when present.
-	var seeded_id: int = int(enemy_seed.get("id", -1))
-	if seeded_id >= 0 and all_live.has(seeded_id):
-		return Dictionary(all_live.get(seeded_id, {})).duplicate(true)
-
-	# Fallback: choose newest unknown live enemy id.
-	var newest_id: int = -1
-	for key in all_live.keys():
-		var eid: int = int(key)
-		if _all_enemies_by_id.has(eid):
-			continue
-		if newest_id < 0 or eid > newest_id:
-			newest_id = eid
-	if newest_id >= 0:
-		return Dictionary(all_live.get(newest_id, {})).duplicate(true)
-
-	return {}
 
 
 func _ensure_enemy_marker_for_live_enemy(enemy_id: int, enemy_data: Dictionary) -> void:
@@ -671,8 +636,8 @@ func _on_victory_offer_ended() -> void:
 
 
 func _on_victory_choice_resolved(choice_id: String, creature_data: Dictionary) -> void:
-	var void_elapsed: float = _current_void_elapsed_seconds()
-	_notify_tempo_mastery(COMBAT_FEEL_CONTENT.TEMPO_VOID, "choice_commit", {
+	var void_elapsed: float = _tempo_director.get_current_void_elapsed_seconds()
+	_tempo_director.notify_tempo_mastery(COMBAT_FEEL_CONTENT.TEMPO_VOID, "choice_commit", {
 		"choice": choice_id,
 		"elapsed_seconds": void_elapsed,
 		"window_seconds": LIVE_REWARD_WINDOW
@@ -699,15 +664,15 @@ func _on_victory_choice_resolved(choice_id: String, creature_data: Dictionary) -
 
 
 func _refresh_reward_overlay_content() -> void:
-	if _pending_reward_creature.is_empty():
+	if _victory_reward_director.get_pending_creature().is_empty():
 		return
 
-	var _offer_creature_name: String = str(_pending_reward_creature.get("display_name", "creature"))
-	var _offer_description: String = str(_pending_reward_creature.get("description", ""))
-	var _encounter_context: String = _describe_creature_offer_context(_pending_reward_creature)
+	var _offer_creature_name: String = str(_victory_reward_director.get_pending_creature().get("display_name", "creature"))
+	var _offer_description: String = str(_victory_reward_director.get_pending_creature().get("description", ""))
+	var _encounter_context: String = _describe_creature_offer_context(_victory_reward_director.get_pending_creature())
 
 	# DNA gate: check whether the player has accumulated enough DNA for this species.
-	var _offer_species_id: String = str(_pending_reward_creature.get("species_id", ""))
+	var _offer_species_id: String = str(_victory_reward_director.get_pending_creature().get("species_id", ""))
 	var _offer_dna_threshold: float = GameState.get_effective_dna_threshold(_offer_species_id)
 	var _player_dna: float = GameState.get_dna(_offer_species_id)
 	var _archive_tether_ready: bool = GameState.is_species_ever_bonded(_offer_species_id)
@@ -728,12 +693,12 @@ func _refresh_reward_overlay_content() -> void:
 	_reward_eat_label.text = "E Consume"
 
 	# Evolutionary logic: bond passive is scaled by current potential
-	var bond_passive: Dictionary = _pending_reward_creature.get("bond_passive", {})
+	var bond_passive: Dictionary = _victory_reward_director.get_pending_creature().get("bond_passive", {})
 	@warning_ignore("static_called_on_instance")
 	_reward_bond_effect_label.text = PRESENTATION_TEXT.format_bond_passive_long(bond_passive, 1.0)
 	
 	# Eat effect is scaled by current potential
-	var eat_effect: Dictionary = _pending_reward_creature.get("eat_effect", {})
+	var eat_effect: Dictionary = _victory_reward_director.get_pending_creature().get("eat_effect", {})
 	_reward_eat_effect_label.text = PRESENTATION_TEXT.format_eat_effect(eat_effect)
 	
 	_reward_quig_label.text = PRESENTATION_TEXT.bond_result_quig(_offer_creature_name)
@@ -831,24 +796,21 @@ func _show_live_reward_offer_internal(creature_data: Dictionary, is_dna_locked: 
 	if _song_mode and not _run_finished:
 		_begin_song_live_reward_runtime()
 
-	_pending_reward_creature = creature_data.duplicate(true)
 	_pending_reward_dna_locked = is_dna_locked
-	_awaiting_reward_choice = true
-	_reward_choice_made = false
 	_live_reward_offer_timer = timer
 	_song_reward_stall_guard = SONG_REWARD_STALL_GUARD_SECONDS
 
-	var is_breakthrough: bool = not _pending_reward_dna_locked or str(_pending_reward_creature.get("type", "")) == "performance"
+	var is_breakthrough: bool = not _pending_reward_dna_locked or str(_victory_reward_director.get_pending_creature().get("type", "")) == "performance"
 	if is_breakthrough:
-		_begin_void(&"live_reward_offer", {
-			"species_id": str(_pending_reward_creature.get("species_id", "")),
+		_tempo_director.begin_void(&"live_reward_offer", {
+			"species_id": str(_victory_reward_director.get_pending_creature().get("species_id", "")),
 			"dna_locked": _pending_reward_dna_locked
 		})
 	else:
-		_track_tempo_event(COMBAT_FEEL_CONTENT.TEMPO_NONE, &"live_reward_minimal")
+		_tempo_director.track_tempo_event(COMBAT_FEEL_CONTENT.TEMPO_NONE, &"live_reward_minimal")
 
 	_live_reward_shell.visible = true
-	EventBus.emit_signal("capture_offered", _pending_reward_creature)
+	EventBus.emit_signal("capture_offered", _victory_reward_director.get_pending_creature())
 	_refresh_live_reward_shell()
 	_refresh_dna_hud()
 	_refresh_song_controls_text()
@@ -856,13 +818,10 @@ func _show_live_reward_offer_internal(creature_data: Dictionary, is_dna_locked: 
 	_sync_message_lane_ownership()
 
 
-func _show_victory_reward_internal(creature_data: Dictionary, is_dna_locked: bool) -> void:
-	_pending_reward_creature = creature_data.duplicate(true)
+func _show_victory_reward_internal(_creature_data: Dictionary, is_dna_locked: bool) -> void:
 	_pending_reward_dna_locked = is_dna_locked
-	_awaiting_reward_choice = true
-	_reward_choice_made = false
 
-	EventBus.emit_signal("capture_offered", _pending_reward_creature)
+	EventBus.emit_signal("capture_offered", _victory_reward_director.get_pending_creature())
 	_reward_overlay.visible = true
 	_refresh_reward_overlay_content()
 	_refresh_dna_hud()
@@ -945,11 +904,11 @@ func _setup_combat_visual_rig() -> void:
 	if COMBAT_VISUAL_RIG_SCENE == null:
 		return
 	var inst: Node = COMBAT_VISUAL_RIG_SCENE.instantiate()
-	if inst == null or not (inst is CombatVisualRig):
+	if inst == null or not (inst is Node2D):
 		if inst != null:
 			inst.queue_free()
 		return
-	_combat_visual_rig = inst as CombatVisualRig
+	_combat_visual_rig = inst as Node2D
 	_combat_visual_rig.name = "CombatVisualRig"
 	add_child(_combat_visual_rig)
 	if _presentation_controller != null:
@@ -964,7 +923,7 @@ func _initialize_run_state() -> void:
 	_run_finished = false
 	_dna_pickup_flavor_cooldown = 0.0
 	_dna_pickup_flavor_rotation.clear()
-	_reset_tempo_state()
+	_tempo_director.reset_tempo_state()
 
 
 func _connect_signals() -> void:
@@ -972,6 +931,10 @@ func _connect_signals() -> void:
 
 
 func _process(delta: float) -> void:
+	_tempo_director.set_song_conductor(_song_conductor)
+	_tempo_director.set_boss_music_player(_boss_music_player)
+	_tempo_director.process_tempo(delta)
+
 	_update_timers(delta)
 	_update_presentation_layers(delta)
 	_update_performance_systems(delta)
@@ -982,8 +945,6 @@ func _process(delta: float) -> void:
 
 
 func _update_timers(delta: float) -> void:
-	_update_tempo_state()
-
 	# Vectorized timer updates for performance
 	var threat_count: int = zone_manager.THREAT_COUNT if zone_manager else 8
 	for i in range(threat_count):
@@ -996,7 +957,7 @@ func _update_timers(delta: float) -> void:
 			_surge_window_tendency = ""
 
 	if _victory_reward_director != null:
-		var v_delta: float = _resolve_void_timer_delta(delta)
+		var v_delta: float = _tempo_director.resolve_void_timer_delta(delta)
 		_victory_reward_director.process_tick(v_delta)
 		if _victory_reward_director.is_awaiting_choice():
 			_refresh_live_reward_shell()
@@ -1010,233 +971,21 @@ func _update_timers(delta: float) -> void:
 		_dna_pickup_flavor_cooldown = max(_dna_pickup_flavor_cooldown - delta, 0.0)
 
 
-func _update_tempo_state() -> void:
-	var now: int = Time.get_ticks_msec()
-	
-	# 1. Process Active State Expiry
-	if _tempo_state_family != COMBAT_FEEL_CONTENT.TEMPO_NONE:
-		if _tempo_state_family == COMBAT_FEEL_CONTENT.TEMPO_VOID:
-			# Void exits through reward resolution or expiry, not a fixed timer.
-			pass
-		elif _tempo_state_until_ms > 0 and now >= _tempo_state_until_ms:
-			_exit_tempo_state(_tempo_state_family, false)
-			return
-
-	# 2. Process Manual Recovery Ramp (Wall-Clock Based)
-	if _tempo_recovery_duration_ms > 0:
-		var elapsed: int = now - _tempo_recovery_start_ms
-		if elapsed >= _tempo_recovery_duration_ms:
-			_apply_tempo_time_scale(_base_time_scale)
-			_tempo_recovery_duration_ms = 0
-		else:
-			var t: float = float(elapsed) / float(_tempo_recovery_duration_ms)
-			# SINE_OUT transition for fluid return to speed
-			var eased_t: float = sin(t * PI * 0.5)
-			var target_scale: float = lerpf(_tempo_recovery_from_scale, _base_time_scale, eased_t)
-			_apply_tempo_time_scale(target_scale)
-
-
-func _resolve_void_timer_delta(delta: float) -> float:
-	if _tempo_state_family != COMBAT_FEEL_CONTENT.TEMPO_VOID:
-		return delta
-	var current_time_scale: float = maxf(Engine.time_scale, 0.01)
-	# Keep Choice Void windows deterministic in wall-clock seconds.
-	return delta / current_time_scale
-
-
-func _reset_tempo_state() -> void:
-	_kill_tempo_recovery_tween()
-	_tempo_state_family = COMBAT_FEEL_CONTENT.TEMPO_NONE
-	_tempo_state_id = &""
-	_tempo_state_until_ms = 0
-	_tempo_state_started_ms = 0
-	_tempo_puncture_cooldown_until_ms = 0
-	_tempo_stretch_cooldown_until_ms = 0
-	_tempo_distortion_window.clear()
-	_tempo_telemetry_counts[COMBAT_FEEL_CONTENT.TEMPO_PUNCTURE] = 0
-	_tempo_telemetry_counts[COMBAT_FEEL_CONTENT.TEMPO_STRETCH] = 0
-	_tempo_telemetry_counts[COMBAT_FEEL_CONTENT.TEMPO_VOID] = 0
-	_tempo_telemetry_counts[COMBAT_FEEL_CONTENT.TEMPO_DECREE] = 0
-	_song_reward_stall_guard = 0.0
-	_apply_tempo_time_scale(_base_time_scale)
-
-
-func _tempo_priority(family: StringName) -> int:
-	return int(COMBAT_FEEL_CONTENT.TEMPO_PRIORITY.get(family, 0))
-
-
-func _tempo_distortion_available(family: StringName, tempo_scale_value: float, duration: float) -> bool:
-	if family != COMBAT_FEEL_CONTENT.TEMPO_PUNCTURE:
-		# Anti-spam budget applies only to repeated micro-puncture effects.
-		return true
-	var now: int = Time.get_ticks_msec()
-	var window_ms: int = int(COMBAT_FEEL_CONTENT.TEMPO_DISTORTION_WINDOW_SECONDS * 1000.0)
-	var next_window: Array[Dictionary] = []
-	var used: float = 0.0
-	for row in _tempo_distortion_window:
-		var ts: int = int(row.get("t_ms", 0))
-		if now - ts <= window_ms:
-			next_window.append(row)
-			used += float(row.get("weight", 0.0))
-	_tempo_distortion_window = next_window
-	var proposed: float = maxf(1.0 - clampf(tempo_scale_value, 0.0, 1.0), 0.0) * maxf(duration, 0.0)
-	return used + proposed <= COMBAT_FEEL_CONTENT.PUNCTURE_MAX_DISTORTION_PER_WINDOW
-
-
-func _register_tempo_distortion(family: StringName, tempo_scale_value: float, duration: float) -> void:
-	if family != COMBAT_FEEL_CONTENT.TEMPO_PUNCTURE:
-		return
-	_tempo_distortion_window.append({
-		"t_ms": Time.get_ticks_msec(),
-		"weight": maxf(1.0 - clampf(tempo_scale_value, 0.0, 1.0), 0.0) * maxf(duration, 0.0)
-	})
-
-
-func _apply_tempo_time_scale(tempo_scale_value: float) -> void:
-	# SOVEREIGN FINAL PASS: Physically prevent engine freezes. 
-	# Floor 0.35 ensures Witch Time remains fluid and active.
-	Engine.time_scale = clampf(tempo_scale_value, 0.35, 1.0)
-	
-	# Sync Music Dilation: LPF + Pitch Shift
-	if _song_conductor != null and is_instance_valid(_song_conductor):
-		_song_conductor.set_tempo_distortion(tempo_scale_value)
-	
-	# Direct player pitch sync if not using conductor's player (Boss tracks)
-	if _boss_music_player != null and is_instance_valid(_boss_music_player):
-		_boss_music_player.pitch_scale = clampf(tempo_scale_value, 0.45, 1.0)
-
-
-func _kill_tempo_recovery_tween() -> void:
-	if _tempo_recovery_tween != null:
-		_tempo_recovery_tween.kill()
-		_tempo_recovery_tween = null
-	_tempo_recovery_duration_ms = 0
-
-
-func _ramp_to_base_time_scale(duration: float = 0.25) -> void:
-	_kill_tempo_recovery_tween()
-	_tempo_recovery_from_scale = clampf(Engine.time_scale, 0.35, 1.0)
-	_tempo_recovery_start_ms = Time.get_ticks_msec()
-	_tempo_recovery_duration_ms = int(duration * 1000.0)
-
-
-func _track_tempo_event(family: StringName, event_id: StringName, payload: Dictionary = {}) -> void:
-	if family == COMBAT_FEEL_CONTENT.TEMPO_NONE:
-		return
-	_tempo_telemetry_counts[family] = int(_tempo_telemetry_counts.get(family, 0)) + 1
-	if GameState != null:
-		GameState.register_tempo_event(str(family), str(event_id), payload)
-
-
-func _notify_tempo_mastery(family: StringName, event_id: StringName, payload: Dictionary = {}) -> void:
-	if _performance_reward_director == null or not is_instance_valid(_performance_reward_director):
-		return
-	if _performance_reward_director.has_method("notify_tempo_mastery"):
-		_performance_reward_director.call("notify_tempo_mastery", str(family), str(event_id), payload)
-
-
-func _enter_tempo_state(family: StringName, event_id: StringName, tempo_scale_value: float, duration: float = 0.0, payload: Dictionary = {}) -> bool:
-	if family == COMBAT_FEEL_CONTENT.TEMPO_NONE:
-		return false
-	var now: int = Time.get_ticks_msec()
-	var family_priority: int = _tempo_priority(family)
-	var current_priority: int = _tempo_priority(_tempo_state_family)
-	
-	if _tempo_state_family == COMBAT_FEEL_CONTENT.TEMPO_VOID and family != COMBAT_FEEL_CONTENT.TEMPO_VOID:
-		# Void (T3) is a complete tactical pause, nothing overrides it.
-		return false
-	if _tempo_state_family == COMBAT_FEEL_CONTENT.TEMPO_DECREE and family != COMBAT_FEEL_CONTENT.TEMPO_DECREE:
-		return false
-	
-	# IMPACT GATING: Make these moments feel rare and earned.
-	if family == COMBAT_FEEL_CONTENT.TEMPO_PUNCTURE:
-		if now < _tempo_puncture_cooldown_until_ms:
-			return false
-		if not bool(payload.get("impact_weight", false)):
-			# Only high-weight hits (kills, elite hits) trigger hitstop.
-			return false
-			
-	if family == COMBAT_FEEL_CONTENT.TEMPO_STRETCH:
-		if now < _tempo_stretch_cooldown_until_ms:
-			return false
-		# Relaxed: Always allow time-bending on skill actions regardless of tier.
-	if family_priority < current_priority:
-		return false
-	if not _tempo_distortion_available(family, tempo_scale_value, duration):
-		return false
-	if _tempo_state_family != COMBAT_FEEL_CONTENT.TEMPO_NONE and _tempo_state_family != family:
-		_exit_tempo_state(_tempo_state_family, true)
-	_kill_tempo_recovery_tween()
-	_tempo_state_family = family
-	_tempo_state_id = event_id
-	_tempo_state_started_ms = now
-	_tempo_state_until_ms = now + int(maxf(duration, 0.0) * 1000.0) if duration > 0.0 else 0
-	_apply_tempo_time_scale(tempo_scale_value)
-	_register_tempo_distortion(family, tempo_scale_value, duration)
-	_track_tempo_event(family, event_id, payload)
-	
-	match family:
-		COMBAT_FEEL_CONTENT.TEMPO_PUNCTURE:
-			_tempo_puncture_cooldown_until_ms = now + int(COMBAT_FEEL_CONTENT.PUNCTURE_COOLDOWN_SECONDS * 1000.0)
-		COMBAT_FEEL_CONTENT.TEMPO_STRETCH:
-			# Skill feedback: amber pulse to telegraph Witch Time entry
-			EventBus.emit_signal("screen_flash", Color(1.0, 0.65, 0.0, 0.12), 0.08)
-			# Brief cooldown so it doesn't overlap constantly, but remains reliable.
-			_tempo_stretch_cooldown_until_ms = now + 1000 
-		COMBAT_FEEL_CONTENT.TEMPO_VOID:
-			if _song_conductor != null:
-				_song_conductor.set_void_filter(true)
-		COMBAT_FEEL_CONTENT.TEMPO_DECREE:
-			if _hud_presenter != null:
-				_hud_presenter.set_boss_state_text("BLACK SIGNAL DECREE")
-	return true
-
-
-func _exit_tempo_state(family: StringName, preempted: bool) -> void:
-	if _tempo_state_family != family:
-		return
-	var exited_family: StringName = _tempo_state_family
-	_tempo_state_family = COMBAT_FEEL_CONTENT.TEMPO_NONE
-	_tempo_state_id = &""
-	_tempo_state_until_ms = 0
-	_tempo_state_started_ms = 0
-	
-	if exited_family == COMBAT_FEEL_CONTENT.TEMPO_VOID:
-		if _song_conductor != null:
-			_song_conductor.set_void_filter(false)
-
-	if not preempted:
-		_track_tempo_event(family, &"resolved", {})
-	
-	if preempted or family == COMBAT_FEEL_CONTENT.TEMPO_PUNCTURE or exited_family == COMBAT_FEEL_CONTENT.TEMPO_VOID:
-		_apply_tempo_time_scale(_base_time_scale)
-	else:
-		_ramp_to_base_time_scale()
-	
-	if exited_family == COMBAT_FEEL_CONTENT.TEMPO_DECREE and _hud_presenter != null and _is_boss_encounter:
-		if _boss_hp_threshold_fired:
-			_hud_presenter.set_boss_state_text(PRESENTATION_TEXT.boss_state_final(_region_id))
-		else:
-			_hud_presenter.set_boss_state_text(PRESENTATION_TEXT.boss_state_opening(_region_id))
-	if exited_family == COMBAT_FEEL_CONTENT.TEMPO_DECREE and _song_reward_pending and not _awaiting_reward_choice and not _live_reward_queue.is_empty():
-		call_deferred("_show_next_live_reward_offer")
-
-
 func _recover_song_reward_flow(reason: String) -> void:
-	_track_tempo_event(COMBAT_FEEL_CONTENT.TEMPO_VOID, &"stall_recovered", {
+	_tempo_director.track_tempo_event(COMBAT_FEEL_CONTENT.TEMPO_VOID, &"stall_recovered", {
 		"reason": reason
 	})
 	_resume_song_combat_runtime_from_reward()
 
 
 func _reset_pending_reward_state(clear_live_queue: bool = false) -> void:
-	_awaiting_reward_choice = false
 	_reward_choice_made = false
 	_active_reward_runtime = REWARD_RUNTIME_NONE
-	_pending_reward_creature = {}
 	_pending_reward_dna_locked = false
 	_live_reward_offer_timer = 0.0
 	_song_reward_stall_guard = 0.0
+	if _victory_reward_director != null and _victory_reward_director.has_method("reset"):
+		_victory_reward_director.reset()
 	if clear_live_queue:
 		_live_reward_queue.clear()
 
@@ -1244,15 +993,15 @@ func _reset_pending_reward_state(clear_live_queue: bool = false) -> void:
 func _begin_song_live_reward_runtime() -> void:
 	_song_reward_pending = true
 	_active_reward_runtime = REWARD_RUNTIME_SONG_LIVE
-	# Keep escalation runtime alive during live reward interaction.
-	# Song-pressure suspension is owned by tempo/void + explicit resume handshake.
 
 
-func _is_song_live_reward_runtime_active() -> bool:
-	return _song_mode and _active_reward_runtime == REWARD_RUNTIME_SONG_LIVE
+func _trigger_decree(event_id: StringName, duration: float, payload: Dictionary = {}) -> void:
+	var clamped_duration: float = clampf(duration, COMBAT_FEEL_CONTENT.DECREE_MIN_DURATION, COMBAT_FEEL_CONTENT.DECREE_MAX_DURATION)
+	_tempo_director.trigger_decree(event_id, clamped_duration, payload)
 
 
 func _resume_song_combat_runtime_from_reward(clear_live_queue: bool = false) -> void:
+
 	_song_reward_pending = false
 	_active_reward_runtime = REWARD_RUNTIME_NONE
 	_set_song_paused(false)
@@ -1288,16 +1037,16 @@ func _resolve_song_empty_lane_near_player() -> int:
 	if zone_manager == null:
 		return 2 # East fallback
 
-	var player_lane: int = _get_player_focus_lane()
+	var player_sector: int = _get_player_focus_sector()
 	var total_lanes: int = int(zone_manager.THREAT_COUNT)
 
-	# Priority 1: Current lane if empty
-	if zone_manager.is_lane_empty(player_lane):
-		return player_lane
+	# Priority 1: Current sector if empty
+	if zone_manager.is_lane_empty(player_sector):
+		return player_sector
 
-	# Priority 2: Immediate adjacent lanes (8-way circle)
-	var left_adj: int = (player_lane - 1 + total_lanes) % total_lanes
-	var right_adj: int = (player_lane + 1) % total_lanes
+	# Priority 2: Immediate adjacent sectors (8-way circle)
+	var left_adj: int = (player_sector - 1 + total_lanes) % total_lanes
+	var right_adj: int = (player_sector + 1) % total_lanes
 
 	if zone_manager.is_lane_empty(left_adj):
 		return left_adj
@@ -1309,12 +1058,13 @@ func _resolve_song_empty_lane_near_player() -> int:
 		if zone_manager.is_lane_empty(i):
 			return i
 
-	return player_lane # Fallback to player lane if everything is full
+	return player_sector # Fallback to player sector if everything is full
 
-func _get_player_focus_lane() -> int:
+
+func _get_player_focus_sector() -> int:
 	if player_combat == null:
 		return 2
-	return player_combat.get_active_focus_lane()
+	return player_combat.get_active_focus_sector()
 
 
 func _lane_cardinal_token(lane: int) -> String:
@@ -1341,40 +1091,6 @@ func _continue_after_non_song_reward_resolution() -> void:
 	_reward_hint_label.text = PRESENTATION_TEXT.REWARD_HINT_WAIT
 	controls_label.text = ""
 	_check_for_upgrade_choices()
-
-
-func _trigger_puncture(event_id: StringName, tempo_scale_value: float, duration: float, payload: Dictionary = {}) -> bool:
-	if _tempo_state_family == COMBAT_FEEL_CONTENT.TEMPO_DECREE or _tempo_state_family == COMBAT_FEEL_CONTENT.TEMPO_VOID:
-		return false
-	var clamped_scale: float = clampf(tempo_scale_value, COMBAT_FEEL_CONTENT.PUNCTURE_MIN_SCALE, COMBAT_FEEL_CONTENT.PUNCTURE_MAX_SCALE)
-	var clamped_duration: float = clampf(duration, 0.04, COMBAT_FEEL_CONTENT.PUNCTURE_MAX_DURATION)
-	return _enter_tempo_state(COMBAT_FEEL_CONTENT.TEMPO_PUNCTURE, event_id, clamped_scale, clamped_duration, payload)
-
-
-func _begin_void(event_id: StringName, payload: Dictionary = {}) -> void:
-	# Void is a semi-pause for high-value decisions. 
-	# Duration 0 means it lasts until explicit _end_void.
-	_enter_tempo_state(COMBAT_FEEL_CONTENT.TEMPO_VOID, event_id, COMBAT_FEEL_CONTENT.VOID_SCALE, 0.0, payload)
-
-
-func _end_void(event_id: StringName, payload: Dictionary = {}) -> void:
-	if _tempo_state_family != COMBAT_FEEL_CONTENT.TEMPO_VOID:
-		return
-	_track_tempo_event(COMBAT_FEEL_CONTENT.TEMPO_VOID, event_id, payload)
-	_exit_tempo_state(COMBAT_FEEL_CONTENT.TEMPO_VOID, false)
-
-
-func _trigger_decree(event_id: StringName, duration: float, payload: Dictionary = {}) -> void:
-	var clamped_duration: float = clampf(duration, COMBAT_FEEL_CONTENT.DECREE_MIN_DURATION, COMBAT_FEEL_CONTENT.DECREE_MAX_DURATION)
-	_enter_tempo_state(COMBAT_FEEL_CONTENT.TEMPO_DECREE, event_id, COMBAT_FEEL_CONTENT.DECREE_SCALE, clamped_duration, payload)
-
-
-func _current_void_elapsed_seconds() -> float:
-	if _tempo_state_family != COMBAT_FEEL_CONTENT.TEMPO_VOID or _tempo_state_started_ms <= 0:
-		return 0.0
-	var now: int = Time.get_ticks_msec()
-	return float(now - _tempo_state_started_ms) / 1000.0
-
 
 
 func _update_presentation_layers(delta: float) -> void:
@@ -1411,14 +1127,14 @@ func _update_background_effects() -> void:
 
 func _update_performance_systems(delta: float) -> void:
 	if _performance_reward_director != null and is_instance_valid(_performance_reward_director) and _performance_reward_director.has_method("process_tick"):
-		if not _awaiting_reward_choice and not _is_run_spine_active():
+		if not _victory_reward_director.is_awaiting_choice() and not _is_run_spine_active():
 			_performance_reward_director.call("process_tick", delta)
 			if _performance_hud != null and _performance_hud.has_method("process_tick"):
 				_performance_hud.process_tick(
 					delta,
 					_song_mode,
 					_run_finished,
-					_awaiting_reward_choice or _is_run_spine_active()
+					_victory_reward_director.is_awaiting_choice() or _is_run_spine_active()
 				)
 
 
@@ -1598,7 +1314,7 @@ func _update_lane_visual_states() -> void:
 	var inactive_color: Color = biome.get("ring_inactive_color", ring_palette.get("inactive", Color(0.7, 0.7, 0.8, 0.45)))
 	var time: float = Time.get_ticks_msec() / 1000.0
 	var critical_peak: float = 0.0
-	_critical_threat_lane = -1
+	_critical_threat_sector = -1
 
 	for lane in range(zone_manager.THREAT_COUNT if zone_manager else 8):
 		var intercept_dist: float = _lane_intercept_distance(lane)
@@ -1618,7 +1334,7 @@ func _update_lane_visual_states() -> void:
 		var focus_scale: float = 1.0
 		var focus_color: Color = inactive_color
 
-		if lane == _get_player_focus_lane():
+		if lane == _get_player_focus_sector():
 			state_alpha = maxf(state_alpha, COMBAT_FEEL_CONTENT.LANE_THREAT_FOCUS_ALPHA)
 			focus_color = active_color
 			focus_alpha = COMBAT_FEEL_CONTENT.FOCAL_MARKER_ACTIVE_ALPHA
@@ -1651,7 +1367,7 @@ func _update_lane_visual_states() -> void:
 				focus_color = accent_color.lightened(0.12)
 				if critical_t > critical_peak:
 					critical_peak = critical_t
-					_critical_threat_lane = lane
+					_critical_threat_sector = lane
 				else:
 					critical_peak = maxf(critical_peak, critical_t)
 		else:
@@ -1669,8 +1385,8 @@ func _update_lane_visual_states() -> void:
 	var now_ms: int = Time.get_ticks_msec()
 	if _critical_threat_pressure >= 0.86 and now_ms >= _critical_warning_cooldown_until_ms:
 		var threat_msg: String = "THREAT"
-		if _critical_threat_lane >= 0:
-			threat_msg = "THREAT %s" % _lane_cardinal_token(_critical_threat_lane)
+		if _critical_threat_sector >= 0:
+			threat_msg = "THREAT %s" % _lane_cardinal_token(_critical_threat_sector)
 		_show_feedback(threat_msg, Color(1.0, 0.56, 0.38, 1.0), 0.22)
 		_critical_warning_cooldown_until_ms = now_ms + CRITICAL_WARNING_COOLDOWN_MS
 
@@ -1691,11 +1407,11 @@ func _unhandled_input(event: InputEvent) -> void:
 
 	if _is_growth_choice_active():
 		return
-	if _tempo_state_family == COMBAT_FEEL_CONTENT.TEMPO_DECREE and not _run_finished:
+	if _tempo_director.get_family() == COMBAT_FEEL_CONTENT.TEMPO_DECREE and not _run_finished:
 		# Decree moments are world-law assertions, not decision menus.
 		return
 
-	if _awaiting_reward_choice and not _reward_choice_made:
+	if _victory_reward_director.is_awaiting_choice() and not _reward_choice_made:
 		if key_event.keycode == KEY_B:
 			_choose_bond()
 			return
@@ -2134,7 +1850,7 @@ func _sync_hud_shell_interface_wound_glow() -> void:
 	var c: int = 0
 	if combat_meter != null and is_instance_valid(combat_meter):
 		c = int(combat_meter.combo_count)
-	var norm: float = clampf(float(c) / float(CombatMeter.ULTIMATE_THRESHOLD), 0.0, 1.0)
+	var norm: float = clampf(float(c) / float(COMBAT_METER_SCRIPT.ULTIMATE_THRESHOLD), 0.0, 1.0)
 	_presentation_controller.update_hud_interface_wound_glow(_hud_top_left_panel, _hud_top_right_panel, norm)
 
 
@@ -3158,7 +2874,6 @@ func _connect_eventbus() -> void:
 	EventBus.screen_shake.connect(_presentation_runtime.on_screen_shake)
 	EventBus.ui_shake.connect(_presentation_runtime.on_ui_shake)
 	EventBus.dna_resonated.connect(_presentation_runtime.on_dna_resonated)
-	EventBus.slow_motion.connect(_on_slow_motion)
 	EventBus.player_attacked.connect(_on_player_attacked)
 	EventBus.timed_attack_resolved.connect(_on_timed_attack_resolved)
 	EventBus.attack_timing_early_resolved.connect(_on_attack_timing_early_resolved)
@@ -3171,6 +2886,7 @@ func _connect_eventbus() -> void:
 	EventBus.timing_ring_pressed.connect(_presentation_runtime.on_timing_ring_pressed)
 	EventBus.song_beat_pulse.connect(_presentation_runtime.on_song_beat_pulse)
 	EventBus.projectile_fired.connect(_presentation_runtime.on_projectile_fired)
+	EventBus.enemy_attack_telegraphed.connect(_presentation_runtime.on_enemy_attack_telegraphed)
 	EventBus.run_growth_changed.connect(_on_run_growth_changed)
 	EventBus.run_growth_level_resolved.connect(_on_run_growth_level_resolved)
 	EventBus.tendency_growth_resolved.connect(_on_tendency_growth_resolved)
@@ -3210,7 +2926,7 @@ func _start_song_run() -> void:
 	_song_mode = true
 	_song_elapsed = 0.0
 	_set_song_paused(false)
-	_reset_tempo_state()
+	_tempo_director.reset_tempo_state()
 	_song_phase_index = -1
 	_song_boss_triggered = false
 	_song_level_transitioning = false
@@ -3265,7 +2981,7 @@ func _start_regular_level(level_index: int, reset_hp: bool) -> void:
 	if _music_control_layer != null:
 		_music_control_layer.configure(_active_song_profile)
 	_set_song_paused(false)
-	_reset_tempo_state()
+	_tempo_director.reset_tempo_state()
 	_song_level_transitioning = false
 	_song_level_start_time = float(level_data.get("start_time", 0.0))
 	_song_level_end_time = float(level_data.get("end_time", 0.0))
@@ -3558,12 +3274,11 @@ func _show_growth_choice_intersection(
 	if creature_data.is_empty():
 		return
 
-	_pending_reward_creature = creature_data.duplicate(true)
-	var species_id: String = str(_pending_reward_creature.get("species_id", ""))
+	_victory_reward_director.offer_creature(creature_data, false)
+
+	var species_id: String = str(_victory_reward_director.get_pending_creature().get("species_id", ""))
 	var effective_threshold: float = GameState.get_effective_dna_threshold(species_id)
 	_pending_reward_dna_locked = not GameState.has_dna_for(species_id, effective_threshold)
-	_awaiting_reward_choice = true
-	_reward_choice_made = false
 
 	var perf_summary: Dictionary = {}
 	perf_summary = RunStats.get_compact_summary()
@@ -3578,20 +3293,20 @@ func _show_growth_choice_intersection(
 		"source_flow": source_flow,
 		"advance_target": advance_target,
 		"advance_to_boss": advance_to_boss,
-		"creature": _pending_reward_creature.duplicate(true),
+		"creature": _victory_reward_director.get_pending_creature().duplicate(true),
 		"performance": perf_summary.duplicate(true),
 		"bond_available": not _pending_reward_dna_locked,
 		"eat_available": true,
 		"fail_safe_pass_allowed": _pending_reward_dna_locked or source_flow == "song_between_level"
 	}
 	GameState.set_growth_choice_intersection_payload(payload)
-	EventBus.emit_signal("capture_offered", _pending_reward_creature)
+	EventBus.emit_signal("capture_offered", _victory_reward_director.get_pending_creature())
 
 	_hide_reward_overlay()
 	_hide_run_spine_surface()
 	
-	_begin_void(&"growth_choice_intersection", {
-		"species_id": str(_pending_reward_creature.get("species_id", ""))
+	_tempo_director.begin_void(&"growth_choice_intersection", {
+		"species_id": str(_victory_reward_director.get_pending_creature().get("species_id", ""))
 	})
 	
 	if _growth_choice_surface != null and is_instance_valid(_growth_choice_surface):
@@ -3621,7 +3336,7 @@ func _create_run_spine_surface() -> void:
 func _create_event_surface() -> void:
 	if _event_surface != null and is_instance_valid(_event_surface):
 		return
-	_event_surface = EVENT_SCENE.instantiate() as EventScene
+	_event_surface = EVENT_SCENE.instantiate() as Node2D
 	add_child(_event_surface)
 	_event_surface.event_completed.connect(_on_event_completed)
 
@@ -3688,7 +3403,7 @@ func _complete_event_flow() -> void:
 func _create_growth_choice_surface() -> void:
 	if _growth_choice_surface != null and is_instance_valid(_growth_choice_surface):
 		return
-	_growth_choice_surface = GROWTH_CHOICE_SCENE.instantiate() as GrowthChoiceIntersection
+	_growth_choice_surface = GROWTH_CHOICE_SCENE.instantiate() as Node2D
 	_growth_choice_surface.name = "GrowthChoiceSurface"
 	_growth_choice_surface.visible = false
 	add_child(_growth_choice_surface)
@@ -3703,8 +3418,8 @@ func _hide_growth_choice_surface() -> void:
 	if _growth_choice_surface != null and is_instance_valid(_growth_choice_surface):
 		_growth_choice_surface.hide_surface()
 	
-	if _tempo_state_family == COMBAT_FEEL_CONTENT.TEMPO_VOID:
-		_end_void(&"growth_choice_hidden")
+	if _tempo_director.get_family() == COMBAT_FEEL_CONTENT.TEMPO_VOID:
+		_tempo_director.end_void(&"growth_choice_hidden")
 
 
 func _on_growth_choice_selected(choice_id: String) -> void:
@@ -3983,7 +3698,7 @@ func _offer_song_phase_reward(reward_pool: Array) -> void:
 
 
 func _resume_song_after_reward() -> void:
-	_end_void(&"reward_resolved", {
+	_tempo_director.end_void(&"reward_resolved", {
 		"pending_queue": _live_reward_queue.size()
 	})
 	_resume_song_combat_runtime_from_reward()
@@ -3993,7 +3708,7 @@ func _resume_song_after_reward() -> void:
 func _trigger_boss_final_movement() -> void:
 	_song_reward_pending = false
 	_reset_pending_reward_state(true)
-	_exit_tempo_state(_tempo_state_family, true)
+	_tempo_director.exit_tempo_state(_tempo_director.get_family(), true)
 	_hide_live_reward_shell()
 	_song_boss_triggered = true
 	_set_song_paused(true)
@@ -4525,7 +4240,7 @@ func _run_dev_harness_control_sequence() -> void:
 
 		var action_ok: bool = player_combat.debug_force_focus_and_action(lane, str(step.get("action", "")))
 		await get_tree().create_timer(0.26).timeout
-		var focused_lane: int = _get_player_focus_lane()
+		var focused_lane: int = _get_player_focus_sector()
 		var expect_cleared: bool = bool(step.get("expect_projectile_cleared", true))
 		var projectile_cleared: bool = zone_manager.get_projectile(lane) == null
 		if expect_cleared and not projectile_cleared:
@@ -5204,9 +4919,6 @@ func _flash_meter_shell(color: Color, duration: float) -> void:
 
 func _hide_reward_overlay() -> void:
 	_reward_overlay.visible = false
-	_pending_reward_creature = {}
-	_awaiting_reward_choice = false
-	_reward_choice_made = false
 	_reward_creature_tag_label.text = ""
 	_reward_title_label.text = ""
 	_reward_body_label.text = ""
@@ -5275,14 +4987,14 @@ func _hide_live_reward_shell() -> void:
 	if _live_reward_shell != null:
 		_live_reward_shell.visible = false
 	_live_reward_offer_timer = 0.0
-	if _tempo_state_family == COMBAT_FEEL_CONTENT.TEMPO_VOID:
-		_end_void(&"shell_hidden")
+	if _tempo_director.get_family() == COMBAT_FEEL_CONTENT.TEMPO_VOID:
+		_tempo_director.end_void(&"shell_hidden")
 	_refresh_quig_ui_state()
 	_sync_message_lane_ownership()
 
 
 func _refresh_song_controls_text() -> void:
-	if _song_reward_pending and _awaiting_reward_choice:
+	if _song_reward_pending and _victory_reward_director.is_awaiting_choice():
 		if _pending_reward_dna_locked:
 			_hud_presenter.set_controls_text(PRESENTATION_TEXT.LIVE_CONTROLS_LOCKED)
 		else:
@@ -5297,7 +5009,7 @@ func _show_next_live_reward_offer() -> void:
 		_hide_live_reward_shell()
 		_refresh_song_controls_text()
 		return
-	if _tempo_state_family == COMBAT_FEEL_CONTENT.TEMPO_DECREE:
+	if _tempo_director.get_family() == COMBAT_FEEL_CONTENT.TEMPO_DECREE:
 		return
 
 	var next_creature: Dictionary = _live_reward_queue.pop_front()
@@ -5305,9 +5017,9 @@ func _show_next_live_reward_offer() -> void:
 
 
 func _expire_live_reward_offer() -> void:
-	if not _song_reward_pending or not _awaiting_reward_choice:
+	if not _song_reward_pending or not _victory_reward_director.is_awaiting_choice():
 		return
-	_notify_tempo_mastery(COMBAT_FEEL_CONTENT.TEMPO_VOID, "choice_timeout", {
+	_tempo_director.notify_tempo_mastery(COMBAT_FEEL_CONTENT.TEMPO_VOID, "choice_timeout", {
 		"window_seconds": LIVE_REWARD_WINDOW
 	})
 	_pass_reward()
@@ -5385,8 +5097,8 @@ func _show_end_stats() -> void:
 
 func _on_dna_gained(_species_id: String, _amount: float, _total: float) -> void:
 	_refresh_dna_hud()
-	if _song_reward_pending and _awaiting_reward_choice:
-		var species_id: String = str(_pending_reward_creature.get("species_id", ""))
+	if _song_reward_pending and _victory_reward_director.is_awaiting_choice():
+		var species_id: String = str(_victory_reward_director.get_pending_creature().get("species_id", ""))
 		var threshold: float = GameState.get_effective_dna_threshold(species_id)
 		_pending_reward_dna_locked = not GameState.is_species_ever_bonded(species_id) and not GameState.has_dna_for(species_id, threshold)
 		_refresh_live_reward_shell()
@@ -5431,11 +5143,11 @@ func _on_dna_routing_changed(route_id: String, label: String) -> void:
 
 
 func _on_player_took_damage(amount: float, source_sector: int) -> void:
-	_kill_tempo_recovery_tween()
-	if _tempo_state_family == COMBAT_FEEL_CONTENT.TEMPO_STRETCH:
-		_exit_tempo_state(COMBAT_FEEL_CONTENT.TEMPO_STRETCH, true)
+	_tempo_director.kill_tempo_recovery_tween()
+	if _tempo_director.get_family() == COMBAT_FEEL_CONTENT.TEMPO_STRETCH:
+		_tempo_director.exit_tempo_state(COMBAT_FEEL_CONTENT.TEMPO_STRETCH, true)
 	else:
-		_apply_tempo_time_scale(_base_time_scale)
+		_tempo_director.apply_tempo_time_scale(_base_time_scale)
 	if _escalation_director != null:
 		_escalation_director.notify_player_hp_changed(GameState.get_hp_percent())
 		_escalation_director.notify_player_took_damage(amount, source_sector)
@@ -5678,7 +5390,7 @@ func _refresh_enemy_marker_health(enemy_id: int) -> void:
 func _on_proc_feedback_requested(text: String, color: Color) -> void:
 	var u: String = text.strip_edges().to_upper()
 	if u == "EMPTY PARRY":
-		_show_feedback("WRONG LANE", color, 0.28)
+		_show_feedback("NO THREAT CAUGHT", color, 0.28)
 		return
 	if u == "NOT READY":
 		# Ultimate rejection: main line already shows NO CHARGE from combat_input_resolved.
@@ -5828,8 +5540,8 @@ func _on_slow_motion(requested_scale: float, duration: float) -> void:
 	# unless it is an explicit PUNCTURE event.
 	var safe_scale: float = maxf(requested_scale, 0.35)
 	
-	if _tempo_state_family == COMBAT_FEEL_CONTENT.TEMPO_VOID:
-		_track_tempo_event(COMBAT_FEEL_CONTENT.TEMPO_PUNCTURE, &"suppressed_by_void")
+	if _tempo_director.get_family() == COMBAT_FEEL_CONTENT.TEMPO_VOID:
+		_tempo_director.track_tempo_event(COMBAT_FEEL_CONTENT.TEMPO_PUNCTURE, &"suppressed_by_void")
 		return
 	
 	# Mapping incoming requests to high-impact tiers v1.
@@ -5839,16 +5551,16 @@ func _on_slow_motion(requested_scale: float, duration: float) -> void:
 	if requested_scale < puncture_max_scale:
 		# PUNCTURE: Very heavy slowdown (killing blow freeze). 
 		# We allow the original low scale but keep it extremely brief.
-		_trigger_puncture(&"combat_puncture", requested_scale, duration, {
+		_tempo_director.trigger_puncture(&"combat_puncture", requested_scale, duration, {
 			"impact_weight": true
 		})
 	elif safe_scale <= stretch_max_scale:
 		# STRETCH: Witch Time dilation (perfect parry/dodge/hits).
-		_enter_tempo_state(COMBAT_FEEL_CONTENT.TEMPO_STRETCH, &"combat_stretch", safe_scale, duration, {})
+		_tempo_director.enter_tempo_state(COMBAT_FEEL_CONTENT.TEMPO_STRETCH, &"combat_stretch", safe_scale, duration, {})
 	else:
 		# Standard execution feedback (0.7+ scale) is now suppressed to keep
 		# the game feeling high-pressure and fast. Only rare distortion allowed.
-		_track_tempo_event(COMBAT_FEEL_CONTENT.TEMPO_NONE, &"suppressed_low_weight")
+		_tempo_director.track_tempo_event(COMBAT_FEEL_CONTENT.TEMPO_NONE, &"suppressed_low_weight")
 
 
 func _impact_lane_forward(lane: int) -> Vector2:
@@ -5936,7 +5648,7 @@ func _on_attack_timing_early_resolved(lane: int) -> void:
 	impact_fx_requested.emit(&"miss", _impact_pos_lane(lane, 0.36), fwd.rotated(jitter), 0.74)
 
 
-func _on_player_attacked(sector: int, _damage: float, was_timed: bool) -> void:
+func _on_player_attacked(sector: int, _damage: float, was_timed: bool, _heading: Vector2) -> void:
 	if was_timed:
 		_show_feedback("TIMED", Color(1.0, 0.95, 0.55, 1.0), 0.36)
 		_presentation_runtime.highlight_timing_ring(sector, Color(1.0, 0.95, 0.55, 1.0), 5.0)
@@ -5964,7 +5676,7 @@ func _on_timed_attack_resolved(sector: int, quality: String, damage: float, enem
 
 	if quality == "perfect":
 		impact_fx_requested.emit(&"perfect", _impact_pos_lane(sector, 0.58), _impact_lane_forward(sector), 1.0)
-		_notify_tempo_mastery(COMBAT_FEEL_CONTENT.TEMPO_PUNCTURE, "perfect_hit", {
+		_tempo_director.notify_tempo_mastery(COMBAT_FEEL_CONTENT.TEMPO_PUNCTURE, "perfect_hit", {
 			"beat_quality": beat_quality
 		})
 		_try_apply_vessel_modifier_on_perfect(sector, damage)
@@ -5976,8 +5688,8 @@ func _on_timed_attack_resolved(sector: int, quality: String, damage: float, enem
 
 	if quality == "perfect":
 		_presentation_controller.on_combat_event(_bg_sprite, "perfect")
-	if _tempo_state_family == COMBAT_FEEL_CONTENT.TEMPO_DECREE and (quality == "perfect" or quality == "good"):
-		_notify_tempo_mastery(COMBAT_FEEL_CONTENT.TEMPO_DECREE, "law_response", {
+	if _tempo_director.get_family() == COMBAT_FEEL_CONTENT.TEMPO_DECREE and (quality == "perfect" or quality == "good"):
+		_tempo_director.notify_tempo_mastery(COMBAT_FEEL_CONTENT.TEMPO_DECREE, "law_response", {
 			"response": "timed_attack",
 			"quality": quality
 		})
@@ -6007,7 +5719,8 @@ func _try_apply_vessel_modifier_on_perfect(origin_lane: int, origin_damage: floa
 	)
 
 
-func _on_player_parried(lane: int, quality: String, _reflect_damage: float) -> void:
+func _on_player_parried(sector: int, quality: String, _reflect_damage: float, _heading: Vector2) -> void:
+	var lane: int = sector
 	var bq: String = _get_beat_quality_for_action()
 	var enemy_id: int = _get_enemy_id_for_lane(lane)
 	if quality == "perfect":
@@ -6037,20 +5750,20 @@ func _on_player_parried(lane: int, quality: String, _reflect_damage: float) -> v
 
 	if quality == "perfect":
 		_presentation_controller.on_combat_event(_bg_sprite, "perfect")
-		_notify_tempo_mastery(COMBAT_FEEL_CONTENT.TEMPO_PUNCTURE, "perfect_parry", {
+		_tempo_director.notify_tempo_mastery(COMBAT_FEEL_CONTENT.TEMPO_PUNCTURE, "perfect_parry", {
 			"beat_quality": bq
 		})
-	if _tempo_state_family == COMBAT_FEEL_CONTENT.TEMPO_DECREE and (quality == "perfect" or quality == "good"):
-		_notify_tempo_mastery(COMBAT_FEEL_CONTENT.TEMPO_DECREE, "law_response", {
+	if _tempo_director.get_family() == COMBAT_FEEL_CONTENT.TEMPO_DECREE and (quality == "perfect" or quality == "good"):
+		_tempo_director.notify_tempo_mastery(COMBAT_FEEL_CONTENT.TEMPO_DECREE, "law_response", {
 			"response": "parry",
 			"quality": quality
 		})
 
 
-func _on_player_dodged(from_sector: int, to_sector: int) -> void:
-	if _tempo_state_family == COMBAT_FEEL_CONTENT.TEMPO_NONE:
-		_kill_tempo_recovery_tween()
-		_apply_tempo_time_scale(_base_time_scale)
+func _on_player_dodged(from_sector: int, to_sector: int, _heading: Vector2) -> void:
+	if _tempo_director.get_family() == COMBAT_FEEL_CONTENT.TEMPO_NONE:
+		_tempo_director.kill_tempo_recovery_tween()
+		_tempo_director.apply_tempo_time_scale(_base_time_scale)
 	_show_feedback("DODGE", Color(0.65, 0.85, 1.0, 1.0), 0.28)
 	_presentation_runtime.highlight_timing_ring(to_sector, Color(0.65, 0.85, 1.0, 1.0), 4.0)
 	var slip: Vector2 = Vector2(0.26, float(to_sector - from_sector))
@@ -6067,8 +5780,8 @@ func _on_player_dodged(from_sector: int, to_sector: int) -> void:
 		_show_beat_feedback("SLIP", Color(0.55, 0.75, 0.92, 1.0))
 	if _performance_reward_director != null and is_instance_valid(_performance_reward_director) and _performance_reward_director.has_method("notify_dodge_timing_quality"):
 		_performance_reward_director.call("notify_dodge_timing_quality", from_sector, to_sector, bq)
-	if _tempo_state_family == COMBAT_FEEL_CONTENT.TEMPO_DECREE:
-		_notify_tempo_mastery(COMBAT_FEEL_CONTENT.TEMPO_DECREE, "law_response", {
+	if _tempo_director.get_family() == COMBAT_FEEL_CONTENT.TEMPO_DECREE:
+		_tempo_director.notify_tempo_mastery(COMBAT_FEEL_CONTENT.TEMPO_DECREE, "law_response", {
 			"response": "dodge",
 			"quality": bq
 		})
@@ -6081,13 +5794,14 @@ func _on_player_no_stamina() -> void:
 
 func _on_combat_input_resolved(
 	action: String,
-	lane: int,
+	sector: int,
 	accepted: bool,
 	buffered: bool,
 	reason: String,
 	state: String,
 	cooldowns: Dictionary
 ) -> void:
+	var lane: int = sector
 	_last_combat_input_report = {
 		"action": action,
 		"lane": lane,
@@ -6119,7 +5833,7 @@ func _compact_rejection_feedback(action: String, reason: String, state: String) 
 		"locked":
 			return "RECOVERING"
 		"wrong_lane":
-			return "WRONG LANE"
+			return "BAD ANGLE"
 		"combat_disabled", "missing_runtime":
 			return "UNAVAILABLE"
 	if state != "idle":
@@ -6651,11 +6365,14 @@ func _get_current_cadence_window() -> String:
 	return ""
 
 
-func _on_bonded_support_triggered(species_id: String, lane: int, effect_id: String) -> void:
+func _on_bonded_support_triggered(species_id: String, sector: int, effect_id: String) -> void:
+	var lane: int = sector
 	var combo_mult: float = combat_meter.damage_multiplier()
 	var active_creature: Dictionary = GameState.get_active_bonded_creature()
 	@warning_ignore("static_called_on_instance")
 	var bond_mult: float = GameState.get_bond_level_mult(int(active_creature.get("bond_level", 1)))
+	if GameState.has_method("get_creature_level_mult"):
+		bond_mult *= GameState.get_creature_level_mult(int(active_creature.get("creature_level", 1)))
 	
 	# Bond Surge: next support trigger has doubled effectiveness.
 	var surge_mult: float = 1.0

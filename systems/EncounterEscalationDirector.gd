@@ -1,16 +1,15 @@
 extends Node
-class_name EncounterEscalationDirector
 
-# EncounterEscalationDirector v2
-# Centralizes live escalation, phase progression, and pressure-aware spawning.
+# EncounterEscalationDirector v2 - Centralizes live escalation, phase progression, and pressure-aware spawning.
 # Now includes timer management to prevent phantom spawns across state changes.
 
 const COMBAT_DATA = preload("res://data/CombatContent.gd")
+const COMBAT_FEEL_CONTENT = preload("res://data/CombatFeelContent.gd")
 const ENCOUNTER_IDENTITY_RUNTIME = preload("res://systems/EncounterIdentityRuntime.gd")
 const IDENTITY_CONTENT = preload("res://data/EncounterIdentityContent.gd")
 
 signal phase_changed(index, phase_data)
-signal spawn_requested(lane, enemy_data)
+signal spawn_requested(angle, enemy_data)
 signal feedback_requested(text, color, duration)
 signal ecology_state_changed(snapshot)
 
@@ -60,8 +59,8 @@ var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
 var _escalation_rules: Dictionary = {}
 
-var zone_manager: ZoneManager = null
-var player_combat: PlayerCombat = null
+var zone_manager: Node = null
+var player_combat: Node = null
 
 var _player_hp_ratio: float = 1.0
 var _boss_hp_ratio: float = 1.0
@@ -233,7 +232,7 @@ func _seed_initial_phase_enemies(phase: Dictionary) -> void:
 
 	var player_lane: int = 1 # Default fallback
 	if player_combat != null:
-		player_lane = player_combat.get_active_focus_lane()
+		player_lane = player_combat.get_active_focus_sector()
 	var ordered_lanes: Array = ENCOUNTER_IDENTITY_RUNTIME.order_empty_lanes(
 		_region_id,
 		phase,
@@ -266,7 +265,11 @@ func _sync_budgets_to_zone_manager() -> void:
 		if _player_hp_ratio <= LOW_HP_RELIEF_RATIO or _recent_hit_timer > 0.0:
 			interval += 0.85 # Visible relief
 		
-		zone_manager.set_cycle_interval(clampf(interval, 1.2, 3.5))
+		zone_manager.set_cycle_interval(clampf(
+			interval,
+			COMBAT_FEEL_CONTENT.ENCOUNTER_ESCALATION_CYCLE_INTERVAL_FLOOR,
+			3.5
+		))
 
 func notify_enemy_defeated(enemy_id: int, lane: int, replaced_immediately: bool = false) -> void:
 	if not _running or _current_phase_index < 0:
@@ -394,7 +397,8 @@ func _request_spawn(lane: int) -> bool:
 	if not _can_schedule_spawn(phase, enemy):
 		return false
 	
-	spawn_requested.emit(lane, enemy)
+	var angle: float = (float(lane) / 8.0) * TAU - PI/2.0
+	spawn_requested.emit(angle, enemy)
 	_emit_ecology_state_if_changed()
 	return true
 

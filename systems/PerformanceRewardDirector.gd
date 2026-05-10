@@ -73,7 +73,7 @@ signal reward_claimed(reward_data: Dictionary, source: String)
 signal proc_feedback(text: String, color: Color)
 signal pressure_bias_changed(snapshot: Dictionary)
 
-var _combat_meter: CombatMeter = null
+var _combat_meter: Node = null
 
 var _song_started: bool = false
 var _phase_index: int = -1
@@ -127,7 +127,7 @@ var _tempo_mastery_claimed_per_phase: Dictionary = {
 var _tempo_decree_event_claims: Dictionary = {}
 
 
-func bind_runtime(combat_meter_ref: CombatMeter, _run_growth_ref: Node = null, _run_stats_ref: Node = null) -> void:
+func bind_runtime(combat_meter_ref: Node, _run_growth_ref: Node = null, _run_stats_ref: Node = null) -> void:
 	_combat_meter = combat_meter_ref
 	_connect_eventbus()
 	_connect_run_stats()
@@ -1011,7 +1011,7 @@ func _on_enemy_defeated(_enemy_id: int) -> void:
 			emit_signal("proc_feedback", "VESSEL FEEDS", Color(0.96, 0.48, 0.28, 1.0))
 
 
-func _on_timed_attack_resolved(_lane: int, quality: String, _damage: float, _enemy_id: int) -> void:
+func _on_timed_attack_resolved(_sector: int, quality: String, _damage: float, _enemy_id: int) -> void:
 	# Veilstrike Chain: 3 perfect attacks in a row → charge 20
 	var chain_effect: Dictionary = get_runtime_effect("perfect_strike_chain")
 	if quality == "perfect":
@@ -1034,7 +1034,7 @@ func _on_timed_attack_resolved(_lane: int, quality: String, _damage: float, _ene
 				emit_signal("proc_feedback", "CHAIN FIRES", Color(0.78, 0.94, 0.62, 1.0))
 
 
-func _on_player_parried(_lane: int, quality: String, _reflect_damage: float) -> void:
+func _on_player_parried(_sector: int, quality: String, _reflect_damage: float, _heading: Vector2) -> void:
 	match quality:
 		"perfect":
 			_parry_streak += 1
@@ -1052,7 +1052,7 @@ func _on_player_parried(_lane: int, quality: String, _reflect_damage: float) -> 
 			_parry_streak = 0
 
 
-func _on_player_took_damage(_amount: float, _source_lane: int) -> void:
+func _on_player_took_damage(_amount: float, _source_sector: int) -> void:
 	_kill_streak = 0
 	_perfect_strike_streak = 0
 	_parry_streak = 0
@@ -1082,12 +1082,12 @@ func _on_player_took_damage(_amount: float, _source_lane: int) -> void:
 		emit_signal("proc_feedback", "HUNGER RISES", Color(0.92, 0.40, 0.36, 1.0))
 
 
-func _on_player_dodged(_from_lane: int, _to_lane: int) -> void:
+func _on_player_dodged(_from_sector: int, _to_sector: int, _heading: Vector2) -> void:
 	_dodge_streak += 1
 	_add_hunt_momentum(HUNT_MOMENTUM_DODGE_GAIN)
 
 
-func notify_dodge_timing_quality(_from_lane: int, _to_lane: int, quality: String) -> void:
+func notify_dodge_timing_quality(_from_sector: int, _to_sector: int, quality: String) -> void:
 	if not _song_started or _phase_index < 0:
 		return
 	if quality == "perfect":
@@ -1101,7 +1101,7 @@ func notify_dodge_timing_quality(_from_lane: int, _to_lane: int, quality: String
 		_dodge_streak = 0
 
 
-func _on_bonded_support_triggered(_species_id: String, _lane: int, _effect_id: String) -> void:
+func _on_bonded_support_triggered(_species_id: String, _sector: int, _effect_id: String) -> void:
 	var bond_effect: Dictionary = get_runtime_effect("support_trigger_heal")
 	if bond_effect.is_empty():
 		return

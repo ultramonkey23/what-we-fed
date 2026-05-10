@@ -33,6 +33,9 @@ const EYE_TELEGRAPH_BIAS_CAP: float = 0.5
 
 const VESSEL_BOND_TRAIT_WEIGHT: float = 0.65
 
+const ENEMY_DEFENSE_MAX_REDUCTION_RATIO: float = 0.35
+const ENEMY_DEFENSE_MIN_DAMAGE: float = 1.0
+
 
 # Maw (stat_power) compounds across every player attack path. Returns 1.0 at base power so default feel is preserved.
 static func _get_maw_multiplier() -> float:
@@ -151,3 +154,26 @@ static func get_vessel_trait_multiplier(species_id: String, explicit_bond_level:
 			bond_level = 1
 	var bond_mult: float = GameState.get_bond_level_mult(bond_level)
 	return 1.0 + (bond_mult - 1.0) * VESSEL_BOND_TRAIT_WEIGHT
+
+
+# Enemy damage application: status amplification enters as an explicit multiplier;
+# defense and minimum-damage truth live here instead of in LaneManager.
+static func apply_enemy_damage(enemy: Dictionary, amount: float, status_damage_mult: float = 1.0) -> Dictionary:
+	if enemy.is_empty() or not enemy.has("hp") or float(enemy.get("hp", 0.0)) <= 0.0:
+		return {"applied": false, "enemy": enemy, "damage": 0.0, "defeated": false}
+
+	var modified_amount: float = maxf(amount * status_damage_mult, 0.0)
+	if modified_amount <= 0.0:
+		return {"applied": false, "enemy": enemy, "damage": 0.0, "defeated": false}
+
+	var defense: float = maxf(float(enemy.get("defense", 0.0)), 0.0)
+	var defense_reduction: float = minf(defense, modified_amount * ENEMY_DEFENSE_MAX_REDUCTION_RATIO)
+	var actual_amount: float = maxf(modified_amount - defense_reduction, ENEMY_DEFENSE_MIN_DAMAGE)
+	var updated_enemy: Dictionary = enemy.duplicate(true)
+	updated_enemy["hp"] = max(float(updated_enemy["hp"]) - actual_amount, 0.0)
+	return {
+		"applied": true,
+		"enemy": updated_enemy,
+		"damage": actual_amount,
+		"defeated": float(updated_enemy["hp"]) <= 0.0
+	}

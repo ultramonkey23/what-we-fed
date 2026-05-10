@@ -184,9 +184,36 @@ func _unhandled_input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 			return
 
+	if key_event.keycode == KEY_C and not _archive_mode:
+		if _selected_index >= 0 and _selected_index < lair.size():
+			var species_id: String = String(lair[_selected_index].get("species_id", ""))
+			if GameState.calibrate_lair_creature(species_id):
+				_play_feedback("CALIBRATION DEEPENED")
+				_refresh_lair_after_progression()
+			else:
+				_play_feedback(_calibration_status_line(species_id, Dictionary(lair[_selected_index])))
+			get_viewport().set_input_as_handled()
+			return
+
+	if key_event.keycode == KEY_R and not _archive_mode:
+		if _selected_index >= 0 and _selected_index < lair.size():
+			var species_id: String = String(lair[_selected_index].get("species_id", ""))
+			if GameState.request_lair_bond_rite(species_id):
+				_play_feedback("SEQUENCE RITE SEALED")
+				_refresh_lair_after_progression()
+			else:
+				_play_feedback(_bond_rite_status_line(species_id, Dictionary(lair[_selected_index])))
+			get_viewport().set_input_as_handled()
+			return
+
 	if key_event.keycode == KEY_A:
 		if _selected_index >= 0 and _selected_index < lair.size():
-			_play_feedback("ASCENSION BELONGS IN HEARTROOT")
+			var species_id: String = String(lair[_selected_index].get("species_id", ""))
+			if GameState.request_ascension(species_id):
+				_play_feedback("SOVEREIGN REWRITE COMPLETE")
+				_refresh_lair_after_progression()
+			else:
+				_play_feedback(_ascension_status_line(species_id))
 			get_viewport().set_input_as_handled()
 			return
 
@@ -225,12 +252,22 @@ func _play_feedback(text: String) -> void:
 
 
 func _update_breathing(t: float) -> void:
-	if _selected_index < 0 or _selected_index >= _creature_cards.size():
+	var visible_index: int = _card_global_indices.find(_selected_index)
+	if visible_index < 0 or visible_index >= _creature_cards.size():
 		return
-	var accent := _card_accents[_selected_index]
+	var accent := _card_accents[visible_index]
 	if is_instance_valid(accent):
 		var pulse: float = (sin(t * 2.5) + 1.0) * 0.5
 		accent.modulate.a = 0.4 + (pulse * 0.6)
+
+
+func _refresh_lair_after_progression() -> void:
+	_build_creature_list(_ui_layer, GameState.lair_roster)
+	_refresh_active_support_panel()
+	_refresh_bottom_bar()
+	_jitter_intensity = 4.0
+	var tween := create_tween()
+	tween.tween_property(self, "_jitter_intensity", 0.15, 0.75).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
 
 
 func _build_mythical_atmosphere() -> void:
@@ -804,9 +841,16 @@ func _build_creature_card(canvas: CanvasLayer, creature: Dictionary, index: int,
 	card.add_child(id_label)
 
 	var bond_level: int = int(creature.get("bond_level", 1))
+	var creature_level: int = int(creature.get("creature_level", 1))
+	var level_stats: Dictionary = GameState.get_creature_level_stats_readout(species_id, creature_level)
 	var potential_label: String = _get_potential_label_for_species(species_id)
 	var bl_label: Label = Label.new()
-	bl_label.text = "Bond %d  ·  Potential cap %s" % [bond_level, potential_label]
+	bl_label.text = "Sequence %d  ·  Calibration %d/%d  ·  Potential %s" % [
+		bond_level,
+		creature_level,
+		int(level_stats.get("cap", creature_level)),
+		potential_label
+	]
 	bl_label.position = Vector2(50.0, 68.0)
 	bl_label.size = Vector2(w - 100.0, 22.0)
 	UI_STYLE.apply_label(bl_label, "mm_stat_secondary")
@@ -920,11 +964,11 @@ func _refresh_bottom_bar() -> void:
 	else:
 		var page_count: int = int(ceil(float(lair.size()) / float(MAX_LAIR_DISPLAY)))
 		var cur_page: int = int(floor(float(_page_start) / float(MAX_LAIR_DISPLAY))) + 1
-		hint_text = "1/2/3 — toggle support (%d slots)  |  [/] page %d/%d  |  TAB archive  |  H heartroot  |  ENTER continue" % [
-			GameState.get_support_slot_count(),
-			cur_page,
-			maxi(page_count, 1)
+		hint_text = "1/2/3 support (%d)  |  C calibrate  R rite  A ascend  |  TAB archive  H heartroot  ENTER" % [
+			GameState.get_support_slot_count()
 		]
+		if page_count > 1:
+			hint_text += "  |  [/] page %d/%d" % [cur_page, maxi(page_count, 1)]
 
 	_bottom_hint.text = hint_text
 
@@ -1001,16 +1045,22 @@ func _refresh_active_support_panel() -> void:
 		
 		var bond_level: int = int(c.get("bond_level", 1))
 		var stats: Dictionary = GameState.get_bond_level_stats_readout(bond_level)
+		var creature_level: int = int(c.get("creature_level", 1))
+		var level_stats: Dictionary = GameState.get_creature_level_stats_readout(species_id, creature_level)
 		var pot: String = _get_potential_label_for_species(species_id)
 		
 		var cur_pct: int = int((stats.current_mult - 1.0) * 100.0)
 		var next_pct: int = int((stats.next_mult - 1.0) * 100.0)
+		var handling_pct: int = int((float(level_stats.get("current_mult", 1.0)) - 1.0) * 100.0)
+		var next_handling_pct: int = int((float(level_stats.get("next_mult", 1.0)) - 1.0) * 100.0)
 		
 		var is_ascended = bool(c.get("is_ascended", false))
 		var bond_text: String = "Sequence %d %s · Potential %s\n" % [bond_level, "[ASCENDED]" if is_ascended else "", pot]
-		bond_text += "Now +%d%%\n" % cur_pct
-		if not stats.is_max:
-			bond_text += "Next +%d%% in Heartroot" % next_pct
+		bond_text += "Rite +%d%% · Calibration +%d%%\n" % [cur_pct, handling_pct]
+		if not bool(level_stats.get("is_max", false)):
+			bond_text += "Next calibration +%d%%" % next_handling_pct
+		elif not stats.is_max:
+			bond_text += "Next rite +%d%%" % next_pct
 		else:
 			if not is_ascended:
 				bond_text += "Heartroot ascension ready"
@@ -1040,10 +1090,10 @@ func _refresh_active_support_panel() -> void:
 			_lair_action_status.text = ""
 			_set_lair_action_detail_text("")
 	else:
-		_lair_action_primary.text = PRESENTATION_TEXT.LAIR_ACTION_TRAIN_LABEL
+		_lair_action_primary.text = "C Calibrate  |  R Rite  |  A Ascend"
 		UI_STYLE.apply_label(_lair_action_primary, "mm_choice_bond")
-		_lair_action_status.text = PRESENTATION_TEXT.LAIR_ACTION_TETHER_LOCKED
-		UI_STYLE.apply_label(_lair_action_status, "mm_dim")
+		_lair_action_status.text = _lair_action_status_line(species_id, c)
+		UI_STYLE.apply_label(_lair_action_status, "mm_stat_secondary")
 		
 		_set_lair_action_detail_text(_lair_selected_creature_detail(species_id, c))
 
@@ -1077,6 +1127,40 @@ func _ascension_status_line(species_id: String) -> String:
 	return str(status.get("reason", "ASCENSION DENIED")).to_upper()
 
 
+func _calibration_status_line(species_id: String, creature: Dictionary) -> String:
+	var creature_level: int = int(creature.get("creature_level", 1))
+	var stats: Dictionary = GameState.get_creature_level_stats_readout(species_id, creature_level)
+	if bool(stats.get("is_max", false)):
+		return "CALIBRATION CAP REACHED"
+	var cost: int = GameState.get_creature_level_cost(species_id)
+	var missing: float = maxf(float(cost) - GameState.get_dna(species_id), 0.0)
+	if missing > 0.0:
+		return "NEED %.0f MORE DNA" % missing
+	return "CALIBRATION READY"
+
+
+func _bond_rite_status_line(species_id: String, creature: Dictionary) -> String:
+	var bond_level: int = int(creature.get("bond_level", 1))
+	if bond_level >= 5:
+		return "SEQUENCE FULLY BOUND"
+	var cost: int = GameState.get_lair_bond_rite_cost(species_id)
+	var missing: float = maxf(float(cost) - GameState.get_dna(species_id), 0.0)
+	if missing > 0.0:
+		return "NEED %.0f MORE DNA" % missing
+	return "RITE READY"
+
+
+func _lair_action_status_line(species_id: String, creature: Dictionary) -> String:
+	var cal_cost: int = GameState.get_creature_level_cost(species_id)
+	var rite_cost: int = GameState.get_lair_bond_rite_cost(species_id)
+	var ascension: Dictionary = _get_ascension_status(species_id)
+	var parts: Array[String] = []
+	parts.append("Cal %s" % ("MAX" if cal_cost <= 0 else "%.0f" % cal_cost))
+	parts.append("Rite %s" % ("MAX" if int(creature.get("bond_level", 1)) >= 5 else "%.0f" % rite_cost))
+	parts.append("Ascend READY" if bool(ascension.get("can_ascend", false)) else "Ascend gated")
+	return "  |  ".join(PackedStringArray(parts))
+
+
 func _splice_status_line(species_id: String, trait_id: String, creature: Dictionary) -> String:
 	if trait_id.is_empty():
 		return "SELECT A TRAIT"
@@ -1105,6 +1189,13 @@ func _lair_selected_creature_detail(species_id: String, creature: Dictionary) ->
 	var current_fate: String = GameState.world_dominant_fate.replace("_", " ").capitalize()
 	lines.append(PRESENTATION_TEXT.LAIR_ACTION_TETHER_HINT)
 	lines.append("Resonance  |  %s (%s)" % [resonance_name, current_fate])
+	var creature_level: int = int(creature.get("creature_level", 1))
+	var level_stats: Dictionary = GameState.get_creature_level_stats_readout(species_id, creature_level)
+	lines.append("Calibration  |  Level %d/%d, support handling +%d%%" % [
+		creature_level,
+		int(level_stats.get("cap", creature_level)),
+		int((float(level_stats.get("current_mult", 1.0)) - 1.0) * 100.0)
+	])
 	var spliced: Array = Array(creature.get("spliced_traits", []))
 	if spliced.is_empty():
 		lines.append("Splices  |  none")
@@ -1122,7 +1213,7 @@ func _lair_selected_creature_detail(species_id: String, creature: Dictionary) ->
 	lines.append("Gate  |  %s" % str(status.get("reason", "Unknown")))
 	lines.append("Need  |  Bond 5, %.0f DNA, %s" % [float(status.get("cost", LAIR_RESONANCE.ASCENSION_DNA_COST)), required_fate])
 	lines.append("Mastery  |  %s: %s" % [mastery_title, mastery_desc])
-	return _compact_lair_detail(lines, 4)
+	return _compact_lair_detail(lines, 6)
 
 
 func _trait_archive_detail(trait_id: String, species_id: String, creature: Dictionary) -> String:

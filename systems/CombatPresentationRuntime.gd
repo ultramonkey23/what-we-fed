@@ -2,7 +2,7 @@ extends RefCounted
 
 const MOTION_JUICE = preload("res://systems/MotionJuice.gd")
 const HUD_PANEL_ART = preload("res://systems/HUDPanelArt.gd")
-const COMBAT_CONTENT = preload("res://data/CombatContent.gd")
+const COMBAT_DATA_CONTENT = preload("res://data/CombatContent.gd")
 const BLACK_SIGNAL_SHADER = preload("res://art/vfx/black_signal_combat.gdshader")
 const ENEMY_BEAT_PULSE_INTENSITY: float = 0.03
 
@@ -10,8 +10,8 @@ var _flash_overlay: ColorRect
 var _camera_2d: Camera2D
 var _timing_circle_container: Node2D
 var _attack_fx_container: Node2D
-var _player_combat: PlayerCombat
-var _zone_manager: ZoneManager
+var _player_combat: Node2D
+var _zone_manager: Node
 var _ui_layer: CanvasLayer
 var _battlefield_panel: Control
 var _enemy_markers_by_id: Dictionary
@@ -40,8 +40,8 @@ func _init(
 	camera_2d: Camera2D,
 	timing_circle_container: Node2D,
 	attack_fx_container: Node2D,
-	player_combat: PlayerCombat,
-	zone_manager: ZoneManager,
+	player_combat: Node2D,
+	zone_manager: Node,
 	ui_layer: CanvasLayer,
 	enemy_markers_by_id: Dictionary,
 	ring_highlight_timers: Array[float],
@@ -299,6 +299,27 @@ func on_timing_ring_pressed(sector: int) -> void:
 
 func on_projectile_fired(_sector: int, enemy_id: int) -> void:
 	_swap_enemy_texture(enemy_id, "attack", 0.35)
+
+
+func on_enemy_attack_telegraphed(enemy_id: int, sector: int, _world_pos: Vector2, windup: float) -> void:
+	if sector >= 0:
+		highlight_timing_ring(sector, Color(1.0, 0.42, 0.16, 0.82), 5.5)
+	var shader_material: ShaderMaterial = _get_enemy_shader_material(enemy_id)
+	if shader_material == null:
+		return
+	var target: CanvasItem = _resolve_enemy_visual_target(enemy_id)
+	if target == null:
+		return
+	_kill_enemy_flash_tween(enemy_id)
+	shader_material.set_shader_parameter("hit_flash_color", Color(1.0, 0.36, 0.16, 1.0))
+	shader_material.set_shader_parameter("corruption_amount", 0.34)
+	shader_material.set_shader_parameter("chromatic_aberration", 0.035)
+	var tween: Tween = (target as Node).create_tween()
+	_enemy_flash_tweens_by_id[enemy_id] = tween
+	tween.tween_method(func(v: float): shader_material.set_shader_parameter("hit_flash_intensity", v), 0.20, 1.0, maxf(windup * 0.45, 0.08))
+	tween.tween_method(func(v: float): shader_material.set_shader_parameter("hit_flash_intensity", v), 1.0, 0.0, maxf(windup * 0.55, 0.10))
+	tween.parallel().tween_method(func(v: float): shader_material.set_shader_parameter("chromatic_aberration", v), 0.035, 0.0, maxf(windup * 0.55, 0.10))
+	tween.finished.connect(_on_enemy_flash_finished.bind(enemy_id, tween))
 
 
 func on_beat_pulse(quality: String, strength: float) -> void:
@@ -693,7 +714,7 @@ func _swap_enemy_texture(enemy_id: int, context: String, duration: float) -> voi
 	var silhouette: Sprite2D = _resolve_enemy_visual_target(enemy_id) as Sprite2D
 	if not is_instance_valid(silhouette): return
 	
-	var path: String = COMBAT_CONTENT.get_creature_art_path(species_id, context, "adult")
+	var path: String = COMBAT_DATA_CONTENT.get_creature_art_path(species_id, context, "adult")
 	if path.is_empty() or not ResourceLoader.exists(path): return
 	
 	var tex: Texture2D = load(path) as Texture2D

@@ -21,11 +21,71 @@ func reset_run_state(active_support_slots: int = 1) -> void:
 				var seed_creature: Dictionary = entry.duplicate(true)
 				_bond_order_counter += 1
 				seed_creature["bond_order"] = _bond_order_counter
+				if not seed_creature.has("creature_level"):
+					seed_creature["creature_level"] = 1
+				if not seed_creature.has("creature_exp"):
+					seed_creature["creature_exp"] = 0.0
+				if not seed_creature.has("creature_exp_to_next"):
+					seed_creature["creature_exp_to_next"] = get_creature_exp_threshold(int(seed_creature["creature_level"]))
 				# Ensure spliced_traits exists
 				if not seed_creature.has("spliced_traits"):
 					seed_creature["spliced_traits"] = []
 				roster.append(seed_creature)
 				break
+
+
+func get_creature_exp_threshold(level_value: int) -> float:
+	return 100.0 + (float(level_value) * 25.0)
+
+
+func grant_creature_exp(species_id: String, amount: float, potential: float, cap: int) -> int:
+	if species_id.is_empty() or amount <= 0.0: return 0
+	
+	var creature_entry: Dictionary = {}
+	var roster_index: int = -1
+	
+	for i in range(roster.size()):
+		if String(roster[i].get("species_id", "")) == species_id:
+			creature_entry = roster[i]
+			roster_index = i
+			break
+			
+	if creature_entry.is_empty():
+		return 0
+		
+	var current_level: int = int(creature_entry.get("creature_level", 1))
+	var current_exp: float = float(creature_entry.get("creature_exp", 0.0))
+	var exp_to_next: float = float(creature_entry.get("creature_exp_to_next", get_creature_exp_threshold(current_level)))
+	
+	current_exp += amount * potential
+	var levels_gained: int = 0
+	
+	while current_level < cap and current_exp >= exp_to_next:
+		current_exp -= exp_to_next
+		current_level += 1
+		levels_gained += 1
+		exp_to_next = get_creature_exp_threshold(current_level)
+		
+	if current_level >= cap:
+		current_exp = 0.0
+		
+	creature_entry["creature_level"] = current_level
+	creature_entry["creature_exp"] = current_exp
+	creature_entry["creature_exp_to_next"] = exp_to_next
+	
+	roster[roster_index] = creature_entry
+	
+	EventBus.creature_exp_changed.emit(species_id, current_exp, exp_to_next)
+	if levels_gained > 0:
+		EventBus.creature_leveled_up.emit(species_id, current_level)
+	
+	# Sync to lair_roster
+	for i in range(lair_roster.size()):
+		if String(lair_roster[i].get("species_id", "")) == species_id:
+			lair_roster[i]["creature_level"] = current_level
+			break
+			
+	return levels_gained
 
 
 func ensure_active_lair_creature() -> String:

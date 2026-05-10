@@ -123,11 +123,11 @@ func _on_player_dodged(from_lane: int, to_lane: int) -> void:
 	_auto_capture("player_dodged", {"from_lane": from_lane, "to_lane": to_lane})
 
 
-func _on_bonded_support_triggered(species_id: String, lane: int, effect_id: String) -> void:
+func _on_bonded_support_triggered(species_id: String, sector: int, effect_id: String) -> void:
 	_last_support_species_id = species_id
 	_last_support_effect_id = effect_id
-	_last_support_lane = lane
-	_auto_capture("bonded_support_triggered", {"species_id": species_id, "lane": lane, "effect_id": effect_id})
+	_last_support_sector = sector
+	_auto_capture("bonded_support_triggered", {"species_id": species_id, "sector": sector, "effect_id": effect_id})
 
 
 func _on_ultimate_fired(power: float) -> void:
@@ -188,7 +188,7 @@ func _camera_metadata(camera: Camera2D) -> Dictionary:
 	}
 
 
-func _combat_metadata(combat_meter: CombatMeter, player_combat: PlayerCombat) -> Dictionary:
+func _combat_metadata(combat_meter: Node, player_combat: Node2D) -> Dictionary:
 	var tier: String = "unknown"
 	var combo_count: int = -1
 	var style_score: float = -1.0
@@ -198,7 +198,7 @@ func _combat_metadata(combat_meter: CombatMeter, player_combat: PlayerCombat) ->
 		style_score = float(_get_object_property(combat_meter, "style_score", -1.0))
 	var active_lane: int = -1
 	if player_combat != null:
-		active_lane = player_combat.get_active_focus_lane()
+		active_lane = player_combat.get_active_focus_sector()
 	return {"tier": tier, "combo_count": combo_count, "style_score": style_score, "active_lane": active_lane}
 
 
@@ -224,7 +224,7 @@ func _song_metadata(song_conductor: Node, game_state: Node, scene: Node) -> Dict
 	}
 
 
-func _lane_metadata(zone_manager: ZoneManager, player_combat: PlayerCombat, context: Dictionary) -> Dictionary:
+func _lane_metadata(zone_manager: Node, player_combat: Node2D, context: Dictionary) -> Dictionary:
 	var cardinal_positions: Array[Dictionary] = []
 	if zone_manager != null:
 		for lane in range(4):
@@ -237,7 +237,7 @@ func _lane_metadata(zone_manager: ZoneManager, player_combat: PlayerCombat, cont
 			})
 	var active_lane: int = -1
 	if player_combat != null:
-		active_lane = player_combat.get_active_focus_lane()
+		active_lane = player_combat.get_active_focus_sector()
 	return {
 		"active": active_lane,
 		"source": int(context.get("source_lane", context.get("lane", _last_damage_lane))),

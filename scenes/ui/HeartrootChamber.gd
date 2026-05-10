@@ -275,15 +275,15 @@ func _refresh_ui() -> void:
 	for species_id in GameState.dna_by_species.keys():
 		total_dna += GameState.get_dna(species_id)
 
-	_dna_info.text = "FED DNA IN ROOT: %d" % int(total_dna)
+	_dna_info.text = "FED DNA IN ROOT: %d  |  SUPPORT SLOTS %d/4" % [int(total_dna), GameState.get_support_slot_count()]
 
-	_fang_level.text = "Root %d" % GameState.meta_fang_level
+	_fang_level.text = "Root %d  +%.1f Maw" % [GameState.meta_fang_level, float(GameState.meta_fang_level) * 0.35]
 	_fang_cost.text = "[%d DNA]" % _get_cost(GameState.meta_fang_level)
 
-	_nerve_level.text = "Root %d" % GameState.meta_nerve_level
+	_nerve_level.text = "Root %d  +%.1f Nerve" % [GameState.meta_nerve_level, float(GameState.meta_nerve_level) * 0.035]
 	_nerve_cost.text = "[%d DNA]" % _get_cost(GameState.meta_nerve_level)
 
-	_bond_level.text = "Root %d" % GameState.meta_bond_level
+	_bond_level.text = "Root %d  Slots @3/6/9" % GameState.meta_bond_level
 	_bond_cost.text = "[%d DNA]" % _get_cost(GameState.meta_bond_level)
 
 

@@ -33,7 +33,7 @@ func reset_to_base() -> void:
 	# PERSISTENT TRUTH: Only Potential and Luck are Meta-Stats. 
 	# They are preserved during this reset to allow for meta-progression impact.
 	
-	stat_vitality = BASE_MAX_HP
+	stat_vitality = 100.0 # Baseline for multiplicative scaling
 	stat_power = BASE_DAMAGE
 	stat_carapace = BASE_DEFENSE
 	stat_endurance = 100.0
@@ -42,10 +42,15 @@ func reset_to_base() -> void:
 	stat_adaptability = 1.0
 	bleed_stacks = 0
 	
-	max_hp = stat_vitality
-	base_damage = stat_power
-	defense = stat_carapace
+	recalculate_max_hp(0.0)
 	hp = max_hp
+
+
+func recalculate_max_hp(flat_bonus: float) -> void:
+	# SOVEREIGN MATH: Max HP scales multiplicatively from a base of 100.
+	# Vitality 100 = 100 HP. Vitality 200 = 200 HP.
+	max_hp = BASE_MAX_HP * (stat_vitality / 100.0) + flat_bonus
+	hp = min(hp, max_hp)
 
 
 func heal(amount: float) -> float:

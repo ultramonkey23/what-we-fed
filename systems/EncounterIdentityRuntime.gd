@@ -5,6 +5,7 @@ const REGION_SONG_CONTENT = preload("res://data/RegionSongContent.gd")
 const IDENTITY_CONTENT = preload("res://data/EncounterIdentityContent.gd")
 const RUN_PACING_CONTENT = preload("res://data/RunPacingContent.gd")
 const POTENTIAL_GATE = preload("res://systems/PotentialGate.gd")
+const COMBAT_FEEL_CONTENT = preload("res://data/CombatFeelContent.gd")
 
 
 static func build_song_run(region_id: String, regular_level_index: int = 0, level_duration: float = 120.0, options: Dictionary = {}) -> Dictionary:
@@ -108,55 +109,33 @@ static func _get_biome_for_region(region_id: String) -> Dictionary:
 
 
 static func _preferred_lane_order(spawn_mode: String, player_lane: int, rng: RandomNumberGenerator) -> Array:
+	var total: int = 8
+	var p: int = player_lane
+	
 	match spawn_mode:
 		"track_player":
-			match player_lane:
-				0:
-					return [0, 1, 2, 3]
-				1:
-					return [1, 0, 2, 3]
-				2:
-					return [2, 1, 0, 3]
-				3:
-					return [3, 1, 0, 2]
-				_:
-					return [1, 0, 2, 3]
+			# Focus on player and immediate neighbors
+			return [p, (p-1+total)%total, (p+1)%total, (p-2+total)%total, (p+2)%total]
 		"center_bias":
-			return [1, 0, 2, 3]
+			# Bias toward East/West (2 and 6)
+			return [2, 6, 1, 3, 5, 7, 0, 4]
 		"edge_bias":
-			if rng.randi() % 2 == 0:
-				return [0, 2, 3, 1]
-			return [2, 3, 0, 1]
+			# Bias toward North/South (0 and 4)
+			return [0, 4, 7, 1, 3, 5, 2, 6]
 		"flank_player":
-			match player_lane:
-				0:
-					return [2, 3, 1, 0]
-				1:
-					if rng.randi() % 2 == 0:
-						return [0, 2, 3, 1]
-					return [2, 3, 0, 1]
-				2:
-					return [0, 3, 1, 2]
-				3:
-					return [2, 0, 1, 3]
-				_:
-					if rng.randi() % 2 == 0:
-						return [0, 2, 3, 1]
-					return [2, 3, 0, 1]
+			# Focus on sectors 90 degrees from player
+			var left: int = (p - 2 + total) % total
+			var right: int = (p + 2) % total
+			return [left, right, (left-1+total)%total, (right+1)%total]
 		"collapse":
-			var order: Array = []
-			order.append(player_lane)
-			order.append(1)
-			order.append(0)
-			order.append(2)
-			order.append(3)
-			return _unique_lane_order(order)
+			return [p, (p-1+total)%total, (p+1)%total]
 		"spread":
-			if rng.randi() % 2 == 0:
-				return [0, 2, 3, 1]
-			return [2, 3, 0, 1]
+			# Randomish but distributed
+			var order: Array = range(total)
+			order.shuffle()
+			return order
 		_:
-			return [0, 1, 2, 3]
+			return range(total)
 
 
 static func _unique_lane_order(order: Array) -> Array:
@@ -202,8 +181,15 @@ static func _build_scaled_song_level_phases(
 		var phase: Dictionary = Dictionary(source_phases[i]).duplicate(true)
 		var start_fraction: float = phase_fractions[i] if i < phase_fractions.size() else clampf(float(i) / float(max(source_phases.size() - 1, 1)), 0.0, 1.0)
 		phase["start_time"] = start_fraction * safe_duration
-		phase["cycle_interval"] = max(float(phase.get("cycle_interval", 2.2)) * cycle_mult, 0.35)
-		phase["fire_stagger"] = clampf(float(phase.get("fire_stagger", 0.45)) * stagger_mult, 0.42, 0.90)
+		phase["cycle_interval"] = max(
+			float(phase.get("cycle_interval", 2.2)) * cycle_mult,
+			COMBAT_FEEL_CONTENT.SONG_PHASE_CYCLE_INTERVAL_ABSOLUTE_FLOOR
+		)
+		phase["fire_stagger"] = clampf(
+			float(phase.get("fire_stagger", 0.45)) * stagger_mult,
+			COMBAT_FEEL_CONTENT.FIRE_STAGGER_AUTHORED_MIN,
+			COMBAT_FEEL_CONTENT.FIRE_STAGGER_AUTHORED_MAX
+		)
 		phase["max_active_threats"] = clampi(int(phase.get("max_active_threats", 2)) + threat_bonus, 1, 5)
 
 		var pool: Array = phase.get("enemy_pool", [])

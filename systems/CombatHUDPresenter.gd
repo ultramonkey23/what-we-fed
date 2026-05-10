@@ -9,7 +9,7 @@ const BEAT_FEEDBACK_MIN_INTERVAL_MS: int = 260
 # All nodes are created and owned by CombatScene.
 # This presenter holds references only — it never frees them.
 
-var _combat_meter: CombatMeter # Bound to CombatMeter for real-time multipliers
+var _combat_meter: Node # Bound to CombatMeter
 
 # Static HUD nodes (from @onready in CombatScene)
 var _combo_label: Label
@@ -290,7 +290,7 @@ func _on_player_teleported(_from_sector: int, to_sector: int) -> void:
 	refresh_power_level()
 
 
-func _on_player_attacked(sector: int, _damage: float, _was_timed: bool) -> void:
+func _on_player_attacked(sector: int, _damage: float, _was_timed: bool, _heading: Vector2) -> void:
 	_update_scouter_focus(sector)
 
 

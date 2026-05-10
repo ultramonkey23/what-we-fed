@@ -32,8 +32,8 @@ const PARRY_PERFECT_MIN: float = 0.98
 const PARRY_PERFECT_MAX: float = 1.02
 const PARRY_GOOD_MAX: float = 1.04
 
-# Reflected projectiles travel back a little faster to feel punchy.
-const REFLECT_SPEED_MULT: float = 1.25
+# Reflected projectiles return hard enough to read as player authority.
+const REFLECT_SPEED_MULT: float = 2.0
 const PLAYER_CONTACT_RADIUS: float = 21.0 # Tight enough that visual contact reads as honest.
 
 # Body: per-enemy art under res://assets/sprites/projectile_bodies/<species_id or type>.png (see generator).
@@ -61,13 +61,14 @@ var target_beat_time: float = -1.0
 var fire_song_time: float = 0.0
 var conductor_ref: SongConductor = null
 
-# Projectile Doctrine: Soft Tracking
-var max_turn_rate: float = 1.5
-var commit_threshold: float = 0.75
-var _is_committed: bool = false
-var _current_radial_vector: Vector2 = Vector2.ZERO
-var _initial_distance_to_center: float = 0.0
-var _hit_zone_distance_to_center: float = 0.0
+# Projectile Doctrine: committed launch direction by default. Homing must be
+# explicit in telegraph_profile and stays mild/readable.
+var max_turn_rate: float = 0.35
+var commit_threshold: float = 0.0
+var _is_homing: bool = false
+var _launch_pos: Vector2 = Vector2.ZERO
+var _travel_direction: Vector2 = Vector2.LEFT
+var _reflect_direction: Vector2 = Vector2.RIGHT
 
 var _reported_hit_zone: bool = false
 var _reported_player_contact: bool = false
@@ -187,20 +188,18 @@ func setup(
 	position = enemy_pos
 	
 	_total_distance = enemy_pos.distance_to(hit_zone_pos)
-	
-	# Radial Tracking Initialization
-	var center = player_pos # In LaneManager, player_pos passed here is _center_pos
-	_initial_distance_to_center = enemy_pos.distance_to(center)
-	_hit_zone_distance_to_center = hit_zone_pos.distance_to(center)
-	_current_radial_vector = (enemy_pos - center).normalized()
-	
-	# Rotate to face player
-	rotation = (player_pos - enemy_pos).angle()
+	_launch_pos = enemy_pos
+	_travel_direction = (hit_zone_pos - enemy_pos).normalized()
+	if _travel_direction.length_squared() < 0.01:
+		_travel_direction = (player_pos - enemy_pos).normalized()
+	if _travel_direction.length_squared() < 0.01:
+		_travel_direction = Vector2.LEFT
+	_reflect_direction = -_travel_direction
+	rotation = _travel_direction.angle()
 
 	progress = 0.0
 	is_resolved = false
 	is_reflected = false
-	_is_committed = false
 	reflected_damage = 0.0
 	_reported_hit_zone = false
 	_reported_player_contact = false
@@ -208,8 +207,9 @@ func setup(
 	telegraph_profile = _build_telegraph_profile(projectile_telegraph_profile)
 	
 	# Load profile overrides
-	max_turn_rate = float(telegraph_profile.get("max_turn_rate", 1.5))
-	commit_threshold = float(telegraph_profile.get("commit_threshold", 0.75))
+	max_turn_rate = float(telegraph_profile.get("max_turn_rate", 0.35))
+	commit_threshold = float(telegraph_profile.get("commit_threshold", 0.0))
+	_is_homing = bool(telegraph_profile.get("homing", false))
 	
 	_refresh_body_sprite()
 	_refresh_modifier_overlay()
@@ -229,6 +229,14 @@ func reflect_to_enemy(return_damage: float) -> void:
 	_reported_hit_zone = true
 	_reported_player_contact = true
 	_reported_enemy_contact = false
+	var to_source: Vector2 = enemy_pos - global_position
+	if to_source.length_squared() > 4.0:
+		_reflect_direction = to_source.normalized()
+	elif _travel_direction.length_squared() > 0.01:
+		_reflect_direction = -_travel_direction
+	else:
+		_reflect_direction = Vector2.RIGHT
+	rotation = _reflect_direction.angle()
 
 	if _body != null:
 		_apply_projectile_palette(_reflected_body_color(), true)
@@ -350,35 +358,18 @@ func _process_incoming_song_synced(delta: float) -> void:
 		else:
 			progress = 1.0
 
-	# Projectile Doctrine: Soft Tracking logic
-	var current_player_pos: Vector2 = player_pos
-	if player_ref != null and is_instance_valid(player_ref):
-		current_player_pos = player_ref.global_position
+	if _is_homing and progress < commit_threshold:
+		var current_player_pos: Vector2 = player_pos
+		if player_ref != null and is_instance_valid(player_ref):
+			current_player_pos = player_ref.global_position
+		var desired: Vector2 = (current_player_pos - global_position).normalized()
+		if desired.length_squared() > 0.01:
+			var angle_diff: float = angle_difference(_travel_direction.angle(), desired.angle())
+			var turn_step: float = clamp(angle_diff, -max_turn_rate * delta, max_turn_rate * delta)
+			_travel_direction = _travel_direction.rotated(turn_step).normalized()
+			rotation = _travel_direction.angle()
 
-	if not _is_committed:
-		if progress >= commit_threshold:
-			_is_committed = true
-		else:
-			var player_delta: Vector2 = current_player_pos - player_pos # relative to fixed center
-			
-			if player_delta.length() > 0.1:
-				var desired_radial_vector: Vector2 = player_delta.normalized()
-				var current_angle: float = _current_radial_vector.angle()
-				var target_angle: float = desired_radial_vector.angle()
-				var angle_diff: float = angle_difference(current_angle, target_angle)
-				
-				var turn_step: float = clamp(angle_diff, -max_turn_rate * delta, max_turn_rate * delta)
-				_current_radial_vector = _current_radial_vector.rotated(turn_step)
-			
-			# Face the center (direction of travel)
-			rotation = _current_radial_vector.angle() + PI
-
-	# Map progress to physical position using radial model relative to CURRENT player
-	var current_dist: float = lerp(_initial_distance_to_center, _hit_zone_distance_to_center, progress)
-	position = current_player_pos + _current_radial_vector * current_dist
-
-	# Update hit_zone_pos for timing checks (always at current_dist 0.0 relative to player)
-	hit_zone_pos = current_player_pos + _current_radial_vector * _hit_zone_distance_to_center
+	position = _launch_pos + _travel_direction * (_total_distance * progress)
 
 	if not _reported_hit_zone and progress >= 1.0:
 		_reported_hit_zone = true
@@ -414,16 +405,13 @@ func set_song_sync(conductor: SongConductor, hit_time: float) -> void:
 
 
 func _process_reflected(delta: float) -> void:
-	# Reflected projectiles travel from player_pos back to enemy_pos
-	var reflect_dir: Vector2 = (enemy_pos - player_pos).normalized()
-	position += reflect_dir * speed * REFLECT_SPEED_MULT * delta
+	var previous_distance: float = global_position.distance_to(enemy_pos)
+	position += _reflect_direction * speed * REFLECT_SPEED_MULT * delta
 	_update_visual_state(true)
 
 	if not _reported_enemy_contact:
 		var dist_to_origin: float = position.distance_to(enemy_pos)
-		# If we've passed the enemy origin or are very close, resolve.
-		# Check if the dot product of motion vs direction to origin flipped.
-		if dist_to_origin < 25.0:
+		if dist_to_origin < 25.0 or dist_to_origin > previous_distance + 1.0:
 			_reported_enemy_contact = true
 			emit_signal("enemy_contact", self)
 
@@ -539,8 +527,9 @@ func _build_telegraph_profile(source: Dictionary) -> Dictionary:
 		"core_pressure_scale": Vector2(0.20, 0.10),
 		"pressure_start": 0.72,
 		"pressure_gain": 1.0,
-		"max_turn_rate": 1.5,
-		"commit_threshold": 0.75
+		"max_turn_rate": 0.35,
+		"commit_threshold": 0.0,
+		"homing": false
 	}
 	var mod_key: String = String(source.get("shot_modifier", source.get("family", "fang")))
 	match mod_key:

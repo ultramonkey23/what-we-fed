@@ -744,9 +744,9 @@ func update_timing_ring_proximity(
 				urgency_scale = 1.0 + clampf((p - 0.6) / 0.4, 0.0, 1.0) * 1.2 # Boosted urgency scale and wider detection window
 				
 				# Sovereign Glitch: Imminent threats tear the UI fabric
-				if p > 0.9:
-					var glitch_t: float = Time.get_ticks_msec() * 0.06
-					glitch_offset = Vector2(sin(glitch_t), cos(glitch_t * 1.5)) * 6.0 * (p - 0.9) / 0.1
+				if p > 0.92:
+					var glitch_t: float = Time.get_ticks_msec() * 0.045
+					glitch_offset = Vector2(sin(glitch_t), cos(glitch_t * 1.5)) * 3.5 * (p - 0.92) / 0.08
 			
 			# Handle Splinter cluster
 			for j in range(3):
@@ -754,9 +754,10 @@ func update_timing_ring_proximity(
 				if splinter:
 					splinter.color = Color(glow_color, alpha_base * 0.55) # Splinter fill boosted from 0.4
 					
-					# Sovereign Tear: Imminent threats cause alpha flickering
-					if urgency_scale > 1.8:
-						splinter.color.a *= 0.5 + 0.5 * sin(Time.get_ticks_msec() * 0.1)
+					# Near-impact emphasis: single smooth pulse (avoid high-frequency flicker).
+					if urgency_scale > 1.65:
+						var pulse_t: float = Time.get_ticks_msec() * 0.0045
+						splinter.color.a *= 0.82 + 0.18 * sin(pulse_t)
 					
 					var outline: Line2D = splinter.get_node_or_null("Outline")
 					if outline:
@@ -767,8 +768,8 @@ func update_timing_ring_proximity(
 					# Splinter Jitter & Orbit
 					var base_pos: Vector2 = splinter.get_meta("base_pos", Vector2.ZERO)
 					var time_sec: float = Time.get_ticks_msec() * 0.001
-					var drift_angle := time_sec * 2.0 + float(j) * 2.1
-					var drift := Vector2(cos(drift_angle), sin(drift_angle)) * 3.5 # More aggressive jitter
+					var drift_angle := time_sec * 0.85 + float(j) * 2.1
+					var drift := Vector2(cos(drift_angle), sin(drift_angle)) * 2.2
 					splinter.position = base_pos + drift + glitch_offset # Apply Sovereign Glitch
 					
 					# Intercardinal shards are "sharper" (thinner)

@@ -131,12 +131,10 @@ func _pulse_active_enemy_markers(intensity: float) -> void:
 
 
 func _is_enemy_id_active(enemy_id: int) -> bool:
-	if _zone_manager == null: return true
-	for lane in range(_zone_manager.THREAT_COUNT):
-		var lane_enemy: Dictionary = _zone_manager.get_enemy(lane)
-		if not lane_enemy.is_empty() and float(lane_enemy.get("hp", 0.0)) > 0.0 and int(lane_enemy.get("id", -1)) == enemy_id:
-			return true
-	return false
+	if _zone_manager == null:
+		return true
+	var enemy: Dictionary = _zone_manager.get_enemy_by_id(enemy_id)
+	return not enemy.is_empty() and float(enemy.get("hp", 0.0)) > 0.0
 
 
 func _resolve_enemy_visual_target(enemy_id: int) -> CanvasItem:
@@ -216,6 +214,15 @@ func _kill_enemy_flash_tween(enemy_id: int) -> void:
 	var tween: Variant = _enemy_flash_tweens_by_id.get(enemy_id)
 	if tween is Tween and is_instance_valid(tween): tween.kill()
 	_enemy_flash_tweens_by_id.erase(enemy_id)
+
+
+func _reset_enemy_telegraph_shader(enemy_id: int) -> void:
+	_kill_enemy_flash_tween(enemy_id)
+	var shader_material: ShaderMaterial = _get_enemy_shader_material(enemy_id)
+	if shader_material == null or not is_instance_valid(shader_material):
+		return
+	shader_material.set_shader_parameter("hit_flash_intensity", 0.0)
+	shader_material.set_shader_parameter("chromatic_aberration", 0.0)
 
 
 func on_screen_flash(color: Color, duration: float) -> void:
@@ -298,12 +305,18 @@ func on_timing_ring_pressed(sector: int) -> void:
 
 
 func on_projectile_fired(_sector: int, enemy_id: int) -> void:
+	_reset_enemy_telegraph_shader(enemy_id)
 	_swap_enemy_texture(enemy_id, "attack", 0.35)
 
 
-func on_enemy_attack_telegraphed(enemy_id: int, sector: int, _world_pos: Vector2, windup: float) -> void:
-	if sector >= 0:
-		highlight_timing_ring(sector, Color(1.0, 0.42, 0.16, 0.82), 5.5)
+func on_enemy_attack_telegraph_cancelled(enemy_id: int) -> void:
+	_reset_enemy_telegraph_shader(enemy_id)
+
+
+func on_enemy_attack_telegraphed(enemy_id: int, _sector: int, _world_pos: Vector2, windup: float) -> void:
+	# Do not drive player timing-ring geometry/colors from enemy windup — that shared
+	# UI reads as duplicate/flicker next to GraveRing shards. Telegraph stays on the
+	# attacker marker / creature material only.
 	var shader_material: ShaderMaterial = _get_enemy_shader_material(enemy_id)
 	if shader_material == null:
 		return
@@ -337,6 +350,7 @@ func on_beat_pulse(quality: String, strength: float) -> void:
 
 
 func on_enemy_defeated(enemy_id: int) -> void:
+	_reset_enemy_telegraph_shader(enemy_id)
 	var pos: Vector2 = _get_impact_spawn_pos(-1, enemy_id)
 	_spawn_ink_splatter(pos, Color.BLACK)
 

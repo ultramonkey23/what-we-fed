@@ -386,6 +386,8 @@ func _exit_tree() -> void:
 			EventBus.projectile_fired.disconnect(_presentation_runtime.on_projectile_fired)
 		if EventBus.enemy_attack_telegraphed.is_connected(_presentation_runtime.on_enemy_attack_telegraphed):
 			EventBus.enemy_attack_telegraphed.disconnect(_presentation_runtime.on_enemy_attack_telegraphed)
+		if EventBus.enemy_attack_telegraph_cancelled.is_connected(_presentation_runtime.on_enemy_attack_telegraph_cancelled):
+			EventBus.enemy_attack_telegraph_cancelled.disconnect(_presentation_runtime.on_enemy_attack_telegraph_cancelled)
 		_presentation_runtime.set_readability_stress(0.0)
 
 	if EventBus.player_attacked.is_connected(_on_player_attacked):
@@ -2887,6 +2889,7 @@ func _connect_eventbus() -> void:
 	EventBus.song_beat_pulse.connect(_presentation_runtime.on_song_beat_pulse)
 	EventBus.projectile_fired.connect(_presentation_runtime.on_projectile_fired)
 	EventBus.enemy_attack_telegraphed.connect(_presentation_runtime.on_enemy_attack_telegraphed)
+	EventBus.enemy_attack_telegraph_cancelled.connect(_presentation_runtime.on_enemy_attack_telegraph_cancelled)
 	EventBus.run_growth_changed.connect(_on_run_growth_changed)
 	EventBus.run_growth_level_resolved.connect(_on_run_growth_level_resolved)
 	EventBus.tendency_growth_resolved.connect(_on_tendency_growth_resolved)

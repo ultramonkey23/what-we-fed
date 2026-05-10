@@ -145,6 +145,8 @@ func _run_fire_cycle(task_id: int) -> void:
 			if _zone_manager.execute_fire(id):
 				_enemy_authority_debt[id] = maxf(_enemy_authority_debt.get(id, 0.0) - 2.0, 0.0)
 				_enemy_last_fired_cycle[id] = _fire_cycle_index
+			else:
+				EventBus.emit_signal("enemy_attack_telegraph_cancelled", id)
 
 			if i < ids_to_fire.size() - 1:
 				var offset_timer: SceneTreeTimer = get_tree().create_timer(fire_stagger)

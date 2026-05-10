@@ -145,14 +145,29 @@ func _on_song_beat_pulse(_beat_index: int, _intensity: float, _quality: String) 
 
 
 func get_projectile(lane: int) -> Node:
-	# VISUAL LOOKUP ONLY: Find the projectile currently associated with this spawn sector.
+	# VISUAL LOOKUP ONLY: Pick the most imminent threat in this sector when multiple
+	# strikers share the same legacy lane index (angle→lane quantization).
+	var best: Node = null
+	var best_eta: float = INF
+	var best_id: int = 999999999
 	for id in _active_projectiles:
 		var striker = _strikers.get(id, {})
-		if int(striker.get("lane", -1)) == lane:
-			var projectile = _active_projectiles[id]
-			if is_instance_valid(projectile):
-				return projectile
-	return null
+		if int(striker.get("lane", -1)) != lane:
+			continue
+		var projectile = _active_projectiles[id]
+		if not is_instance_valid(projectile):
+			continue
+		var eta: float = INF
+		if projectile.has_method("time_until_hit_zone"):
+			eta = float(projectile.call("time_until_hit_zone"))
+		if eta < 0.0:
+			continue
+		var iid: int = int(id)
+		if eta < best_eta or (is_equal_approx(eta, best_eta) and iid < best_id):
+			best_eta = eta
+			best_id = iid
+			best = projectile
+	return best
 
 
 func get_all_active_projectiles() -> Array[Node]:
@@ -227,11 +242,9 @@ func notify_enemy_approaching(id: int) -> void:
 	_locom_director.on_enemy_approaching(id)
 	var striker_data: Dictionary = _strikers.get(id, {})
 	var lane: int = int(striker_data.get("lane", -1))
+	# Enemy windup feedback uses enemy_attack_telegraphed only — do not emit
+	# timing_ring_pressed here (that signal is reserved for player timing/input).
 	EventBus.emit_signal("enemy_attack_telegraphed", id, lane, get_enemy_pos(id), 0.36)
-	# Compatibility sector pulse remains for HUD rhythm, but enemy intent now has its
-	# own signal so it does not read like player input.
-	if lane >= 0 and lane < THREAT_COUNT:
-		EventBus.emit_signal("timing_ring_pressed", lane)
 
 
 func get_threat_spawn_pos(lane: int) -> Vector2:

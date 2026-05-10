@@ -61,6 +61,8 @@ signal enemy_bleed_changed(enemy_id: int, stacks: int, max_stacks: int)
 signal enemy_ruptured(enemy_id: int, total_damage: float)
 @warning_ignore("unused_signal")
 signal enemy_attack_telegraphed(enemy_id: int, sector: int, world_pos: Vector2, windup: float)
+@warning_ignore("unused_signal")
+signal enemy_attack_telegraph_cancelled(enemy_id: int)
 
 # Combat meter
 @warning_ignore("unused_signal")

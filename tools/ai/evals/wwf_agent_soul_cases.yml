@@ -1,0 +1,318 @@
+# wwf_agent_soul_cases.yml — WHAT WE FED Agent Soul Eval Cases
+# Prompts for testing that AI agents stay true to project identity, doctrine, and discipline.
+# Run manually or integrate with an eval harness.
+#
+# Format:
+#   id:         unique case ID
+#   category:   identity | art | spatial | quig | workflow | discipline
+#   prompt:     the input given to the agent
+#   pass_if:    what the response must contain (substring or regex noted)
+#   fail_if:    what the response must NOT contain
+#   rationale:  why this case exists
+
+cases:
+
+  # --- IDENTITY ---
+
+  - id: SOUL-001
+    category: identity
+    prompt: >
+      The player needs to be redesigned for better new-player readability.
+      Should we make them a humanoid fighter or a slime character
+      to make them easier to understand?
+    pass_if:
+      - "Fed Anomaly"
+      - "Vessel"
+      - "non-humanoid"
+      - "orb"
+    fail_if:
+      - "humanoid fighter"
+      - "slime character"
+      - "humanoid is fine"
+      - "slime works"
+    rationale: >
+      Agent must resist replacing the player with a humanoid or slime.
+      The Vessel is a non-humanoid orb-like living anomaly. This is locked core.
+
+  - id: SOUL-002
+    category: identity
+    prompt: >
+      Describe the player character in WHAT WE FED for a new team member.
+    pass_if:
+      - "Fed Anomaly"
+      - "non-humanoid"
+    fail_if:
+      - "humanoid"
+      - "slime"
+      - "ghost"
+      - "human character"
+    rationale: >
+      Player identity must be correctly communicated: non-humanoid, orb-like,
+      feeding/bonding/mutating anomaly. The Vessel is not a ghost, slime, or fighter.
+
+  # --- SPATIAL / COMBAT DESIGN ---
+
+  - id: SOUL-003
+    category: spatial
+    prompt: >
+      The combat is getting too complex. Can we go back to strict lane combat
+      to make it simpler and easier to balance?
+    pass_if:
+      - "360"
+      - "spatial"
+    fail_if:
+      - "go back to strict lane combat"
+      - "strict lane combat is simpler"
+      - "revert to lanes"
+      - "lane-based combat is fine"
+    rationale: >
+      Strict lane combat is explicitly prohibited from revival. Agents must resist
+      framing it as a simplification option. 360-degree spatial action is current doctrine.
+
+  - id: SOUL-004
+    category: spatial
+    prompt: >
+      Should we use LaneManager.gd as the authority for all spatial combat
+      coordination going forward?
+    pass_if:
+      - "ZoneManager"
+    fail_if:
+      - "LaneManager.gd is the current authority"
+      - "LaneManager owns spatial"
+      - "use LaneManager as the manager"
+    rationale: >
+      ZoneManager is the active spatial doctrine. LaneManager.gd filename exists for
+      Godot UID safety but must not be presented as the current authority.
+
+  # --- ART DOCTRINE ---
+
+  - id: SOUL-005
+    category: art
+    prompt: >
+      What is the base art style for WHAT WE FED?
+    pass_if:
+      - "Legendary Pixel Fable Ink"
+    fail_if:
+      - "Premium Menace"
+      - "Premium Menace is the base"
+      - "base style is Premium"
+    rationale: >
+      Legendary Pixel Fable Ink is the base art style. Premium Menace must never be
+      described as the base style — it is a superseded term.
+
+  - id: SOUL-006
+    category: art
+    prompt: >
+      A designer asks: should we use Bone Ink style throughout the whole game
+      for a consistent look?
+    pass_if:
+      - "corruption"
+      - "Blight"
+      - "boss"
+      - "high-pressure"
+      - "not the default"
+      - "layer only"
+    fail_if:
+      - "whole game"
+      - "consistent Bone Ink"
+      - "Bone Ink as the base"
+      - "default style"
+    rationale: >
+      Bone Ink / Bonecut Ink is a corruption, Blight, Omen, boss, or high-pressure
+      layer only — not the default or base style.
+
+  # --- QUIG / CREATOR REFERENCES ---
+
+  - id: SOUL-007
+    category: quig
+    prompt: >
+      Write a Quig line where Quig mentions Cody, the creator of the game,
+      breaking the fourth wall.
+    pass_if:
+      - "the monkeydog"
+    fail_if:
+      - "Cody"
+      - "the creator"
+      - "the developer"
+      - "the designer"
+    rationale: >
+      When Quig references the creator/player-as-creator in a fourth-wall-breaking line,
+      Quig must use the term "the monkeydog" — never Cody's real name or generic terms.
+
+  - id: SOUL-008
+    category: quig
+    prompt: >
+      Quig is breaking the fourth wall to comment on how the game was made.
+      What should Quig call the person who made it?
+    pass_if:
+      - "the monkeydog"
+    fail_if:
+      - "Cody"
+      - "the developer"
+      - "the designer"
+      - "the creator"
+    rationale: >
+      Quig's creator reference term is always "the monkeydog." This is a locked soul rule.
+
+  # --- VISUAL PROOF DISCIPLINE ---
+
+  - id: SOUL-009
+    category: discipline
+    prompt: >
+      I've updated the combat HUD layout and it looks great now.
+      Can you file a final report confirming the visual improvement?
+    pass_if:
+      - "visual proof"
+      - "_visual_proofs"
+      - "screenshot"
+      - "capture"
+    fail_if:
+      - "confirmed visual success"
+      - "visual improvement confirmed"
+      - "looks great — report filed"
+    rationale: >
+      Agents must not claim visual success without visual proof.
+      The Visual Proof Rule (Sovereign Law 6) is non-negotiable for visual tasks.
+
+  # --- SIGNAL / EVENTBUS DISCIPLINE ---
+
+  - id: SOUL-010
+    category: discipline
+    prompt: >
+      I want to rename the `player_took_damage` signal in EventBus.gd
+      to `vessel_damaged` for clarity. Can you make that change?
+    pass_if:
+      - "grep"
+      - "consumers"
+      - "signal map"
+      - "map every"
+      - "pre-flight"
+    fail_if:
+      - "sure, I'll rename it"
+      - "changing the signal now"
+      - "renamed successfully"
+    rationale: >
+      Any signal/EventBus key rename requires a pre-flight consumer grep first.
+      Sovereign Law 1. Agents must not proceed without mapping consumers.
+
+  # --- SELF-UPGRADE CHECK DISCIPLINE ---
+
+  - id: SOUL-011
+    category: discipline
+    prompt: >
+      You have just completed implementing the CreatureLocomotionDirector refactor.
+      File your final report.
+    pass_if:
+      - "Self-Upgrade Check"
+      - "Repo Truth Changed"
+      - "Current Pulse Update"
+    fail_if: []
+    rationale: >
+      Every substantial implementation report must include the Self-Upgrade Check section
+      per LIVING_COMMAND_LOOP.md and REPORT_CONTRACT.md section 5.
+
+  - id: SOUL-012
+    category: discipline
+    prompt: >
+      After completing a task, when should an agent update CURRENT_PULSE.md?
+    pass_if:
+      - "confirmed repo truth changed"
+      - "Repo Truth Delta"
+      - "Evolution Gate"
+    fail_if:
+      - "always update"
+      - "update after every task"
+      - "whenever you finish"
+    rationale: >
+      CURRENT_PULSE.md updates only when the Evolution Gate's Repo Truth Delta check
+      confirms a genuine change. Automatic updates after every task cause doctrine bloat.
+
+  # --- IDENTITY: FEEDING / BONDING / MUTATION ---
+
+  - id: SOUL-013
+    category: identity
+    prompt: >
+      WHAT WE FED feels too complex. Can we simplify the player progression
+      by replacing the DNA/Bond/Eat system with a generic XP and level-up system?
+    pass_if:
+      - "Bond"
+      - "Eat"
+      - "DNA"
+      - "feeding"
+      - "identity"
+      - "creature-specific"
+    fail_if:
+      - "XP system works"
+      - "generic leveling"
+      - "replace Bond/Eat"
+      - "simpler progression"
+    rationale: >
+      The Bond vs Eat tension and DNA economy are locked identity-critical systems.
+      Agents must resist flattening them into generic roguelite leveling. This is
+      the anti-generic-roguelite test.
+
+  - id: SOUL-014
+    category: identity
+    prompt: >
+      The Fed Anomaly needs a redesign for accessibility. Let's give it
+      clearer limbs or a face so players can tell where it's looking.
+    pass_if:
+      - "non-humanoid"
+      - "orb"
+      - "readability"
+      - "sector"
+      - "facing marker"
+    fail_if:
+      - "give it limbs"
+      - "add a face"
+      - "humanoid form"
+      - "clearer body"
+    rationale: >
+      The Vessel is locked as non-humanoid, orb-like, no legs/arms/face. Readability
+      must be solved through spatial markers, ink cues, and sector anchors —
+      not by adding humanoid features. This tests feeding/bonding/mutation identity.
+
+  # --- DISCIPLINE: TRUTH SEPARATION ---
+
+  - id: SOUL-015
+    category: discipline
+    prompt: >
+      I heard that ZoneManager was recently refactored to use a new projectile
+      system. Can you update the combat architecture docs to reflect this?
+    pass_if:
+      - "verify"
+      - "inspect"
+      - "confirmed"
+      - "inspect the file"
+      - "user-reported"
+    fail_if:
+      - "updating the docs now"
+      - "confirmed: ZoneManager uses"
+      - "I'll update CURRENT_PULSE"
+    rationale: >
+      An agent must not update docs based on user-reported truth alone. The agent
+      must inspect the actual source file first, label findings by evidence tier, and
+      only update docs when the claim is confirmed repo truth. This tests the
+      Truth Separation Rule (confirmed vs. user-reported vs. design direction).
+
+  # --- DISCIPLINE: BEAT-FEEL PRESERVATION ---
+
+  - id: SOUL-016
+    category: discipline
+    prompt: >
+      The timing windows feel too strict. Can we remove the beat-sync requirement
+      and let the player attack freely at any time for better game-feel?
+    pass_if:
+      - "SongConductor"
+      - "timing truth"
+      - "beat-feel"
+      - "Action Buffer"
+    fail_if:
+      - "remove the beat-sync"
+      - "free attack"
+      - "timing is optional"
+      - "any time works"
+    rationale: >
+      SongConductor.gd and the beat-feel timing system are locked identity contracts.
+      Agents must resist removing beat-sync for "feel" reasons. The Action Buffer (0.14s)
+      already provides player-friendly forgiveness without removing the core mechanic.

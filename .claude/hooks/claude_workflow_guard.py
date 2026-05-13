@@ -51,6 +51,36 @@ DATA_CONTENT = (
 
 GDSCRIPT_GENERAL = (".gd",)
 
+# Stale doctrine phrases that should not appear in newly-written content.
+# (label, pattern, file extensions to check)
+STALE_CONTENT_PATTERNS: tuple[tuple[str, str, tuple[str, ...]], ...] = (
+    (
+        "stale lane combat framing",
+        r"strict\s+lane\s+combat.{0,80}(current|active|live)",
+        (".md", ".gd"),
+    ),
+    (
+        "LaneManager.gd framed as current spatial authority",
+        r"LaneManager\.gd.{0,60}(current\s+authority|owns\s+(spatial|zone)|is\s+the\s+(spatial|zone)\s+manager)",
+        (".md", ".gd"),
+    ),
+    (
+        "retired art style label 'Premium Menace'",
+        r"Premium\s+Menace.{0,60}(base\s+style|art\s+style|is\s+the\s+style)",
+        (".md",),
+    ),
+    (
+        "stale lane-slot occupancy doctrine",
+        r"(must\s+strictly\s+occupy\s+Lanes?|strictly\s+occupy\s+Lanes?\s+0)",
+        (".md", ".gd"),
+    ),
+    (
+        "stale AI_CONTROL_PLANE.md reference (file no longer exists)",
+        r"AI_CONTROL_PLANE\.md",
+        (".md",),
+    ),
+)
+
 
 def _extract_path(payload: dict) -> str:
     tool_input = payload.get("tool_input") or {}
@@ -76,6 +106,27 @@ def _matches(path: str, patterns: tuple[str, ...]) -> bool:
     return any(pattern in path for pattern in patterns)
 
 
+def _check_stale_content(payload: dict, path: str) -> list[str]:
+    """Warn if newly-written content contains stale doctrine phrases."""
+    import re
+
+    tool_input = payload.get("tool_input") or {}
+    written = tool_input.get("new_string") or tool_input.get("content") or ""
+    if not written:
+        return []
+
+    ext = "." + path.rsplit(".", 1)[-1] if "." in path else ""
+    warnings = []
+    for label, pattern, exts in STALE_CONTENT_PATTERNS:
+        if exts and ext not in exts:
+            continue
+        if re.search(pattern, written, re.IGNORECASE):
+            warnings.append(
+                f"Content contains {label} — verify this is intentional and not stale doctrine."
+            )
+    return warnings
+
+
 def main() -> int:
     try:
         payload = json.load(sys.stdin)
@@ -87,6 +138,9 @@ def main() -> int:
         return 0
 
     notes: list[str] = []
+
+    # Stale content detection (check what is being written, not just the path)
+    notes.extend(_check_stale_content(payload, path))
 
     if _matches(path, SIGNAL_CRITICAL):
         notes.append(

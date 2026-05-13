@@ -11,6 +11,17 @@
           }
         ]
       }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR/Python/bin/python.exe\" \"$CLAUDE_PROJECT_DIR/.claude/hooks/self_upgrade_reminder.py\"",
+            "timeout": 5
+          }
+        ]
+      }
     ]
   }
 }

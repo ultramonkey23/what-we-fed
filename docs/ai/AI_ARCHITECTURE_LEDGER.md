@@ -36,6 +36,7 @@ Compact boundary map for WHAT WE FED agent architecture. This file is active con
 - `docs/ai/REPORT_CONTRACT.md`
 - `docs/ai/VISUAL_TRUTH_LOOP.md`
 - `docs/ai/CURRENT_PULSE.md`
+- `docs/ai/LIVING_COMMAND_LOOP.md` — task-completion Evolution Gate and Self-Upgrade Check
 - `docs/GAME_SPINE.md`
 - `docs/VISUAL_STYLE_GUIDE.md`
 - `docs/LIVING_CODEX_PLAYER_VESSEL.md`
@@ -71,6 +72,25 @@ Compact boundary map for WHAT WE FED agent architecture. This file is active con
 - No authored defeat frames are required.
 - Player animations and seven combat backgrounds are already in-game.
 
+## Current Spatial Combat Authority
+
+Do not invent parallel combat management. These are the live owners:
+
+| Director | File | Owns |
+|---|---|---|
+| ZoneManager | `scenes/combat/ZoneManager.gd` | Spatial registry, spawn placement, projectile/melee spatial execution |
+| CombatFireDirector | `systems/CombatFireDirector.gd` | Fire cycle, striker authorization, when/who attacks |
+| CreatureLocomotionDirector | `systems/CreatureLocomotionDirector.gd` | Enemy orbit/flank/approach/recoil movement |
+| StatusDirector | `systems/StatusDirector.gd` | Status and affliction rules |
+| CombatLifecycleDirector | `systems/CombatLifecycleDirector.gd` | Enemy defeat and combat-ended lifecycle |
+| SovereignDamageCalculator | `systems/SovereignDamageCalculator.gd` | Damage math |
+| PlayerCombat | `scenes/combat/PlayerCombat.gd` | Player action resolution |
+| SongConductor | `systems/SongConductor.gd` | Timing truth, beat authority |
+
+Note: `LaneManager.gd` is the Godot filename for ZoneManager. It is retained for UID
+safety. The doctrine name is ZoneManager. No agent should describe LaneManager.gd as
+"the current spatial authority" — that is stale lane doctrine.
+
 ## Known Documentation Risks
 - The repo contains hundreds of markdown files, including legacy and archived plans.
 - Authority rules are repeated across multiple entrypoints.
@@ -79,6 +99,14 @@ Compact boundary map for WHAT WE FED agent architecture. This file is active con
 - Duplicate docs and worktrees can confuse agents.
 - Some historical docs contain superseded base-style terms.
 - Archived docs may describe deferred or rejected systems as if current.
+
+## Living Command Loop Rule
+Every substantial implementation or multi-step report must include the Self-Upgrade
+Check section (see `docs/ai/REPORT_CONTRACT.md` section 5 and
+`docs/ai/LIVING_COMMAND_LOOP.md`). Agents may update `docs/ai/CURRENT_PULSE.md`
+and `tools/ai/evals/wwf_agent_soul_cases.yml` directly when the Evolution Gate
+confirms a genuine change. All other doctrine updates require an evolution proposal
+and explicit approval.
 
 ## Truth Separation Rule
 Agents must label and keep separate:

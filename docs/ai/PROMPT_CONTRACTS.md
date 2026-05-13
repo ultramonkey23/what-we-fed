@@ -1,7 +1,7 @@
 # PROMPT CONTRACTS
 Reusable prompt templates for each agent lane. Copy, fill blanks, send.
 
-Routing rules: `docs/ai/AI_CONTROL_PLANE.md`
+Routing rules: `docs/ai/AI_ARCHITECTURE_LEDGER.md`
 Report format: `docs/agent_reports/REPORT_TEMPLATE.md`
 
 ---

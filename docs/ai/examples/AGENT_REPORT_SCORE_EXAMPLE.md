@@ -47,14 +47,14 @@ Date: 2026-04-24
 Branch/commit if available: master / e0910e0
 Task type: AI architecture/tooling upgrade
 Files inspected:
-  - docs/ai/AI_CONTROL_PLANE.md
+  - docs/ai/AI_ARCHITECTURE_LEDGER.md
   - docs/ai/REPORT_INGESTION_GATE.md
   - docs/ai/PROMPT_CONTRACTS.md
 Files changed:
   - tools/ai/score_agent_report.py (created)
   - docs/ai/AGENT_REPORT_SCORECARD.md (created)
   - docs/ai/REPORT_INGESTION_GATE.md (updated)
-  - docs/ai/AI_CONTROL_PLANE.md (updated)
+  - docs/ai/AI_ARCHITECTURE_LEDGER.md (updated)
   - docs/ai/PROMPT_CONTRACTS.md (updated)
 Validation run: python tools/ai/score_agent_report.py --help; ran scorer against a sample report
 Validation level: 2
@@ -62,7 +62,7 @@ Validation result: script runs without error; sample report scored and output pr
 Confirmed repo truth:
   - tools/ai/score_agent_report.py exists and runs on Python 3, no external dependencies
   - docs/ai/AGENT_REPORT_SCORECARD.md exists and matches script logic
-  - docs/ai/REPORT_INGESTION_GATE.md, AI_CONTROL_PLANE.md, PROMPT_CONTRACTS.md each updated with scorer pointer
+  - docs/ai/REPORT_INGESTION_GATE.md, AI_ARCHITECTURE_LEDGER.md, PROMPT_CONTRACTS.md each updated with scorer pointer
 Unverified assumptions:
   - Script has not been tested against a large corpus of real agent reports; edge cases may exist
   - Regex patterns may need tuning once more report formats are observed

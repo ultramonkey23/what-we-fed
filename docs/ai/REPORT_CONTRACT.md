@@ -46,7 +46,34 @@ Automated scoring is available to catch mechanical gaps in reporting.
 - **Scoring Guide**: `docs/ai/REPORT_CONTRACT.md`
 - **Template**: `agent_reports/REPORT_TEMPLATE.md`
 
-## 4. HANDOFF FORMAT
+## 5. SELF-UPGRADE CHECK (Required in Every Substantial Report)
+
+After completing an implementation or multi-step task, agents must include this
+section in the Auditor's Report. Most answers will be "no" — that is correct.
+Only act when a genuine change is detected. See `docs/ai/LIVING_COMMAND_LOOP.md`
+for the full Evolution Gate definition.
+
+```md
+## Self-Upgrade Check
+- **Repo Truth Changed**: yes / no — [brief reason if yes]
+- **Player Understanding Changed**: yes / no — [what changed for the player if yes]
+- **Current Pulse Update Needed**: yes / no — [what changed if yes]
+- **Agent Rule Update Needed**: yes / no — [which rule and why if yes]
+- **New Eval Case Needed**: yes / no — [drift type or lesson if yes]
+- **Soul / Taste Lesson Learned**: yes / no — [what Cody clarified if yes]
+- **Recommended Doctrine Patch**: none / pulse / rule / hook / eval / proposal
+- **One-Sentence Learning**: [what this task confirmed, corrected, or revealed]
+```
+
+Allowed direct updates (no approval):
+- `docs/ai/CURRENT_PULSE.md` — when confirmed repo truth changed.
+- `tools/ai/evals/wwf_agent_soul_cases.yml` — when a new drift case is confirmed.
+
+Approval required (propose, do not implement):
+- Any change to SOVEREIGN_CORE.md, AI_ARCHITECTURE_LEDGER.md, GAME_SPINE.md,
+  AGENTS.md, CLAUDE.md, GEMINI.md, lockbox docs, or protected system rules.
+
+## 6. HANDOFF FORMAT
 When passing work to another agent:
 - **Target File(s)**: [PATHS]
 - **Working Truth**: [CONTEXT_LIMIT]

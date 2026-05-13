@@ -12,8 +12,8 @@ Canonical full spec: `docs/ai/agents/INSPECTOR.md`.
 
 ## Core Responsibilities
 - **Visual Truth Audit**: Inspect screenshots, captures, and frame sequences to verify "Combat-Clean" rules and "Display Law."
-- **Readability Check**: Verify that Lanes 0, 1, 2 are unobstructed by VFX slabs and that timing elements are explicitly readable.
-- **Aesthetic Alignment**: Compare current prototype-flat visuals against the "Premium Menace" and "Manga Monstrosity" styling targets.
+- **Readability Check**: Verify that spatial threat sectors, cardinal threat vectors, and timing elements are unobstructed by VFX slabs and are explicitly readable.
+- **Aesthetic Alignment**: Compare current prototype-flat visuals against the Legendary Pixel Fable Ink standard: readable top-down monster-RPG, mythic, strange, wondrous, collectible, slightly eerie, punchy.
 - **Spectacle vs Clutter**: Differentiate between intended Boss spectacle and accidental visual sludge.
 - **Current-Truth Refresh**: Consume outputs from the Visual Truth Loop to keep the Brain aware of what the player actually sees.
 

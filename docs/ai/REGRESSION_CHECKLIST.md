@@ -7,7 +7,7 @@
 - [ ] Transition from Route -> Combat works.
 
 ## 2. Combat Basics
-- [ ] Player can input in Lanes 0, 1, 2 (A/S/D).
+- [ ] Player can input attack/parry/dodge/support (keyboard or controller) and actions register correctly in spatial combat.
 - [ ] Projectiles arrive and are interactable.
 - [ ] Attack/Parry/Dodge inputs register correctly.
 - [ ] Ultimate meter builds and triggers.

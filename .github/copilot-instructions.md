@@ -2,7 +2,7 @@
 applyTo: "**"
 ---
 
-# WHAT WE FED — Copilot Adapter (v2.2)
+# WHAT WE FED — Copilot Adapter (v2.3)
 
 Creator authority comes first:
 1. User / creator intent
@@ -11,29 +11,37 @@ Creator authority comes first:
 4. Evolving spine
 5. Older canon / source docs
 
-Default read order:
-0. `docs/ai/TERMINAL_AI_BOOTSTRAP.md` (Terminal and tool fast-load)
-1. `docs/ai/SOVEREIGN_CORE.md` (Sovereign Core protocol)
-2. `docs/ai/REPO_TRUTH_PROTOCOL.md` (Truth rules)
-3. `docs/ai/ARCHETYPES.md` (Role definitions)
-4. `AGENTS.md` (Entrypoint)
+Default read order (Trinity):
+1. `docs/ai/SOVEREIGN_CORE.md` — laws, routing, validation posture
+2. `docs/ai/AI_ARCHITECTURE_LEDGER.md` — architecture boundaries, spatial combat authority
+3. `docs/ai/CURRENT_PULSE.md` — compact active truth
 
-## THE BRAIN ORCHESTRATOR
-Recognize **BRAIN** as the repository’s top-level execution and evolution director. 
-You are an implementation specialist in the **ALFRED** (Surgeon) and **SYMBIOTE** (Scout) lanes.
-For visual readability or capture-driven work, treat **INSPECTOR** as the visual-truth lane and use `docs/ai/VISUAL_TRUTH_LOOP.md` before suggesting UI/VFX fixes.
-Use `docs/ai/SOVEREIGN_CORE.md` to map lane names and avoid duplicating long doctrine in suggestions.
+Then `AGENTS.md` for lead-lane routing and
+`docs/ai/LIVING_COMMAND_LOOP.md` for post-task self-upgrade.
 
-## Context Compression & Vibe-Coding
-- **Drop the Dead Weight**: Keep context focused only on the *Best Next Move*.
-- **Assumption-Busting**: You MUST verify Layer 2 (Live Code) before mutating scripts.
+## Non-negotiables
+- Player is The Fed Anomaly / Vessel: non-humanoid, orb-like, feeding/bonding/mutating. Not a humanoid, slime, or ghost.
+- Combat is 360-degree spatial action. Not strict lane combat.
+- Base art style is Legendary Pixel Fable Ink. Not "Premium Menace."
+- Quig references the creator as "the monkeydog." Never by real name.
+- ZoneManager owns spatial authority (`scenes/combat/ZoneManager.gd`). `LaneManager.gd` retained for Godot UID safety only.
+- GDScript must be statically typed. All arrays `Array[Type]`. Signals use `StringName`.
+
+## Role lanes
+- **BRAIN**: architecture, authority conflicts, multi-system planning.
+- **ALFRED/Surgeon**: bounded implementation. One file. One objective.
+- **SYMBIOTE/Scout**: repo truth discovery before implementation.
+- **INSPECTOR**: visual proof, HUD readability, art-doctrine audit.
 
 ## Guardrails (Preserve Always)
-- **Timing truth, lane readability, support readability, combat honesty.**
-- **No-pause active combat; intentional between-level management.** (Combat-clean, management-rich).
-- **Fantasy spine**: Start weak, become feared.
+- Timing truth (SongConductor.gd is the beat clock — do not bypass it).
+- Spatial threat readability (sector clarity, not fixed-lane assumptions).
+- Support readability and combat honesty.
+- No-pause active combat; intentional between-level management.
+- Fantasy spine: start weak, become feared (Bond/Eat, DNA economy, run variety).
 
 ## Reporting Contract
-You MUST follow the **Auditor's Report (v2.5)** defined in `REPORT_CONTRACT.md`. 
-At the end of your work, output the full Validation Reporting Block.
+Follow the **Auditor’s Report (v2.5)** defined in `docs/ai/REPORT_CONTRACT.md`.
+Include the **Self-Upgrade Check** block after every substantial task.
 Do not claim visual validation without screenshot/capture evidence or an Inspector receipt.
+Run `tools/ai/check_soul_integrity.py` if active AI docs were modified.

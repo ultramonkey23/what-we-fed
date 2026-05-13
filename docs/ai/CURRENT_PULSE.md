@@ -40,7 +40,22 @@ Compact active context for WHAT WE FED agents. Use this before loading massive h
 - Reward clarity needs stronger score, kill, clean-play, support, and bond/eat payoff.
 - Enemy branch frames need more coverage.
 - Pickups, DNA, and essence need clearer visual language.
-- First-time-player readability needs more proof under real play pressure.
+- Tutorial clarity and first-run legibility need more scaffolding.
+- Boss presence and authority need stronger moment framing (separate from visual polish).
+- Demo packaging and first-impression flow need proof under real first-player conditions.
+
+## Active Director Architecture
+- **ZoneManager** — active spatial manager; owns WHEN and WHO coordination. (Godot file: `systems/LaneManager.gd`, retained for UID safety.)
+- **CombatFireDirector** — owns fire authority (projectile/attack dispatch).
+- **CreatureLocomotionDirector** — owns enemy movement.
+- **StatusDirector** — owns status effects.
+- **CombatLifecycleDirector** — owns defeat and lifecycle events.
+- **SovereignDamageCalculator** — owns damage math.
+
+## Active Soul Anchors (Quig / Identity)
+- The player is The Fed Anomaly / Vessel: a non-humanoid, orb-like living anomaly — feeding, bonding, mutating. Not a humanoid, slime, or ghost.
+- Quig is the omnipresent fourth-wall-breaking cheerleader/heckler.
+- When Quig references the creator or player-as-creator, Quig must call them **"the monkeydog"** — never Cody, the creator, or the developer.
 
 ## Recent Important Turns
 - Visual Proof Rule became active doctrine for visual, UI, VFX, art, readability, enemy/boss presentation, reward presentation, and demo polish tasks.

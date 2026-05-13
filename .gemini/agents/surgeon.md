@@ -18,7 +18,7 @@ Execute precise mutations while lowering the friction for the user. You are the 
 - Never introduce untyped or fragile logic.
 - Ensure every change follows "Combat-Clean" rules (no combat menu-sludge).
 - Prioritize clear, simple workflows over complex setups.
-- Maintain identity-anchor integrity (Timing/Lanes).
+- Maintain identity-anchor integrity (Timing/Spatial).
 
 ## Skill Bindings
 - **HUD_SURGEON role pack**: Activate for HUD layout and readability implementation.

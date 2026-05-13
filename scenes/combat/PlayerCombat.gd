@@ -1295,13 +1295,14 @@ func _fire_parry_followup(combo_mult: float, targets: Dictionary) -> void:
 	var enemies: Array = get_attack_lock_targets()
 	var primary_target: Dictionary = enemies[0] if not enemies.is_empty() else {}
 	_play_attack_state(target_sector, primary_target)
+	var attack_heading: Vector2 = _facing_direction
 	
 	if not enemies.is_empty():
 		for e_data in enemies:
 			zone_manager.damage_enemy_by_id(int(e_data.get("ref", -1)), followup_damage)
 		
 	combat_meter.record_lane_read()
-	EventBus.emit_signal("player_attacked", target_sector, followup_damage, true)
+	EventBus.emit_signal("player_attacked", target_sector, followup_damage, true, attack_heading)
 	EventBus.emit_signal("screen_flash", Color(1.0, 0.95, 0.65, 0.08), 0.05)
 	_emit_slowmo_context("parry_followup")
 
@@ -1324,6 +1325,7 @@ func _trigger_parry_counter_warp(enemy_id: int, target_sector: int, damage: floa
 	EventBus.emit_signal("screen_flash", Color(1.0, 1.0, 1.0, 0.20 if is_perfect else 0.12), 0.05)
 
 	# 2. Sequential Strike: Execute the warp-attack after a tiny beat.
+	var attack_heading: Vector2 = _facing_direction
 	var warp_timer := get_tree().create_timer(0.06)
 	warp_timer.timeout.connect(func():
 		_play_counter_warp_state()
@@ -1338,7 +1340,7 @@ func _trigger_parry_counter_warp(enemy_id: int, target_sector: int, damage: floa
 		if enemy_id != -1:
 			zone_manager.damage_enemy_by_id(enemy_id, damage)
 		
-		EventBus.emit_signal("player_attacked", target_sector, damage, true)
+		EventBus.emit_signal("player_attacked", target_sector, damage, true, attack_heading)
 		
 		# Feedback: Strong punch for the actual hit resolution.
 		EventBus.emit_signal("screen_shake", 5.0 if is_perfect else 3.0, 0.12 if is_perfect else 0.08)

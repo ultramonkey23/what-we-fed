@@ -69,6 +69,9 @@ var _is_homing: bool = false
 var _launch_pos: Vector2 = Vector2.ZERO
 var _travel_direction: Vector2 = Vector2.LEFT
 var _reflect_direction: Vector2 = Vector2.RIGHT
+var _reflect_target_pos: Vector2 = Vector2.ZERO
+var _original_speed: float = 0.0
+var _reflected_speed: float = 0.0
 
 var _reported_hit_zone: bool = false
 var _reported_player_contact: bool = false
@@ -181,7 +184,10 @@ func setup(
 	enemy_id = projectile_enemy_id
 	damage = projectile_damage
 	speed = projectile_speed
+	_original_speed = projectile_speed
+	_reflected_speed = projectile_speed * REFLECT_SPEED_MULT
 	enemy_pos = start_pos
+	_reflect_target_pos = enemy_pos
 	hit_zone_pos = target_hit_zone_pos
 	player_pos = target_player_pos
 	player_ref = target_player_ref
@@ -220,16 +226,22 @@ func setup(
 
 
 func reflect_to_enemy(return_damage: float) -> void:
+	reflect_to_enemy_at(return_damage, enemy_pos)
+
+
+func reflect_to_enemy_at(return_damage: float, target_pos: Vector2) -> void:
 	# Converts the projectile into a returning threat aimed back at the enemy.
 	if is_resolved:
 		return
 
 	is_reflected = true
 	reflected_damage = return_damage
+	_reflect_target_pos = target_pos
+	_reflected_speed = maxf(_original_speed, speed) * REFLECT_SPEED_MULT
 	_reported_hit_zone = true
 	_reported_player_contact = true
 	_reported_enemy_contact = false
-	var to_source: Vector2 = enemy_pos - global_position
+	var to_source: Vector2 = _reflect_target_pos - global_position
 	if to_source.length_squared() > 4.0:
 		_reflect_direction = to_source.normalized()
 	elif _travel_direction.length_squared() > 0.01:
@@ -405,12 +417,12 @@ func set_song_sync(conductor: SongConductor, hit_time: float) -> void:
 
 
 func _process_reflected(delta: float) -> void:
-	var previous_distance: float = global_position.distance_to(enemy_pos)
-	position += _reflect_direction * speed * REFLECT_SPEED_MULT * delta
+	var previous_distance: float = global_position.distance_to(_reflect_target_pos)
+	position += _reflect_direction * _reflected_speed * delta
 	_update_visual_state(true)
 
 	if not _reported_enemy_contact:
-		var dist_to_origin: float = position.distance_to(enemy_pos)
+		var dist_to_origin: float = position.distance_to(_reflect_target_pos)
 		if dist_to_origin < 25.0 or dist_to_origin > previous_distance + 1.0:
 			_reported_enemy_contact = true
 			emit_signal("enemy_contact", self)

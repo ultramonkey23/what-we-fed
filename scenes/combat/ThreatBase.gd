@@ -43,6 +43,10 @@ func reflect_to_enemy(_return_damage: float) -> void:
 	pass
 
 
+func reflect_to_enemy_at(return_damage: float, _target_pos: Vector2) -> void:
+	reflect_to_enemy(return_damage)
+
+
 func time_until_hit_zone() -> float:
 	return -1.0
 

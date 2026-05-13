@@ -211,6 +211,8 @@ func _readability_compact_feedback_text(text: String) -> String:
 	var u: String = raw.to_upper()
 	if u == "NOT READY":
 		return "NO CHARGE"
+	if u == "WRONG LANE":
+		return "BAD ANGLE"
 	if u == "THREAT CLOSE":
 		return "THREAT"
 	return raw
@@ -218,7 +220,7 @@ func _readability_compact_feedback_text(text: String) -> String:
 
 func _feedback_priority_for_text(text: String) -> int:
 	var token: String = text.to_upper().strip_edges()
-	if token.find("NO STAMINA") >= 0 or token.find("NO CHARGE") >= 0 or token.find("RECOVERING") >= 0 or token.find("WRONG LANE") >= 0 or token.find("DENIED") >= 0:
+	if token.find("NO STAMINA") >= 0 or token.find("NO CHARGE") >= 0 or token.find("RECOVERING") >= 0 or token.find("BAD ANGLE") >= 0 or token.find("DENIED") >= 0:
 		return FEEDBACK_PRIORITY_HIGH
 	if token.find("STRUCK") >= 0 or token.find("EXPOSED") >= 0 or token.find("PARRY") >= 0 or token.find("DODGE") >= 0 or token.begins_with("THREAT"):
 		return FEEDBACK_PRIORITY_HIGH

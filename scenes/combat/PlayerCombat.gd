@@ -18,9 +18,13 @@ const LATE_ATTACK_RECOVERY: float = 0.50
 const GOOD_PARRY_RECOVERY: float = 0.22
 const PERFECT_PARRY_RECOVERY: float = 0.14
 const FAILED_PARRY_RECOVERY: float = 0.32
-const PARRY_CAPTURE_RADIUS: float = 150.0
-const PARRY_CAPTURE_CONE_DOT: float = 0.28
-const PARRY_PANIC_RADIUS: float = 42.0
+const PARRY_CAPTURE_RADIUS: float = 190.0
+const PARRY_CAPTURE_CONE_DOT: float = 0.05
+const PARRY_PANIC_RADIUS: float = 72.0
+const PARRY_PROGRESS_GOOD_MIN: float = 0.88
+const PARRY_PROGRESS_PERFECT_MIN: float = 0.97
+const PARRY_PROGRESS_PERFECT_MAX: float = 1.04
+const PARRY_PROGRESS_GOOD_MAX: float = 1.18
 
 const DODGE_RECOVERY: float = 0.48
 const DODGE_GOOD_RECOVERY: float = 0.34
@@ -478,6 +482,27 @@ func _evaluate_parry_timing_with_forgiveness(projectile: ThreatBase) -> String:
 	return quality
 
 
+func _resolve_nerve_parry_quality(projectile: ThreatBase) -> String:
+	var quality: String = _evaluate_parry_timing_with_forgiveness(projectile)
+	if quality == "perfect" or quality == "good" or quality == "already_resolved":
+		return quality
+
+	var physical_distance: float = projectile.global_position.distance_to(free_position)
+	if physical_distance <= PARRY_PANIC_RADIUS:
+		return "good"
+	if physical_distance <= PARRY_CAPTURE_RADIUS * 0.72:
+		return "good"
+
+	var progress_value: float = projectile.progress
+	if progress_value >= PARRY_PROGRESS_PERFECT_MIN and progress_value <= PARRY_PROGRESS_PERFECT_MAX:
+		return "perfect"
+	if progress_value >= PARRY_PROGRESS_GOOD_MIN and progress_value <= PARRY_PROGRESS_GOOD_MAX:
+		return "good"
+	if progress_value < PARRY_PROGRESS_GOOD_MIN:
+		return "early"
+	return "late"
+
+
 func _get_phrase_window() -> String:
 	if combat_meter == null:
 		return ""
@@ -703,7 +728,7 @@ func _resolve_parry_miss_feedback() -> String:
 		if dist < closest_distance:
 			closest_distance = dist
 			best_dot = _facing_direction.dot(to_target.normalized()) if dist > 0.01 else 1.0
-			best_quality = _evaluate_parry_timing_with_forgiveness(threat)
+			best_quality = _resolve_nerve_parry_quality(threat)
 
 	if closest_distance == INF:
 		return "NO THREAT CAUGHT"
@@ -716,6 +741,29 @@ func _resolve_parry_miss_feedback() -> String:
 	if best_quality == "late" or best_quality == "miss":
 		return "TOO LATE"
 	return "NO THREAT CAUGHT"
+
+
+func _resolve_reflect_target_pos(enemy_id: int, projectile: ThreatBase) -> Vector2:
+	if zone_manager == null:
+		return projectile.global_position + _facing_direction * PARRY_CAPTURE_RADIUS
+
+	var enemy: Dictionary = zone_manager.get_enemy_by_id(enemy_id)
+	if not enemy.is_empty() and float(enemy.get("hp", 0.0)) > 0.0:
+		return zone_manager.get_enemy_pos(enemy_id)
+
+	var enemies: Dictionary = zone_manager.get_all_enemies()
+	var best_pos: Vector2 = projectile.global_position - _facing_direction * PARRY_CAPTURE_RADIUS
+	var best_dist_sq: float = INF
+	for id in enemies.keys():
+		var candidate: Dictionary = enemies.get(id, {})
+		if float(candidate.get("hp", 0.0)) <= 0.0:
+			continue
+		var pos: Vector2 = zone_manager.get_enemy_pos(int(id))
+		var dist_sq: float = projectile.global_position.distance_squared_to(pos)
+		if dist_sq < best_dist_sq:
+			best_dist_sq = dist_sq
+			best_pos = pos
+	return best_pos
 
 
 func _target_lock_score(dot: float, distance: float, max_range: float) -> float:
@@ -888,7 +936,7 @@ func _try_parry(_targets: Dictionary) -> void:
 	projectiles.sort_custom(func(a, b): return float(a.get("precision", 0.0)) > float(b.get("precision", 0.0)))
 	var p_data = projectiles[0]
 	var projectile: ThreatBase = p_data.get("ref") as ThreatBase
-	var quality: String = _evaluate_parry_timing_with_forgiveness(projectile)
+	var quality: String = _resolve_nerve_parry_quality(projectile)
 	var target_sector: int = int(p_data.get("lane", -1))
 
 	if quality != "good" and quality != "perfect":
@@ -943,8 +991,9 @@ func _try_parry(_targets: Dictionary) -> void:
 		_sum_bond_passive("parry_reflect_mult")
 	)
 	var enemy_id: int = projectile.enemy_id
+	var reflect_target_pos: Vector2 = _resolve_reflect_target_pos(enemy_id, projectile)
 
-	projectile.reflect_to_enemy(reflect_damage)
+	projectile.reflect_to_enemy_at(reflect_damage, reflect_target_pos)
 	combat_meter.record_parry(quality)
 	combat_meter.record_phrase_action(quality)
 	_show_parry_image(quality)

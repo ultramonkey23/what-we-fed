@@ -12,6 +12,7 @@ const SIGIL_FOLLOW_LERP: float = 0.12 # Subtle follow speed
 var _active_bg_env: Dictionary = {}
 var _shared_noise_tex: NoiseTexture2D = null
 var _vessel_vibe_color: Color = Color(1.0, 0.95, 0.55, 1.0) # Default Amber
+var _primary_grave_threat_key: int = -1
 ## Optional `CombatVisualRig` (or compatible Node) parented under CombatScene for editor anchors.
 var _combat_visual_rig: Node2D = null
 
@@ -489,7 +490,8 @@ func draw_timing_circles(
 			outline.default_color = Color(active_color, 0.65)
 			splinter.add_child(outline)
 		
-		# Inner Marrow (Higher contrast core)
+		# Inner Marrow is kept as a dormant compatibility child; active threat
+		# readability now comes from the outer splinters only.
 		var marrow := Polygon2D.new()
 		marrow.name = "Marrow"
 		marrow.polygon = PackedVector2Array([
@@ -499,7 +501,8 @@ func draw_timing_circles(
 			Vector2(14, 12)
 		])
 		marrow.color = Color.BLACK
-		marrow.color.a = 0.35
+		marrow.color.a = 0.0
+		marrow.visible = false
 		grave_ring.add_child(marrow)
 		
 		timing_circle_container.add_child(grave_ring)
@@ -620,6 +623,92 @@ func _make_disc_polygon(radius: float, color: Color, jitter: float = 0.0) -> Pol
 	return poly
 
 
+func _get_threat_marker_key(threat: Node) -> int:
+	if threat == null or not is_instance_valid(threat):
+		return -1
+	var enemy_id: int = int(threat.get("enemy_id")) if "enemy_id" in threat else -1
+	return enemy_id if enemy_id >= 0 else int(threat.get_instance_id())
+
+
+func _is_valid_grave_threat(threat: Node) -> bool:
+	if threat == null or not is_instance_valid(threat):
+		return false
+	if bool(threat.get("is_resolved")):
+		return false
+	if "is_reflected" in threat and bool(threat.get("is_reflected")):
+		return false
+	if threat.has_method("time_until_hit_zone"):
+		return float(threat.call("time_until_hit_zone")) >= 0.0
+	return true
+
+
+func _build_grave_threat_data(threat: Node, player_pos: Vector2) -> Dictionary:
+	var threat_node: Node2D = threat as Node2D
+	var threat_pos: Vector2 = threat_node.global_position if threat_node != null else player_pos
+	var eta: float = INF
+	var has_eta: bool = false
+	if threat.has_method("time_until_hit_zone"):
+		eta = float(threat.call("time_until_hit_zone"))
+		has_eta = eta >= 0.0
+	var distance_sq: float = threat_pos.distance_squared_to(player_pos)
+	return {
+		"node": threat,
+		"key": _get_threat_marker_key(threat),
+		"lane": int(threat.get("lane")) if "lane" in threat else -1,
+		"eta": eta,
+		"has_eta": has_eta,
+		"distance_sq": distance_sq,
+		"stable_id": _get_threat_marker_key(threat)
+	}
+
+
+func _find_primary_grave_threat(zone_manager: Node, player_pos: Vector2) -> Dictionary:
+	if zone_manager == null or not is_instance_valid(zone_manager):
+		_primary_grave_threat_key = -1
+		return {}
+	if not zone_manager.has_method("get_all_active_projectiles"):
+		_primary_grave_threat_key = -1
+		return {}
+
+	var active_threats: Array = zone_manager.call("get_all_active_projectiles")
+	var current_data: Dictionary = {}
+	var candidates: Array[Dictionary] = []
+	for threat_variant in active_threats:
+		var threat: Node = threat_variant as Node
+		if not _is_valid_grave_threat(threat):
+			continue
+		var data: Dictionary = _build_grave_threat_data(threat, player_pos)
+		if int(data.get("key", -1)) == _primary_grave_threat_key:
+			current_data = data
+		candidates.append(data)
+
+	if not current_data.is_empty():
+		return current_data
+	if candidates.is_empty():
+		_primary_grave_threat_key = -1
+		return {}
+
+	candidates.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		var a_has_eta: bool = bool(a.get("has_eta", false))
+		var b_has_eta: bool = bool(b.get("has_eta", false))
+		if a_has_eta != b_has_eta:
+			return a_has_eta
+		if a_has_eta:
+			var eta_a: float = float(a.get("eta", INF))
+			var eta_b: float = float(b.get("eta", INF))
+			if not is_equal_approx(eta_a, eta_b):
+				return eta_a < eta_b
+		var dist_a: float = float(a.get("distance_sq", INF))
+		var dist_b: float = float(b.get("distance_sq", INF))
+		if not is_equal_approx(dist_a, dist_b):
+			return dist_a < dist_b
+		return int(a.get("stable_id", 999999999)) < int(b.get("stable_id", 999999999))
+	)
+	var selected: Dictionary = candidates[0]
+	_primary_grave_threat_key = int(selected.get("key", -1))
+	return selected
+
+
 func update_timing_ring_proximity(
 	active_encounter: Dictionary,
 	zone_manager: Node,
@@ -666,20 +755,31 @@ func update_timing_ring_proximity(
 		scribble_ring.width = 1.0 + beat_pulse * 6.5
 		scribble_ring.rotation += delta * 0.8 # Slow erratic spin
 
-	# 2. GRAVE SHARDS & GHOST THREADS: Directional Threat & Singular Hunt Indicator
+	# 2. GRAVE SHARDS & GHOST THREADS:
+	# Grave/Splinter visuals are incoming threat truth only.
+	# Glow/Ghost threads remain player lock-on truth only.
 	var primary_target: Dictionary = {}
 	primary_target = player_combat.get_primary_action_target()
 	var attack_lock_targets: Array = []
 	attack_lock_targets = player_combat.get_attack_lock_targets()
+	var player_pos: Vector2 = player_combat.global_position
+	var primary_grave_threat: Dictionary = _find_primary_grave_threat(zone_manager, player_pos)
+	var primary_grave_threat_node: Node = primary_grave_threat.get("node", null) as Node
+	var primary_grave_threat_lane: int = int(primary_grave_threat.get("lane", -1))
+	var primary_grave_threat_key: int = int(primary_grave_threat.get("key", -1))
 
 	for i in range(zone_manager.THREAT_COUNT if zone_manager else 8):
 		var grave_node: Node2D = root.get_parent().get_node_or_null("GraveRing_%d" % i)
 		var thread_node: Line2D = root.get_parent().get_node_or_null("GhostThread_%d" % i)
 		var glow_node: Line2D = root.get_parent().get_node_or_null("GlowThread_%d" % i)
 		
-		# Identify if this lane has a THREAT
-		var proj = zone_manager.get_projectile(i)
-		var is_threat: bool = (proj != null and not bool(proj.get("is_resolved")))
+		# Only the global primary incoming threat gets a Grave/Splinter marker.
+		var proj: Node = primary_grave_threat_node if i == primary_grave_threat_lane else null
+		var is_threat: bool = (
+			proj != null
+			and _get_threat_marker_key(proj) == primary_grave_threat_key
+			and _is_valid_grave_threat(proj)
+		)
 		
 		var lock_target: Dictionary = {}
 		if i < attack_lock_targets.size():
@@ -688,71 +788,49 @@ func update_timing_ring_proximity(
 		var is_singular_target: bool = has_lock_target and bool(lock_target.get("is_primary", false))
 		var primary_precision: float = float(lock_target.get("precision", primary_target.get("precision", 0.0)))
 		
-		# EVOLUTION: RELAXED SINGULARITY. 
-		# We show all imminent threats, but keep the primary target "High Contrast".
-		var should_draw: bool = is_threat or has_lock_target
+		var threat_dir: Vector2 = Vector2.ZERO
+		var threat_pos: Vector2 = Vector2.ZERO
+		var threat_progress: float = 0.0
+		if is_threat:
+			var threat_node: Node2D = proj as Node2D
+			threat_pos = threat_node.global_position if threat_node != null else player_pos
+			threat_progress = float(proj.get("progress"))
+			threat_dir = threat_pos - player_pos
+			if threat_dir.length_squared() < 0.001:
+				var sector_angle: float = (float(i) / float(zone_manager.THREAT_COUNT if zone_manager else 8)) * TAU - PI / 2.0
+				threat_dir = Vector2(cos(sector_angle), sin(sector_angle))
+			else:
+				threat_dir = threat_dir.normalized()
 		
-		if not should_draw:
+		if not is_threat:
 			if grave_node: grave_node.visible = false
-			if thread_node: thread_node.default_color.a = 0.0
-			if glow_node: glow_node.default_color.a = 0.0
-			continue
-			
-		var player_pos: Vector2 = player_combat.global_position
-		var target_pos: Vector2 = Vector2.ZERO
+		elif grave_node:
+			grave_node.visible = true
 		
 		# MAPPING TRUTH: Intercardinal vs Cardinal weights
 		var is_intercardinal: bool = (i % 2 != 0)
-		var base_target_color: Color = Color(0.2, 0.85, 1.0, 1.0) # Electric Blue
-		var base_glow_color: Color = Color(0.6, 0.1, 0.9, 1.0)   # Purple Glow
 		
-		if is_threat and not has_lock_target:
-			# Threat colors: Hot/Red/Orange for active projectiles
-			base_target_color = Color(1.0, 0.45, 0.2, 1.0) # Hot Orange
-			base_glow_color = Color(0.9, 0.1, 0.1, 1.0)    # Threat Red
-		
-		var target_color: Color = base_target_color
-		var glow_color: Color = base_glow_color
-		var ring_radius: float = 110.0 if not is_intercardinal else 102.0 # Tighter intercardinals
-		
-		if has_lock_target:
-			target_pos = Vector2(lock_target.get("pos", player_pos))
-			ring_radius = 124.0 if not is_intercardinal else 116.0
-		elif is_threat:
-			target_pos = proj.global_position
-		else:
-			target_pos = Vector2(primary_target.get("pos", player_pos))
-			ring_radius = 124.0 if not is_intercardinal else 116.0
-			
-		var dir_to_target: Vector2 = (target_pos - player_pos).normalized()
-		
-		# Position Grave Shard
-		if grave_node:
-			grave_node.visible = true
-			grave_node.position = player_pos + dir_to_target * ring_radius
-			grave_node.rotation = dir_to_target.angle()
+		# Position Grave Shard from incoming threat only.
+		if is_threat and grave_node:
+			var threat_color: Color = Color(1.0, 0.45, 0.2, 1.0)
+			var threat_fill_color: Color = Color(0.9, 0.1, 0.1, 1.0)
+			var ring_radius: float = 110.0 if not is_intercardinal else 102.0
+			grave_node.position = player_pos + threat_dir * ring_radius
+			grave_node.rotation = threat_dir.angle()
 			
 			var marrow: Polygon2D = grave_node.get_node_or_null("Marrow")
-			var alpha_mult: float = 1.0 if is_singular_target else 0.65 # Dim non-targets (Boosted from 0.42)
-			var lock_mult: float = clampf(primary_precision / 1.65, 0.72, 1.18) if is_singular_target else 1.0
-			var alpha_base: float = (0.65 + beat_pulse * 0.35) * alpha_mult * lock_mult # Base boosted from 0.52
+			if marrow:
+				marrow.visible = false
+				marrow.color.a = 0.0
+			var alpha_base: float = 0.62 + beat_pulse * 0.22
 			
-			var urgency_scale: float = 1.0
-			var glitch_offset := Vector2.ZERO
-			if is_threat and not has_lock_target:
-				var p: float = proj.progress
-				urgency_scale = 1.0 + clampf((p - 0.6) / 0.4, 0.0, 1.0) * 1.2 # Boosted urgency scale and wider detection window
-				
-				# Sovereign Glitch: Imminent threats tear the UI fabric
-				if p > 0.92:
-					var glitch_t: float = Time.get_ticks_msec() * 0.045
-					glitch_offset = Vector2(sin(glitch_t), cos(glitch_t * 1.5)) * 3.5 * (p - 0.92) / 0.08
+			var urgency_scale: float = 1.0 + clampf((threat_progress - 0.6) / 0.4, 0.0, 1.0) * 0.82
 			
 			# Handle Splinter cluster
 			for j in range(3):
 				var splinter: Polygon2D = grave_node.get_node_or_null("Splinter_%d" % j)
 				if splinter:
-					splinter.color = Color(glow_color, alpha_base * 0.55) # Splinter fill boosted from 0.4
+					splinter.color = Color(threat_fill_color, alpha_base * 0.55)
 					
 					# Near-impact emphasis: single smooth pulse (avoid high-frequency flicker).
 					if urgency_scale > 1.65:
@@ -761,41 +839,41 @@ func update_timing_ring_proximity(
 					
 					var outline: Line2D = splinter.get_node_or_null("Outline")
 					if outline:
-						outline.default_color = target_color
+						outline.default_color = threat_color
 						outline.default_color.a = alpha_base
-						outline.width = (1.2 + beat_pulse * 1.5) * (1.2 if is_singular_target else 0.8) # Thicker outlines
+						outline.width = 1.2 + beat_pulse * 0.9
 					
-					# Splinter Jitter & Orbit
+					# Stable splinter drift: no random per-frame retargeting or glitch offset.
 					var base_pos: Vector2 = splinter.get_meta("base_pos", Vector2.ZERO)
 					var time_sec: float = Time.get_ticks_msec() * 0.001
-					var drift_angle := time_sec * 0.85 + float(j) * 2.1
-					var drift := Vector2(cos(drift_angle), sin(drift_angle)) * 2.2
-					splinter.position = base_pos + drift + glitch_offset # Apply Sovereign Glitch
+					var drift_angle: float = time_sec * 0.55 + float(j) * 2.1
+					var drift: Vector2 = Vector2(cos(drift_angle), sin(drift_angle)) * 1.15
+					splinter.position = base_pos + drift
 					
 					# Intercardinal shards are "sharper" (thinner)
-					var shard_scale: float = urgency_scale * 0.62 + beat_pulse * 0.12 # Base scale boosted
+					var shard_scale: float = urgency_scale * 0.62 + beat_pulse * 0.10
 					splinter.scale = Vector2(shard_scale * 1.2, shard_scale * 0.6) if is_intercardinal else Vector2(shard_scale, shard_scale)
 					
-			grave_node.scale = Vector2.ONE * (1.0 + beat_pulse * 0.2) * (1.2 if is_singular_target else 0.9)
-			if marrow: 
-				marrow.color = glow_color
-				marrow.color.a = (0.55 + beat_pulse * 0.4) * alpha_mult # Marrow alpha boosted from 0.4
-				# Intercardinal marrow is thinner
-				marrow.scale = Vector2(1.2, 0.5) if is_intercardinal else Vector2.ONE
+			grave_node.scale = Vector2.ONE * (0.95 + beat_pulse * 0.12)
 					
 		# Update Predatory Tether (Dual-Layer Electric Pulse)
 		if thread_node and glow_node:
-			# Full tethers are the player's lock-on, not generic warning lines.
-			# Non-primary projectile pressure stays in the bone shards only.
-			var p: float = proj.progress if is_threat and not has_lock_target else 1.0
 			var tether_visible: bool = has_lock_target
 			
 			if not tether_visible:
 				thread_node.default_color.a = 0.0
 				glow_node.default_color.a = 0.0
 			else:
+				var target_pos: Vector2 = Vector2(lock_target.get("pos", player_pos))
+				var dir_to_target: Vector2 = target_pos - player_pos
+				if dir_to_target.length_squared() < 0.001:
+					dir_to_target = Vector2.RIGHT
+				else:
+					dir_to_target = dir_to_target.normalized()
+				var target_color: Color = Color(0.2, 0.85, 1.0, 1.0)
+				var glow_color: Color = Color(0.6, 0.1, 0.9, 1.0)
 				var lock_mult: float = clampf(primary_precision / 1.65, 0.72, 1.18) if is_singular_target else 1.0
-				var urgency_mult: float = (1.0 + (clampf((p - 0.5) / 0.5, 0.0, 1.0) * 1.5) if is_threat else 1.2) * lock_mult
+				var urgency_mult: float = 1.2 * lock_mult
 				var target_alpha_mult: float = 1.0 if is_singular_target else 0.6
 				
 				var thread_alpha: float = (0.45 + beat_pulse * 0.4) * urgency_mult * target_alpha_mult

@@ -2,7 +2,7 @@
 This is the single source of truth for AI doctrine, governance, and safety.
 
 ## 1. THE AUTHORITY ORDER
-1. **Locked Core (Creator Intent)**: Highest authority. Determines the project soul.
+1. **Locked Core (Creator Intent)**: Highest authority. Determines the project soul. This tracks Cody's **current** explicit intent — when Cody redirects, the Locked Core updates to match; it is not a museum of past decisions. Proof beats stale canon: an older "locked" rule never overrides Cody's explicit current direction or verified repo truth.
 2. **Sovereign Protocols**: The 5 Laws of safe autonomous execution.
 3. **Current Repo Truth**: The active implementation. Overrules older documentation.
 4. **Evolving Spine**: The active evolutionary direction (Action-RPG, 360-degree).

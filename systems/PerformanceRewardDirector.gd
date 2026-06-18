@@ -549,16 +549,23 @@ func consume_pending_predation_offers(max_offers: int = 2) -> Array[Dictionary]:
 func _build_upgrade_choices_for_context(count: int, context: Dictionary) -> Array[Dictionary]:
 	var choices: Array[Dictionary] = []
 	var pool: Array[String] = _build_pool_for_context(context)
-	
+	var active_affinity: String = _get_active_affinity()
+	var tendency_id: String = _get_leading_tendency_id()
+	var weight_profile: Dictionary = GameState.get_reward_weight_profile() if GameState.has_method("get_reward_weight_profile") else {}
+
 	for i in range(min(count, pool.size())):
-		choices.append(PERFORMANCE_REWARD_CONTENT.get_reward(pool[i]))
+		var reward: Dictionary = PERFORMANCE_REWARD_CONTENT.get_reward(pool[i]).duplicate(true)
+		reward["offer_reason"] = _compute_offer_reason(reward, active_affinity, tendency_id, weight_profile, context)
+		choices.append(reward)
 
 	var ritual_offer: Dictionary = _pick_ritual_offer(context)
 	if not ritual_offer.is_empty():
+		var ritual_copy: Dictionary = ritual_offer.duplicate(true)
+		ritual_copy["offer_reason"] = "RITUAL · consumable offer"
 		if choices.size() >= count and count > 0:
-			choices[count - 1] = ritual_offer
+			choices[count - 1] = ritual_copy
 		else:
-			choices.append(ritual_offer)
+			choices.append(ritual_copy)
 
 	if bool(context.get("elite_reward_tier", false)):
 		_promote_elite_choice(choices, pool)
@@ -644,7 +651,9 @@ func _build_stored_reward_choices(count: int) -> Array[Dictionary]:
 			continue
 		if GameState.has_method("is_reward_offer_eligible") and not GameState.is_reward_offer_eligible(reward_data):
 			continue
-		choices.append(reward_data)
+		var stored_copy: Dictionary = reward_data.duplicate(true)
+		stored_copy["offer_reason"] = "BANKED · earned mid-hunt"
+		choices.append(stored_copy)
 	return choices
 
 
@@ -750,7 +759,9 @@ func _promote_elite_choice(choices: Array[Dictionary], pool: Array[String]) -> v
 				break
 		if already_present:
 			return
-		choices[0] = elite_reward
+		var elite_copy: Dictionary = elite_reward.duplicate(true)
+		elite_copy["offer_reason"] = "ELITE HUNT · dominant performance"
+		choices[0] = elite_copy
 		return
 
 
@@ -851,6 +862,56 @@ func _score_offer(
 func _get_active_affinity() -> String:
 	var bonded: Dictionary = GameState.get_active_bonded_creature()
 	return String(bonded.get("affinity", ""))
+
+
+func _compute_offer_reason(
+	offer_data: Dictionary,
+	active_affinity: String,
+	tendency_id: String,
+	weight_profile: Dictionary,
+	context: Dictionary
+) -> String:
+	var path_bias: String = String(offer_data.get("path_bias", "neutral"))
+	var family_bias: Array = offer_data.get("family_bias", [])
+	var tendency_bias: Array = offer_data.get("tendency_bias", [])
+	var offer_id: String = String(offer_data.get("id", ""))
+
+	# Affinity match: strongest differentiator at +0.13 delta.
+	if not active_affinity.is_empty():
+		for family in family_bias:
+			if String(family) == active_affinity:
+				return "AFFINITY · %s creature" % active_affinity.to_upper()
+
+	# Bond/eat streak alignment.
+	var bond_streak: int = int(weight_profile.get("bond_streak", 0))
+	var eat_streak: int = int(weight_profile.get("eat_streak", 0))
+	if path_bias == "bond" and bond_streak >= 1:
+		return "BOND PATH · %d bond%s" % [bond_streak, "s" if bond_streak != 1 else ""]
+	if path_bias == "eat" and eat_streak >= 1:
+		return "EAT STREAK · %d eat%s" % [eat_streak, "s" if eat_streak != 1 else ""]
+
+	# Phase reward mix.
+	if _phase_reward_mix.has(offer_id):
+		if bool(context.get("bond_flavored", false)) and path_bias == "bond":
+			return "BOND PHASE · bond-flavored run"
+		return "HUNT PHASE · phase pool"
+
+	# Tendency match.
+	if not tendency_id.is_empty():
+		for tendency in tendency_bias:
+			if String(tendency) == tendency_id:
+				return "TENDENCY · %s" % tendency_id.replace("_", " ").to_upper()
+
+	# Elite tier context.
+	if bool(context.get("elite_reward_tier", false)):
+		return "ELITE HUNT · dominant performance"
+
+	# Kill pressure as fallback signal.
+	var kills: int = int(RunStats.get("kills")) if RunStats.has_method("get") else 0
+	if kills >= 6:
+		return "KILL PRESSURE · %d kills" % kills
+
+	return "HUNT POOL · standard offer"
 
 
 func _get_leading_tendency_id() -> String:

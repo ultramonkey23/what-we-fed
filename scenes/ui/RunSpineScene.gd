@@ -444,7 +444,11 @@ func _apply_shell_titles() -> void:
 
 func _compose_choice_body(choice: Dictionary, is_locked: bool) -> String:
 	if _shell_phase != "path":
-		return str(choice.get("summary", ""))
+		var summary: String = str(choice.get("summary", ""))
+		var offer_reason: String = str(choice.get("offer_reason", ""))
+		if offer_reason.is_empty():
+			return summary
+		return summary + "\n" + offer_reason
 	var lines: Array[String] = [str(choice.get("summary", ""))]
 	var consequence: String = _path_consequence_text(choice)
 	if not consequence.is_empty():

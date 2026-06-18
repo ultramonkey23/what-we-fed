@@ -4659,7 +4659,11 @@ func _show_upgrade_choices() -> void:
 			card.visible = true
 			card.get_node("Category").text = str(up.get("tag", "UPGRADE"))
 			card.get_node("Title").text = str(up.get("title", "Unknown"))
-			card.get_node("Body").text = str(up.get("summary", ""))
+			var body_text: String = str(up.get("summary", ""))
+			var offer_reason: String = str(up.get("offer_reason", ""))
+			if not offer_reason.is_empty():
+				body_text += "\n" + offer_reason
+			card.get_node("Body").text = body_text
 		else:
 			card.visible = false
 			

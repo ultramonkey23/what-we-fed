@@ -21,20 +21,13 @@ var _locom_director: Node = null
 var _sector_layout: SectorLayout = null
 
 var _projectile_scene: PackedScene = null
-var _enemy_projectile_scenes: Dictionary = {} # enemy_id -> PackedScene
-var _striker_objects: Dictionary = {} # enemy_id -> EnemyStriker
 var _melee_approach_script: Script = null
 var _active_projectiles: Dictionary = {} # enemy_id -> projectile node
-var _enemies: Dictionary = {} # enemy_id -> Dictionary (Population)
-var _strikers: Dictionary = {} # enemy_id -> Dictionary (Attacker state)
+var _enemy_states: Dictionary = {} # id -> EnemyState
 var _orbiting_enemy_ids: Array[int] = []
 # Authority state (_enemy_authority_debt, _enemy_last_fired_cycle, _fire_cycle_index) lives in CombatFireDirector.
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
-var _enemy_positions: Dictionary = {} # enemy_id -> Vector2
-var _orbit_angles: Dictionary = {} # enemy_id -> float
-var _orbit_radius_offsets: Dictionary = {} # enemy_id -> float
-var _enemy_visual_offsets: Dictionary = {} # enemy_id -> Vector2, presentation only
 var _lane_occupants: Dictionary = {} # int(lane) -> Array[int(enemy_id)]
 # _orbit_drift_accum and _orbit_speed live in CreatureLocomotionDirector.
 var _next_enemy_id: int = 5000 # For non-song mode or internal spawns
@@ -88,9 +81,9 @@ func _cache_enemy_scene(id: int, enemy: Dictionary) -> void:
 	var path: String = String(enemy.get("projectile_scene_path", ""))
 	if not path.is_empty() and ResourceLoader.exists(path):
 		var scene := load(path) as PackedScene
-		_enemy_projectile_scenes[id] = scene if scene != null else _projectile_scene
+		_enemy_states[id].projectile_scene = scene if scene != null else _projectile_scene
 	else:
-		_enemy_projectile_scenes[id] = _projectile_scene
+		_enemy_states[id].projectile_scene = _projectile_scene
 
 
 func start_combat(enemy_data: Array) -> void:
@@ -101,37 +94,49 @@ func start_combat(enemy_data: Array) -> void:
 
 	stop()
 
-	_enemies.clear()
-	_strikers.clear()
-	_enemy_positions.clear()
+	_enemy_states.clear()
+	_active_projectiles.clear()
 	_orbiting_enemy_ids.clear()
-	_orbit_angles.clear()
-	_orbit_radius_offsets.clear()
-	_enemy_visual_offsets.clear()
 	_lane_occupants.clear()
 
 	for lane in range(enemy_data.size()):
-		var enemy = enemy_data[lane].duplicate(true)
-		var id = int(enemy.get("id", _next_enemy_id))
-		if id == _next_enemy_id: _next_enemy_id += 1
+		var enemy: Dictionary = enemy_data[lane].duplicate(true)
+		var id: int = int(enemy.get("id", _next_enemy_id))
+		if id == _next_enemy_id:
+			_next_enemy_id += 1
+
 		enemy["id"] = id
 		enemy["lane"] = lane # Maintain legacy lane ID for signals
-		_enemies[id] = enemy
-		
+
 		if not _lane_occupants.has(lane):
 			_lane_occupants[lane] = []
 		_lane_occupants[lane].append(id)
-		
+
 		_cache_enemy_scene(id, enemy)
-		var so_init := EnemyStriker.new()
-		so_init.setup(enemy, _enemy_projectile_scenes.get(id, _projectile_scene) as PackedScene)
-		_striker_objects[id] = so_init
+		var enemy_projectile_scene: PackedScene = (_enemy_states[id].projectile_scene if _enemy_states.has(id) else null)
+
+		var striker_object := EnemyStriker.new()
+		striker_object.setup(enemy, enemy_projectile_scene)
 
 		# Any-angle initialization: map 8 lanes to angles, but store as dynamic striker.
-		var angle: float = (float(lane) / float(THREAT_COUNT)) * TAU - PI/2.0
-		_strikers[id] = {"angle": angle, "lane": lane}
-		_enemy_positions[id] = _sector_layout.get_spawn_pos_for_angle(angle)
-		_assign_striker_visual_offset_for_angle(id, angle)
+		var angle: float = (float(lane) / float(THREAT_COUNT)) * TAU - PI / 2.0
+		var position: Vector2 = _sector_layout.get_spawn_pos_for_angle(angle)
+		var visual_offset: Vector2 = _get_striker_visual_offset_for_angle(angle)
+
+		var state := EnemyState.new()
+		state.setup(
+			id,
+			enemy,
+			{"angle": angle, "lane": lane},
+			position,
+			angle,
+			0.0,
+			visual_offset,
+			enemy_projectile_scene,
+			striker_object
+		)
+		_enemy_states[id] = state
+
 		_locom_director.on_enemy_added(id)
 
 	if not EventBus.song_beat_pulse.is_connected(_on_song_beat_pulse):
@@ -192,13 +197,13 @@ func get_enemy(lane: int) -> Dictionary:
 	
 	# Prioritize strikers (active attackers)
 	for id in occupants:
-		if _strikers.has(id):
-			return _enemies.get(id, {})
+		if (_enemy_states.has(id) and not _enemy_states[id].striker_data.is_empty()):
+			return (_enemy_states[id].population_data if _enemy_states.has(id) else {})
 			
 	# Fallback to orbiters
 	for id in occupants:
 		if _orbiting_enemy_ids.has(id):
-			return _enemies.get(id, {})
+			return (_enemy_states[id].population_data if _enemy_states.has(id) else {})
 			
 	return {}
 
@@ -209,7 +214,7 @@ func is_lane_empty(lane: int) -> bool:
 
 
 func get_enemy_by_id(id: int) -> Dictionary:
-	return _enemies.get(id, {})
+	return (_enemy_states[id].population_data if _enemy_states.has(id) else {})
 
 
 func get_all_enemies() -> Dictionary:
@@ -218,8 +223,8 @@ func get_all_enemies() -> Dictionary:
 
 func alive_count() -> int:
 	var total: int = 0
-	for id in _enemies:
-		var enemy = _enemies[id]
+	for id in _enemy_states:
+		var enemy = _enemy_states[id].population_data
 		if enemy.has("hp") and float(enemy["hp"]) > 0.0:
 			total += 1
 	return total
@@ -248,7 +253,7 @@ func get_spawn_distance() -> float:
 
 func notify_enemy_approaching(id: int) -> void:
 	_locom_director.on_enemy_approaching(id)
-	var striker_data: Dictionary = _strikers.get(id, {})
+	var striker_data: Dictionary = (_enemy_states[id].striker_data if _enemy_states.has(id) else {})
 	var lane: int = int(striker_data.get("lane", -1))
 	# Enemy windup feedback uses enemy_attack_telegraphed only — do not emit
 	# timing_ring_pressed here (that signal is reserved for player timing/input).
@@ -325,25 +330,25 @@ func spawn_enemy_at_angle(angle: float, enemy_data: Dictionary) -> int:
 		_lane_occupants[lane] = []
 	_lane_occupants[lane].append(id)
 	
-	_enemies[id] = enemy
+	_enemy_states[id].population_data = enemy
 	_cache_enemy_scene(id, enemy)
 	
 	var so := EnemyStriker.new()
-	so.setup(enemy, _enemy_projectile_scenes.get(id, _projectile_scene) as PackedScene)
-	_striker_objects[id] = so
+	so.setup(enemy, (_enemy_states[id, _projectile_scene].projectile_scene if _enemy_states.has(id, _projectile_scene) else null) as PackedScene)
+	_enemy_states[id].striker_object = so
 
 	# Logic for joining orbit vs striker slot remains authority-budget driven
 	if alive_striker_count() < _fire_director.attack_authority_budget:
-		_strikers[id] = {"angle": angle, "lane": lane}
-		_enemy_positions[id] = _sector_layout.get_spawn_pos_for_angle(angle)
+		_enemy_states[id].striker_data = {"angle": angle, "lane": lane}
+		_enemy_states[id].position = _sector_layout.get_spawn_pos_for_angle(angle)
 		_assign_striker_visual_offset_for_angle(id, angle)
 		_locom_director.on_enemy_added(id)
 	else:
 		_orbiting_enemy_ids.append(id)
-		_orbit_angles[id] = angle
-		_orbit_radius_offsets[id] = _rng.randf_range(-28.0, 28.0)
-		var radius: float = _sector_layout.spawn_distance() + float(_orbit_radius_offsets[id])
-		_enemy_positions[id] = _sector_layout.center_pos + Vector2(cos(angle), sin(angle)) * radius
+		_enemy_states[id].orbit_angle = angle
+		_enemy_states[id].orbit_radius_offset = _rng.randf_range(-28.0, 28.0)
+		var radius: float = _sector_layout.spawn_distance() + float(_enemy_states[id].orbit_radius_offset)
+		_enemy_states[id].position = _sector_layout.center_pos + Vector2(cos(angle), sin(angle)) * radius
 		_locom_director.on_enemy_added(id)
 
 	if _song_mode:
@@ -365,7 +370,7 @@ func set_enemy(lane: int, enemy_data: Dictionary) -> void:
 
 func damage_enemy_by_id(id: int, amount: float) -> void:
 	# Compatibility wrapper: damage math lives in SovereignDamageCalculator.
-	var enemy = _enemies.get(id, {})
+	var enemy = (_enemy_states[id].population_data if _enemy_states.has(id) else {})
 	if enemy.is_empty():
 		return
 	if not enemy.has("hp"):
@@ -376,7 +381,7 @@ func damage_enemy_by_id(id: int, amount: float) -> void:
 	var result: Dictionary = SOVEREIGN_DAMAGE_CALCULATOR.apply_enemy_damage(enemy, amount, _status_director.get_damage_mult(id))
 	if not bool(result.get("applied", false)):
 		return
-	# apply_enemy_damage mutates enemy["hp"] in place; the dict already lives in _enemies[id].
+	# apply_enemy_damage mutates enemy["hp"] in place; the dict already lives in _enemy_states[id].population_data.
 
 	EventBus.emit_signal("enemy_damaged", id, float(result.get("damage", 0.0)))
 
@@ -399,38 +404,36 @@ func _handle_enemy_defeat(id: int) -> void:
 
 
 func remove_enemy_spatial(id: int) -> void:
-	# Spatial cleanup only: lifecycle/status/event authority lives outside LaneManager.
+	var state: EnemyState = _enemy_states.get(id)
+
 	var projectile = _active_projectiles.get(id)
-	if projectile != null:
-		if is_instance_valid(projectile):
-			projectile.resolve("enemy_defeated")
-		_active_projectiles.erase(id)
-	
-	_locom_director.on_enemy_removed(id)
-	_strikers.erase(id)
-	_enemy_positions.erase(id)
-	_orbiting_enemy_ids.erase(id)
-	_orbit_angles.erase(id)
-	_orbit_radius_offsets.erase(id)
-	_enemy_visual_offsets.erase(id)
-	_enemy_projectile_scenes.erase(id)
-	_striker_objects.erase(id)
-	
-	var enemy = _enemies.get(id, {})
-	if not enemy.is_empty():
-		var lane = int(enemy.get("lane", -1))
+	if is_instance_valid(projectile):
+		if projectile.has_method("resolve"):
+			projectile.call("resolve", "enemy_defeated")
+		elif projectile.has_method("force_resolve"):
+			projectile.call("force_resolve")
+		elif projectile.has_method("finish"):
+			projectile.call("finish")
+		else:
+			projectile.queue_free()
+	_active_projectiles.erase(id)
+
+	if state != null:
+		var lane: int = int(state.population_data.get("lane", state.striker_data.get("lane", -1)))
 		if _lane_occupants.has(lane):
 			_lane_occupants[lane].erase(id)
-			
-	_enemies.erase(id)
+			if _lane_occupants[lane].is_empty():
+				_lane_occupants.erase(lane)
 
+	_enemy_states.erase(id)
+	_orbiting_enemy_ids.erase(id)
 
-func _set_combat_running(running: bool) -> void:
-	_fire_director.set_combat_running(running)
+	if _locom_director != null and _locom_director.has_method("on_enemy_removed"):
+		_locom_director.call("on_enemy_removed", id)
 
 
 func _find_lane_for_enemy(id: int) -> int:
-	var striker = _strikers.get(id, {})
+	var striker = (_enemy_states[id].striker_data if _enemy_states.has(id) else {})
 	return int(striker.get("lane", -1))
 
 
@@ -443,17 +446,9 @@ func stop() -> void:
 	_fire_director.stop()
 	_locom_director.clear()
 	_status_director.clear_all()
-	_enemies.clear()
-	_strikers.clear()
-	_enemy_positions.clear()
+	_enemy_states.clear()
 	_orbiting_enemy_ids.clear()
-	_orbit_angles.clear()
-	_orbit_radius_offsets.clear()
-	_enemy_visual_offsets.clear()
 	_lane_occupants.clear()
-	_enemy_projectile_scenes.clear()
-	_striker_objects.clear()
-
 	for id in _active_projectiles:
 		var projectile = _active_projectiles[id]
 		if is_instance_valid(projectile):
@@ -472,7 +467,7 @@ func apply_status(enemy_id: int, status_id: String, params: Dictionary = {}) -> 
 
 func apply_status_by_id(id: int, status_id: String, params: Dictionary = {}) -> void:
 	# Compatibility wrapper: status rules live in StatusDirector.
-	var enemy: Dictionary = _enemies.get(id, {})
+	var enemy: Dictionary = (_enemy_states[id].population_data if _enemy_states.has(id) else {})
 	_status_director.apply_status(id, enemy, status_id, params)
 
 
@@ -495,7 +490,7 @@ func has_active_projectile(id: int) -> bool:
 
 
 func get_effective_projectile_speed(id: int) -> float:
-	return _get_enemy_projectile_speed(_enemies.get(id, {}))
+	return _get_enemy_projectile_speed((_enemy_states[id].population_data if _enemy_states.has(id) else {}))
 
 
 func execute_fire(id: int) -> bool:
@@ -513,15 +508,15 @@ func _fire_striker(id: int) -> bool:
 	if _active_projectiles.has(id) and is_instance_valid(_active_projectiles[id]):
 		return false
 		
-	var enemy: Dictionary = _enemies.get(id, {})
+	var enemy: Dictionary = (_enemy_states[id].population_data if _enemy_states.has(id) else {})
 	if enemy.is_empty():
 		return false
 
-	var striker_data = _strikers.get(id, {})
+	var striker_data = (_enemy_states[id].striker_data if _enemy_states.has(id) else {})
 	var angle: float = float(striker_data.get("angle", 0.0))
 	var lane: int = int(striker_data.get("lane", -1))
 
-	var striker: EnemyStriker = _striker_objects.get(id) as EnemyStriker
+	var striker: EnemyStriker = (_enemy_states[id].striker_object if _enemy_states.has(id) else null) as EnemyStriker
 	if striker == null:
 		return false
 
@@ -620,7 +615,7 @@ func _fire_melee_striker(id: int, enemy: Dictionary, angle: float, lane: int) ->
 	if melee == null:
 		return false
 
-	var striker: EnemyStriker = _striker_objects.get(id) as EnemyStriker
+	var striker: EnemyStriker = (_enemy_states[id].striker_object if _enemy_states.has(id) else null) as EnemyStriker
 	if striker == null:
 		return false
 
@@ -674,30 +669,28 @@ func promote_orbiting(budget: int) -> void:
 	var orbit_index: int = 0
 	while current_strikers < budget and orbit_index < _orbiting_enemy_ids.size():
 		var id: int = _orbiting_enemy_ids[orbit_index]
-		var angle: float = _orbit_angles.get(id, _rng.randf_range(0.0, TAU))
+		var angle: float = (_enemy_states[id, _rng.randf_range(0.0, TAU].orbit_angle if _enemy_states.has(id, _rng.randf_range(0.0, TAU) else 0.0))
 		var lane: int = _get_lane_from_angle(angle)
 
-		_strikers[id] = {"angle": angle, "lane": lane}
-		_enemies[id]["lane"] = lane
+		_enemy_states[id].striker_data = {"angle": angle, "lane": lane}
+		_enemy_states[id].population_data["lane"] = lane
 		_assign_striker_visual_offset_for_angle(id, angle)
 
 		_orbiting_enemy_ids.remove_at(orbit_index)
-		_orbit_angles.erase(id)
-		_orbit_radius_offsets.erase(id)
 		current_strikers += 1
 		# Don't increment orbit_index — element was removed at that index.
 
 
 func get_enemy_pos(id: int) -> Vector2:
 	if _enemy_positions.has(id):
-		return _enemy_positions[id]
+		return _enemy_states[id].position
 
-	if not _enemies.has(id):
+	if not _enemy_states.has(id):
 		return _sector_layout.center_pos
 
 	var lane = _find_lane_for_enemy(id)
 	if lane >= 0:
-		var visual_offset: Vector2 = _enemy_visual_offsets.get(id, Vector2.ZERO)
+		var visual_offset: Vector2 = (_enemy_states[id].visual_offset if _enemy_states.has(id) else Vector2.ZERO)
 		return get_threat_spawn_pos(lane) + visual_offset
 
 	return _sector_layout.center_pos
@@ -708,7 +701,7 @@ func _assign_striker_visual_offset_for_angle(id: int, angle: float) -> void:
 	var tangent := Vector2(-radial.y, radial.x)
 	var tangent_offset: float = _rng.randf_range(-SectorLayout.STRIKER_VISUAL_TANGENT_SPREAD, SectorLayout.STRIKER_VISUAL_TANGENT_SPREAD)
 	var radial_offset: float = _rng.randf_range(-SectorLayout.STRIKER_VISUAL_RADIAL_SPREAD, SectorLayout.STRIKER_VISUAL_RADIAL_SPREAD)
-	_enemy_visual_offsets[id] = tangent * tangent_offset + radial * radial_offset
+	_enemy_states[id].visual_offset = tangent * tangent_offset + radial * radial_offset
 
 
 func _can_schedule_projectile_id(new_speed: float) -> bool:
@@ -760,14 +753,14 @@ func _on_projectile_enemy_contact_id(projectile: Projectile, id: int, _lane: int
 
 
 func _resolve_reflected_projectile_target(original_id: int, impact_pos: Vector2) -> int:
-	var original: Dictionary = _enemies.get(original_id, {})
+	var original: Dictionary = (_enemy_states[original_id].population_data if _enemy_states.has(original_id) else {})
 	if not original.is_empty() and float(original.get("hp", 0.0)) > 0.0:
 		return original_id
 
 	var best_id: int = -1
 	var best_dist_sq: float = INF
 	for enemy_id in _enemies.keys():
-		var enemy: Dictionary = _enemies.get(enemy_id, {})
+		var enemy: Dictionary = (_enemy_states[enemy_id].population_data if _enemy_states.has(enemy_id) else {})
 		if float(enemy.get("hp", 0.0)) <= 0.0:
 			continue
 		var dist_sq: float = impact_pos.distance_squared_to(get_enemy_pos(int(enemy_id)))
@@ -787,8 +780,9 @@ func debug_fire_lane(lane: int) -> bool:
 	if not _fire_director.is_running():
 		return false
 	# Find first striker in this lane
-	for id in _strikers:
-		if int(_strikers[id].get("lane", -1)) == lane:
+	for id in _enemy_states:
+		if _enemy_states[id].striker_data.is_empty(): continue
+		if int(_enemy_states[id].striker_data.get("lane", -1)) == lane:
 			return _fire_striker(id)
 	return false
 

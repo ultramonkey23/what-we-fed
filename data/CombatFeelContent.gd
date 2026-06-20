@@ -106,12 +106,12 @@ const SLOW_MOTION_SCALES := {
 }
 
 const HIT_STOP_DURATION := {
-	"light_attack": 0.08,
-	"heavy_attack": 0.12,
-	"parry": 0.15,
-	"perfect_parry": 0.2,
-	"ultimate": 0.3,
-	"boss_hit": 0.1
+	"light_attack": 0.10,
+	"heavy_attack": 0.16,
+	"parry": 0.18,
+	"perfect_parry": 0.25,
+	"ultimate": 0.40,
+	"boss_hit": 0.15
 }
 
 const SLOWMO_TIER_THRESHOLDS: Dictionary = {
@@ -147,12 +147,12 @@ const PUNCTURE_MAX_DISTORTION_PER_WINDOW: float = 1.40
 
 # ─── CAMERA EFFECTS ──────────────────────────────────────────────────────────
 const CAMERA_SHAKE := {
-	"light_hit": {"intensity": 2.0, "duration": 0.15, "frequency": 15.0},
-	"heavy_hit": {"intensity": 4.0, "duration": 0.25, "frequency": 12.0},
-	"parry": {"intensity": 3.0, "duration": 0.2, "frequency": 20.0},
-	"perfect_parry": {"intensity": 5.0, "duration": 0.3, "frequency": 25.0},
-	"ultimate": {"intensity": 8.0, "duration": 0.5, "frequency": 10.0},
-	"boss_impact": {"intensity": 6.0, "duration": 0.4, "frequency": 8.0}
+	"light_hit": {"intensity": 2.5, "duration": 0.15, "frequency": 18.0},
+	"heavy_hit": {"intensity": 5.0, "duration": 0.25, "frequency": 15.0},
+	"parry": {"intensity": 4.0, "duration": 0.2, "frequency": 22.0},
+	"perfect_parry": {"intensity": 6.5, "duration": 0.3, "frequency": 30.0},
+	"ultimate": {"intensity": 10.0, "duration": 0.5, "frequency": 12.0},
+	"boss_impact": {"intensity": 8.0, "duration": 0.4, "frequency": 10.0}
 }
 
 const CAMERA_ZOOM := {
@@ -190,11 +190,11 @@ const SCREEN_FLASH := {
 }
 
 const IMPACT_SCALING := {
-	"light_hit": {"scale_multiplier": 1.2, "duration": 0.15},
-	"heavy_hit": {"scale_multiplier": 1.5, "duration": 0.25},
-	"critical_hit": {"scale_multiplier": 2.0, "duration": 0.3},
-	"parry": {"scale_multiplier": 1.8, "duration": 0.2},
-	"ultimate": {"scale_multiplier": 2.5, "duration": 0.4}
+	"light_hit": {"scale_multiplier": 1.3, "duration": 0.15},
+	"heavy_hit": {"scale_multiplier": 1.7, "duration": 0.25},
+	"critical_hit": {"scale_multiplier": 2.4, "duration": 0.3},
+	"parry": {"scale_multiplier": 2.0, "duration": 0.2},
+	"ultimate": {"scale_multiplier": 3.0, "duration": 0.45}
 }
 
 # ─── AUDIO FEEDBACK ──────────────────────────────────────────────────────────

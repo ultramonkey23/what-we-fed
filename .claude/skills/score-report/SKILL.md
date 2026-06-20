@@ -35,7 +35,7 @@ cat report.txt | python tools/ai/score_agent_report.py
 The scorer checks:
 - Required fields present (Agent, Date, Task type, Files inspected, Validation run, Validation level, Confirmed repo truth, Risks, Recommended next step)
 - Validation level honesty (claimed level matches evidence — static-only cannot claim runtime)
-- Stale-truth risk on fragile files (CombatScene.gd, PlayerCombat.gd, LaneManager.gd, GameState.gd, SongConductor.gd)
+- Stale-truth risk on fragile files (CombatScene.gd, PlayerCombat.gd, ZoneManager.gd, GameState.gd, SongConductor.gd)
 - Routing problems (wrong agent for the task type)
 
 Exit codes:

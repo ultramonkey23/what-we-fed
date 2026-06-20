@@ -58,7 +58,7 @@ Compact boundary map for WHAT WE FED agent architecture. This file is active con
 - Scene files (`*.tscn`)
 - `autoloads/EventBus.gd`
 - Core autoloads and persistent state.
-- Combat systems, including `CombatScene.gd`, `PlayerCombat.gd`, `LaneManager.gd` / ZoneManager, and combat presenters.
+- Combat systems, including `CombatScene.gd`, `PlayerCombat.gd`, `ZoneManager.gd`, and combat presenters.
 - Rhythm/timing systems, including `SongConductor.gd`.
 - Economy/progression systems, including DNA, Bond/Eat, RunGrowth, RunStats, rewards, collars, tendencies, and world resonance.
 - Visual systems and asset/import settings unless a visual task explicitly approves them.
@@ -87,9 +87,7 @@ Do not invent parallel combat management. These are the live owners:
 | PlayerCombat | `scenes/combat/PlayerCombat.gd` | Player action resolution |
 | SongConductor | `systems/SongConductor.gd` | Timing truth, beat authority |
 
-Note: `LaneManager.gd` is the Godot filename for ZoneManager. It is retained for UID
-safety. The doctrine name is ZoneManager. No agent should describe LaneManager.gd as
-"the current spatial authority" — that is stale lane doctrine.
+Note: `LaneManager.gd` was the old filename for what is now `scenes/combat/ZoneManager.gd`. The file was retired on 2026-06-19; doctrine name and on-disk filename are both ZoneManager. Any old reference to `LaneManager.gd` as a current file is stale.
 
 ## Known Documentation Risks
 - The repo contains hundreds of markdown files, including legacy and archived plans.

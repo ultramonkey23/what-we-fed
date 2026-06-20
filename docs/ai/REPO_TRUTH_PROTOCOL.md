@@ -22,7 +22,7 @@ High-risk files requiring extra validation and care:
 - `scenes/combat/CombatScene.gd`
 - `scenes/combat/PlayerCombat.gd`
 - `systems/SongConductor.gd`
-- `systems/LaneManager.gd`
+- `scenes/combat/ZoneManager.gd`
 - `autoloads/GameState.gd`
 - `data/CombatContent.gd`
 

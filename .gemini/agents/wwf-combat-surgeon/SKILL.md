@@ -11,7 +11,7 @@ This skill provides expert guidance for maintaining the "Combat-Clean" and "Timi
 
 1.  **Timing Truth**: `SongConductor.gd` is the absolute source of truth. All combat visual/audio resolutions must occur at the exact beat moment.
 2.  **1:1 Input Response**: No "mushy" parries, dodges, or attacks. Input must be processed immediately.
-3.  **Spatial Integrity**: Threats and player actions must respect ZoneManager's sector and placement authority. Do not bypass ZoneManager spatial coordination. (Godot file: `scenes/combat/ZoneManager.gd`; filename `LaneManager.gd` is retained for UID safety only.)
+3.  **Spatial Integrity**: Threats and player actions must respect ZoneManager's sector and placement authority. Do not bypass ZoneManager spatial coordination. The live file is `scenes/combat/ZoneManager.gd`; the old `LaneManager.gd` filename was retired on 2026-06-19.
 4.  **Combat-Clean HUD**: The HUD during active combat is for **urgency**, not information. Strip all "VFX Sludge" that doesn't help the player survive the next 200ms.
 
 ## Workflow

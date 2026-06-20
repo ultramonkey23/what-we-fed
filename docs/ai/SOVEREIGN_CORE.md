@@ -41,7 +41,7 @@ This is the single source of truth for AI doctrine, governance, and safety.
 ## 5. ESCALATION & STALE TRUTH
 - **Escalate** if the task crosses multiple systems or repo truth appears stale.
 - **Truth is Stale** if major changes happened without a report, or if runtime differs from docs.
-- **Fragile Systems**: `CombatScene.gd`, `PlayerCombat.gd`, `LaneManager.gd`, `GameState.gd`, `SongConductor.gd`, `CombatContent.gd`.
+- **Fragile Systems**: `CombatScene.gd`, `PlayerCombat.gd`, `ZoneManager.gd`, `GameState.gd`, `SongConductor.gd`, `CombatContent.gd`.
 
 ## 6. ANTI-DRIFT
 - **No Vague Benefits**: No "better architecture" without functional gain.

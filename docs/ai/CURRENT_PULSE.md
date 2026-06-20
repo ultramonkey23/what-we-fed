@@ -46,7 +46,7 @@ Compact active context for WHAT WE FED agents. Use this before loading massive h
 - Demo packaging and first-impression flow need proof under real first-player conditions.
 
 ## Active Director Architecture
-- **ZoneManager** — active spatial manager; owns WHEN and WHO coordination. (Godot file: `systems/LaneManager.gd`, retained for UID safety.)
+- **ZoneManager** (`scenes/combat/ZoneManager.gd`) — active spatial manager; owns spawn placement, sector geometry, striker/orbit registry, and projectile/melee spatial execution. The earlier `LaneManager.gd` filename has been retired — there is no such file on disk.
 - **CombatFireDirector** — owns fire authority (projectile/attack dispatch).
 - **CreatureLocomotionDirector** — owns enemy movement.
 - **StatusDirector** — owns status effects.
@@ -60,8 +60,7 @@ Compact active context for WHAT WE FED agents. Use this before loading massive h
 
 ## Recent Important Turns
 - Visual Proof Rule became active doctrine for visual, UI, VFX, art, readability, enemy/boss presentation, reward presentation, and demo polish tasks.
-- Enemy Purity Phase 1 established `EnemyStriker` as the HOW boundary while ZoneManager / `LaneManager.gd` owns WHEN and WHO coordination.
-- ZoneManager naming was adopted for current doctrine while `LaneManager.gd` filename remains for Godot UID safety.
+- Enemy Purity Phase 1 established `EnemyStriker` as the HOW boundary while `scenes/combat/ZoneManager.gd` owns spatial coordination. The earlier `LaneManager.gd` filename was retired on 2026-06-19 — the file no longer exists.
 - **Input System Expansion (2026-05-06):** Controller support added. `project.godot` now has full joypad bindings: A/B/X/Y for attack/parry/dodge/support, LB+RB for ultimate, Left Stick for all `mod_*` movement. Tutorial strings in `PresentationTextContent.gd` use tokens (`[ATTACK]`, `[PARRY]`, `[DODGE]`, `[SUPPORT]`, `[ULTIMATE]`, `[MOVE]`) resolved at emit time. `systems/InputHelper.gd` (new) is the static device-detection helper. `systems/QuigNarrativeSystem.gd` gained `trigger_tutorial_line(subcategory)` + `_resolve_tokens()` + `_input()` for device tracking. No combat logic was changed.
 - **Reward Depth Payoffs (2026-05-12):** Style-based DNA multiplier (up to 2.5x at Sovereign) and Clean Encounter bonus (+45 progress) implemented. Added `dna_multiplier()` to `CombatMeter.gd`, updated `_process_dna_award` in `CombatScene.gd`, and added hitless victory payoff in `PerformanceRewardDirector.gd`.
 

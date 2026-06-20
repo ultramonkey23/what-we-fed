@@ -24,7 +24,7 @@ Then `AGENTS.md` for lead-lane routing and
 - Combat is 360-degree spatial action. Not strict lane combat.
 - Base art style is Legendary Pixel Fable Ink. Not "Premium Menace."
 - Quig references the creator as "the monkeydog." Never by real name.
-- ZoneManager owns spatial authority (`scenes/combat/ZoneManager.gd`). `LaneManager.gd` retained for Godot UID safety only.
+- ZoneManager owns spatial authority (`scenes/combat/ZoneManager.gd`). The old `LaneManager.gd` filename was retired on 2026-06-19.
 - GDScript must be statically typed. All arrays `Array[Type]`. Signals use `StringName`.
 
 ## Role lanes

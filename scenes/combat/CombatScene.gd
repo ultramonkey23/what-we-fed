@@ -5373,7 +5373,8 @@ func _refresh_enemy_marker_health(enemy_id: int) -> void:
 	if lane < 0:
 		return
 	var max_hp: float = maxf(float(_enemy_max_hp.get(enemy_id, 0.0)), 1.0)
-	var enemy_data_v: Dictionary = zone_manager.get_enemy(lane)
+	# get_enemy_by_id avoids the lane-quantization mismatch when multiple enemies share a sector.
+	var enemy_data_v: Dictionary = zone_manager.get_enemy_by_id(enemy_id)
 	var current_hp: float = clampf(float(enemy_data_v.get("hp", 0.0)), 0.0, max_hp)
 	var ratio: float = current_hp / max_hp
 	# Bucket to 1/256 so floating-point drift below one bar-pixel does not re-write the marker.

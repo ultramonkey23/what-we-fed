@@ -10,7 +10,7 @@
 [Brief statement of how the game currently works regarding this feature. e.g., "Player currently only takes damage on hit. No defensive moves exist."]
 
 ## Protected Systems
-[Identify systems that MUST NOT be broken. e.g., "SongConductor.gd master clock, LaneManager.gd strict positioning."]
+[Identify systems that MUST NOT be broken. e.g., "SongConductor.gd master clock, ZoneManager.gd sector positioning."]
 
 ## Exact Files to Inspect
 1. `path/to/file1.gd`

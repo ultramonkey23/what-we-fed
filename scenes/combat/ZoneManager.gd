@@ -187,16 +187,30 @@ func get_projectile_by_id(id: int) -> Node:
 
 
 func get_enemy(lane: int) -> Dictionary:
-	# VISUAL LOOKUP ONLY: Find the enemy currently associated with this spawn sector.
-	for striker_id in _strikers:
+	# Lane→enemy lookup. With 8 sectors and possibly multiple residents (striker + orbiter
+	# in the same sector), iterate strikers first (active attackers, closer to player),
+	# then orbiters; within each group iterate by sorted id for deterministic results.
+	# Callers that already hold the enemy id should use get_enemy_by_id(id) instead.
+	var striker_ids: Array = _strikers.keys()
+	striker_ids.sort()
+	for striker_id in striker_ids:
 		if int(_strikers[striker_id].get("lane", -1)) == lane:
 			return _enemies.get(striker_id, {})
+	var orbit_ids: Array = _orbiting_enemy_ids.duplicate()
+	orbit_ids.sort()
+	for orbit_id in orbit_ids:
+		var enemy: Dictionary = _enemies.get(orbit_id, {})
+		if int(enemy.get("lane", -1)) == lane:
+			return enemy
 	return {}
 
 
 func is_lane_empty(lane: int) -> bool:
-	for id in _strikers:
-		if int(_strikers[id].get("lane", -1)) == lane:
+	# A sector is empty only when no enemy (striker OR orbiter) currently maps to it.
+	# Strikers-only checks let orbiters silently crowd freshly-spawned threats into the
+	# same sector, producing the visual + targeting drift Cody reported.
+	for id in _enemies:
+		if int(_enemies[id].get("lane", -1)) == lane:
 			return false
 	return true
 
@@ -364,8 +378,7 @@ func damage_enemy_by_id(id: int, amount: float) -> void:
 	var result: Dictionary = SOVEREIGN_DAMAGE_CALCULATOR.apply_enemy_damage(enemy, amount, _status_director.get_damage_mult(id))
 	if not bool(result.get("applied", false)):
 		return
-	enemy = Dictionary(result.get("enemy", enemy))
-	_enemies[id] = enemy
+	# apply_enemy_damage mutates enemy["hp"] in place; the dict already lives in _enemies[id].
 
 	EventBus.emit_signal("enemy_damaged", id, float(result.get("damage", 0.0)))
 
@@ -660,21 +673,6 @@ func promote_orbiting(budget: int) -> void:
 		current_strikers += 1
 		# Don't increment orbit_index — element was removed at that index.
 
-
-func _pick_best_lane_for_strike(_id: int) -> int:
-	var occupied_lanes = []
-	for sid in _strikers:
-		occupied_lanes.append(int(_strikers[sid].get("lane", -1)))
-
-	var free_lanes = []
-	for i in range(THREAT_COUNT):
-		if not i in occupied_lanes:
-			free_lanes.append(i)
-
-	if free_lanes.is_empty():
-		return -1
-
-	return free_lanes[_rng.randi() % free_lanes.size()]
 
 func get_enemy_pos(id: int) -> Vector2:
 	if _enemy_positions.has(id):

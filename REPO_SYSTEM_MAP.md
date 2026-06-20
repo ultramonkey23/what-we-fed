@@ -20,7 +20,7 @@ Autoloads:
 Combat owners:
 - `scenes/combat/CombatScene.gd`: arena setup, encounter flow, song-mode orchestration, boss flow, reward shell
 - `scenes/combat/PlayerCombat.gd`: player input resolution, attack/parry/dodge damage, death path
-- `scenes/combat/LaneManager.gd`: cardinal 4-direction threat management, population stalking/orbiting, and strike queue authority
+- `scenes/combat/ZoneManager.gd`: 360-degree spatial registry, sector geometry, striker/orbit population management, and projectile/melee spatial execution
 - `systems/CombatMeter.gd`: combo, style, stamina, ultimate, tier state
 - `systems/CombatImpactFeedback.gd`: impact/readability helpers
 - `systems/CombatPresentationRuntime.gd`: presentation helper layer for combat

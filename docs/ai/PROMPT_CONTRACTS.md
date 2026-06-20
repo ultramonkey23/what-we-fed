@@ -52,7 +52,7 @@ Files allowed to change:
 - [path]
 
 Files forbidden to change:
-- CombatScene.gd, PlayerCombat.gd, LaneManager.gd, SongConductor.gd, GameState.gd (unless explicitly listed above)
+- CombatScene.gd, PlayerCombat.gd, ZoneManager.gd, SongConductor.gd, GameState.gd (unless explicitly listed above)
 - project.godot
 - Any scene file not listed above
 - Any data file not listed above

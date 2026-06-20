@@ -24,7 +24,7 @@ Use this whenever the repo needs proof rather than confidence.
 
 ## Core System Change — Regression Checklist
 If the change touches any of these files or systems, work through `docs/ai/REGRESSION_CHECKLIST.md` before reporting validation complete:
-- `CombatScene.gd`, `PlayerCombat.gd`, `LaneManager.gd`, `CombatMeter.gd`, `SongConductor.gd`
+- `CombatScene.gd`, `PlayerCombat.gd`, `ZoneManager.gd`, `CombatMeter.gd`, `SongConductor.gd`
 - `EventBus.gd`, `GameState.gd`
 - Any scene file in `scenes/combat/`
 

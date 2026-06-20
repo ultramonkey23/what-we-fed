@@ -1536,18 +1536,16 @@ func update_enemy_marker_threat_states(
 
 
 func _resolve_live_lane_for_enemy(zone_manager: Node, enemy_id: int) -> int:
-	if zone_manager == null or not zone_manager != null:
+	if zone_manager == null:
 		return -1
-	var lane_count: int = int(zone_manager.get("THREAT_COUNT")) if "THREAT_COUNT" in zone_manager else 8
-	for lane in range(lane_count):
-		var enemy_v: Variant = zone_manager.get_enemy(lane)
-		if not (enemy_v is Dictionary):
-			continue
-		var enemy: Dictionary = enemy_v
-		if enemy.is_empty():
-			continue
-		if int(enemy.get("id", -1)) == enemy_id:
-			return lane
+	# Lookup directly by id — iterating lanes via get_enemy(lane) misses any enemy whose
+	# sector quantization collides with another resident.
+	if zone_manager.has_method("get_enemy_by_id"):
+		var enemy_v: Variant = zone_manager.get_enemy_by_id(enemy_id)
+		if enemy_v is Dictionary:
+			var enemy: Dictionary = enemy_v
+			if not enemy.is_empty():
+				return int(enemy.get("lane", -1))
 	return -1
 
 

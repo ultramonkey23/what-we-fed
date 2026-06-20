@@ -85,7 +85,6 @@ func _process(delta: float) -> void:
 	# Flesh (Vitality) Passive Regeneration: 
 	# Every 10 points above 100 base grants 0.5 HP/sec.
 	# Optimization: Tick every 30 frames for non-combat background regen.
-	# Since this is a core mechanic, we check CombatBus/GameState flags.
 	if not RunState.is_in_combat and RunState.run_in_progress:
 		if Engine.get_process_frames() % 30 == 0:
 			if stat_vitality > 100.0:

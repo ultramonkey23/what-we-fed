@@ -831,4 +831,3 @@ func _get_pooled_vfx(pool_key: String, container: Node, create_fn: Callable) -> 
 func _return_vfx(node: Node) -> void:
 	if is_instance_valid(node):
 		node.visible = false
-

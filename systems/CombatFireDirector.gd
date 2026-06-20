@@ -130,9 +130,9 @@ func _run_fire_cycle(task_id: int) -> void:
 	_cycle_stalled = false
 
 	var paused: bool = false
-	if _song_mode and _zone_manager != null and _zone_manager.combat_scene != null:
-		if _zone_manager.combat_scene.has_method("is_song_paused"):
-			paused = _zone_manager.combat_scene.is_song_paused()
+	if _song_mode and _zone_manager != null and _zone_manager.get_parent() != null:
+		if _zone_manager.get_parent().has_method("is_song_paused"):
+			paused = _zone_manager.get_parent().is_song_paused()
 
 	if not paused:
 		var ids_to_fire: Array[int] = _resolve_authorized_strikers()

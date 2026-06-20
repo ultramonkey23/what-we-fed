@@ -763,11 +763,11 @@ func _apply_attack_authority_budget(snapshot: Dictionary = {}, phase: Dictionary
 
 
 func _initialize_ui() -> void:
+	_ui_builder = CombatUIBuilder.new()
+	_ui_builder.scene = self
 	_setup_presentation_controller()
 	_setup_combat_visual_rig()
 	_setup_visuals()
-	_ui_builder = CombatUIBuilder.new()
-	_ui_builder.scene = self
 	_ui_builder.build_all()
 	_create_feedback_shell()
 	if not get_viewport().size_changed.is_connected(_sync_fullscreen_underlay_controls):

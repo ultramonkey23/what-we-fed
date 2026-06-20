@@ -89,7 +89,7 @@ var flash_overlay: ColorRect
 var _feedback_shell: RefCounted
 var _title_card: Control
 var _subtitle_card: Control
-var _timing_rings_cache: Array
+var _timing_rings_cache: Array[Dictionary]
 var _upgrade_card_nodes: Array
 var result_label: Label
 var _end_stats_label: Label
@@ -1179,12 +1179,12 @@ func _create_title_cards() -> void:
 
 
 func _create_timing_circle_container() -> void:
-	_timing_circle_container = _presentation_controller.create_timing_circle_container(self)
+	_timing_circle_container = _presentation_controller.create_timing_circle_container(scene)
 	_timing_rings_cache.clear()
 
 
 func _create_attack_fx_container() -> void:
-	_attack_fx_container = _presentation_controller.create_attack_fx_container(self)
+	_attack_fx_container = _presentation_controller.create_attack_fx_container(scene)
 
 
 func _create_impact_fx_runtime() -> void:

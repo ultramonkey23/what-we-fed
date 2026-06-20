@@ -157,5 +157,3 @@ signal ultimate_available()
 signal ultimate_fired(power: float)
 @warning_ignore("unused_signal")
 signal ultimate_power_granted(amount: float)
-
-

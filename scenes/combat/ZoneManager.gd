@@ -49,7 +49,7 @@ func _ready() -> void:
 	_locom_director = CREATURE_LOCOMOTION_DIRECTOR.new()
 	_locom_director.name = "CreatureLocomotionDirector"
 	add_child(_locom_director)
-	_locom_director.init(self, _enemies, _enemy_positions, _orbit_angles, _orbit_radius_offsets, _strikers)
+	_locom_director.init(self, _enemy_states)
 
 
 func setup_layout(viewport_size: Vector2) -> void:
@@ -149,7 +149,7 @@ func start_combat(enemy_data: Array) -> void:
 func _on_song_beat_pulse(_beat_index: int, _intensity: float, _quality: String) -> void:
 	if not _fire_director.is_running():
 		return
-	_status_director.tick_song_beat(_enemies, Callable(self, "damage_enemy_by_id"))
+	_status_director.tick_song_beat(get_all_enemies(), Callable(self, "damage_enemy_by_id"))
 
 
 func get_projectile(lane: int) -> Node:
@@ -218,7 +218,10 @@ func get_enemy_by_id(id: int) -> Dictionary:
 
 
 func get_all_enemies() -> Dictionary:
-	return _enemies
+	var out: Dictionary = {}
+	for id in _enemy_states:
+		out[id] = _enemy_states[id].population_data
+	return out
 
 
 func alive_count() -> int:
@@ -231,7 +234,11 @@ func alive_count() -> int:
 
 
 func alive_striker_count() -> int:
-	return _strikers.size()
+	var n: int = 0
+	for id in _enemy_states:
+		if not _enemy_states[id].striker_data.is_empty():
+			n += 1
+	return n
 
 
 func get_player_pos() -> Vector2:
@@ -329,12 +336,15 @@ func spawn_enemy_at_angle(angle: float, enemy_data: Dictionary) -> int:
 	if not _lane_occupants.has(lane):
 		_lane_occupants[lane] = []
 	_lane_occupants[lane].append(id)
-	
-	_enemy_states[id].population_data = enemy
+
+	# Construct EnemyState — was missing in spawn path after the parallel-dict collapse.
+	var state := EnemyState.new()
+	state.setup(id, enemy, {}, Vector2.ZERO, angle, 0.0, Vector2.ZERO, null, null)
+	_enemy_states[id] = state
 	_cache_enemy_scene(id, enemy)
-	
+
 	var so := EnemyStriker.new()
-	so.setup(enemy, (_enemy_states[id].projectile_scene if _enemy_states.has(id) else _projectile_scene) as PackedScene)
+	so.setup(enemy, _enemy_states[id].projectile_scene as PackedScene)
 	_enemy_states[id].striker_object = so
 
 	# Logic for joining orbit vs striker slot remains authority-budget driven
@@ -482,7 +492,11 @@ func clear_enemy_status_by_id(id: int) -> void:
 # ── Spatial queries and executor for CombatFireDirector ──────────────────────
 
 func get_all_strikers() -> Dictionary:
-	return _strikers
+	var out: Dictionary = {}
+	for id in _enemy_states:
+		if not _enemy_states[id].striker_data.is_empty():
+			out[id] = _enemy_states[id].striker_data
+	return out
 
 
 func has_active_projectile(id: int) -> bool:
@@ -682,7 +696,7 @@ func promote_orbiting(budget: int) -> void:
 
 
 func get_enemy_pos(id: int) -> Vector2:
-	if _enemy_positions.has(id):
+	if _enemy_states.has(id):
 		return _enemy_states[id].position
 
 	if not _enemy_states.has(id):
@@ -696,12 +710,16 @@ func get_enemy_pos(id: int) -> Vector2:
 	return _sector_layout.center_pos
 
 
-func _assign_striker_visual_offset_for_angle(id: int, angle: float) -> void:
+func _get_striker_visual_offset_for_angle(angle: float) -> Vector2:
 	var radial: Vector2 = Vector2(cos(angle), sin(angle))
 	var tangent := Vector2(-radial.y, radial.x)
 	var tangent_offset: float = _rng.randf_range(-SectorLayout.STRIKER_VISUAL_TANGENT_SPREAD, SectorLayout.STRIKER_VISUAL_TANGENT_SPREAD)
 	var radial_offset: float = _rng.randf_range(-SectorLayout.STRIKER_VISUAL_RADIAL_SPREAD, SectorLayout.STRIKER_VISUAL_RADIAL_SPREAD)
-	_enemy_states[id].visual_offset = tangent * tangent_offset + radial * radial_offset
+	return tangent * tangent_offset + radial * radial_offset
+
+
+func _assign_striker_visual_offset_for_angle(id: int, angle: float) -> void:
+	_enemy_states[id].visual_offset = _get_striker_visual_offset_for_angle(angle)
 
 
 func _can_schedule_projectile_id(new_speed: float) -> bool:
@@ -759,7 +777,7 @@ func _resolve_reflected_projectile_target(original_id: int, impact_pos: Vector2)
 
 	var best_id: int = -1
 	var best_dist_sq: float = INF
-	for enemy_id in _enemies.keys():
+	for enemy_id in _enemy_states.keys():
 		var enemy: Dictionary = (_enemy_states[enemy_id].population_data if _enemy_states.has(enemy_id) else {})
 		if float(enemy.get("hp", 0.0)) <= 0.0:
 			continue

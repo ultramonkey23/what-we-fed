@@ -49,12 +49,10 @@ static var LOCOM_PROFILES: Dictionary = {
 var _zone_manager: Node = null
 var _orbit_center: Vector2 = Vector2.ZERO
 
-# Shared mutable references from ZoneManager — writes here are immediately reflected there.
-var _enemies: Dictionary = {}
-var _enemy_positions: Dictionary = {}
-var _orbit_angles: Dictionary = {}
-var _orbit_radius_offsets: Dictionary = {}
-var _strikers: Dictionary = {}
+# Shared mutable reference from ZoneManager. EnemyState is RefCounted, so writes to
+# _enemy_states[id].position / .orbit_angle / .striker_data here are immediately
+# visible to ZoneManager.
+var _enemy_states: Dictionary = {} # id -> EnemyState
 
 # Director-owned per-enemy locomotion state.
 var _locom_states: Dictionary = {}     # id(int) -> StringName  (&"stalk" | &"approach" | &"recoil" | &"flank")
@@ -63,20 +61,9 @@ var _flank_directions: Dictionary = {} # id(int) -> float  (+1.0 CW / -1.0 CCW a
 var _orbit_drift_accum: Dictionary = {} # id(int) -> float  (sinusoidal radius breath accumulator)
 
 
-func init(
-		zone_manager: Node,
-		enemies: Dictionary,
-		positions: Dictionary,
-		angles: Dictionary,
-		offsets: Dictionary,
-		strikers: Dictionary
-) -> void:
+func init(zone_manager: Node, enemy_states: Dictionary) -> void:
 	_zone_manager = zone_manager
-	_enemies = enemies
-	_enemy_positions = positions
-	_orbit_angles = angles
-	_orbit_radius_offsets = offsets
-	_strikers = strikers
+	_enemy_states = enemy_states
 	_orbit_center = zone_manager.get_arena_center()
 
 
@@ -139,11 +126,11 @@ func _update_orbit_center(delta: float) -> void:
 func _step_all_enemies(delta: float) -> void:
 	var base_radius: float = _zone_manager.get_spawn_distance()
 
-	for id: int in _enemies.keys():
-		if not _enemy_positions.has(id):
+	for id: int in _enemy_states.keys():
+		if not _enemy_states.has(id):
 			continue
 
-		var pos: Vector2 = _enemy_positions[id]
+		var pos: Vector2 = _enemy_states[id].position
 		var to_center: Vector2 = _orbit_center - pos
 		var dist: float = to_center.length()
 		if dist < 1.0:
@@ -158,7 +145,7 @@ func _step_all_enemies(delta: float) -> void:
 		_orbit_drift_accum[id] = drift_accum
 		var target_radius: float = (
 			base_radius
-			+ float(_orbit_radius_offsets.get(id, 0.0))
+			+ float(_enemy_states[id].orbit_radius_offset)
 			+ sin(drift_accum) * 12.0
 		)
 
@@ -188,13 +175,13 @@ func _step_all_enemies(delta: float) -> void:
 			var flank_dir: float = float(_flank_directions.get(id, 1.0))
 			angular_speed = BASE_ORBIT_SPEED * float(profile.get("orbit_speed_mult", 1.0)) * 1.8 * flank_dir * target_radius
 
-		_enemy_positions[id] = pos + (dir * radial_vel + tangent * angular_speed) * delta
+		_enemy_states[id].position = pos + (dir * radial_vel + tangent * angular_speed) * delta
 
 		# Sync angle for signal/lane compatibility (angle relative to orbit center, not player).
 		var angle: float = (pos - _orbit_center).angle()
-		_orbit_angles[id] = angle
-		if _strikers.has(id):
-			_strikers[id]["angle"] = angle
+		_enemy_states[id].orbit_angle = angle
+		if not _enemy_states[id].striker_data.is_empty():
+			_enemy_states[id].striker_data["angle"] = angle
 
 
 func _tick_state_timers(delta: float) -> void:
@@ -211,7 +198,7 @@ func _tick_state_timers(delta: float) -> void:
 
 
 func _get_profile(id: int) -> Dictionary:
-	var enemy: Dictionary = _enemies.get(id, {})
+	var enemy: Dictionary = (_enemy_states[id].population_data if _enemy_states.has(id) else {})
 	var species_id: String = String(enemy.get("species_id", ""))
 	if not species_id.is_empty() and LOCOM_PROFILES.has(species_id):
 		return LOCOM_PROFILES[species_id]

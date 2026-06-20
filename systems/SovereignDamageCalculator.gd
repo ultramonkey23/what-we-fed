@@ -169,11 +169,13 @@ static func apply_enemy_damage(enemy: Dictionary, amount: float, status_damage_m
 	var defense: float = maxf(float(enemy.get("defense", 0.0)), 0.0)
 	var defense_reduction: float = minf(defense, modified_amount * ENEMY_DEFENSE_MAX_REDUCTION_RATIO)
 	var actual_amount: float = maxf(modified_amount - defense_reduction, ENEMY_DEFENSE_MIN_DAMAGE)
-	var updated_enemy: Dictionary = enemy.duplicate(true)
-	updated_enemy["hp"] = max(float(updated_enemy["hp"]) - actual_amount, 0.0)
+	# In-place hp mutation: caller (ZoneManager.damage_enemy_by_id) holds the same ref in _enemies[id]
+	# and immediately rebinds with the returned dict, so a deep duplicate per hit is wasted work.
+	var new_hp: float = max(float(enemy["hp"]) - actual_amount, 0.0)
+	enemy["hp"] = new_hp
 	return {
 		"applied": true,
-		"enemy": updated_enemy,
+		"enemy": enemy,
 		"damage": actual_amount,
-		"defeated": float(updated_enemy["hp"]) <= 0.0
+		"defeated": new_hp <= 0.0
 	}

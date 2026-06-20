@@ -236,6 +236,9 @@ var _all_enemies_by_id: Dictionary = {}
 var _enemy_max_hp: Dictionary = {}
 var _status_marker_overrides: Dictionary = {}
 var _enemy_phase_by_id: Dictionary = {}
+# Per-enemy HP-display cache: skip identical fill/color/text rewrites and tween bumps.
+# Shape: { enemy_id: { "ratio_bucket": int, "color_tag": int, "hp_text": String } }.
+var _enemy_marker_hp_cache: Dictionary = {}
 
 # ─── BOSS STATE ──────────────────────────────────────────────────────────────
 var _is_boss_encounter: bool = false
@@ -5373,25 +5376,45 @@ func _refresh_enemy_marker_health(enemy_id: int) -> void:
 	var enemy_data_v: Dictionary = zone_manager.get_enemy(lane)
 	var current_hp: float = clampf(float(enemy_data_v.get("hp", 0.0)), 0.0, max_hp)
 	var ratio: float = current_hp / max_hp
+	# Bucket to 1/256 so floating-point drift below one bar-pixel does not re-write the marker.
+	var ratio_bucket: int = int(round(ratio * 256.0))
+	var color_tag: int
+	if ratio <= ENEMY_LOW_HP_THRESHOLD:
+		color_tag = 2
+	elif _enemy_is_elite_for_impact(enemy_id):
+		color_tag = 1
+	else:
+		color_tag = 0
+	var hp_text: String = "HP %.0f/%.0f" % [current_hp, max_hp]
+	var cache: Dictionary = _enemy_marker_hp_cache.get(enemy_id, {})
+	var cached_ratio_bucket: int = int(cache.get("ratio_bucket", -1))
+	var cached_color_tag: int = int(cache.get("color_tag", -1))
+	var cached_hp_text: String = String(cache.get("hp_text", ""))
+	var fill_needs_write: bool = (ratio_bucket != cached_ratio_bucket) or (color_tag != cached_color_tag)
+	var label_needs_write: bool = hp_text != cached_hp_text
 	var track_node = marker_data.get("hp_track")
 	var fill_node = marker_data.get("hp_fill")
 	var label_node = marker_data.get("hp_label")
-	if is_instance_valid(track_node) and is_instance_valid(fill_node):
+	if fill_needs_write and is_instance_valid(track_node) and is_instance_valid(fill_node):
 		var track: ColorRect = track_node
 		var fill: ColorRect = fill_node
 		fill.size = Vector2(track.size.x * ratio, track.size.y)
-		if ratio <= ENEMY_LOW_HP_THRESHOLD:
-			fill.color = Color(1.0, 0.20, 0.16, 1.0)
-		elif _enemy_is_elite_for_impact(enemy_id):
-			fill.color = Color(0.96, 0.36, 0.14, 0.98)
-		else:
-			fill.color = Color(0.68, 0.16, 0.18, 0.92)
-	if is_instance_valid(label_node):
+		match color_tag:
+			2: fill.color = Color(1.0, 0.20, 0.16, 1.0)
+			1: fill.color = Color(0.96, 0.36, 0.14, 0.98)
+			_: fill.color = Color(0.68, 0.16, 0.18, 0.92)
+	if label_needs_write and is_instance_valid(label_node):
 		var hp_label: Label = label_node
-		hp_label.text = "HP %.0f/%.0f" % [current_hp, max_hp]
+		hp_label.text = hp_text
 		var hp_tween := hp_label.create_tween()
 		hp_tween.tween_property(hp_label, "scale", Vector2(1.06, 1.06), 0.05)
 		hp_tween.tween_property(hp_label, "scale", Vector2.ONE, 0.10)
+	if fill_needs_write or label_needs_write:
+		_enemy_marker_hp_cache[enemy_id] = {
+			"ratio_bucket": ratio_bucket,
+			"color_tag": color_tag,
+			"hp_text": hp_text,
+		}
 
 
 func _on_proc_feedback_requested(text: String, color: Color) -> void:
@@ -5427,6 +5450,7 @@ func _on_enemy_defeated(enemy_id: int) -> void:
 	_all_enemies_by_id.erase(enemy_id)
 	_enemy_max_hp.erase(enemy_id)
 	_enemy_phase_by_id.erase(enemy_id)
+	_enemy_marker_hp_cache.erase(enemy_id)
 
 	if _song_mode and not _song_paused and not _song_boss_triggered:
 		_trigger_regional_feedback("enemy_defeated")
@@ -6599,6 +6623,7 @@ func _clear_song_enemy_tracking() -> void:
 	_enemy_max_hp.clear()
 	_enemy_phase_by_id.clear()
 	_status_marker_overrides.clear()
+	_enemy_marker_hp_cache.clear()
 
 
 func _spawn_support_intervention(species_id: String, lane: int, tint: Color) -> void:

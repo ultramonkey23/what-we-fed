@@ -3,6 +3,9 @@ class_name ProgressionManager
 
 const GROWTH_CONTENT = preload("res://data/RunGrowthContent.gd")
 
+const BOND_LEVEL_EXP_MULT: float = 0.10
+const EXP_THRESHOLD_PER_LEVEL: float = 20.0
+
 var level: int = 1
 var current_exp: float = 0.0
 var exp_to_next: float = 125.0 # get_exp_threshold(1)
@@ -19,7 +22,7 @@ func grant_exp(amount: float, potential: float) -> int:
 	
 	# PERSISTENT TRUTH: Meta-Bond Level Multiplier.
 	# High Bond levels in the Lair accelerate your Player (Codex) Leveling.
-	var bond_mult: float = 1.0 + (GameState.get_total_bond_level() * 0.05)
+	var bond_mult: float = get_bond_exp_multiplier()
 	
 	current_exp += amount * potential * bond_mult
 	var levels_gained: int = 0
@@ -40,13 +43,16 @@ func grant_exp(amount: float, potential: float) -> int:
 func get_exp_threshold(level_value: int) -> float:
 	# RESOLUTION TRUTH: Linear scaling for Level 10,000 ceiling.
 	# Exponential scaling would break float bounds at level 500+.
-	return 100.0 + (float(level_value) * 25.0)
+	return 100.0 + (float(level_value) * EXP_THRESHOLD_PER_LEVEL)
+
+func get_bond_exp_multiplier() -> float:
+	return 1.0 + (float(GameState.get_total_bond_level()) * BOND_LEVEL_EXP_MULT)
 
 func get_progression_payload() -> Dictionary:
 	var cap: int = GameState.get_codex_level_cap()
 	var is_capped: bool = level >= cap
 	var ratio: float = 0.0 if is_capped else (current_exp / exp_to_next if exp_to_next > 0.0 else 0.0)
-	var bond_mult: float = 1.0 + (GameState.get_total_bond_level() * 0.05)
+	var bond_mult: float = get_bond_exp_multiplier()
 	
 	return {
 		"level": level,

@@ -394,7 +394,7 @@ func _grant_exp(amount: float) -> void:
 
 
 func _gain_support_charge(amount: float) -> void:
-	var mult: float = 1.0 + (progression.level * 0.02)
+	var mult: float = (1.0 + (progression.level * 0.02)) * maxf(PlayerState.stat_intelligence, 0.1)
 	# Support synergy: every active surge adds 10% charge gain
 	for tid in active_surges:
 		if active_surges[tid] > 0.0: mult += 0.10

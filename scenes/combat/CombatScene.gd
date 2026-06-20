@@ -5463,6 +5463,14 @@ func _process_dna_award(defeated_enemy: Dictionary) -> void:
 	if dna_species.is_empty() or dna_amount <= 0.0:
 		return
 
+	# Performance Reward Depth: Apply style-based DNA multiplier.
+	if combat_meter != null and combat_meter.has_method("dna_multiplier"):
+		var mult: float = combat_meter.dna_multiplier()
+		if mult > 1.0:
+			dna_amount *= mult
+			if mult >= 1.4:
+				_show_feedback("STYLE MULTIPLIER x%.1f" % mult, Color(0.92, 0.76, 0.42, 1.0), 0.15)
+
 	var dna_result: Dictionary = {}
 	dna_result = RunGrowth.process_dna_gain(dna_species, dna_amount)
 	

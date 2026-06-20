@@ -32,19 +32,36 @@ var phrase_count: int = 0  # consecutive quality actions without a break
 var _ultimate_announced: bool = false
 var _last_tier: String = ""  # tracks tier for change detection
 
+# Change-detection cache so we don't flood EventBus + HUD on signal storms.
+var _last_emitted_combo: int = -1
+var _last_emitted_style_bucket: int = -1
+var _last_emitted_stamina_bucket: int = -1
+var _last_emitted_stamina_max_bucket: int = -1
+
 
 func _ready() -> void:
-	EventBus.emit_signal("stamina_changed", stamina, stamina_max)
+	_emit_stamina_changed(true)
 	EventBus.emit_signal("combo_changed", combo_count, _current_tier())
 	EventBus.emit_signal("style_changed", style_score, _current_tier())
+	_last_emitted_combo = combo_count
+	_last_emitted_style_bucket = int(style_score)
 
 
 func _process(delta: float) -> void:
 	if stamina < stamina_max:
-		var old_stamina: float = stamina
 		stamina = min(stamina + PASSIVE_REGEN_PER_SEC * delta, stamina_max)
-		if not is_equal_approx(stamina, old_stamina):
-			EventBus.emit_signal("stamina_changed", stamina, stamina_max)
+		_emit_stamina_changed()
+
+
+func _emit_stamina_changed(force: bool = false) -> void:
+	# Bucket by integer to skip 60Hz emissions when only sub-unit drift changes.
+	var cur_b: int = int(stamina)
+	var max_b: int = int(stamina_max)
+	if not force and cur_b == _last_emitted_stamina_bucket and max_b == _last_emitted_stamina_max_bucket:
+		return
+	_last_emitted_stamina_bucket = cur_b
+	_last_emitted_stamina_max_bucket = max_b
+	EventBus.emit_signal("stamina_changed", stamina, stamina_max)
 
 
 func can_parry() -> bool:
@@ -61,7 +78,7 @@ func spend_stamina_for_parry() -> bool:
 		return false
 
 	stamina = max(stamina - STAMINA_PARRY_COST, 0.0)
-	EventBus.emit_signal("stamina_changed", stamina, stamina_max)
+	_emit_stamina_changed(true)
 	return true
 
 
@@ -71,7 +88,7 @@ func spend_stamina_for_dodge() -> bool:
 		return false
 
 	stamina = max(stamina - STAMINA_DODGE_COST, 0.0)
-	EventBus.emit_signal("stamina_changed", stamina, stamina_max)
+	_emit_stamina_changed(true)
 	return true
 
 
@@ -130,7 +147,7 @@ func record_bad_timing() -> void:
 	combo_count = 0
 	style_score = max(style_score - 10.0, 0.0)
 	stamina = max(stamina - STAMINA_DAMAGE_TAKEN_LOSS, 0.0)
-	EventBus.emit_signal("stamina_changed", stamina, stamina_max)
+	_emit_stamina_changed(true)
 	break_phrase()
 	_emit_meter_state()
 
@@ -152,6 +169,20 @@ func damage_multiplier() -> float:
 			return MULT_HUNTING
 		_:
 			return MULT_STIRRING
+
+
+func dna_multiplier() -> float:
+	match _current_tier():
+		TIER_SOVEREIGN:
+			return 2.5
+		TIER_APEX:
+			return 1.8
+		TIER_RAMPAGE:
+			return 1.4
+		TIER_HUNTING:
+			return 1.2
+		_:
+			return 1.0
 
 
 func reset() -> void:
@@ -215,7 +246,7 @@ func get_current_tier() -> String:
 
 func _gain_stamina(amount: float) -> void:
 	stamina = min(stamina + amount, stamina_max)
-	EventBus.emit_signal("stamina_changed", stamina, stamina_max)
+	_emit_stamina_changed(true)
 
 
 func _current_tier() -> String:
@@ -232,15 +263,21 @@ func _current_tier() -> String:
 
 func _emit_meter_state() -> void:
 	var tier: String = _current_tier()
-
-	if tier != _last_tier and _last_tier != "":
+	var tier_changed: bool = tier != _last_tier
+	if tier_changed and _last_tier != "":
 		EventBus.emit_signal("tier_changed", tier, _last_tier)
 	_last_tier = tier
 
-	EventBus.emit_signal("combo_changed", combo_count, tier)
-	EventBus.emit_signal("style_changed", style_score, tier)
+	if combo_count != _last_emitted_combo or tier_changed:
+		_last_emitted_combo = combo_count
+		EventBus.emit_signal("combo_changed", combo_count, tier)
 
-	if tier == TIER_SOVEREIGN:
+	var style_bucket: int = int(style_score)
+	if style_bucket != _last_emitted_style_bucket or tier_changed:
+		_last_emitted_style_bucket = style_bucket
+		EventBus.emit_signal("style_changed", style_score, tier)
+
+	if tier_changed and tier == TIER_SOVEREIGN:
 		EventBus.emit_signal("sovereign_reached")
 
 	if is_ultimate_available():

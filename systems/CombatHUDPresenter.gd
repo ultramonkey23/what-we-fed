@@ -76,6 +76,28 @@ var _boss_state_label: Label
 var _song_timer_label: Label
 var _song_phase_label: Label
 
+# ── HUD value caches (skip label rewrites when value didn't change) ───────────
+var _cache_hp: int = -1
+var _cache_hp_max: int = -1
+var _cache_hp_bleed: int = -1
+var _cache_stamina: int = -1
+var _cache_stamina_max: int = -1
+var _cache_combo: int = -1
+var _cache_combo_tier: String = ""
+var _cache_style_tier: String = ""
+var _cache_run_score: int = -1
+var _cache_atk: int = -999999
+var _cache_def: int = -999999
+var _cache_exp_level: int = -1
+var _cache_exp_current: int = -1
+var _cache_exp_next: int = -1
+var _cache_ultimate_text: String = "__unset__"
+var _cache_controls_text: String = "__unset__"
+var _cache_support_label: String = "__unset__"
+# Shader-bar caches: only re-bind shader params when the underlying value changed.
+var _last_bar_fill: Dictionary = {} # bar -> last fill_ratio (rounded)
+var _last_bar_size: Dictionary = {} # bar -> last Vector2 size
+
 # ── Content preloads (passed from CombatScene at construction) ────────────────
 var _combat_content: GDScript
 var _presentation_text: GDScript
@@ -197,23 +219,31 @@ func _on_player_took_damage_event(_amount: float, _source_sector: int) -> void:
 	refresh_hp(GameState.player_hp, GameState.player_max_hp)
 
 func refresh_hp(hp: float, max_hp: float) -> void:
+	var hp_i: int = int(hp)
+	var max_i: int = int(max_hp)
+	var stacks: int = GameState.player_bleed_stacks
+	if hp_i == _cache_hp and max_i == _cache_hp_max and stacks == _cache_hp_bleed:
+		return
+	_cache_hp = hp_i
+	_cache_hp_max = max_i
+	_cache_hp_bleed = stacks
+
 	if _hp_bar != null:
 		_hp_bar.max_value = max_hp
 		_hp_bar.value = hp
 		_sync_hp_stamina_ink_flow_bar(_hp_bar)
 		# Bleed tint
-		if GameState.player_bleed_stacks > 0:
+		if stacks > 0:
 			_hp_bar.modulate = Color(1.0, 0.45, 0.25, 1.0)
 		else:
 			_hp_bar.modulate = Color.WHITE
 
 	if _hp_value_label != null:
-		var stacks: int = GameState.player_bleed_stacks
 		if stacks > 0:
-			_hp_value_label.text = "%d/%d (B%d)" % [int(hp), int(max_hp), stacks]
+			_hp_value_label.text = "%d/%d (B%d)" % [hp_i, max_i, stacks]
 			_hp_value_label.modulate = Color(1.0, 0.40, 0.20, 1.0)
 		else:
-			_hp_value_label.text = "%d/%d" % [int(hp), int(max_hp)]
+			_hp_value_label.text = "%d/%d" % [hp_i, max_i]
 			_hp_value_label.modulate = Color.WHITE
 
 
@@ -222,6 +252,12 @@ func refresh_health(hp: float, max_hp: float) -> void:
 
 
 func refresh_stamina(current: float, maximum: float) -> void:
+	var cur_i: int = int(current)
+	var max_i: int = int(maximum)
+	if cur_i == _cache_stamina and max_i == _cache_stamina_max:
+		return
+	_cache_stamina = cur_i
+	_cache_stamina_max = max_i
 	if _stamina_bar != null:
 		_stamina_bar.max_value = maximum
 		_stamina_bar.value = current
@@ -358,17 +394,21 @@ func refresh_scouter_target(species_id: String, display_name: String, flavor: St
 
 
 func refresh_combo(count: int, tier: String = "") -> void:
+	var tier_changed: bool = not tier.is_empty() and tier != _cache_combo_tier
+	if count == _cache_combo and not tier_changed:
+		return
+	var old_count: int = _cache_combo
+	_cache_combo = count
+	if tier_changed:
+		_cache_combo_tier = tier
 	if _combo_label != null:
-		var old_count: int = int(_combo_label.text)
 		_combo_label.text = "%d" % count
-		if not tier.is_empty():
+		if tier_changed:
 			_combo_label.modulate = _ui_style.get_tier_color(tier)
-		
-		if count > old_count:
+		if count > old_count and old_count >= 0:
 			var tween := _combo_label.create_tween()
 			_combo_label.scale = Vector2(1.24, 1.24)
 			tween.tween_property(_combo_label, "scale", Vector2.ONE, 0.12)
-	
 	refresh_power_level()
 
 
@@ -391,32 +431,43 @@ func refresh_primary_hud_snapshot(
 
 
 func refresh_style(tier: String) -> void:
+	if tier == _cache_style_tier:
+		return
+	_cache_style_tier = tier
 	if _style_label != null:
 		var compact: String = _ui_style.get_tier_label(tier)
 		if compact.length() > 4:
 			compact = compact.left(4)
 		_style_label.text = compact
 		_style_label.modulate = _ui_style.get_tier_color(tier)
-	
 	refresh_power_level()
 
 
 func set_ultimate_text(text: String) -> void:
-	if _ultimate_label != null:
+	if _ultimate_label != null and text != _cache_ultimate_text:
+		_cache_ultimate_text = text
 		_ultimate_label.text = text
 
 
 func set_exp_text(level: int, current_exp: float, exp_to_next: float = -1.0) -> void:
 	if _exp_value_label == null:
 		return
+	var cur_i: int = int(current_exp)
+	var next_i: int = int(exp_to_next)
+	if level == _cache_exp_level and cur_i == _cache_exp_current and next_i == _cache_exp_next:
+		return
+	_cache_exp_level = level
+	_cache_exp_current = cur_i
+	_cache_exp_next = next_i
 	if exp_to_next >= 0.0:
-		_exp_value_label.text = "L%d  %.0f/%.0f" % [level, current_exp, exp_to_next]
+		_exp_value_label.text = "L%d  %d/%d" % [level, cur_i, next_i]
 	else:
-		_exp_value_label.text = "L%d  %.0f" % [level, current_exp]
+		_exp_value_label.text = "L%d  %d" % [level, cur_i]
 
 
 func set_controls_text(text: String) -> void:
-	if _controls_label != null:
+	if _controls_label != null and text != _cache_controls_text:
+		_cache_controls_text = text
 		_controls_label.text = text
 
 
@@ -442,6 +493,9 @@ func show_beat_feedback_timed(text: String, color: Color, critical_threat_pressu
 
 
 func refresh_run_score(display_score: int) -> void:
+	if display_score == _cache_run_score:
+		return
+	_cache_run_score = display_score
 	if _run_score_label != null:
 		_run_score_label.text = "%d" % display_score
 
@@ -462,10 +516,16 @@ func apply_dna_routing_highlight(route_id: String, label: String) -> void:
 
 
 func refresh_stats(atk: float, def: float) -> void:
-	if _atk_value_label != null:
-		_atk_value_label.text = "%.0f" % atk
-	if _def_value_label != null:
-		_def_value_label.text = "%.0f" % def
+	var atk_i: int = int(atk)
+	var def_i: int = int(def)
+	if atk_i != _cache_atk:
+		_cache_atk = atk_i
+		if _atk_value_label != null:
+			_atk_value_label.text = "%d" % atk_i
+	if def_i != _cache_def:
+		_cache_def = def_i
+		if _def_value_label != null:
+			_def_value_label.text = "%d" % def_i
 
 
 # ── Support readout ──────────────────────────────────────────────────────────
@@ -477,22 +537,28 @@ func refresh_support(current: float, maximum: float, active_species_id: String, 
 		_support_bar.value = maxf(current, 0.0)
 
 	if _support_value_label != null:
-		var was_ready: bool = _support_value_label.text == "RDY"
+		var was_ready: bool = _cache_support_label == "RDY"
+		var new_text: String
+		var new_color: Color = _support_value_label.modulate
 		if active_species_id.is_empty():
-			_support_value_label.text = "--"
+			new_text = "--"
 		elif current >= maximum - 0.05:
-			_support_value_label.text = "RDY"
-			_support_value_label.modulate = _ui_style.MM_ALERT_GOLD
-			if not was_ready:
+			new_text = "RDY"
+			new_color = _ui_style.MM_ALERT_GOLD
+		elif maximum <= 0.0:
+			new_text = "0"
+			new_color = _ui_style.MM_BOND_TEAL
+		else:
+			new_text = "%d" % int(floor((current / maximum) * 100.0))
+			new_color = _ui_style.MM_BOND_TEAL
+		if new_text != _cache_support_label:
+			_cache_support_label = new_text
+			_support_value_label.text = new_text
+			_support_value_label.modulate = new_color
+			if new_text == "RDY" and not was_ready:
 				var tween := _support_value_label.create_tween()
 				_support_value_label.scale = Vector2(1.3, 1.3)
 				tween.tween_property(_support_value_label, "scale", Vector2.ONE, 0.15)
-		elif maximum <= 0.0:
-			_support_value_label.text = "0"
-			_support_value_label.modulate = _ui_style.MM_BOND_TEAL
-		else:
-			_support_value_label.text = "%d" % int(floor((current / maximum) * 100.0))
-			_support_value_label.modulate = _ui_style.MM_BOND_TEAL
 
 
 	if _support_name_label != null:
@@ -826,13 +892,20 @@ func _sync_hp_stamina_ink_flow_bar(bar: ProgressBar) -> void:
 	if not bar.material is ShaderMaterial:
 		return
 	var denom: float = maxf(bar.max_value - bar.min_value, 0.001)
-	var t: float = clampf((bar.value - bar.min_value) / denom, 0.0, 1.0)
+	# Round to 1/256 buckets so sub-pixel float drift doesn't rebind the shader.
+	var t_q: int = int(clampf((bar.value - bar.min_value) / denom, 0.0, 1.0) * 256.0)
+	var prev_t = _last_bar_fill.get(bar, -1)
 	var m: ShaderMaterial = bar.material as ShaderMaterial
-	m.set_shader_parameter("fill_ratio", t)
+	if t_q != prev_t:
+		_last_bar_fill[bar] = t_q
+		m.set_shader_parameter("fill_ratio", float(t_q) / 256.0)
 	var sz: Vector2 = bar.size
 	if sz.x <= 2.0 or sz.y <= 2.0:
 		sz = bar.get_combined_minimum_size()
-	m.set_shader_parameter("bar_size_px", sz)
+	var prev_sz = _last_bar_size.get(bar, null)
+	if prev_sz == null or prev_sz != sz:
+		_last_bar_size[bar] = sz
+		m.set_shader_parameter("bar_size_px", sz)
 
 
 func _style_progress_bar(bar: ProgressBar, under_color: Color, fill_color: Color, corner_radius: int) -> void:

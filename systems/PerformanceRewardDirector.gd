@@ -42,6 +42,7 @@ const PARRY_STREAK_PROGRESS_BONUS: float = 12.0
 const DODGE_STREAK_PROGRESS_BONUS: float = 8.0
 const DODGE_STREAK_SUPPORT_CHARGE: float = 4.0
 const KILL_STREAK_SUPPORT_CHARGE: float = 5.0
+const CLEAN_ENCOUNTER_PROGRESS_BONUS: float = 45.0
 
 # Predatory Tempo Architecture v1 mapping:
 # - puncture: micro-time combat punctuation
@@ -406,6 +407,8 @@ func _connect_eventbus() -> void:
 		EventBus.player_dodged.connect(_on_player_dodged)
 	if not EventBus.combat_started.is_connected(_on_combat_started):
 		EventBus.combat_started.connect(_on_combat_started)
+	if not EventBus.combat_ended.is_connected(_on_combat_ended):
+		EventBus.combat_ended.connect(_on_combat_ended)
 	if not EventBus.phrase_milestone.is_connected(_on_phrase_milestone):
 		EventBus.phrase_milestone.connect(_on_phrase_milestone)
 	if not EventBus.tier_changed.is_connected(_on_tier_changed):
@@ -1187,6 +1190,16 @@ func _on_combat_started(_enemy_data: Array) -> void:
 	if RunGrowth.has_method("gain_reward_support_charge"):
 		RunGrowth.gain_reward_support_charge(float(pact_effect.get("support_charge", 0.0)))
 	emit_signal("proc_feedback", "PACT HOLDS", Color(0.62, 0.78, 0.98, 1.0))
+
+
+func _on_combat_ended(victory: bool) -> void:
+	if not victory:
+		return
+	
+	# Performance Reward Depth: Perfect Encounter Payoff
+	if RunStats.get("combat_hits") == 0 and RunStats.get("combat_kills") > 0:
+		_add_bonus_progress(CLEAN_ENCOUNTER_PROGRESS_BONUS)
+		emit_signal("proc_feedback", "CLEAN HUNT BONUS", Color(0.98, 0.96, 0.62, 1.0))
 
 
 func _on_phrase_milestone(count: int) -> void:

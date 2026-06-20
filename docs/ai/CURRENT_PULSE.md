@@ -14,6 +14,7 @@ Compact active context for WHAT WE FED agents. Use this before loading massive h
 - Realtime tendency growth is live.
 - Ranch is deferred.
 - Performance reward depth is a current priority.
+- **Reward Depth Payoffs (2026-05-12)**: Style-based DNA scaling (up to 2.5x) and Clean Encounter bonuses (+45 director progress) are live.
 
 ## Current Art Doctrine
 - **LEGENDARY PIXEL FABLE INK** is the current base style.
@@ -62,6 +63,7 @@ Compact active context for WHAT WE FED agents. Use this before loading massive h
 - Enemy Purity Phase 1 established `EnemyStriker` as the HOW boundary while ZoneManager / `LaneManager.gd` owns WHEN and WHO coordination.
 - ZoneManager naming was adopted for current doctrine while `LaneManager.gd` filename remains for Godot UID safety.
 - **Input System Expansion (2026-05-06):** Controller support added. `project.godot` now has full joypad bindings: A/B/X/Y for attack/parry/dodge/support, LB+RB for ultimate, Left Stick for all `mod_*` movement. Tutorial strings in `PresentationTextContent.gd` use tokens (`[ATTACK]`, `[PARRY]`, `[DODGE]`, `[SUPPORT]`, `[ULTIMATE]`, `[MOVE]`) resolved at emit time. `systems/InputHelper.gd` (new) is the static device-detection helper. `systems/QuigNarrativeSystem.gd` gained `trigger_tutorial_line(subcategory)` + `_resolve_tokens()` + `_input()` for device tracking. No combat logic was changed.
+- **Reward Depth Payoffs (2026-05-12):** Style-based DNA multiplier (up to 2.5x at Sovereign) and Clean Encounter bonus (+45 progress) implemented. Added `dna_multiplier()` to `CombatMeter.gd`, updated `_process_dna_award` in `CombatScene.gd`, and added hitless victory payoff in `PerformanceRewardDirector.gd`.
 
 ## Historical ledger status
 Phase 1 documentation prune (2026-05-04) **moved** the long repo truth ledger and related truth snapshots into archive (not deleted):

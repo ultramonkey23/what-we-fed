@@ -199,9 +199,29 @@ func _resolve_authorized_strikers() -> Array[int]:
 		var jitter: float = _rng.randf() * 0.08
 		var score: float = _enemy_authority_debt[id] * 1.35 + age_bonus + damage_score * 0.35 + speed_score * 0.25 + jitter
 
-		# Bloodscent: Ashclaw is more aggressive if the player is bleeding.
-		if enemy.get("species_id") == "ashclaw":
+		var species: String = enemy.get("species_id", "")
+		
+		# Species-specific pressure spread (AI behavior)
+		if species == "ashclaw":
+			# Bloodscent: Ashclaw is more aggressive if the player is bleeding.
 			score += float(PlayerState.bleed_stacks) * 2.0
+		elif species == "gorefane":
+			# Brutal momentum: highly aggressive, especially when striking hard.
+			score += damage_score * 0.8
+		elif species == "thornback":
+			# Spiteful counter: patient, builds up debt, then strikes definitively.
+			score += _enemy_authority_debt[id] * 0.6
+		elif species == "veilskin":
+			# Evasive trickster: higher jitter, unpredictable.
+			score += _rng.randf() * 1.5
+		elif species == "siltgrip":
+			# Drag down: prioritizes attacking when player has low HP (finisher).
+			if PlayerState.hp < PlayerState.get_max_hp() * 0.4:
+				score += 3.0
+		elif species == "knellspine":
+			# Synchronized strike: tries to fire specifically when another is firing.
+			if _fire_cycle_index % 3 == 0:
+				score += 2.0
 
 		candidates.append({"id": id, "score": score})
 

@@ -134,16 +134,16 @@ func _texture_for_kind(kind: StringName) -> Texture2D:
 func _config_for_kind(kind: StringName) -> Dictionary:
 	match kind:
 		KIND_PERFECT:
-			return {"base_scale": 0.225, "lifetime": 0.16, "peak_alpha": 0.96, "thin_stretch": false, "end_scale_mul": 1.08, "rise": 0.040, "hold": 0.020}
+			return {"base_scale": 0.350, "lifetime": 0.22, "peak_alpha": 1.0, "thin_stretch": false, "end_scale_mul": 1.25, "rise": 0.050, "hold": 0.030}
 		KIND_PARRY:
-			return {"base_scale": 0.205, "lifetime": 0.145, "peak_alpha": 0.94, "thin_stretch": false, "end_scale_mul": 1.07, "rise": 0.038, "hold": 0.018}
+			return {"base_scale": 0.320, "lifetime": 0.18, "peak_alpha": 0.98, "thin_stretch": false, "end_scale_mul": 1.20, "rise": 0.045, "hold": 0.025}
 		KIND_MISS:
 			return {"base_scale": 0.16, "lifetime": 0.105, "peak_alpha": 0.80, "thin_stretch": true, "end_scale_mul": 1.14, "rise": 0.030, "hold": 0.010, "min_scale_mult": 0.82, "angle_jitter_deg": 5.0}
 		KIND_DODGE:
 			return {"base_scale": 0.15, "lifetime": 0.11, "peak_alpha": 0.76, "thin_stretch": true, "end_scale_mul": 1.11, "rise": 0.032, "hold": 0.012, "min_scale_mult": 0.86, "angle_jitter_deg": 4.0}
 		KIND_ELITE:
-			return {"base_scale": 0.215, "lifetime": 0.13, "peak_alpha": 0.92, "thin_stretch": false, "end_scale_mul": 1.06, "rise": 0.034, "hold": 0.014}
+			return {"base_scale": 0.315, "lifetime": 0.18, "peak_alpha": 0.96, "thin_stretch": false, "end_scale_mul": 1.15, "rise": 0.040, "hold": 0.020}
 		KIND_BOSS:
-			return {"base_scale": 0.265, "lifetime": 0.16, "peak_alpha": 0.98, "thin_stretch": false, "end_scale_mul": 1.09, "rise": 0.042, "hold": 0.020}
+			return {"base_scale": 0.420, "lifetime": 0.26, "peak_alpha": 1.0, "thin_stretch": false, "end_scale_mul": 1.35, "rise": 0.050, "hold": 0.030}
 		_:
 			return {"base_scale": 0.18, "lifetime": 0.10, "peak_alpha": 0.80, "thin_stretch": false, "end_scale_mul": 1.0}

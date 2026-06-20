@@ -17,9 +17,17 @@ const KIND_BOSS := &"boss"
 @export var texture_boss: Texture2D
 
 
+var _pool: Array[Sprite2D] = []
+
 func _ready() -> void:
 	z_index = 31
 	_fill_default_textures()
+	for i in range(30):
+		var spr = Sprite2D.new()
+		spr.visible = false
+		add_child(spr)
+		_pool.append(spr)
+		
 	var host: Node = get_parent()
 	if host != null and host.has_signal("impact_fx_requested"):
 		if not host.impact_fx_requested.is_connected(_on_impact_fx_requested):
@@ -57,7 +65,15 @@ func spawn(kind: StringName, world_pos: Vector2, direction: Vector2, scale_mult:
 		return
 
 	var cfg := _config_for_kind(kind)
-	var spr := Sprite2D.new()
+	
+	var spr: Sprite2D
+	if _pool.size() > 0:
+		spr = _pool.pop_back()
+	else:
+		spr = Sprite2D.new()
+		add_child(spr)
+		
+	spr.visible = true
 	spr.texture = tex
 	spr.centered = true
 	spr.position = world_pos
@@ -80,7 +96,6 @@ func spawn(kind: StringName, world_pos: Vector2, direction: Vector2, scale_mult:
 		spr.scale = Vector2(s, s)
 
 	spr.modulate = Color(1.0, 1.0, 1.0, 0.0)
-	add_child(spr)
 
 	var rise: float = float(cfg.get("rise", 0.038))
 	var hold: float = float(cfg.get("hold", 0.020))
@@ -91,7 +106,12 @@ func spawn(kind: StringName, world_pos: Vector2, direction: Vector2, scale_mult:
 		t.tween_interval(hold)
 	t.tween_property(spr, "modulate:a", 0.0, fade_time)
 	t.parallel().tween_property(spr, "scale", spr.scale * cfg.end_scale_mul, fade_time)
-	t.tween_callback(spr.queue_free)
+	t.tween_callback(func(): _recycle_sprite(spr))
+
+
+func _recycle_sprite(spr: Sprite2D) -> void:
+	spr.visible = false
+	_pool.append(spr)
 
 
 func _texture_for_kind(kind: StringName) -> Texture2D:

@@ -239,6 +239,7 @@ var _enemy_phase_by_id: Dictionary = {}
 # Per-enemy HP-display cache: skip identical fill/color/text rewrites and tween bumps.
 # Shape: { enemy_id: { "ratio_bucket": int, "color_tag": int, "hp_text": String } }.
 var _enemy_marker_hp_cache: Dictionary = {}
+var _damage_number_pool: Array[Label] = []
 
 # ─── BOSS STATE ──────────────────────────────────────────────────────────────
 var _is_boss_encounter: bool = false
@@ -5350,7 +5351,14 @@ func _spawn_damage_number(enemy_id: int, damage: float) -> void:
 		damage_color = Color(0.76, 0.70, 0.62, 0.82)
 
 	var start_pos: Vector2 = root.position + Vector2(8.0, -24.0 if font_size >= 25 else -18.0)
-	var lbl := Label.new()
+	var lbl: Label
+	if _damage_number_pool.size() > 0:
+		lbl = _damage_number_pool.pop_back()
+	else:
+		lbl = Label.new()
+		_enemy_marker_container.add_child(lbl)
+	
+	lbl.visible = true
 	lbl.text = "%.0f" % damage
 	lbl.position = start_pos
 	lbl.z_index = 13 if font_size >= 25 else 10
@@ -5358,11 +5366,13 @@ func _spawn_damage_number(enemy_id: int, damage: float) -> void:
 	lbl.modulate = damage_color
 	lbl.add_theme_font_size_override("font_size", font_size)
 	lbl.add_theme_constant_override("outline_size", outline_size)
-	_enemy_marker_container.add_child(lbl)
 	var tween := create_tween()
 	tween.tween_property(lbl, "position:y", start_pos.y - rise, float_time)
 	tween.parallel().tween_property(lbl, "modulate:a", 0.0, float_time)
-	tween.tween_callback(lbl.queue_free)
+	tween.tween_callback(func():
+		lbl.visible = false
+		_damage_number_pool.append(lbl)
+	)
 
 
 func _refresh_enemy_marker_health(enemy_id: int) -> void:

@@ -1238,7 +1238,7 @@ func _on_creature_eaten(_creature_data: Dictionary) -> void:
 	if _eat_ratchet_stacks >= max_stacks:
 		return
 	_eat_ratchet_stacks += 1
-	GameState.player_base_damage += float(ratchet_effect.get("damage_per_eat", 2.0))
+	PlayerState.base_damage += float(ratchet_effect.get("damage_per_eat", 2.0))
 	emit_signal("proc_feedback", "DEBT PAID  +%d" % _eat_ratchet_stacks, Color(0.88, 0.56, 0.72, 1.0))
 
 

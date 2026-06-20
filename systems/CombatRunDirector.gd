@@ -63,8 +63,8 @@ func initialize_run(region: String, dev_harness_request: Dictionary = {}) -> voi
 	regular_level_index = clampi(int(dev_harness_request.get("regular_level_index", GameState.current_encounter_index)), 0, max(GameState.regular_level_playlist.size() - 1, 0))
 	var level_count: int = GameState.regular_level_playlist.size()
 	
-	if GameState.run_path_plan.is_empty() or GameState.run_path_plan.size() != level_count:
-		GameState.run_path_plan = PATH_RUN_PLAN.build_plan(region_id, level_count)
+	if RunState.path_plan.is_empty() or RunState.path_plan.size() != level_count:
+		RunState.path_plan = PATH_RUN_PLAN.build_plan(region_id, level_count)
 	
 	prepare_path_context_for_level(regular_level_index)
 	
@@ -188,7 +188,7 @@ func _build_level_windows_for_song(song_data: Dictionary) -> Array:
 	return regular_level_windows
 
 func prepare_path_context_for_level(level_idx: int) -> void:
-	var node: Dictionary = PATH_RUN_PLAN.get_level_node(GameState.run_path_plan, level_idx)
+	var node: Dictionary = PATH_RUN_PLAN.get_level_node(RunState.path_plan, level_idx)
 	# Mock objects for director compatibility if needed, but PathRunPlan mostly needs references.
 	active_path_context = PATH_RUN_PLAN.apply_node_effects(node, self, null, null, false)
 

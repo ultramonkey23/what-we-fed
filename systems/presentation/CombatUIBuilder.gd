@@ -385,8 +385,8 @@ func _setup_ui() -> void:
 
 	hp_bar.reparent(_hud_top_left_container)
 	hp_bar.min_value = 0.0
-	hp_bar.max_value = GameState.player_max_hp
-	hp_bar.value = GameState.player_hp
+	hp_bar.max_value = PlayerState.max_hp
+	hp_bar.value = PlayerState.hp
 	hp_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	hp_bar.custom_minimum_size = Vector2(0.0, 14.0)
 	hp_bar.show_percentage = false

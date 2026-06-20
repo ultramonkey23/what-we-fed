@@ -327,7 +327,7 @@ func _ready() -> void:
 	_initialize_run_state()
 	_connect_signals()
 	
-	_start_run_engagement(not GameState.run_in_progress)
+	_start_run_engagement(not RunState.run_in_progress)
 	
 	if not _dev_harness_request.is_empty():
 		call_deferred("_apply_dev_harness_post_boot_state")
@@ -2211,9 +2211,9 @@ func _apply_event_effect(effect: Dictionary) -> void:
 				# Trigger re-dominance check if GameState has it
 				GameState._resolve_world_fate_dominance()
 		"hp_restore":
-			GameState.player_hp = minf(GameState.player_hp + float(effect.get("value", 0)), GameState.player_max_hp)
+			PlayerState.hp = minf(PlayerState.hp + float(effect.get("value", 0)), PlayerState.max_hp)
 		"hp_restore_percent":
-			GameState.player_hp = minf(GameState.player_hp + GameState.player_max_hp * float(effect.get("value", 0)), GameState.player_max_hp)
+			PlayerState.hp = minf(PlayerState.hp + PlayerState.max_hp * float(effect.get("value", 0)), PlayerState.max_hp)
 		"permanent_stat_gain":
 			var stat = str(effect.get("stat", ""))
 			var val = float(effect.get("value", 0))
@@ -2331,9 +2331,9 @@ func _try_present_path_choice_after_run_spine() -> bool:
 	var next_level_index: int = _run_director.regular_level_index + 1
 	if next_level_index >= _run_director.regular_level_windows.size():
 		return false
-	if not PATH_RUN_PLAN.is_branch_slot(GameState.run_path_plan, next_level_index):
+	if not PATH_RUN_PLAN.is_branch_slot(RunState.path_plan, next_level_index):
 		return false
-	var candidates: Array[Dictionary] = PATH_RUN_PLAN.get_branch_candidates(GameState.run_path_plan, next_level_index)
+	var candidates: Array[Dictionary] = PATH_RUN_PLAN.get_branch_candidates(RunState.path_plan, next_level_index)
 	if candidates.is_empty():
 		return false
 	_pending_path_choice_nodes = candidates
@@ -2370,8 +2370,8 @@ func _on_run_spine_path_node_selected(node_id: String) -> void:
 		)
 		return
 	PATH_RUN_PLAN.apply_node_effects(chosen_node, GameState, RunGrowth, _performance_reward_director, true)
-	GameState.run_path_plan = PATH_RUN_PLAN.apply_branch_choice(GameState.run_path_plan, _pending_path_choice_level_index, node_id)
-	GameState.run_path_chosen_ids.append(node_id)
+	RunState.path_plan = PATH_RUN_PLAN.apply_branch_choice(RunState.path_plan, _pending_path_choice_level_index, node_id)
+	RunState.path_chosen_ids.append(node_id)
 	var chosen_name: String = node_id.replace("_", " ").to_upper()
 	for node in _pending_path_choice_nodes:
 		if str(node.get("id", "")) == node_id:
@@ -2430,8 +2430,8 @@ func _prepare_path_context_for_level(level_index: int) -> void:
 
 func _path_branch_label_for_level(level_index: int) -> String:
 	var branch_counter: int = 0
-	for i in range(GameState.run_path_plan.size()):
-		var entry: Dictionary = Dictionary(GameState.run_path_plan[i])
+	for i in range(RunState.path_plan.size()):
+		var entry: Dictionary = Dictionary(RunState.path_plan[i])
 		if not bool(entry.get("is_branch_slot", false)):
 			continue
 		if int(entry.get("level_index", -1)) == level_index:
@@ -3151,8 +3151,8 @@ func _debug_wait_for_projectile_clear(lane: int, max_wait: float) -> bool:
 
 func _debug_set_player_hp_ratio(ratio: float) -> void:
 	var clamped_ratio: float = clampf(ratio, 0.15, 1.0)
-	GameState.player_hp = max(GameState.player_max_hp * clamped_ratio, 1.0)
-	_hud_presenter.refresh_hp(GameState.player_hp, GameState.player_max_hp)
+	PlayerState.hp = max(PlayerState.max_hp * clamped_ratio, 1.0)
+	_hud_presenter.refresh_hp(PlayerState.hp, PlayerState.max_hp)
 
 
 func _debug_begin_boss_preview(trigger_threshold: bool) -> void:
@@ -3334,9 +3334,9 @@ func _draw_timing_circles() -> void:
 func _prepare_for_encounter(reset_hp: bool) -> void:
 	# Resets encounter-local state. HP only resets at run start, not between encounters.
 	if reset_hp:
-		GameState.player_hp = GameState.player_max_hp
+		PlayerState.hp = PlayerState.max_hp
 
-	_hud_presenter.refresh_hp(GameState.player_hp, GameState.player_max_hp)
+	_hud_presenter.refresh_hp(PlayerState.hp, PlayerState.max_hp)
 
 	player_combat.set_combat_enabled(true)
 
@@ -3563,17 +3563,17 @@ func _finish_run(victory: bool) -> void:
 	_hide_growth_choice_surface()
 	_growth_choice_context.clear()
 	GameState.clear_growth_choice_intersection_payload()
-	GameState.run_in_progress = false
+	RunState.run_in_progress = false
 	var tendency_snapshot: Dictionary = {}
 	tendency_snapshot = Dictionary(RunGrowth.get_tendency_snapshot())
 	if _is_boss_encounter:
 		GameState.register_world_boss_outcome(_resolve_world_boss_outcome_id(victory), {
 			"region_id": _region_id,
 			"boss_name": str(_active_encounter.get("boss_name", "")),
-			"run_number": int(GameState.run_number)
+			"run_number": int(RunState.run_number)
 		})
 	GameState.resolve_world_fate_for_run({
-		"run_number": int(GameState.run_number),
+		"run_number": int(RunState.run_number),
 		"victory": victory,
 		"is_boss_encounter": _is_boss_encounter,
 		"tendency_snapshot": tendency_snapshot,
@@ -4386,7 +4386,7 @@ func _resolve_newest_untracked_enemy_id(enemies: Dictionary) -> int:
 
 
 func _resolve_dna_pickup_state(species_id: String, dna_result: Dictionary) -> String:
-	if GameState.player_max_hp > 0.0 and (GameState.player_hp / GameState.player_max_hp) <= 0.35:
+	if PlayerState.max_hp > 0.0 and (PlayerState.hp / PlayerState.max_hp) <= 0.35:
 		return "low_hp"
 	var support_charge: float = 0.0
 	support_charge = float(RunGrowth.get("support_charge"))
@@ -4772,12 +4772,12 @@ func _on_run_growth_level_resolved(result: Dictionary) -> void:
 	var snapshot: Dictionary = result.get("snapshot", {})
 	if not snapshot.is_empty():
 		_hud_presenter.refresh_hp(
-			float(snapshot.get("player_hp", GameState.player_hp)),
-			float(snapshot.get("player_max_hp", GameState.player_max_hp))
+			float(snapshot.get("player_hp", PlayerState.hp)),
+			float(snapshot.get("player_max_hp", PlayerState.max_hp))
 		)
 		_hud_presenter.refresh_stats(
 			float(snapshot.get("attack_damage", GameState.get_attack_damage())),
-			float(snapshot.get("player_defense", GameState.player_defense))
+			float(snapshot.get("player_defense", PlayerState.defense))
 		)
 
 

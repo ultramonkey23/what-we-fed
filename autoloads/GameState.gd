@@ -49,146 +49,191 @@ func increment_meta_limit_breakers(achievement_id: String = "") -> void:
 	EventBus.emit_signal("limit_breaker_triggered", achievement_id)
 
 
-# API Proxies for backward compatibility
+# --- DEPRECATED API PROXIES --- 
+# These proxies are deprecated. Call the modular Autoloads directly (e.g., PlayerState, RunState).
+# DEPRECATED
 var run_number: int:
 	get: return run.run_number
 	set(v): run.run_number = v
+# DEPRECATED
 var run_in_progress: bool:
 	get: return run.run_in_progress
 	set(v): run.run_in_progress = v
+# DEPRECATED
 var player_hp: float:
 	get: return player.hp
 	set(v): player.hp = v
+# DEPRECATED
 var player_max_hp: float:
 	get: return player.max_hp
 	set(v): player.max_hp = v
+# DEPRECATED
 var player_base_damage: float:
 	get: return player.base_damage
 	set(v): player.base_damage = v
+# DEPRECATED
 var player_defense: float:
 	get: return player.defense
 	set(v): player.defense = v
 
 # Ecosystem Stats Proxies
+# DEPRECATED
 var stat_vitality: float:
 	get: return player.stat_vitality
 	set(v): player.stat_vitality = v
+# DEPRECATED
 var stat_power: float:
 	get: return player.stat_power
 	set(v): player.stat_power = v
+# DEPRECATED
 var stat_carapace: float:
 	get: return player.stat_carapace
 	set(v): player.stat_carapace = v
+# DEPRECATED
 var stat_endurance: float:
 	get: return player.stat_endurance
 	set(v): player.stat_endurance = v
+# DEPRECATED
 var stat_swiftness: float:
 	get: return player.stat_swiftness
 	set(v): player.stat_swiftness = v
+# DEPRECATED
 var stat_luck: float:
 	get: return player.stat_luck
 	set(v): player.stat_luck = v
+# DEPRECATED
 var stat_potential: float:
 	get: return player.stat_potential
 	set(v): player.stat_potential = v
+# DEPRECATED
 var stat_intelligence: float:
 	get: return player.stat_intelligence
 	set(v): player.stat_intelligence = v
+# DEPRECATED
 var stat_adaptability: float:
 	get: return player.stat_adaptability
 	set(v): player.stat_adaptability = v
 
+# DEPRECATED
 var player_bleed_stacks: int:
 	get: return player.bleed_stacks
 	set(v): player.bleed_stacks = v
 
+# DEPRECATED
 var is_in_combat: bool:
 	get: return run.is_in_combat
 	set(v): run.is_in_combat = v
 
+# DEPRECATED
 var reward_loot_slots: Dictionary:
 	get: return rewards.loot_slots
 	set(v): rewards.loot_slots = v
+# DEPRECATED
 var reward_artifact_slots: Dictionary:
 	get: return rewards.artifact_slots
 	set(v): rewards.artifact_slots = v
+# DEPRECATED
 var reward_consumable_slots: Dictionary:
 	get: return rewards.consumable_slots
 	set(v): rewards.consumable_slots = v
 
+# DEPRECATED
 var reward_bond_streak: int:
 	get: return rewards.bond_streak
 	set(v): rewards.bond_streak = v
+# DEPRECATED
 var reward_eat_streak: int:
 	get: return rewards.eat_streak
 	set(v): rewards.eat_streak = v
+# DEPRECATED
 var reward_bond_total: int:
 	get: return rewards.bond_total
 	set(v): rewards.bond_total = v
+# DEPRECATED
 var reward_eat_total: int:
 	get: return rewards.eat_total
 	set(v): rewards.eat_total = v
 
+# DEPRECATED
 var absorbed_types: Array[Dictionary]:
 	get: return rewards.absorbed_types
 	set(v): rewards.absorbed_types = v
+# DEPRECATED
 var active_mutations: Array[Dictionary]:
 	get: return rewards.active_mutations
 	set(v): rewards.active_mutations = v
 
+# DEPRECATED
 var last_beat_quality: String:
 	get: return run.last_beat_quality
 	set(v): run.last_beat_quality = v
 
+# DEPRECATED
 var dna_by_species: Dictionary:
 	get: return creatures.dna_by_species
 	set(v): creatures.dna_by_species = v
+# DEPRECATED
 var archive_traits: Array[String]:
 	get: return creatures.archive_traits
 	set(v): creatures.archive_traits = v
+# DEPRECATED
 var predation_debt: Dictionary:
 	get: return creatures.predation_debt
 	set(v): creatures.predation_debt = v
+# DEPRECATED
 var roster: Array[Dictionary]:
 	get: return creatures.roster
 	set(v): creatures.roster = v
+# DEPRECATED
 var lair_roster: Array[Dictionary]:
 	get: return creatures.lair_roster
 	set(v): creatures.lair_roster = v
+# DEPRECATED
 var active_lair_creature_id: String:
 	get: return creatures.active_lair_creature_id
 	set(v): creatures.active_lair_creature_id = v
+# DEPRECATED
 var active_lair_creature_ids: Array[String]:
 	get: return creatures.active_lair_creature_ids
 	set(v): creatures.active_lair_creature_ids = v
+# DEPRECATED
 var active_region: Dictionary:
 	get: return run.active_region
 	set(v): run.active_region = v
+# DEPRECATED
 var run_path_plan: Array[Dictionary]:
 	get: return run.path_plan
 	set(v): run.path_plan = v
+# DEPRECATED
 var run_path_chosen_ids: PackedStringArray:
 	get: return run.path_chosen_ids
 	set(v): run.path_chosen_ids = v
+# DEPRECATED
 var growth_choice_intersection_payload: Dictionary:
 	get: return run.growth_choice_intersection_payload
 	set(v): run.growth_choice_intersection_payload = v
 
+# DEPRECATED
 var current_encounter_index: int:
 	get: return run.current_encounter_index
 	set(v): run.current_encounter_index = v
+# DEPRECATED
 var encounters_before_boss: int:
 	get: return run.encounters_before_boss
 	set(v): run.encounters_before_boss = v
+# DEPRECATED
 var boss_ready: bool:
 	get: return run.boss_ready
 	set(v): run.boss_ready = v
+# DEPRECATED
 var selected_difficulty_key: String:
 	get: return run.selected_difficulty_key
 	set(v): run.selected_difficulty_key = v
+# DEPRECATED
 var world_state_key: String:
 	get: return run.world_state_key
 	set(v): run.world_state_key = v
+# DEPRECATED
 var regular_level_playlist: Array:
 	get: return run.regular_level_playlist
 	set(v): run.regular_level_playlist = v
@@ -237,15 +282,19 @@ func get_next_run_scene_path() -> String:
 	return "res://scenes/ui/TranslationScene.tscn"
 
 
+# DEPRECATED
 var world_fate_channels: Dictionary:
 	get: return world_fate.channels
 	set(v): world_fate.channels = v
+# DEPRECATED
 var world_dominant_fate: String:
 	get: return world_fate.dominant_fate
 	set(v): world_fate.dominant_fate = v
+# DEPRECATED
 var world_stain_fates: PackedStringArray:
 	get: return world_fate.stain_fates
 	set(v): world_fate.stain_fates = v
+# DEPRECATED
 var world_fate_last_snapshot: Dictionary:
 	get: return world_fate.last_snapshot
 	set(v): world_fate.last_snapshot = v
@@ -270,22 +319,28 @@ const DEFENSE_DAMAGE_REDUCTION_CAP = PlayerState.DEFENSE_DAMAGE_REDUCTION_CAP
 const COMBINED_DAMAGE_REDUCTION_CAP: float = 0.45
 
 # Internal state
+# DEPRECATED
 var _bond_order_counter: int:
 	get: return creatures._bond_order_counter
 	set(v): creatures._bond_order_counter = v
 
+# DEPRECATED
 var _world_run_bond_events: int:
 	get: return world_fate.bond_events
 	set(v): world_fate.bond_events = v
+# DEPRECATED
 var _world_run_eat_events: int:
 	get: return world_fate.eat_events
 	set(v): world_fate.eat_events = v
+# DEPRECATED
 var _world_pending_boss_events: Array[Dictionary]:
 	get: return world_fate.pending_boss_events
 	set(v): world_fate.pending_boss_events = v
+# DEPRECATED
 var _world_run_tempo_counts: Dictionary:
 	get: return world_fate.tempo_counts
 	set(v): world_fate.tempo_counts = v
+# DEPRECATED
 var _world_run_tempo_events: Array[Dictionary]:
 	get: return world_fate.tempo_events
 	set(v): world_fate.tempo_events = v

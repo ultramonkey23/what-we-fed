@@ -3,7 +3,7 @@ extends RefCounted
 # Region data for the Route-Lite layer.
 # Each region has a name, flavor line, tag, and one run modifier.
 # Modifier types:
-#   "attack_bonus"           — adds to GameState.player_base_damage at run start
+#   "attack_bonus"           — adds to PlayerState.base_damage at run start
 #   "max_hp_bonus"           — adds to PlayerState.max_hp at run start
 #   "starting_support_charge" — sets RunGrowth.support_charge at run start (needs a bonded creature)
 

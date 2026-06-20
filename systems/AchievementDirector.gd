@@ -25,7 +25,7 @@ func _on_run_completed(success: bool) -> void:
 	if not success:
 		return
 		
-	# Check milestones via GameState.run_stats (if available) or by querying active systems.
+	# Check milestones via RunStats (if available) or by querying active systems.
 	# We rely on the authoritative RunStats data.
 	var run_stats = get_tree().root.find_child("RunStats", true, false)
 	if run_stats == null:

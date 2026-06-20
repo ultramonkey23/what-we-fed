@@ -4,7 +4,7 @@
 - Snapshot type: Command Center Lockbox mirror
 - Canonical owner: Command Center v1
 - Repo role: agent-facing snapshot for audits/handoffs
-- Synced from: WHAT_WE_FED_LOCKBOX_REGISTRY_FULL.md
+- Synced from: docs/archive/WHAT_WE_FED_LOCKBOX_REGISTRY_FULL.md
 - Synced date: 2026-04-25
 - Synced by: Codex
 - Repo commit before sync: 1849840

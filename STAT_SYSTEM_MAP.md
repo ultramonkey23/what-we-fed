@@ -38,7 +38,7 @@
   - Region: GameState.gd (active_region modifiers)
   - Rewards: RunGrowth.gd, PerformanceRewardDirector.gd
 - **Usage:**
-  - Combat: PlayerCombat.gd, LaneManager.gd, CombatMeter.gd
+  - Combat: PlayerCombat.gd, ZoneManager.gd, CombatMeter.gd
   - UI: CombatHUDPresenter.gd, RunGrowth.gd (signals)
 
 ## Signals/Events

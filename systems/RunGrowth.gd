@@ -69,6 +69,8 @@ func _ready() -> void:
 		EventBus.creature_bonded.connect(_on_creature_bonded)
 	if not EventBus.creature_eaten.is_connected(_on_creature_eaten):
 		EventBus.creature_eaten.connect(_on_creature_eaten)
+	if not EventBus.support_manual_activation_requested.is_connected(_on_support_activation_requested):
+		EventBus.support_manual_activation_requested.connect(_on_support_activation_requested)
 
 
 func _exit_tree() -> void:

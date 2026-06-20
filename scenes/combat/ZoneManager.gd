@@ -334,7 +334,7 @@ func spawn_enemy_at_angle(angle: float, enemy_data: Dictionary) -> int:
 	_cache_enemy_scene(id, enemy)
 	
 	var so := EnemyStriker.new()
-	so.setup(enemy, (_enemy_states[id, _projectile_scene].projectile_scene if _enemy_states.has(id, _projectile_scene) else null) as PackedScene)
+	so.setup(enemy, (_enemy_states[id].projectile_scene if _enemy_states.has(id) else _projectile_scene) as PackedScene)
 	_enemy_states[id].striker_object = so
 
 	# Logic for joining orbit vs striker slot remains authority-budget driven
@@ -669,7 +669,7 @@ func promote_orbiting(budget: int) -> void:
 	var orbit_index: int = 0
 	while current_strikers < budget and orbit_index < _orbiting_enemy_ids.size():
 		var id: int = _orbiting_enemy_ids[orbit_index]
-		var angle: float = (_enemy_states[id, _rng.randf_range(0.0, TAU].orbit_angle if _enemy_states.has(id, _rng.randf_range(0.0, TAU) else 0.0))
+		var angle: float = (_enemy_states[id].orbit_angle if _enemy_states.has(id) else _rng.randf_range(0.0, TAU))
 		var lane: int = _get_lane_from_angle(angle)
 
 		_enemy_states[id].striker_data = {"angle": angle, "lane": lane}

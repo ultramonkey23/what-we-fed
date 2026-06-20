@@ -178,7 +178,7 @@ func _resolve_authorized_strikers() -> Array[int]:
 	var strikers: Dictionary = _zone_manager.get_all_strikers()
 	var all_enemies: Dictionary = _zone_manager.get_all_enemies()
 
-	var candidates: Array = []
+	var candidates: Array[Dictionary] = []
 	for id in strikers:
 		var enemy: Dictionary = all_enemies.get(id, {})
 		if enemy.is_empty():

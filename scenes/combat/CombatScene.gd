@@ -4,21 +4,11 @@ signal impact_fx_requested(kind: StringName, world_pos: Vector2, direction: Vect
 
 # ─── ONREADY NODES ───────────────────────────────────────────────────────────
 @onready var background: ColorRect = $Background
-@onready var flash_overlay: ColorRect = $FlashOverlay
 @onready var zone_manager: Node = $ZoneManager
 @onready var player_combat: Node2D = $PlayerCombat
-@onready var combat_meter: Node = $CombatMeter
 @onready var camera_2d: Camera2D = $Camera2D
-@onready var ui_layer: CanvasLayer = $UI
 
 # ─── UI ELEMENTS ─────────────────────────────────────────────────────────────
-@onready var combo_label: Label = $UI/ComboLabel
-@onready var style_label: Label = $UI/StyleLabel
-@onready var stamina_bar: ProgressBar = $UI/StaminaBar
-@onready var hp_bar: ProgressBar = $UI/HPBar
-@onready var ultimate_label: Label = $UI/UltimateLabel
-@onready var result_label: Label = $UI/ResultLabel
-@onready var controls_label: Label = $UI/ControlsLabel
 
 # ─── PRELOADS ────────────────────────────────────────────────────────────────
 const COMBAT_FEEL_CONTENT = preload("res://data/CombatFeelContent.gd")
@@ -100,94 +90,21 @@ var _translation_hint: Label = null
 var _translation_can_continue: bool = false
 
 # ─── UI NODES (DYNAMICALLY CREATED) ──────────────────────────────────────────
-var _hud_top_left_container: VBoxContainer = null
-var _hud_top_left_panel: Control = null
-var _hud_top_right_container: VBoxContainer = null
-var _hud_top_right_panel: PanelContainer = null
-var _hud_top_right_accent_host: Control = null
-var _hud_right_stack: VBoxContainer = null
-var _hud_bottom_container: HBoxContainer = null
-var _hud_root: Control = null
-var _hud_decor_layer: Control = null
-var _hud_primary_layer: Control = null
-var _hud_secondary_layer: Control = null
-var _hud_overlay_layer: Control = null
-var _title_card: Label = null
-var _subtitle_card: Label = null
-var _timing_circle_container: Node2D = null
-var _timing_rings_cache: Array[Dictionary] = []
 var _enemy_marker_container: Node2D = null
 var _lane_marker_container: Node2D = null
 var _texture_cache: Dictionary = {}
-var _attack_fx_container: Node2D = null
-var _combo_shell: ColorRect = null
-var _style_shell: ColorRect = null
-var _resource_shell: ColorRect = null
-var _support_shell: ColorRect = null
-var _support_bar: ProgressBar = null
-var _support_value_label: Label = null
-var _support_name_label: Label = null
-var _run_build_shell: ColorRect = null
-var _eaten_value_label: Label = null
-var _upgrade_value_label: Label = null
-var _bond_value_label: Label = null
-var _support_trigger_label: Label = null
-var _atk_value_label: Label = null
-var _def_value_label: Label = null
-var _quig_anchor_label: Label = null
-var _quig_anchor_sprite: TextureRect = null
-var _quig_shell: ColorRect = null
-var _hp_value_label: Label = null
-var _exp_value_label: Label = null
-var _dna_route_label: Label = null
-var _dna_route_shell: ColorRect = null
-var _mutation_value_label: Label = null
-var _run_score_label: Label = null
-var _end_stats_label: Label = null
-var _dna_shell: ColorRect = null
-var _dna_emblem: TextureRect = null
-var _dna_slot_labels: Array[Label] = []
 var _battlefield_panel: Control = null
 var _bg_sprite: Control = null
-var _bonded_creature_sprite: Sprite2D = null
 var _bonded_creature_species: String = ""
 var _presentation_runtime: RefCounted = null
-var _presentation_controller: Node = null
 var _combat_visual_rig: Node2D = null
-var _hud_presenter: RefCounted = null
 var _ui_builder: CombatUIBuilder
-var _scouter_shell: Panel = null
-var _power_scouter_label: Label = null
 var _combat_audio_player: Node = null
-var _timing_debug_label: Label = null
 var _last_combat_input_report: Dictionary = {}
 
 # ─── REWARD OVERLAY ELEMENTS ─────────────────────────────────────────────────
-var _reward_overlay: ColorRect = null
-var _reward_wrapper_shell: PanelContainer = null
-var _reward_panel: ColorRect = null
-var _reward_title_label: Label = null
-var _reward_body_label: Label = null
-var _reward_quig_label: Label = null
-var _reward_quig_sprite: TextureRect = null
-var _reward_hint_label: Label = null
-var _reward_bond_card: ColorRect = null
-var _reward_eat_card: ColorRect = null
-var _reward_bond_label: Label = null
-var _reward_dna_label: Label = null
-var _reward_eat_label: Label = null
-var _reward_bond_effect_label: Label = null
-var _reward_eat_effect_label: Label = null
-var _reward_creature_tag_label: Label = null
-var _reward_creature_portrait: TextureRect = null
-var _reward_body_scroll: ScrollContainer = null
-var _reward_bond_effect_scroll: ScrollContainer = null
-var _reward_eat_effect_scroll: ScrollContainer = null
 
 # ─── UPGRADE CHOICE ELEMENTS ─────────────────────────────────────────────────
-var _upgrade_overlay: ColorRect = null
-var _upgrade_panel: ColorRect = null
-var _upgrade_card_nodes: Array[ColorRect] = []
 var _awaiting_upgrade_choice: bool = false
 var _pending_upgrades: Array[Dictionary] = []
 var _pending_predation: Array[Dictionary] = []
@@ -201,15 +118,8 @@ var _growth_choice_surface: Node2D = null
 var _growth_choice_context: Dictionary = {}
 
 # ─── LIVE REWARD ELEMENTS ────────────────────────────────────────────────────
-var _live_reward_shell: PanelContainer = null
-var _live_reward_title_label: Label = null
-var _live_reward_body_label: Label = null
-var _live_reward_dna_label: Label = null
-var _live_reward_hint_label: Label = null
 var _song_reward_stall_guard: float = 0.0
 var _pending_reward_dna_locked: bool = false
-var _reward_choice_made: bool = false
-var _live_reward_offer_timer: float = 0.0
 var _live_reward_queue: Array[Dictionary] = []
 var _between_level_growth_queue: Array[Dictionary] = []
 var _between_level_growth_stored_this_level: bool = false
@@ -246,10 +156,6 @@ var _damage_number_pool: Array[Label] = []
 var _is_boss_encounter: bool = false
 var _boss_total_hp: float = 0.0
 var _boss_current_hp: float = 0.0
-var _boss_hp_shell: ColorRect = null
-var _boss_hp_bar: ProgressBar = null
-var _boss_name_label: Label = null
-var _boss_state_label: Label = null
 
 # ─── LANE VISUALS ────────────────────────────────────────────────────────────
 var _lane_strips: Dictionary = {}
@@ -265,8 +171,6 @@ var _next_song_enemy_id: int = 100
 var _song_phases: Array = []
 var _song_conductor: Node = null
 var _song_enemy_lanes: Dictionary = {}
-var _song_timer_label: Label = null
-var _song_phase_label: Label = null
 var _song_rng: RandomNumberGenerator = RandomNumberGenerator.new()
 var _latest_ecology_snapshot: Dictionary = {}
 var _active_attack_authority_budget: int = 2
@@ -283,7 +187,6 @@ var _song_combat_state: Dictionary = {}
 var _difficulty_modifier_director: RefCounted = null
 var _last_beat_index: int = -1
 var _song_level_transitioning: bool = false
-var _beat_feedback_label: Label = null
 var _last_mastery_context: Dictionary = {}
 var _quig_anim_accum: float = 0.0
 var _quig_anim_frame: int = 0
@@ -311,7 +214,6 @@ var _critical_threat_pressure: float = 0.0
 var _critical_threat_sector: int = -1
 var _readability_pulse_mult: float = 1.0
 var _critical_warning_cooldown_until_ms: int = 0
-var _feedback_shell: RefCounted = null
 
 const CRITICAL_WARNING_COOLDOWN_MS: int = 900
 
@@ -442,8 +344,8 @@ func _exit_tree() -> void:
 	if EventBus.quig_narrative_triggered.is_connected(_on_quig_narrative_triggered):
 		EventBus.quig_narrative_triggered.disconnect(_on_quig_narrative_triggered)
 	
-	if _hud_presenter != null:
-		_hud_presenter.cleanup()
+	if _ui_builder._hud_presenter != null:
+		_ui_builder._hud_presenter.cleanup()
 
 	if _victory_reward_director != null and is_instance_valid(_victory_reward_director):
 		if _victory_reward_director.has_method("reset"):
@@ -542,8 +444,8 @@ func _setup_support_resolver() -> void:
 			_refresh_run_build_readout()
 	)
 	_support_resolver.stamina_requested.connect(func(amt):
-		if combat_meter != null: 
-			combat_meter.restore_stamina(amt)
+		if _ui_builder.combat_meter != null: 
+			_ui_builder.combat_meter.restore_stamina(amt)
 			_refresh_run_build_readout()
 	)
 	_support_resolver.support_charge_requested.connect(func(amt):
@@ -610,7 +512,7 @@ func _ensure_enemy_marker_for_live_enemy(enemy_id: int, enemy_data: Dictionary) 
 		return
 	if _enemy_marker_container == null or not is_instance_valid(_enemy_marker_container):
 		return
-	if _presentation_controller == null:
+	if _ui_builder._presentation_controller == null:
 		return
 
 	var lane: int = int(enemy_data.get("lane", -1))
@@ -644,10 +546,10 @@ func _on_victory_offer_ended() -> void:
 
 func _on_victory_choice_resolved(choice_id: String, creature_data: Dictionary) -> void:
 	var void_elapsed: float = _tempo_director.get_current_void_elapsed_seconds()
-	_tempo_director.notify_tempo_mastery(COMBAT_FEEL_CONTENT.TEMPO_VOID, "choice_commit", {
+	_tempo_director.notify_tempo_mastery(_ui_builder.COMBAT_FEEL_CONTENT.TEMPO_VOID, "choice_commit", {
 		"choice": choice_id,
 		"elapsed_seconds": void_elapsed,
-		"window_seconds": LIVE_REWARD_WINDOW
+		"window_seconds": _ui_builder.LIVE_REWARD_WINDOW
 	})
 
 	_refresh_reward_overlay_resolution(choice_id, creature_data)
@@ -684,36 +586,36 @@ func _refresh_reward_overlay_content() -> void:
 	var _player_dna: float = GameState.get_dna(_offer_species_id)
 	var _archive_tether_ready: bool = GameState.is_species_ever_bonded(_offer_species_id)
 
-	_reward_creature_tag_label.text = PRESENTATION_TEXT.REWARD_TAG_CREATURE
-	_reward_title_label.text = PRESENTATION_TEXT.live_reward_title(_offer_creature_name)
+	_ui_builder._reward_creature_tag_label.text = _ui_builder.PRESENTATION_TEXT.REWARD_TAG_CREATURE
+	_ui_builder._reward_title_label.text = _ui_builder.PRESENTATION_TEXT.live_reward_title(_offer_creature_name)
 	
 	var body: String = _offer_description
 	if not _encounter_context.is_empty():
 		body += "\n\nEncounter Context: %s" % _encounter_context
-	_reward_body_label.text = body
+	_ui_builder._reward_body_label.text = body
 	
-	if _reward_dna_label != null:
-		_reward_dna_label.text = PRESENTATION_TEXT.bond_offer_gate_line(_offer_species_id)
-		_reward_dna_label.modulate = Color(0.4, 0.9, 0.8) if _archive_tether_ready or _player_dna >= _offer_dna_threshold else Color(1.0, 0.4, 0.4)
+	if _ui_builder._reward_dna_label != null:
+		_ui_builder._reward_dna_label.text = _ui_builder.PRESENTATION_TEXT.bond_offer_gate_line(_offer_species_id)
+		_ui_builder._reward_dna_label.modulate = Color(0.4, 0.9, 0.8) if _archive_tether_ready or _player_dna >= _offer_dna_threshold else Color(1.0, 0.4, 0.4)
 
-	_reward_bond_label.text = "B Tether" if _archive_tether_ready else ("B Bond" if not _pending_reward_dna_locked else "B Bond - DNA locked")
-	_reward_eat_label.text = "E Consume"
+	_ui_builder._reward_bond_label.text = "B Tether" if _archive_tether_ready else ("B Bond" if not _pending_reward_dna_locked else "B Bond - DNA locked")
+	_ui_builder._reward_eat_label.text = "E Consume"
 
 	# Evolutionary logic: bond passive is scaled by current potential
 	var bond_passive: Dictionary = _victory_reward_director.get_pending_creature().get("bond_passive", {})
 	@warning_ignore("static_called_on_instance")
-	_reward_bond_effect_label.text = PRESENTATION_TEXT.format_bond_passive_long(bond_passive, 1.0)
+	_ui_builder._reward_bond_effect_label.text = _ui_builder.PRESENTATION_TEXT.format_bond_passive_long(bond_passive, 1.0)
 	
 	# Eat effect is scaled by current potential
 	var eat_effect: Dictionary = _victory_reward_director.get_pending_creature().get("eat_effect", {})
-	_reward_eat_effect_label.text = PRESENTATION_TEXT.format_eat_effect(eat_effect)
+	_ui_builder._reward_eat_effect_label.text = _ui_builder.PRESENTATION_TEXT.format_eat_effect(eat_effect)
 	
-	_reward_quig_label.text = PRESENTATION_TEXT.bond_result_quig(_offer_creature_name)
-	_reward_hint_label.text = PRESENTATION_TEXT.REWARD_HINT_LOCKED if _pending_reward_dna_locked else PRESENTATION_TEXT.REWARD_HINT_CHOICE
+	_ui_builder._reward_quig_label.text = _ui_builder.PRESENTATION_TEXT.bond_result_quig(_offer_creature_name)
+	_ui_builder._reward_hint_label.text = _ui_builder.PRESENTATION_TEXT.REWARD_HINT_LOCKED if _pending_reward_dna_locked else _ui_builder.PRESENTATION_TEXT.REWARD_HINT_CHOICE
 
 
 func _refresh_reward_overlay_resolution(choice_id: String, creature_data: Dictionary) -> void:
-	if _reward_overlay == null or not _reward_overlay.visible:
+	if _ui_builder._reward_overlay == null or not _ui_builder._reward_overlay.visible:
 		return
 		
 	var creature_name: String = str(creature_data.get("display_name", "creature"))
@@ -724,87 +626,87 @@ func _refresh_reward_overlay_resolution(choice_id: String, creature_data: Dictio
 			var updated_creature: Dictionary = GameState.get_bonded_creature(species_id)
 			var new_bond_level: int = int(updated_creature.get("bond_level", 1))
 			var bond_deepened: bool = new_bond_level > 1
-			_reward_creature_tag_label.text = PRESENTATION_TEXT.REWARD_TAG_BONDED
-			_reward_title_label.text = "%s deepens." % creature_name if bond_deepened else "%s bonded." % creature_name
-			_reward_body_label.text = PRESENTATION_TEXT.bond_result_body(creature_name, new_bond_level)
-			_reward_bond_label.text = "Bond L%d" % new_bond_level if bond_deepened else "Bonded"
+			_ui_builder._reward_creature_tag_label.text = _ui_builder.PRESENTATION_TEXT.REWARD_TAG_BONDED
+			_ui_builder._reward_title_label.text = "%s deepens." % creature_name if bond_deepened else "%s bonded." % creature_name
+			_ui_builder._reward_body_label.text = _ui_builder.PRESENTATION_TEXT.bond_result_body(creature_name, new_bond_level)
+			_ui_builder._reward_bond_label.text = "Bond L%d" % new_bond_level if bond_deepened else "Bonded"
 			@warning_ignore("static_called_on_instance")
-			_reward_bond_effect_label.text = PRESENTATION_TEXT.format_bond_passive_long(
+			_ui_builder._reward_bond_effect_label.text = _ui_builder.PRESENTATION_TEXT.format_bond_passive_long(
 				creature_data.get("bond_passive", {}), 
 				GameState.get_bond_level_mult(new_bond_level)
 			)
-			_reward_eat_label.text = ""
-			_reward_eat_effect_label.text = ""
-			_reward_quig_label.text = PRESENTATION_TEXT.bond_result_quig(creature_name)
+			_ui_builder._reward_eat_label.text = ""
+			_ui_builder._reward_eat_effect_label.text = ""
+			_ui_builder._reward_quig_label.text = _ui_builder.PRESENTATION_TEXT.bond_result_quig(creature_name)
 
 			var new_growth_stage: String = GameState.get_creature_growth_stage(new_bond_level)
 			var new_portrait: String = COMBAT_CONTENT.get_creature_art_path(species_id, "support", new_growth_stage)
 			if not new_portrait.is_empty() and ResourceLoader.exists(new_portrait):
 				var port_tex: Texture2D = load(new_portrait) as Texture2D
 				if port_tex != null:
-					_reward_creature_portrait.texture = port_tex
+					_ui_builder._reward_creature_portrait.texture = port_tex
 		"eat":
 			var absorbed_entry: Dictionary = {}
 			if not GameState.absorbed_types.is_empty():
 				absorbed_entry = Dictionary(GameState.absorbed_types[GameState.absorbed_types.size() - 1]).duplicate(true)
-			_reward_creature_tag_label.text = PRESENTATION_TEXT.REWARD_TAG_EATEN
-			_reward_title_label.text = "%s consumed." % creature_name
-			_reward_body_label.text = PRESENTATION_TEXT.eat_result_body()
-			_reward_bond_label.text = ""
-			_reward_bond_effect_label.text = ""
-			_reward_eat_label.text = "Absorbed"
+			_ui_builder._reward_creature_tag_label.text = _ui_builder.PRESENTATION_TEXT.REWARD_TAG_EATEN
+			_ui_builder._reward_title_label.text = "%s consumed." % creature_name
+			_ui_builder._reward_body_label.text = _ui_builder.PRESENTATION_TEXT.eat_result_body()
+			_ui_builder._reward_bond_label.text = ""
+			_ui_builder._reward_bond_effect_label.text = ""
+			_ui_builder._reward_eat_label.text = "Absorbed"
 			
 			var mutation_summary: String = str(creature_data.get("mutation", {}).get("summary", ""))
 			var mutation_line: String = "\n\nMutation gained: %s" % mutation_summary if not mutation_summary.is_empty() else ""
 
 			var eat_type_str: String = str(absorbed_entry.get("eat_type", "damage_flat"))
 			if eat_type_str == "hp_restore":
-				_reward_eat_effect_label.text = "Type: %s\n\n+%.0f HP restored.\nNo permanent bonus.%s" % [
+				_ui_builder._reward_eat_effect_label.text = "Type: %s\n\n+%.0f HP restored.\nNo permanent bonus.%s" % [
 					str(absorbed_entry.get("type", "unknown")).capitalize(),
 					float(absorbed_entry.get("heal_applied", 0.0)),
 					mutation_line
 				]
 			elif eat_type_str == "max_hp_flat":
-				_reward_eat_effect_label.text = "Type: %s\n\n+%.0f max HP.\n+%.0f HP restored.%s" % [
+				_ui_builder._reward_eat_effect_label.text = "Type: %s\n\n+%.0f max HP.\n+%.0f HP restored.%s" % [
 					str(absorbed_entry.get("type", "unknown")).capitalize(),
 					float(absorbed_entry.get("max_hp_bonus", 0.0)),
 					float(absorbed_entry.get("heal_applied", 0.0)),
 					mutation_line
 				]
 			elif eat_type_str == "support_charge":
-				_reward_eat_effect_label.text = "Type: %s\n\n+%.0f support charge immediately.%s" % [
+				_ui_builder._reward_eat_effect_label.text = "Type: %s\n\n+%.0f support charge immediately.%s" % [
 					str(absorbed_entry.get("type", "unknown")).capitalize(),
 					float(absorbed_entry.get("support_charge_bonus", 0.0)),
 					mutation_line
 				]
 			else:
-				_reward_eat_effect_label.text = "Type: %s\n\n+%.1f permanent attack damage%s" % [
+				_ui_builder._reward_eat_effect_label.text = "Type: %s\n\n+%.1f permanent attack damage%s" % [
 					str(absorbed_entry.get("type", "unknown")).capitalize(),
 					float(absorbed_entry.get("damage_bonus", 0.0)),
 					mutation_line
 				]
-			_reward_quig_label.text = PRESENTATION_TEXT.eat_result_quig(creature_name)
+			_ui_builder._reward_quig_label.text = _ui_builder.PRESENTATION_TEXT.eat_result_quig(creature_name)
 		"pass":
-			_reward_creature_tag_label.text = PRESENTATION_TEXT.REWARD_TAG_PASSED
-			_reward_title_label.text = PRESENTATION_TEXT.REWARD_TITLE_PASSED
-			_reward_body_label.text = PRESENTATION_TEXT.REWARD_BODY_PASSED
-			_reward_bond_label.text = ""
-			_reward_eat_label.text = ""
-			_reward_bond_effect_label.text = ""
-			_reward_eat_effect_label.text = ""
-			_reward_quig_label.text = PRESENTATION_TEXT.pass_result_quig()
+			_ui_builder._reward_creature_tag_label.text = _ui_builder.PRESENTATION_TEXT.REWARD_TAG_PASSED
+			_ui_builder._reward_title_label.text = _ui_builder.PRESENTATION_TEXT.REWARD_TITLE_PASSED
+			_ui_builder._reward_body_label.text = _ui_builder.PRESENTATION_TEXT.REWARD_BODY_PASSED
+			_ui_builder._reward_bond_label.text = ""
+			_ui_builder._reward_eat_label.text = ""
+			_ui_builder._reward_bond_effect_label.text = ""
+			_ui_builder._reward_eat_effect_label.text = ""
+			_ui_builder._reward_quig_label.text = _ui_builder.PRESENTATION_TEXT.pass_result_quig()
 	
 	_schedule_reward_scroll_reflow()
 
 
 func _show_live_reward_offer_internal(creature_data: Dictionary, is_dna_locked: bool, timer: float) -> void:
-	if _live_reward_shell == null: return
+	if _ui_builder._live_reward_shell == null: return
 	
 	if _song_mode and not _run_finished:
 		_begin_song_live_reward_runtime()
 
 	_pending_reward_dna_locked = is_dna_locked
-	_live_reward_offer_timer = timer
+	_ui_builder._live_reward_offer_timer = timer
 	_song_reward_stall_guard = SONG_REWARD_STALL_GUARD_SECONDS
 
 	var is_breakthrough: bool = not _pending_reward_dna_locked or str(_victory_reward_director.get_pending_creature().get("type", "")) == "performance"
@@ -814,9 +716,9 @@ func _show_live_reward_offer_internal(creature_data: Dictionary, is_dna_locked: 
 			"dna_locked": _pending_reward_dna_locked
 		})
 	else:
-		_tempo_director.track_tempo_event(COMBAT_FEEL_CONTENT.TEMPO_NONE, &"live_reward_minimal")
+		_tempo_director.track_tempo_event(_ui_builder.COMBAT_FEEL_CONTENT.TEMPO_NONE, &"live_reward_minimal")
 
-	_live_reward_shell.visible = true
+	_ui_builder._live_reward_shell.visible = true
 	EventBus.emit_signal("capture_offered", _victory_reward_director.get_pending_creature())
 	_refresh_live_reward_shell()
 	_refresh_dna_hud()
@@ -829,7 +731,7 @@ func _show_victory_reward_internal(_creature_data: Dictionary, is_dna_locked: bo
 	_pending_reward_dna_locked = is_dna_locked
 
 	EventBus.emit_signal("capture_offered", _victory_reward_director.get_pending_creature())
-	_reward_overlay.visible = true
+	_ui_builder._reward_overlay.visible = true
 	_refresh_reward_overlay_content()
 	_refresh_dna_hud()
 	_refresh_quig_ui_state()
@@ -875,8 +777,8 @@ func _initialize_ui() -> void:
 	_create_run_spine_surface()
 	_create_growth_choice_surface()
 	_create_hud_presenter()
-	if _hud_presenter != null:
-		_hud_presenter.apply_hp_stamina_resource_bar_styles(hp_bar, stamina_bar)
+	if _ui_builder._hud_presenter != null:
+		_ui_builder._hud_presenter.apply_hp_stamina_resource_bar_styles(_ui_builder.hp_bar, _ui_builder.stamina_bar)
 	_setup_performance_hud()
 	if not get_viewport().size_changed.is_connected(_sync_compact_transient_hud_layout):
 		get_viewport().size_changed.connect(_sync_compact_transient_hud_layout)
@@ -885,17 +787,17 @@ func _initialize_ui() -> void:
 
 
 func _create_feedback_shell() -> void:
-	if _feedback_shell != null:
+	if _ui_builder._feedback_shell != null:
 		return
-	_feedback_shell = COMBAT_FEEDBACK_SHELL.new(UI_STYLE, COMBAT_FEEL_CONTENT, self, Callable(_presentation_controller, "apply_text_role"))
+	_ui_builder._feedback_shell = COMBAT_FEEDBACK_SHELL.new(_ui_builder.UI_STYLE, _ui_builder.COMBAT_FEEL_CONTENT, self, Callable(_ui_builder._presentation_controller, "apply_text_role"))
 
 
 func _setup_presentation_controller() -> void:
-	if _presentation_controller != null and is_instance_valid(_presentation_controller):
+	if _ui_builder._presentation_controller != null and is_instance_valid(_ui_builder._presentation_controller):
 		return
-	_presentation_controller = COMBAT_PRESENTATION_CONTROLLER.new()
-	_presentation_controller.name = "CombatPresentationController"
-	add_child(_presentation_controller)
+	_ui_builder._presentation_controller = COMBAT_PRESENTATION_CONTROLLER.new()
+	_ui_builder._presentation_controller.name = "CombatPresentationController"
+	add_child(_ui_builder._presentation_controller)
 
 
 func _setup_combat_visual_rig() -> void:
@@ -911,8 +813,8 @@ func _setup_combat_visual_rig() -> void:
 	_combat_visual_rig = inst as Node2D
 	_combat_visual_rig.name = "CombatVisualRig"
 	add_child(_combat_visual_rig)
-	if _presentation_controller != null:
-		_presentation_controller.set_combat_visual_rig(_combat_visual_rig)
+	if _ui_builder._presentation_controller != null:
+		_ui_builder._presentation_controller.set_combat_visual_rig(_combat_visual_rig)
 	if player_combat != null:
 		player_combat.set_combat_visual_rig(_combat_visual_rig)
 
@@ -972,17 +874,17 @@ func _update_timers(delta: float) -> void:
 
 
 func _recover_song_reward_flow(reason: String) -> void:
-	_tempo_director.track_tempo_event(COMBAT_FEEL_CONTENT.TEMPO_VOID, &"stall_recovered", {
+	_tempo_director.track_tempo_event(_ui_builder.COMBAT_FEEL_CONTENT.TEMPO_VOID, &"stall_recovered", {
 		"reason": reason
 	})
 	_resume_song_combat_runtime_from_reward()
 
 
 func _reset_pending_reward_state(clear_live_queue: bool = false) -> void:
-	_reward_choice_made = false
+	_ui_builder._reward_choice_made = false
 	_active_reward_runtime = REWARD_RUNTIME_NONE
 	_pending_reward_dna_locked = false
-	_live_reward_offer_timer = 0.0
+	_ui_builder._live_reward_offer_timer = 0.0
 	_song_reward_stall_guard = 0.0
 	if _victory_reward_director != null and _victory_reward_director.has_method("reset"):
 		_victory_reward_director.reset()
@@ -996,7 +898,7 @@ func _begin_song_live_reward_runtime() -> void:
 
 
 func _trigger_decree(event_id: StringName, duration: float, payload: Dictionary = {}) -> void:
-	var clamped_duration: float = clampf(duration, COMBAT_FEEL_CONTENT.DECREE_MIN_DURATION, COMBAT_FEEL_CONTENT.DECREE_MAX_DURATION)
+	var clamped_duration: float = clampf(duration, _ui_builder.COMBAT_FEEL_CONTENT.DECREE_MIN_DURATION, _ui_builder.COMBAT_FEEL_CONTENT.DECREE_MAX_DURATION)
 	_tempo_director.trigger_decree(event_id, clamped_duration, payload)
 
 
@@ -1088,8 +990,8 @@ func _song_reserve_count() -> int:
 
 
 func _continue_after_non_song_reward_resolution() -> void:
-	_reward_hint_label.text = PRESENTATION_TEXT.REWARD_HINT_WAIT
-	controls_label.text = ""
+	_ui_builder._reward_hint_label.text = _ui_builder.PRESENTATION_TEXT.REWARD_HINT_WAIT
+	_ui_builder.controls_label.text = ""
 	_check_for_upgrade_choices()
 
 
@@ -1098,7 +1000,7 @@ func _update_presentation_layers(delta: float) -> void:
 		_combat_visual_rig.global_position = zone_manager.get_player_pos()
 		if player_combat != null:
 			player_combat.sync_presentation_facing_with_zone_manager(zone_manager)
-	if _timing_circle_container != null:
+	if _ui_builder._timing_circle_container != null:
 		_update_timing_ring_proximity(delta)
 		if _presentation_runtime != null and player_combat != null:
 			_presentation_runtime.tick_sigil_recovery(player_combat, delta)
@@ -1117,12 +1019,12 @@ func _update_background_effects() -> void:
 	else:
 		focus_pos = get_viewport().get_mouse_position()
 	
-	_presentation_controller.update_background_parallax(_bg_sprite, focus_pos, _readability_pulse_mult)
+	_ui_builder._presentation_controller.update_background_parallax(_bg_sprite, focus_pos, _readability_pulse_mult)
 	
 	# Only update tendency reaction every few frames to save performance
 	if Engine.get_process_frames() % 30 == 0:
 		var leading: String = RunGrowth.get_leading_tendency_id()
-		_presentation_controller.update_background_tendency_reaction(_bg_sprite, leading)
+		_ui_builder._presentation_controller.update_background_tendency_reaction(_bg_sprite, leading)
 
 
 func _update_performance_systems(delta: float) -> void:
@@ -1206,11 +1108,11 @@ func _ensure_song_runtime_active() -> void:
 
 
 func _update_timing_debug() -> void:
-	if _timing_debug_label == null or not _timing_debug_label.visible:
+	if _ui_builder._timing_debug_label == null or not _ui_builder._timing_debug_label.visible:
 		return
 
 	if _song_conductor == null or not _song_conductor.is_beat_active():
-		_timing_debug_label.text = "Beat: --"
+		_ui_builder._timing_debug_label.text = "Beat: --"
 		return
 
 	var quality: String = _song_conductor.get_beat_quality()
@@ -1274,8 +1176,8 @@ func _update_timing_debug() -> void:
 			stamina_now,
 			"Y" if ult_ready else "N"
 		]
-	_timing_debug_label.text = debug_text
-	_timing_debug_label.modulate = UI_STYLE.get_quality_feedback_color(quality)
+	_ui_builder._timing_debug_label.text = debug_text
+	_ui_builder._timing_debug_label.modulate = _ui_builder.UI_STYLE.get_quality_feedback_color(quality)
 
 
 func _recover_stalled_cycles() -> void:
@@ -1293,12 +1195,12 @@ func _update_boss_race(delta: float) -> void:
 
 
 func _update_timing_ring_proximity(delta: float) -> void:
-	_presentation_controller.update_timing_ring_proximity(
+	_ui_builder._presentation_controller.update_timing_ring_proximity(
 		_active_encounter,
 		zone_manager,
 		player_combat,
 		_song_conductor,
-		_timing_rings_cache,
+		_ui_builder._timing_rings_cache,
 		_ring_highlight_timers,
 		_surge_window_timer,
 		_surge_window_tendency,
@@ -1308,7 +1210,7 @@ func _update_timing_ring_proximity(delta: float) -> void:
 
 func _update_lane_visual_states() -> void:
 	var biome: Dictionary = _active_encounter.get("biome", {})
-	var ring_palette: Dictionary = UI_STYLE.get_combat_ring_palette()
+	var ring_palette: Dictionary = _ui_builder.UI_STYLE.get_combat_ring_palette()
 	var lane_color: Color = biome.get("lane_color", ring_palette.get("lane", Color(0.30, 0.30, 0.35, 1.0)))
 	var active_color: Color = biome.get("ring_active_color", ring_palette.get("active", Color(1.0, 0.95, 0.55, 1.0)))
 	var inactive_color: Color = biome.get("ring_inactive_color", ring_palette.get("inactive", Color(0.7, 0.7, 0.8, 0.45)))
@@ -1321,23 +1223,23 @@ func _update_lane_visual_states() -> void:
 		if intercept_dist <= 0.0:
 			continue
 
-		var outer_entry: float = 1.0 - COMBAT_FEEL_CONTENT.RING_OUTER_RADIUS / intercept_dist
-		var outer_exit: float = 1.0 + COMBAT_FEEL_CONTENT.RING_OUTER_RADIUS / intercept_dist
+		var outer_entry: float = 1.0 - _ui_builder.COMBAT_FEEL_CONTENT.RING_OUTER_RADIUS / intercept_dist
+		var outer_exit: float = 1.0 + _ui_builder.COMBAT_FEEL_CONTENT.RING_OUTER_RADIUS / intercept_dist
 		var strip: TextureRect = _lane_strips.get(lane, null)
 		var focus: Node2D = _lane_hit_focus.get(lane, null)
 		if strip == null or focus == null or not is_instance_valid(strip) or not is_instance_valid(focus):
 			continue
 
 		var state_color: Color = lane_color
-		var state_alpha: float = COMBAT_FEEL_CONTENT.LANE_IDLE_ALPHA
-		var focus_alpha: float = COMBAT_FEEL_CONTENT.FOCAL_MARKER_COLOR.a
+		var state_alpha: float = _ui_builder.COMBAT_FEEL_CONTENT.LANE_IDLE_ALPHA
+		var focus_alpha: float = _ui_builder.COMBAT_FEEL_CONTENT.FOCAL_MARKER_COLOR.a
 		var focus_scale: float = 1.0
 		var focus_color: Color = inactive_color
 
 		if lane == _get_player_focus_sector():
-			state_alpha = maxf(state_alpha, COMBAT_FEEL_CONTENT.LANE_THREAT_FOCUS_ALPHA)
+			state_alpha = maxf(state_alpha, _ui_builder.COMBAT_FEEL_CONTENT.LANE_THREAT_FOCUS_ALPHA)
 			focus_color = active_color
-			focus_alpha = COMBAT_FEEL_CONTENT.FOCAL_MARKER_ACTIVE_ALPHA
+			focus_alpha = _ui_builder.COMBAT_FEEL_CONTENT.FOCAL_MARKER_ACTIVE_ALPHA
 			focus_scale = 1.08
 
 		var proj = zone_manager.get_projectile(lane)
@@ -1350,9 +1252,9 @@ func _update_lane_visual_states() -> void:
 			var pressure: float = clamp(((p - 0.74) / 0.26) * warning_bias, 0.0, 1.0)
 			if pressure > 0.0:
 				state_color = lane_color.lerp(threat_color.darkened(0.18), 0.62)
-				state_alpha = lerp(state_alpha, COMBAT_FEEL_CONTENT.LANE_THREAT_ALPHA, pressure)
+				state_alpha = lerp(state_alpha, _ui_builder.COMBAT_FEEL_CONTENT.LANE_THREAT_ALPHA, pressure)
 				focus_color = accent_color
-				focus_alpha = lerp(focus_alpha, COMBAT_FEEL_CONTENT.FOCAL_MARKER_ACTIVE_ALPHA, pressure)
+				focus_alpha = lerp(focus_alpha, _ui_builder.COMBAT_FEEL_CONTENT.FOCAL_MARKER_ACTIVE_ALPHA, pressure)
 				focus_scale = lerp(1.0, 1.12, pressure)
 				var pulse: float = 1.0 + (sin(time * (5.0 + warning_bias * 0.7) + lane) * 0.01 + 0.01) * pressure
 				strip.scale.y = pulse
@@ -1361,7 +1263,7 @@ func _update_lane_visual_states() -> void:
 
 			if p >= outer_entry and p <= outer_exit:
 				var critical_t: float = 1.0 - clamp(abs(p - 1.0) / (outer_exit - 1.0), 0.0, 1.0)
-				state_alpha = lerp(state_alpha, COMBAT_FEEL_CONTENT.LANE_CRITICAL_ALPHA, 0.65 + critical_t * 0.35)
+				state_alpha = lerp(state_alpha, _ui_builder.COMBAT_FEEL_CONTENT.LANE_CRITICAL_ALPHA, 0.65 + critical_t * 0.35)
 				focus_alpha = lerp(focus_alpha, 1.0, 0.70 + critical_t * 0.30)
 				focus_scale = lerp(focus_scale, 1.18, 0.70 + critical_t * 0.30)
 				focus_color = accent_color.lightened(0.12)
@@ -1407,11 +1309,11 @@ func _unhandled_input(event: InputEvent) -> void:
 
 	if _is_growth_choice_active():
 		return
-	if _tempo_director.get_family() == COMBAT_FEEL_CONTENT.TEMPO_DECREE and not _run_finished:
+	if _tempo_director.get_family() == _ui_builder.COMBAT_FEEL_CONTENT.TEMPO_DECREE and not _run_finished:
 		# Decree moments are world-law assertions, not decision menus.
 		return
 
-	if _victory_reward_director.is_awaiting_choice() and not _reward_choice_made:
+	if _victory_reward_director.is_awaiting_choice() and not _ui_builder._reward_choice_made:
 		if key_event.keycode == KEY_B:
 			_choose_bond()
 			return
@@ -1455,10 +1357,10 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _setup_visuals() -> void:
-	var refs: Dictionary = _presentation_controller.setup_visuals(
+	var refs: Dictionary = _ui_builder._presentation_controller.setup_visuals(
 		self,
 		background,
-		flash_overlay,
+		_ui_builder.flash_overlay,
 		_bg_sprite,
 		_battlefield_panel
 	)
@@ -1467,33 +1369,33 @@ func _setup_visuals() -> void:
 
 
 func _sync_fullscreen_underlay_controls() -> void:
-	_presentation_controller.sync_fullscreen_underlay_controls(
+	_ui_builder._presentation_controller.sync_fullscreen_underlay_controls(
 		self,
 		background,
-		flash_overlay,
+		_ui_builder.flash_overlay,
 		_bg_sprite
 	)
 
 
 func _apply_combat_background(override_path: String = "") -> void:
-	_bg_sprite = _presentation_controller.apply_combat_background(
+	_bg_sprite = _ui_builder._presentation_controller.apply_combat_background(
 		self,
 		background,
-		flash_overlay,
+		_ui_builder.flash_overlay,
 		_bg_sprite,
 		override_path
 	)
 
 
 func _setup_ui_pivots() -> void:
-	if combo_label != null:
-		combo_label.pivot_offset = combo_label.size * 0.5
+	if _ui_builder.combo_label != null:
+		_ui_builder.combo_label.pivot_offset = _ui_builder.combo_label.size * 0.5
 
 
 func _refresh_hud_snapshot(score_value: int, _exp_value: float, style_tier: String) -> void:
-	if _hud_presenter == null:
+	if _ui_builder._hud_presenter == null:
 		return
-	_hud_presenter.refresh_primary_hud_snapshot(
+	_ui_builder._hud_presenter.refresh_primary_hud_snapshot(
 		score_value,
 		style_tier,
 		RunGrowth,
@@ -1506,13 +1408,13 @@ func _refresh_hud_snapshot(score_value: int, _exp_value: float, style_tier: Stri
 
 func _setup_presentation_runtime() -> void:
 	_presentation_runtime = COMBAT_PRESENTATION_RUNTIME.new(
-		flash_overlay,
+		_ui_builder.flash_overlay,
 		camera_2d,
-		_timing_circle_container,
-		_attack_fx_container,
+		_ui_builder._timing_circle_container,
+		_ui_builder._attack_fx_container,
 		player_combat,
 		zone_manager,
-		ui_layer,
+		_ui_builder.ui_layer,
 		_enemy_markers_by_id,
 		_ring_highlight_timers,
 		_battlefield_panel,
@@ -1525,66 +1427,66 @@ func _setup_presentation_runtime() -> void:
 
 
 func _schedule_reward_scroll_reflow() -> void:
-	_presentation_controller.schedule_reward_scroll_reflow(self)
+	_ui_builder._presentation_controller.schedule_reward_scroll_reflow(self)
 
 
 func _reflow_reward_scroll_labels() -> void:
-	_presentation_controller.reflow_reward_scroll_labels(
-		_reward_body_scroll,
-		_reward_body_label,
-		_reward_bond_effect_scroll,
-		_reward_bond_effect_label,
-		_reward_eat_effect_scroll,
-		_reward_eat_effect_label
+	_ui_builder._presentation_controller.reflow_reward_scroll_labels(
+		_ui_builder._reward_body_scroll,
+		_ui_builder._reward_body_label,
+		_ui_builder._reward_bond_effect_scroll,
+		_ui_builder._reward_bond_effect_label,
+		_ui_builder._reward_eat_effect_scroll,
+		_ui_builder._reward_eat_effect_label
 	)
 
 
 func _create_hud_presenter() -> void:
-	_hud_presenter = COMBAT_HUD_PRESENTER.new(COMBAT_CONTENT, PRESENTATION_TEXT, UI_STYLE)
+	_ui_builder._hud_presenter = COMBAT_HUD_PRESENTER.new(COMBAT_CONTENT, _ui_builder.PRESENTATION_TEXT, _ui_builder.UI_STYLE)
 	var nodes: Dictionary = _build_hud_contract_nodes()
-	_hud_presenter.initialize(nodes)
+	_ui_builder._hud_presenter.initialize(nodes)
 
 
 func _build_hud_contract_nodes() -> Dictionary:
 	# Centralized node contract to keep CombatScene and CombatHUDPresenter synchronized.
 	return {
-		"combat_meter": combat_meter if combat_meter != null and is_instance_valid(combat_meter) else null,
-		"combo_label": combo_label,
-		"style_label": style_label,
-		"stamina_bar": stamina_bar,
-		"hp_bar": hp_bar,
-		"ultimate_label": ultimate_label,
-		"controls_label": controls_label,
-		"hp_value_label": _hp_value_label,
-		"exp_value_label": _exp_value_label,
-		"power_scouter_label": _power_scouter_label,
-		"scouter_shell": _scouter_shell,
-		"support_shell": _support_shell,
-		"support_bar": _support_bar,
-		"support_value_label": _support_value_label,
-		"support_name_label": _support_name_label,
-		"support_trigger_label": _support_trigger_label,
+		"_ui_builder.combat_meter": _ui_builder.combat_meter if _ui_builder.combat_meter != null and is_instance_valid(_ui_builder.combat_meter) else null,
+		"_ui_builder.combo_label": _ui_builder.combo_label,
+		"_ui_builder.style_label": _ui_builder.style_label,
+		"_ui_builder.stamina_bar": _ui_builder.stamina_bar,
+		"_ui_builder.hp_bar": _ui_builder.hp_bar,
+		"_ui_builder.ultimate_label": _ui_builder.ultimate_label,
+		"_ui_builder.controls_label": _ui_builder.controls_label,
+		"hp_value_label": _ui_builder._hp_value_label,
+		"exp_value_label": _ui_builder._exp_value_label,
+		"power_scouter_label": _ui_builder._power_scouter_label,
+		"scouter_shell": _ui_builder._scouter_shell,
+		"support_shell": _ui_builder._support_shell,
+		"support_bar": _ui_builder._support_bar,
+		"support_value_label": _ui_builder._support_value_label,
+		"support_name_label": _ui_builder._support_name_label,
+		"support_trigger_label": _ui_builder._support_trigger_label,
 		"support_creature_portrait": null,
-		"run_build_shell": _run_build_shell,
-		"eaten_value_label": _eaten_value_label,
-		"upgrade_value_label": _upgrade_value_label,
-		"bond_value_label": _bond_value_label,
-		"atk_value_label": _atk_value_label,
-		"def_value_label": _def_value_label,
-		"dna_route_label": _dna_route_label,
-		"dna_route_shell": _dna_route_shell,
-		"mutation_value_label": _mutation_value_label,
-		"dna_shell": _dna_shell,
-		"dna_emblem": _dna_emblem,
-		"dna_slot_labels": _dna_slot_labels,
-		"boss_hp_shell": _boss_hp_shell,
-		"boss_hp_bar": _boss_hp_bar,
-		"boss_name_label": _boss_name_label,
-		"boss_state_label": _boss_state_label,
-		"song_timer_label": _song_timer_label,
-		"song_phase_label": _song_phase_label,
-		"run_score_label": _run_score_label,
-		"beat_feedback_label": _beat_feedback_label,
+		"run_build_shell": _ui_builder._run_build_shell,
+		"eaten_value_label": _ui_builder._eaten_value_label,
+		"upgrade_value_label": _ui_builder._upgrade_value_label,
+		"bond_value_label": _ui_builder._bond_value_label,
+		"atk_value_label": _ui_builder._atk_value_label,
+		"def_value_label": _ui_builder._def_value_label,
+		"dna_route_label": _ui_builder._dna_route_label,
+		"dna_route_shell": _ui_builder._dna_route_shell,
+		"mutation_value_label": _ui_builder._mutation_value_label,
+		"dna_shell": _ui_builder._dna_shell,
+		"dna_emblem": _ui_builder._dna_emblem,
+		"dna_slot_labels": _ui_builder._dna_slot_labels,
+		"boss_hp_shell": _ui_builder._boss_hp_shell,
+		"boss_hp_bar": _ui_builder._boss_hp_bar,
+		"boss_name_label": _ui_builder._boss_name_label,
+		"boss_state_label": _ui_builder._boss_state_label,
+		"song_timer_label": _ui_builder._song_timer_label,
+		"song_phase_label": _ui_builder._song_phase_label,
+		"run_score_label": _ui_builder._run_score_label,
+		"beat_feedback_label": _ui_builder._beat_feedback_label,
 	}
 
 
@@ -1600,7 +1502,7 @@ func _setup_performance_rewards() -> void:
 	add_child(_performance_reward_director)
 
 	if _performance_reward_director.has_method("bind_runtime"):
-		_performance_reward_director.call("bind_runtime", combat_meter, RunGrowth, RunStats)
+		_performance_reward_director.call("bind_runtime", _ui_builder.combat_meter, RunGrowth, RunStats)
 		_performance_reward_director.set("offers_enabled", false)
 		if _performance_reward_director.has_method("sync_from_reward_state"):
 			_performance_reward_director.call("sync_from_reward_state")
@@ -1638,12 +1540,12 @@ func _setup_performance_hud() -> void:
 	_performance_hud = inst as Control
 	
 	# Add to overlay layer for full-screen framing
-	if _hud_overlay_layer != null:
-		_hud_overlay_layer.add_child(_performance_hud)
-	elif _hud_primary_layer != null:
-		_hud_primary_layer.add_child(_performance_hud)
+	if _ui_builder._hud_overlay_layer != null:
+		_ui_builder._hud_overlay_layer.add_child(_performance_hud)
+	elif _ui_builder._hud_primary_layer != null:
+		_ui_builder._hud_primary_layer.add_child(_performance_hud)
 	else:
-		ui_layer.add_child(_performance_hud)
+		_ui_builder.ui_layer.add_child(_performance_hud)
 		
 	_performance_hud.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_performance_hud.offset_left = 0
@@ -1658,19 +1560,19 @@ func _setup_performance_hud() -> void:
 
 
 func _sync_compact_transient_hud_layout() -> void:
-	_presentation_controller.sync_compact_transient_hud_layout(
-		_hud_top_left_panel,
-		_live_reward_shell,
+	_ui_builder._presentation_controller.sync_compact_transient_hud_layout(
+		_ui_builder._hud_top_left_panel,
+		_ui_builder._live_reward_shell,
 		_performance_hud
 	)
 
 
 func _sync_message_lane_ownership() -> void:
-	_presentation_controller.sync_message_lane_ownership(_live_reward_shell, _performance_hud)
+	_ui_builder._presentation_controller.sync_message_lane_ownership(_ui_builder._live_reward_shell, _performance_hud)
 
 
 func _center_performance_offer_shell() -> void:
-	_presentation_controller.center_performance_offer_shell(_live_reward_shell, _performance_hud)
+	_ui_builder._presentation_controller.center_performance_offer_shell(_ui_builder._live_reward_shell, _performance_hud)
 
 
 func _on_performance_pressure_bias_changed(snapshot: Dictionary) -> void:
@@ -1754,7 +1656,7 @@ func _setup_zone_manager() -> void:
 func _setup_player_combat() -> void:
 	# Keep player silhouette above timing sigil visuals for readability.
 	player_combat.z_index = 25
-	player_combat.setup(zone_manager, combat_meter)
+	player_combat.setup(zone_manager, _ui_builder.combat_meter)
 
 
 func _start_song_run() -> void:
@@ -1878,11 +1780,11 @@ func _start_regular_level(level_index: int, reset_hp: bool) -> void:
 
 	zone_manager.set_song_mode_enabled(true)
 
-	if _song_timer_label != null:
-		_song_timer_label.visible = true
-	if _song_phase_label != null:
-		_song_phase_label.visible = true
-	_hud_presenter.update_song_timer(max(_song_level_end_time - _song_level_start_time, 0.0))
+	if _ui_builder._song_timer_label != null:
+		_ui_builder._song_timer_label.visible = true
+	if _ui_builder._song_phase_label != null:
+		_ui_builder._song_phase_label.visible = true
+	_ui_builder._hud_presenter.update_song_timer(max(_song_level_end_time - _song_level_start_time, 0.0))
 
 	_set_song_controls_text()
 
@@ -1955,7 +1857,7 @@ func _create_translation_overlay() -> void:
 	_translation_overlay.anchor_right = 1.0
 	_translation_overlay.anchor_bottom = 1.0
 	_translation_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
-	ui_layer.add_child(_translation_overlay)
+	_ui_builder.ui_layer.add_child(_translation_overlay)
 	
 	var panel = ColorRect.new()
 	panel.color = Color(0.05, 0.05, 0.07, 0.60)
@@ -1963,15 +1865,15 @@ func _create_translation_overlay() -> void:
 	panel.anchor_right = 0.5; panel.anchor_bottom = 0.5
 	panel.offset_left = -400.0; panel.offset_top = -240.0
 	panel.offset_right = 400.0; panel.offset_bottom = 200.0
-	UI_STYLE.apply_shell_style(panel, "mm_shell")
+	_ui_builder.UI_STYLE.apply_shell_style(panel, "mm_shell")
 	_translation_overlay.add_child(panel)
 	
 	_translation_header = Label.new()
 	_translation_header.text = "LINEAGE EXTRACTION"
 	_translation_header.position = Vector2(0, 20)
 	_translation_header.size = Vector2(800, 50)
-	UI_STYLE.apply_label(_translation_header, "mm_title", HORIZONTAL_ALIGNMENT_CENTER)
-	_translation_header.add_theme_color_override("font_color", UI_STYLE.get_manga_color("blood_ember"))
+	_ui_builder.UI_STYLE.apply_label(_translation_header, "mm_title", HORIZONTAL_ALIGNMENT_CENTER)
+	_translation_header.add_theme_color_override("font_color", _ui_builder.UI_STYLE.get_manga_color("blood_ember"))
 	panel.add_child(_translation_header)
 	
 	var scroll = ScrollContainer.new()
@@ -1983,7 +1885,7 @@ func _create_translation_overlay() -> void:
 	_translation_body = Label.new()
 	_translation_body.custom_minimum_size = Vector2(720, 0)
 	_translation_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	UI_STYLE.apply_label(_translation_body, "mm_body")
+	_ui_builder.UI_STYLE.apply_label(_translation_body, "mm_body")
 	_translation_body.add_theme_font_size_override("font_size", 13)
 	scroll.add_child(_translation_body)
 	
@@ -1991,7 +1893,7 @@ func _create_translation_overlay() -> void:
 	_translation_hint.text = "PRESS ANY KEY TO CONTINUE"
 	_translation_hint.position = Vector2(0, 370)
 	_translation_hint.size = Vector2(800, 30)
-	UI_STYLE.apply_label(_translation_hint, "mm_hint", HORIZONTAL_ALIGNMENT_CENTER)
+	_ui_builder.UI_STYLE.apply_label(_translation_hint, "mm_hint", HORIZONTAL_ALIGNMENT_CENTER)
 	panel.add_child(_translation_hint)
 
 
@@ -2074,7 +1976,7 @@ func _show_level_completion_rewards() -> void:
 	if _run_spine_surface != null:
 		_run_spine_surface.present_level_completion(_pending_upgrades, RunGrowth, advancing_to_boss)
 	_show_feedback("LEVEL COMPLETE", Color(0.85, 0.95, 0.75, 1.0), 0.60)
-	controls_label.text = ""
+	_ui_builder.controls_label.text = ""
 
 
 func _show_next_between_level_growth_choice() -> void:
@@ -2146,7 +2048,7 @@ func _show_growth_choice_intersection(
 	
 	if _growth_choice_surface != null and is_instance_valid(_growth_choice_surface):
 		_growth_choice_surface.present()
-	controls_label.text = ""
+	_ui_builder.controls_label.text = ""
 	_show_feedback("GROWTH INTERSECTION", Color(0.90, 0.80, 0.64, 1.0), 0.42)
 
 
@@ -2253,7 +2155,7 @@ func _hide_growth_choice_surface() -> void:
 	if _growth_choice_surface != null and is_instance_valid(_growth_choice_surface):
 		_growth_choice_surface.hide_surface()
 	
-	if _tempo_director.get_family() == COMBAT_FEEL_CONTENT.TEMPO_VOID:
+	if _tempo_director.get_family() == _ui_builder.COMBAT_FEEL_CONTENT.TEMPO_VOID:
 		_tempo_director.end_void(&"growth_choice_hidden")
 
 
@@ -2469,8 +2371,8 @@ func _enter_song_phase(new_idx: int) -> void:
 	_apply_song_phase_cadence(new_phase, _song_section_spawn_mult)
 	_apply_attack_authority_budget(_latest_ecology_snapshot, new_phase)
 
-	if _song_phase_label != null:
-		_song_phase_label.text = ENCOUNTER_IDENTITY_RUNTIME.get_phase_display_label(_region_id, new_phase)
+	if _ui_builder._song_phase_label != null:
+		_ui_builder._song_phase_label.text = ENCOUNTER_IDENTITY_RUNTIME.get_phase_display_label(_region_id, new_phase)
 
 	# If the previous phase had a reward pool, queue its creature offer without pausing the song.
 	if old_idx >= 0:
@@ -2602,11 +2504,11 @@ func _update_song_hud() -> void:
 		remaining = max(_song_conductor.get_final_movement_time() - _song_elapsed, 0.0)
 	else:
 		remaining = max(_song_level_end_time - _song_elapsed, 0.0)
-	_hud_presenter.update_song_timer(remaining)
+	_ui_builder._hud_presenter.update_song_timer(remaining)
 
 
 func _set_song_controls_text() -> void:
-	_hud_presenter.set_controls_text(PRESENTATION_TEXT.COMBAT_CONTROLS)
+	_ui_builder._hud_presenter.set_controls_text(_ui_builder.PRESENTATION_TEXT.COMBAT_CONTROLS)
 
 
 func _start_song_conductor(start_time: float = 0.0, end_time: float = -1.0) -> void:
@@ -2632,7 +2534,7 @@ func _start_song_conductor(start_time: float = 0.0, end_time: float = -1.0) -> v
 	_refresh_song_combat_state()
 	player_combat.set_song_conductor(_song_conductor)
 	if _song_conductor != null:
-		_hud_presenter.update_song_timer(max(_song_conductor.get_final_movement_time() - start_time, 0.0))
+		_ui_builder._hud_presenter.update_song_timer(max(_song_conductor.get_final_movement_time() - start_time, 0.0))
 
 
 func _build_conductor_options(song_profile: Dictionary) -> Dictionary:
@@ -2712,7 +2614,7 @@ func _on_conductor_accent_fired() -> void:
 
 
 func _hide_song_hud() -> void:
-	_hud_presenter.hide_song_hud()
+	_ui_builder._hud_presenter.hide_song_hud()
 
 
 # ── Boss music race ──────────────────────────────────────────────────────────
@@ -2782,7 +2684,7 @@ func _stop_boss_music() -> void:
 
 
 func _show_boss_race_hud() -> void:
-	_hud_presenter.show_boss_race_hud("KILL IT BEFORE THE SONG ENDS")
+	_ui_builder._hud_presenter.show_boss_race_hud("KILL IT BEFORE THE SONG ENDS")
 
 
 func _update_boss_race_hud() -> void:
@@ -2790,7 +2692,7 @@ func _update_boss_race_hud() -> void:
 		return
 	var elapsed: float = _boss_music_player.get_playback_position()
 	var remaining: float = max(_boss_music_duration - elapsed, 0.0)
-	_hud_presenter.update_boss_race_timer(remaining, _boss_music_duration)
+	_ui_builder._hud_presenter.update_boss_race_timer(remaining, _boss_music_duration)
 
 
 func _update_boss_presence(delta: float) -> void:
@@ -2859,13 +2761,13 @@ func _on_boss_conductor_section_changed(section_id: String, _data: Dictionary) -
 	if decree_id != StringName("") and duration > 0.0:
 		_trigger_decree(decree_id, duration, meta)
 	if section_id == "chorus":
-		_show_feedback(PRESENTATION_TEXT.boss_threshold_break_line(_region_id), Color(0.96, 0.46, 0.14, 1.0), 0.42)
+		_show_feedback(_ui_builder.PRESENTATION_TEXT.boss_threshold_break_line(_region_id), Color(0.96, 0.46, 0.14, 1.0), 0.42)
 	if bool(rule.get("set_boss_threshold_fired", false)):
 		if _boss_hp_threshold_fired:
 			return
 		_boss_hp_threshold_fired = true
-		if _hud_presenter != null:
-			_hud_presenter.set_boss_state_text(PRESENTATION_TEXT.boss_state_final(_region_id))
+		if _ui_builder._hud_presenter != null:
+			_ui_builder._hud_presenter.set_boss_state_text(_ui_builder.PRESENTATION_TEXT.boss_state_final(_region_id))
 		var threshold_notice: Dictionary = Dictionary(rule.get("notify_threshold", {}))
 		if _performance_reward_director != null and is_instance_valid(_performance_reward_director) and _performance_reward_director.has_method("notify_boss_threshold"):
 			_performance_reward_director.call(
@@ -3152,7 +3054,7 @@ func _debug_wait_for_projectile_clear(lane: int, max_wait: float) -> bool:
 func _debug_set_player_hp_ratio(ratio: float) -> void:
 	var clamped_ratio: float = clampf(ratio, 0.15, 1.0)
 	PlayerState.hp = max(PlayerState.max_hp * clamped_ratio, 1.0)
-	_hud_presenter.refresh_hp(PlayerState.hp, PlayerState.max_hp)
+	_ui_builder._hud_presenter.refresh_hp(PlayerState.hp, PlayerState.max_hp)
 
 
 func _debug_begin_boss_preview(trigger_threshold: bool) -> void:
@@ -3163,14 +3065,14 @@ func _debug_begin_boss_preview(trigger_threshold: bool) -> void:
 
 
 func _debug_apply_boss_threshold_preview() -> void:
-	if _boss_total_hp <= 0.0 or _hud_presenter == null:
+	if _boss_total_hp <= 0.0 or _ui_builder._hud_presenter == null:
 		return
 	_boss_current_hp = _boss_total_hp * 0.5
-	_hud_presenter.update_boss_hp(_boss_current_hp)
+	_ui_builder._hud_presenter.update_boss_hp(_boss_current_hp)
 	if not _boss_hp_threshold_fired:
 		_boss_hp_threshold_fired = true
-		_hud_presenter.set_boss_state_text(PRESENTATION_TEXT.boss_state_final(_region_id))
-		_show_feedback(PRESENTATION_TEXT.boss_threshold_final_line(_region_id), Color(0.92, 0.42, 0.12, 1.0), 0.70)
+		_ui_builder._hud_presenter.set_boss_state_text(_ui_builder.PRESENTATION_TEXT.boss_state_final(_region_id))
+		_show_feedback(_ui_builder.PRESENTATION_TEXT.boss_threshold_final_line(_region_id), Color(0.92, 0.42, 0.12, 1.0), 0.70)
 		if _performance_reward_director != null and is_instance_valid(_performance_reward_director) and _performance_reward_director.has_method("notify_boss_threshold"):
 			_performance_reward_director.call("notify_boss_threshold", "sovereign_unleash", 8.0, "BOSS BREAK")
 		_presentation_runtime.apply_impact_profile(COMBAT_IMPACT_FEEDBACK.build_boss_threshold_profile())
@@ -3263,14 +3165,14 @@ func _apply_encounter_presentation() -> void:
 	var biome: Dictionary = _active_encounter.get("biome", {})
 
 	background.color = biome.get("background_color", Color(0.06, 0.06, 0.08, 1.0))
-	result_label.visible = false
-	result_label.text = ""
-	if _end_stats_label != null:
-		_end_stats_label.visible = false
+	_ui_builder.result_label.visible = false
+	_ui_builder.result_label.text = ""
+	if _ui_builder._end_stats_label != null:
+		_ui_builder._end_stats_label.visible = false
 
 
 func _build_arena_visuals() -> void:
-	var refs: Dictionary = _presentation_controller.build_arena_visuals(
+	var refs: Dictionary = _ui_builder._presentation_controller.build_arena_visuals(
 		self,
 		_active_encounter,
 		zone_manager,
@@ -3293,7 +3195,7 @@ func _build_arena_visuals() -> void:
 
 
 func _refresh_enemy_marker_states() -> void:
-	_presentation_controller.refresh_enemy_marker_states(
+	_ui_builder._presentation_controller.refresh_enemy_marker_states(
 		_active_encounter,
 		_enemy_markers_by_id,
 		_enemy_phase_by_id,
@@ -3303,7 +3205,7 @@ func _refresh_enemy_marker_states() -> void:
 
 
 func _build_enemy_marker(enemy_id: int, lane: int, enemy: Dictionary, marker_size: float, base_color: Color) -> Dictionary:
-	return _presentation_controller._build_enemy_marker(
+	return _ui_builder._presentation_controller._build_enemy_marker(
 		enemy_id,
 		lane,
 		enemy,
@@ -3314,7 +3216,7 @@ func _build_enemy_marker(enemy_id: int, lane: int, enemy: Dictionary, marker_siz
 	)
 
 func _update_enemy_marker_threat_states() -> void:
-	_presentation_controller.update_enemy_marker_threat_states(
+	_ui_builder._presentation_controller.update_enemy_marker_threat_states(
 		_enemy_markers_by_id,
 		_all_enemies_by_id,
 		zone_manager
@@ -3322,9 +3224,9 @@ func _update_enemy_marker_threat_states() -> void:
 
 
 func _draw_timing_circles() -> void:
-	_presentation_controller.draw_timing_circles(
-		_timing_circle_container,
-		_timing_rings_cache,
+	_ui_builder._presentation_controller.draw_timing_circles(
+		_ui_builder._timing_circle_container,
+		_ui_builder._timing_rings_cache,
 		_active_encounter,
 		zone_manager,
 		player_combat
@@ -3336,17 +3238,17 @@ func _prepare_for_encounter(reset_hp: bool) -> void:
 	if reset_hp:
 		PlayerState.hp = PlayerState.max_hp
 
-	_hud_presenter.refresh_hp(PlayerState.hp, PlayerState.max_hp)
+	_ui_builder._hud_presenter.refresh_hp(PlayerState.hp, PlayerState.max_hp)
 
 	player_combat.set_combat_enabled(true)
 
-	combat_meter.reset()
+	_ui_builder.combat_meter.reset()
 
 	_hide_reward_overlay()
-	result_label.visible = false
-	result_label.text = ""
-	if _end_stats_label != null:
-		_end_stats_label.visible = false
+	_ui_builder.result_label.visible = false
+	_ui_builder.result_label.text = ""
+	if _ui_builder._end_stats_label != null:
+		_ui_builder._end_stats_label.visible = false
 	_set_combat_controls_text()
 
 
@@ -3355,9 +3257,9 @@ func _set_combat_controls_text() -> void:
 		_set_song_controls_text()
 		return
 	if _is_boss_encounter:
-		controls_label.text = PRESENTATION_TEXT.COMBAT_BOSS_CONTROLS
+		_ui_builder.controls_label.text = _ui_builder.PRESENTATION_TEXT.COMBAT_BOSS_CONTROLS
 	else:
-		controls_label.text = PRESENTATION_TEXT.COMBAT_CONTROLS
+		_ui_builder.controls_label.text = _ui_builder.PRESENTATION_TEXT.COMBAT_CONTROLS
 
 
 func _start_current_phase() -> void:
@@ -3407,7 +3309,7 @@ func _advance_phase() -> void:
 	var pause_duration: float = 0.45
 	if _is_boss_encounter:
 		pause_duration = 1.0
-		_show_feedback(PRESENTATION_TEXT.boss_threshold_final_line(_region_id), Color(0.86, 0.58, 0.14, 1.0), 0.70)
+		_show_feedback(_ui_builder.PRESENTATION_TEXT.boss_threshold_final_line(_region_id), Color(0.86, 0.58, 0.14, 1.0), 0.70)
 		EventBus.emit_signal("screen_flash", Color(0.60, 0.36, 0.06, 0.20), 0.30)
 		EventBus.emit_signal("screen_shake", 5.0, 0.30)
 		# Three-lane phase — tighten the fire cadence to 0.78 s.
@@ -3439,8 +3341,8 @@ func _complete_current_encounter() -> void:
 		player_combat.set_combat_enabled(false)
 
 	var biome: Dictionary = _active_encounter.get("biome", {})
-	result_label.text = str(biome.get("victory_text", "VICTORY"))
-	result_label.visible = true
+	_ui_builder.result_label.text = str(biome.get("victory_text", "VICTORY"))
+	_ui_builder.result_label.visible = true
 
 	if _is_boss_encounter:
 		# Boss killed — stop the race music and timer before the reward overlay.
@@ -3484,7 +3386,7 @@ func _show_upgrade_choices() -> void:
 	_pending_upgrades = _performance_reward_director.call("get_upgrade_choices", 3)
 
 	for i in range(3):
-		var card := _upgrade_card_nodes[i] as ColorRect
+		var card := _ui_builder._upgrade_card_nodes[i] as ColorRect
 
 		if i < _pending_upgrades.size():
 			var up: Dictionary = _pending_upgrades[i]
@@ -3499,8 +3401,8 @@ func _show_upgrade_choices() -> void:
 		else:
 			card.visible = false
 			
-	_upgrade_overlay.visible = true
-	controls_label.text = PRESENTATION_TEXT.RUN_SPINE_EVOLUTION_CONTROLS
+	_ui_builder._upgrade_overlay.visible = true
+	_ui_builder.controls_label.text = _ui_builder.PRESENTATION_TEXT.RUN_SPINE_EVOLUTION_CONTROLS
 
 
 func _choose_upgrade(index: int) -> void:
@@ -3514,7 +3416,7 @@ func _choose_upgrade(index: int) -> void:
 		_performance_reward_director.call("consume_banked_reward")
 
 	_awaiting_upgrade_choice = false
-	_upgrade_overlay.visible = false
+	_ui_builder._upgrade_overlay.visible = false
 
 	# After choosing, check if there are MORE banked rewards before advancing.
 	var banked: int = 0
@@ -3548,7 +3450,7 @@ func _advance_to_next_stage() -> void:
 			if not _try_present_predation_after_run_spine():
 				_try_present_path_choice_after_run_spine()
 			_show_feedback("STAGE COMPLETE", Color(0.85, 0.95, 0.75, 1.0), 0.52)
-			controls_label.text = ""
+			_ui_builder.controls_label.text = ""
 			return
 		# Fallback guard: if the spine surface is unavailable, use the new loop interlude.
 		get_tree().change_scene_to_file("res://scenes/ui/TranslationScene.tscn")
@@ -3593,15 +3495,15 @@ func _finish_run(victory: bool) -> void:
 		player_combat.set_combat_enabled(false)
 
 	if victory:
-		result_label.text = "RUN COMPLETE"
-		result_label.visible = true
-		_show_feedback(PRESENTATION_TEXT.post_run_summary(_build_post_run_summary_payload(), _region_id, true), Color(0.85, 1.0, 0.75, 1.0), 0.70)
-		controls_label.text = PRESENTATION_TEXT.RUN_END_CONTROLS_VICTORY
+		_ui_builder.result_label.text = "RUN COMPLETE"
+		_ui_builder.result_label.visible = true
+		_show_feedback(_ui_builder.PRESENTATION_TEXT.post_run_summary(_build_post_run_summary_payload(), _region_id, true), Color(0.85, 1.0, 0.75, 1.0), 0.70)
+		_ui_builder.controls_label.text = _ui_builder.PRESENTATION_TEXT.RUN_END_CONTROLS_VICTORY
 	else:
-		result_label.text = "RUN FAILED"
-		result_label.visible = true
-		_show_feedback(PRESENTATION_TEXT.post_run_summary(_build_post_run_summary_payload(), _region_id, false), Color(1.0, 0.45, 0.45, 1.0), 0.65)
-		controls_label.text = PRESENTATION_TEXT.RUN_END_CONTROLS_FAILURE
+		_ui_builder.result_label.text = "RUN FAILED"
+		_ui_builder.result_label.visible = true
+		_show_feedback(_ui_builder.PRESENTATION_TEXT.post_run_summary(_build_post_run_summary_payload(), _region_id, false), Color(1.0, 0.45, 0.45, 1.0), 0.65)
+		_ui_builder.controls_label.text = _ui_builder.PRESENTATION_TEXT.RUN_END_CONTROLS_FAILURE
 
 	_show_end_stats()
 	_hide_reward_overlay()
@@ -3618,7 +3520,7 @@ func _resolve_world_boss_outcome_id(victory: bool) -> String:
 
 
 func _hide_boss_bar() -> void:
-	_hud_presenter.hide_boss_bar()
+	_ui_builder._hud_presenter.hide_boss_bar()
 
 
 func _setup_boss_hp_bar() -> void:
@@ -3628,10 +3530,10 @@ func _setup_boss_hp_bar() -> void:
 		for enemy in phase:
 			_boss_total_hp += float(enemy.get("hp", 0))
 	_boss_current_hp = _boss_total_hp
-	_hud_presenter.setup_boss_bar(
+	_ui_builder._hud_presenter.setup_boss_bar(
 		_boss_total_hp,
 		str(_active_encounter.get("boss_name", "")),
-		PRESENTATION_TEXT.boss_state_opening(_region_id)
+		_ui_builder.PRESENTATION_TEXT.boss_state_opening(_region_id)
 	)
 
 
@@ -3639,43 +3541,43 @@ func _show_boss_intro(boss_name: String) -> void:
 	if not is_inside_tree(): return
 	
 	# First strike: flash + shake + all rings flare to threat color.
-	var flash_1: Dictionary = COMBAT_FEEL_CONTENT.get_screen_flash_params("boss_intro_1")
+	var flash_1: Dictionary = _ui_builder.COMBAT_FEEL_CONTENT.get_screen_flash_params("boss_intro_1")
 	EventBus.emit_signal("screen_flash", flash_1.color, flash_1.duration)
 	EventBus.emit_signal("screen_shake", 2.2, 0.16)
 	
 	for _intro_lane in range(zone_manager.THREAT_COUNT if zone_manager else 8):
 		_presentation_runtime.highlight_timing_ring(_intro_lane, Color(0.92, 0.42, 0.12, 1.0), 6.2)
 
-	_title_card.text = boss_name
-	_title_card.modulate = Color(0.88, 0.52, 0.10, 0.0)
-	_title_card.visible = true
+	_ui_builder._title_card.text = boss_name
+	_ui_builder._title_card.modulate = Color(0.88, 0.52, 0.10, 0.0)
+	_ui_builder._title_card.visible = true
 
-	_subtitle_card.text = PRESENTATION_TEXT.boss_intro_line(
+	_ui_builder._subtitle_card.text = _ui_builder.PRESENTATION_TEXT.boss_intro_line(
 		_region_id,
 		str(_active_encounter.get("boss_subtitle", "APEX VERDICT"))
 	)
-	_subtitle_card.modulate = Color(0.72, 0.52, 0.28, 0.0)
-	_subtitle_card.visible = true
+	_ui_builder._subtitle_card.modulate = Color(0.72, 0.52, 0.28, 0.0)
+	_ui_builder._subtitle_card.visible = true
 
 	var tween := create_tween()
 	# Title punches in quickly.
-	tween.tween_property(_title_card, "modulate:a", 1.0, 0.10)
+	tween.tween_property(_ui_builder._title_card, "modulate:a", 1.0, 0.10)
 	tween.tween_interval(0.16)
 	# Second impact flash as subtitle reveals.
 	tween.tween_callback(func() -> void:
-		var flash_2: Dictionary = COMBAT_FEEL_CONTENT.get_screen_flash_params("boss_intro_2")
+		var flash_2: Dictionary = _ui_builder.COMBAT_FEEL_CONTENT.get_screen_flash_params("boss_intro_2")
 		EventBus.emit_signal("screen_flash", flash_2.color, flash_2.duration)
 	)
-	tween.tween_property(_subtitle_card, "modulate:a", 0.80, 0.18)
+	tween.tween_property(_ui_builder._subtitle_card, "modulate:a", 0.80, 0.18)
 	tween.tween_interval(0.76)
-	tween.tween_property(_title_card, "modulate:a", 0.0, 0.42)
-	tween.parallel().tween_property(_subtitle_card, "modulate:a", 0.0, 0.42)
+	tween.tween_property(_ui_builder._title_card, "modulate:a", 0.0, 0.42)
+	tween.parallel().tween_property(_ui_builder._subtitle_card, "modulate:a", 0.0, 0.42)
 	tween.tween_callback(func() -> void:
 		if not is_instance_valid(self): return
-		_title_card.visible = false
-		_subtitle_card.visible = false
-		_title_card.modulate = Color(1.0, 1.0, 1.0, 1.0)
-		_subtitle_card.modulate = Color(0.85, 0.85, 0.85, 1.0)
+		_ui_builder._title_card.visible = false
+		_ui_builder._subtitle_card.visible = false
+		_ui_builder._title_card.modulate = Color(1.0, 1.0, 1.0, 1.0)
+		_ui_builder._subtitle_card.modulate = Color(0.85, 0.85, 0.85, 1.0)
 	)
 
 	await tween.finished
@@ -3689,11 +3591,11 @@ func _trigger_boss_threshold_spectacle() -> void:
 	_trigger_decree(&"boss_threshold", 1.22, {
 		"boss_phase": "threshold_50"
 	})
-	_show_feedback(PRESENTATION_TEXT.boss_threshold_break_line(_region_id), Color(0.96, 0.46, 0.14, 1.0), 0.52)
+	_show_feedback(_ui_builder.PRESENTATION_TEXT.boss_threshold_break_line(_region_id), Color(0.96, 0.46, 0.14, 1.0), 0.52)
 	for _thresh_lane in range(zone_manager.THREAT_COUNT):
 		_presentation_runtime.highlight_timing_ring(_thresh_lane, Color(0.94, 0.38, 0.08, 1.0), 7.2)
 
-	var flash_1: Dictionary = COMBAT_FEEL_CONTENT.get_screen_flash_params("boss_threshold")
+	var flash_1: Dictionary = _ui_builder.COMBAT_FEEL_CONTENT.get_screen_flash_params("boss_threshold")
 	EventBus.emit_signal("screen_flash", flash_1.color, flash_1.duration)
 	EventBus.emit_signal("screen_shake", 2.4, 0.14)
 
@@ -3701,7 +3603,7 @@ func _trigger_boss_threshold_spectacle() -> void:
 	pulse_tween.tween_interval(0.26)
 	pulse_tween.tween_callback(func() -> void:
 		if not is_instance_valid(self): return
-		var flash_2: Dictionary = COMBAT_FEEL_CONTENT.get_screen_flash_params("boss_threshold_pulse")
+		var flash_2: Dictionary = _ui_builder.COMBAT_FEEL_CONTENT.get_screen_flash_params("boss_threshold_pulse")
 		EventBus.emit_signal("screen_flash", flash_2.color, flash_2.duration)
 		EventBus.emit_signal("screen_shake", 1.6, 0.10)
 	)
@@ -3713,15 +3615,15 @@ func _trigger_boss_threshold_spectacle() -> void:
 
 
 func _show_title_card(title_text: String, subtitle_text: String) -> void:
-	if _feedback_shell == null:
+	if _ui_builder._feedback_shell == null:
 		return
-	_feedback_shell.show_title_card(title_text, subtitle_text)
+	_ui_builder._feedback_shell.show_title_card(title_text, subtitle_text)
 
 
-func _show_feedback(text: String, color: Color, lifetime: float = COMBAT_FEEL_CONTENT.COMBAT_FEEDBACK_MIN_LIFETIME) -> void:
-	if _feedback_shell == null:
+func _show_feedback(text: String, color: Color, lifetime: float = _ui_builder.COMBAT_FEEL_CONTENT.COMBAT_FEEDBACK_MIN_LIFETIME) -> void:
+	if _ui_builder._feedback_shell == null:
 		return
-	_feedback_shell.show_feedback(text, color, lifetime, _critical_threat_pressure)
+	_ui_builder._feedback_shell.show_feedback(text, color, lifetime, _critical_threat_pressure)
 
 
 func _get_beat_quality_for_action() -> String:
@@ -3733,48 +3635,48 @@ func _get_beat_quality_for_action() -> String:
 
 
 func _show_beat_feedback(text: String, color: Color) -> void:
-	if _hud_presenter != null:
-		_hud_presenter.show_beat_feedback_timed(text, color, _critical_threat_pressure)
+	if _ui_builder._hud_presenter != null:
+		_ui_builder._hud_presenter.show_beat_feedback_timed(text, color, _critical_threat_pressure)
 
 
 func _flash_meter_shell(color: Color, duration: float) -> void:
-	if _style_shell == null or _combo_shell == null:
+	if _ui_builder._style_shell == null or _ui_builder._combo_shell == null:
 		return
 
-	var combo_base: Color = _combo_shell.color
-	var style_base: Color = _style_shell.color
-	var resource_base: Color = _resource_shell.color
+	var combo_base: Color = _ui_builder._combo_shell.color
+	var style_base: Color = _ui_builder._style_shell.color
+	var resource_base: Color = _ui_builder._resource_shell.color
 	var tint: Color = color
 
 	var tween := create_tween()
-	tween.tween_property(_combo_shell, "color", combo_base.lerp(tint, 0.55), 0.05)
-	tween.parallel().tween_property(_style_shell, "color", style_base.lerp(tint, 0.70), 0.05)
-	tween.parallel().tween_property(_resource_shell, "color", resource_base.lerp(tint, 0.45), 0.05)
+	tween.tween_property(_ui_builder._combo_shell, "color", combo_base.lerp(tint, 0.55), 0.05)
+	tween.parallel().tween_property(_ui_builder._style_shell, "color", style_base.lerp(tint, 0.70), 0.05)
+	tween.parallel().tween_property(_ui_builder._resource_shell, "color", resource_base.lerp(tint, 0.45), 0.05)
 	tween.tween_interval(duration)
-	tween.tween_property(_combo_shell, "color", combo_base, 0.12)
-	tween.parallel().tween_property(_style_shell, "color", style_base, 0.12)
-	tween.parallel().tween_property(_resource_shell, "color", resource_base, 0.12)
+	tween.tween_property(_ui_builder._combo_shell, "color", combo_base, 0.12)
+	tween.parallel().tween_property(_ui_builder._style_shell, "color", style_base, 0.12)
+	tween.parallel().tween_property(_ui_builder._resource_shell, "color", resource_base, 0.12)
 
 
 func _hide_reward_overlay() -> void:
-	_reward_overlay.visible = false
-	_reward_creature_tag_label.text = ""
-	_reward_title_label.text = ""
-	_reward_body_label.text = ""
-	_reward_bond_label.text = ""
-	_reward_bond_effect_label.text = ""
-	_reward_eat_label.text = ""
-	_reward_eat_effect_label.text = ""
-	_reward_quig_label.text = ""
-	_reward_hint_label.text = ""
+	_ui_builder._reward_overlay.visible = false
+	_ui_builder._reward_creature_tag_label.text = ""
+	_ui_builder._reward_title_label.text = ""
+	_ui_builder._reward_body_label.text = ""
+	_ui_builder._reward_bond_label.text = ""
+	_ui_builder._reward_bond_effect_label.text = ""
+	_ui_builder._reward_eat_label.text = ""
+	_ui_builder._reward_eat_effect_label.text = ""
+	_ui_builder._reward_quig_label.text = ""
+	_ui_builder._reward_hint_label.text = ""
 	_refresh_quig_ui_state()
 	_schedule_reward_scroll_reflow()
 
 
 func _refresh_run_build_readout() -> void:
-	if _hud_presenter == null:
+	if _ui_builder._hud_presenter == null:
 		return
-	_hud_presenter.refresh_progression_readouts(RunGrowth, _song_mode, _song_phase_index, _song_phases, _pending_creature_snapshot())
+	_ui_builder._hud_presenter.refresh_progression_readouts(RunGrowth, _song_mode, _song_phase_index, _song_phases, _pending_creature_snapshot())
 
 
 func _pending_creature_snapshot() -> Dictionary:
@@ -3784,18 +3686,18 @@ func _pending_creature_snapshot() -> Dictionary:
 
 
 func _refresh_dna_hud() -> void:
-	if _hud_presenter == null:
+	if _ui_builder._hud_presenter == null:
 		return
-	_hud_presenter.refresh_dna_hud(_song_mode, _song_phase_index, _song_phases, _pending_creature_snapshot())
+	_ui_builder._hud_presenter.refresh_dna_hud(_song_mode, _song_phase_index, _song_phases, _pending_creature_snapshot())
 
 
 func _show_live_reward_offer(creature_data: Dictionary) -> void:
 	if _victory_reward_director != null:
-		_victory_reward_director.offer_creature(creature_data, true, LIVE_REWARD_WINDOW)
+		_victory_reward_director.offer_creature(creature_data, true, _ui_builder.LIVE_REWARD_WINDOW)
 
 
 func _refresh_live_reward_shell() -> void:
-	if _live_reward_shell == null or _victory_reward_director == null:
+	if _ui_builder._live_reward_shell == null or _victory_reward_director == null:
 		return
 		
 	var pending_creature: Dictionary = _victory_reward_director.get_pending_creature()
@@ -3808,25 +3710,25 @@ func _refresh_live_reward_shell() -> void:
 	var archive_tether_ready: bool = GameState.is_species_ever_bonded(species_id)
 	var display_name: String = str(pending_creature.get("display_name", "Creature"))
 	var encounter_context: String = _describe_creature_offer_context(pending_creature)
-	_live_reward_title_label.text = PRESENTATION_TEXT.live_reward_title(display_name)
+	_ui_builder._live_reward_title_label.text = _ui_builder.PRESENTATION_TEXT.live_reward_title(display_name)
 	
-	var live_body: String = _hud_presenter.compact_hud_copy(str(pending_creature.get("description", "")), 30)
+	var live_body: String = _ui_builder._hud_presenter.compact_hud_copy(str(pending_creature.get("description", "")), 30)
 	if not encounter_context.is_empty():
-		live_body += "  %s" % _hud_presenter.compact_hud_copy(encounter_context, 12)
-	_live_reward_body_label.text = live_body
+		live_body += "  %s" % _ui_builder._hud_presenter.compact_hud_copy(encounter_context, 12)
+	_ui_builder._live_reward_body_label.text = live_body
 	
-	if _live_reward_dna_label != null:
-		_live_reward_dna_label.text = PRESENTATION_TEXT.live_bond_offer_gate_line(species_id)
-		_live_reward_dna_label.modulate = Color(0.4, 0.9, 0.8) if archive_tether_ready or current_dna >= threshold else Color(1.0, 0.4, 0.4)
+	if _ui_builder._live_reward_dna_label != null:
+		_ui_builder._live_reward_dna_label.text = _ui_builder.PRESENTATION_TEXT.live_bond_offer_gate_line(species_id)
+		_ui_builder._live_reward_dna_label.modulate = Color(0.4, 0.9, 0.8) if archive_tether_ready or current_dna >= threshold else Color(1.0, 0.4, 0.4)
 
-	_live_reward_hint_label.text = PRESENTATION_TEXT.live_reward_hint(_victory_reward_director.is_dna_locked(), _victory_reward_director.get_offer_timer())
+	_ui_builder._live_reward_hint_label.text = _ui_builder.PRESENTATION_TEXT.live_reward_hint(_victory_reward_director.is_dna_locked(), _victory_reward_director.get_offer_timer())
 
 
 func _hide_live_reward_shell() -> void:
-	if _live_reward_shell != null:
-		_live_reward_shell.visible = false
-	_live_reward_offer_timer = 0.0
-	if _tempo_director.get_family() == COMBAT_FEEL_CONTENT.TEMPO_VOID:
+	if _ui_builder._live_reward_shell != null:
+		_ui_builder._live_reward_shell.visible = false
+	_ui_builder._live_reward_offer_timer = 0.0
+	if _tempo_director.get_family() == _ui_builder.COMBAT_FEEL_CONTENT.TEMPO_VOID:
 		_tempo_director.end_void(&"shell_hidden")
 	_refresh_quig_ui_state()
 	_sync_message_lane_ownership()
@@ -3835,9 +3737,9 @@ func _hide_live_reward_shell() -> void:
 func _refresh_song_controls_text() -> void:
 	if _song_reward_pending and _victory_reward_director.is_awaiting_choice():
 		if _pending_reward_dna_locked:
-			_hud_presenter.set_controls_text(PRESENTATION_TEXT.LIVE_CONTROLS_LOCKED)
+			_ui_builder._hud_presenter.set_controls_text(_ui_builder.PRESENTATION_TEXT.LIVE_CONTROLS_LOCKED)
 		else:
-			_hud_presenter.set_controls_text(PRESENTATION_TEXT.LIVE_CONTROLS_CHOICE)
+			_ui_builder._hud_presenter.set_controls_text(_ui_builder.PRESENTATION_TEXT.LIVE_CONTROLS_CHOICE)
 		return
 	_set_song_controls_text()
 
@@ -3848,7 +3750,7 @@ func _show_next_live_reward_offer() -> void:
 		_hide_live_reward_shell()
 		_refresh_song_controls_text()
 		return
-	if _tempo_director.get_family() == COMBAT_FEEL_CONTENT.TEMPO_DECREE:
+	if _tempo_director.get_family() == _ui_builder.COMBAT_FEEL_CONTENT.TEMPO_DECREE:
 		return
 
 	var next_creature: Dictionary = _live_reward_queue.pop_front()
@@ -3858,8 +3760,8 @@ func _show_next_live_reward_offer() -> void:
 func _expire_live_reward_offer() -> void:
 	if not _song_reward_pending or not _victory_reward_director.is_awaiting_choice():
 		return
-	_tempo_director.notify_tempo_mastery(COMBAT_FEEL_CONTENT.TEMPO_VOID, "choice_timeout", {
-		"window_seconds": LIVE_REWARD_WINDOW
+	_tempo_director.notify_tempo_mastery(_ui_builder.COMBAT_FEEL_CONTENT.TEMPO_VOID, "choice_timeout", {
+		"window_seconds": _ui_builder.LIVE_REWARD_WINDOW
 	})
 	_pass_reward()
 
@@ -3887,16 +3789,16 @@ func _pass_reward() -> void:
 
 
 func _on_combo_changed(count: int, tier: String) -> void:
-	_hud_presenter.refresh_combo(count, tier)
+	_ui_builder._hud_presenter.refresh_combo(count, tier)
 
 
 func _on_run_score_changed(score: int) -> void:
-	if _hud_presenter != null:
-		_hud_presenter.refresh_run_score(score)
+	if _ui_builder._hud_presenter != null:
+		_ui_builder._hud_presenter.refresh_run_score(score)
 
 
 func _show_end_stats() -> void:
-	if _end_stats_label == null:
+	if _ui_builder._end_stats_label == null:
 		return
 
 	var kills: int = RunStats.kills
@@ -3916,13 +3818,13 @@ func _show_end_stats() -> void:
 
 	var growth_level: int = 1
 	growth_level = RunGrowth.level
-	var post_run_summary: String = PRESENTATION_TEXT.post_run_summary(
+	var post_run_summary: String = _ui_builder.PRESENTATION_TEXT.post_run_summary(
 		_build_post_run_summary_payload(),
 		_region_id,
-		result_label.text == "RUN COMPLETE"
+		_ui_builder.result_label.text == "RUN COMPLETE"
 	)
 
-	_end_stats_label.text = (
+	_ui_builder._end_stats_label.text = (
 		"[ %s ]  %d pts\n\n" % [grade, score]
 		+ "Kills %d    Damage %d    Hits taken %d\n" % [kills, dmg, hit]
 		+ "Perfect %d  Good %d    Parries %d+%d\n" % [p_att, g_att, p_par, g_par]
@@ -3930,7 +3832,7 @@ func _show_end_stats() -> void:
 		+ "Bonded %d    Eaten %d    Passed %d    Level %d\n\n" % [bonds, eats, RunStats.passes, growth_level]
 		+ post_run_summary
 	)
-	_end_stats_label.visible = true
+	_ui_builder._end_stats_label.visible = true
 
 
 func _on_dna_gained(_species_id: String, _amount: float, _total: float) -> void:
@@ -3963,18 +3865,18 @@ func _build_post_run_summary_payload() -> Dictionary:
 
 func _on_dna_routing_changed(route_id: String, label: String) -> void:
 	var route_color: Color
-	if _hud_presenter != null:
-		route_color = _hud_presenter.dna_route_accent_color(route_id)
-		_hud_presenter.apply_dna_routing_highlight(route_id, label)
+	if _ui_builder._hud_presenter != null:
+		route_color = _ui_builder._hud_presenter.dna_route_accent_color(route_id)
+		_ui_builder._hud_presenter.apply_dna_routing_highlight(route_id, label)
 	else:
 		route_color = Color(0.82, 0.96, 0.82, 1.0) if route_id == "bond" else Color(0.96, 0.84, 0.62, 1.0)
-		if _dna_route_label != null:
-			_dna_route_label.text = label
-			_dna_route_label.modulate = route_color
-		if _dna_route_shell != null:
+		if _ui_builder._dna_route_label != null:
+			_ui_builder._dna_route_label.text = label
+			_ui_builder._dna_route_label.modulate = route_color
+		if _ui_builder._dna_route_shell != null:
 			var tween := create_tween()
-			_dna_route_shell.modulate = Color(1.5, 1.5, 1.5, 1.0)
-			tween.tween_property(_dna_route_shell, "modulate", Color.WHITE, 0.25)
+			_ui_builder._dna_route_shell.modulate = Color(1.5, 1.5, 1.5, 1.0)
+			tween.tween_property(_ui_builder._dna_route_shell, "modulate", Color.WHITE, 0.25)
 	_show_feedback(label, route_color, 0.20)
 	if _is_run_spine_active() and _run_spine_surface != null:
 		_run_spine_surface.refresh_prep_summary()
@@ -3982,8 +3884,8 @@ func _on_dna_routing_changed(route_id: String, label: String) -> void:
 
 func _on_player_took_damage(amount: float, source_sector: int) -> void:
 	_tempo_director.kill_tempo_recovery_tween()
-	if _tempo_director.get_family() == COMBAT_FEEL_CONTENT.TEMPO_STRETCH:
-		_tempo_director.exit_tempo_state(COMBAT_FEEL_CONTENT.TEMPO_STRETCH, true)
+	if _tempo_director.get_family() == _ui_builder.COMBAT_FEEL_CONTENT.TEMPO_STRETCH:
+		_tempo_director.exit_tempo_state(_ui_builder.COMBAT_FEEL_CONTENT.TEMPO_STRETCH, true)
 	else:
 		_tempo_director.apply_tempo_time_scale(_base_time_scale)
 	if _escalation_director != null:
@@ -4038,14 +3940,14 @@ func _on_player_healed(_amount: float) -> void:
 
 
 func _on_ultimate_available() -> void:
-	_hud_presenter.set_ultimate_text("Ready")
+	_ui_builder._hud_presenter.set_ultimate_text("Ready")
 	_show_feedback("READY", Color(1.0, 0.85, 0.35, 1.0), 0.45)
 	_flash_meter_shell(Color(0.30, 0.21, 0.10, 0.94), 0.20)
 
 
 func _on_ultimate_fired(_power: float) -> void:
-	_hud_presenter.set_ultimate_text("0%")
-	var tier: String = combat_meter.get_current_tier()
+	_ui_builder._hud_presenter.set_ultimate_text("0%")
+	var tier: String = _ui_builder.combat_meter.get_current_tier()
 	var ult_text: String = "DEVOUR"
 	if tier == "sovereign":
 		ult_text = "SOVEREIGN DEVOUR"
@@ -4111,9 +4013,9 @@ func _on_enemy_damaged(enemy_id: int, damage: float) -> void:
 		_refresh_enemy_marker_health(enemy_id)
 
 	# Decrement unified boss HP bar.
-	if _is_boss_encounter and _hud_presenter != null:
+	if _is_boss_encounter and _ui_builder._hud_presenter != null:
 		_boss_current_hp = max(_boss_current_hp - damage, 0.0)
-		_hud_presenter.update_boss_hp(_boss_current_hp)
+		_ui_builder._hud_presenter.update_boss_hp(_boss_current_hp)
 		
 		if _escalation_director != null and _boss_total_hp > 0.0:
 			_escalation_director.notify_boss_hp_changed(_boss_current_hp / _boss_total_hp)
@@ -4122,7 +4024,7 @@ func _on_enemy_damaged(enemy_id: int, damage: float) -> void:
 		if not _boss_decree_timeline_active and not _boss_hp_threshold_fired and _boss_total_hp > 0.0 and (_boss_current_hp / _boss_total_hp) <= 0.5:
 			_boss_hp_threshold_fired = true
 			EventBus.emit_signal("sovereign_threshold_reached", 0.5)
-			_hud_presenter.set_boss_state_text(PRESENTATION_TEXT.boss_state_final(_region_id))
+			_ui_builder._hud_presenter.set_boss_state_text(_ui_builder.PRESENTATION_TEXT.boss_state_final(_region_id))
 			if _performance_reward_director != null and is_instance_valid(_performance_reward_director) and _performance_reward_director.has_method("notify_boss_threshold"):
 				_performance_reward_director.call("notify_boss_threshold", "sovereign_unleash", 8.0, "BOSS BREAK")
 			_presentation_runtime.apply_impact_profile(COMBAT_IMPACT_FEEDBACK.build_boss_threshold_profile())
@@ -4160,7 +4062,7 @@ func _spawn_damage_number(enemy_id: int, damage: float) -> void:
 	var font_size: int = 19
 	var outline_size: int = 2
 	var rise: float = 44.0
-	var float_time: float = COMBAT_FEEL_CONTENT.DAMAGE_NUMBER_FLOAT_TIME
+	var float_time: float = _ui_builder.COMBAT_FEEL_CONTENT.DAMAGE_NUMBER_FLOAT_TIME
 	var damage_color: Color = Color(0.96, 0.80, 0.50, 1.0)
 	if is_heavy_target or damage_ratio >= 1.65:
 		font_size = 31
@@ -4189,7 +4091,7 @@ func _spawn_damage_number(enemy_id: int, damage: float) -> void:
 	lbl.text = "%.0f" % damage
 	lbl.position = start_pos
 	lbl.z_index = 13 if font_size >= 25 else 10
-	UI_STYLE.apply_label(lbl, "warm_value")
+	_ui_builder.UI_STYLE.apply_label(lbl, "warm_value")
 	lbl.modulate = damage_color
 	lbl.add_theme_font_size_override("font_size", font_size)
 	lbl.add_theme_constant_override("outline_size", outline_size)
@@ -4267,8 +4169,8 @@ func _on_proc_feedback_requested(text: String, color: Color) -> void:
 
 
 func _on_ultimate_power_granted(amount: float) -> void:
-	if combat_meter != null:
-		combat_meter.gain_ultimate_power(amount)
+	if _ui_builder.combat_meter != null:
+		_ui_builder.combat_meter.gain_ultimate_power(amount)
 
 
 func _on_enemy_status_applied_requested(enemy_id: int, status_id: String, params: Dictionary) -> void:
@@ -4326,8 +4228,8 @@ func _process_dna_award(defeated_enemy: Dictionary) -> void:
 		return
 
 	# Performance Reward Depth: Apply style-based DNA multiplier.
-	if combat_meter != null and combat_meter.has_method("dna_multiplier"):
-		var mult: float = combat_meter.dna_multiplier()
+	if _ui_builder.combat_meter != null and _ui_builder.combat_meter.has_method("dna_multiplier"):
+		var mult: float = _ui_builder.combat_meter.dna_multiplier()
 		if mult > 1.0:
 			dna_amount *= mult
 			if mult >= 1.4:
@@ -4404,11 +4306,11 @@ func _maybe_show_dna_pickup_flavor(species_id: String, dna_result: Dictionary) -
 	var state_id: String = _resolve_dna_pickup_state(species_id, dna_result)
 	var rotation_key: String = "%s:%s" % [_region_id, state_id]
 	var flavor_rotation: int = int(_dna_pickup_flavor_rotation.get(rotation_key, 0))
-	var flavor_line: String = PRESENTATION_TEXT.dna_pickup_flavor(_region_id, state_id, flavor_rotation)
+	var flavor_line: String = _ui_builder.PRESENTATION_TEXT.dna_pickup_flavor(_region_id, state_id, flavor_rotation)
 	if flavor_line.is_empty():
 		return
 	_dna_pickup_flavor_rotation[rotation_key] = flavor_rotation + 1
-	_dna_pickup_flavor_cooldown = PRESENTATION_TEXT.DNA_PICKUP_FLAVOR_COOLDOWN_SECONDS
+	_dna_pickup_flavor_cooldown = _ui_builder.PRESENTATION_TEXT.DNA_PICKUP_FLAVOR_COOLDOWN_SECONDS
 	_show_feedback(flavor_line, Color(0.88, 0.92, 0.98, 1.0), 0.20)
 
 
@@ -4417,13 +4319,13 @@ func _on_slow_motion(requested_scale: float, duration: float) -> void:
 	# unless it is an explicit PUNCTURE event.
 	var safe_scale: float = maxf(requested_scale, 0.35)
 	
-	if _tempo_director.get_family() == COMBAT_FEEL_CONTENT.TEMPO_VOID:
-		_tempo_director.track_tempo_event(COMBAT_FEEL_CONTENT.TEMPO_PUNCTURE, &"suppressed_by_void")
+	if _tempo_director.get_family() == _ui_builder.COMBAT_FEEL_CONTENT.TEMPO_VOID:
+		_tempo_director.track_tempo_event(_ui_builder.COMBAT_FEEL_CONTENT.TEMPO_PUNCTURE, &"suppressed_by_void")
 		return
 	
 	# Mapping incoming requests to high-impact tiers v1.
-	var puncture_max_scale: float = float(COMBAT_FEEL_CONTENT.SLOWMO_TIER_THRESHOLDS.get("puncture_max_scale", 0.1))
-	var stretch_max_scale: float = float(COMBAT_FEEL_CONTENT.SLOWMO_TIER_THRESHOLDS.get("stretch_max_scale", 0.7))
+	var puncture_max_scale: float = float(_ui_builder.COMBAT_FEEL_CONTENT.SLOWMO_TIER_THRESHOLDS.get("puncture_max_scale", 0.1))
+	var stretch_max_scale: float = float(_ui_builder.COMBAT_FEEL_CONTENT.SLOWMO_TIER_THRESHOLDS.get("stretch_max_scale", 0.7))
 
 	if requested_scale < puncture_max_scale:
 		# PUNCTURE: Very heavy slowdown (killing blow freeze). 
@@ -4433,11 +4335,11 @@ func _on_slow_motion(requested_scale: float, duration: float) -> void:
 		})
 	elif safe_scale <= stretch_max_scale:
 		# STRETCH: Witch Time dilation (perfect parry/dodge/hits).
-		_tempo_director.enter_tempo_state(COMBAT_FEEL_CONTENT.TEMPO_STRETCH, &"combat_stretch", safe_scale, duration, {})
+		_tempo_director.enter_tempo_state(_ui_builder.COMBAT_FEEL_CONTENT.TEMPO_STRETCH, &"combat_stretch", safe_scale, duration, {})
 	else:
 		# Standard execution feedback (0.7+ scale) is now suppressed to keep
 		# the game feeling high-pressure and fast. Only rare distortion allowed.
-		_tempo_director.track_tempo_event(COMBAT_FEEL_CONTENT.TEMPO_NONE, &"suppressed_low_weight")
+		_tempo_director.track_tempo_event(_ui_builder.COMBAT_FEEL_CONTENT.TEMPO_NONE, &"suppressed_low_weight")
 
 
 func _impact_lane_forward(lane: int) -> Vector2:
@@ -4553,7 +4455,7 @@ func _on_timed_attack_resolved(sector: int, quality: String, damage: float, enem
 
 	if quality == "perfect":
 		impact_fx_requested.emit(&"perfect", _impact_pos_lane(sector, 0.58), _impact_lane_forward(sector), 1.0)
-		_tempo_director.notify_tempo_mastery(COMBAT_FEEL_CONTENT.TEMPO_PUNCTURE, "perfect_hit", {
+		_tempo_director.notify_tempo_mastery(_ui_builder.COMBAT_FEEL_CONTENT.TEMPO_PUNCTURE, "perfect_hit", {
 			"beat_quality": beat_quality
 		})
 		_try_apply_vessel_modifier_on_perfect(sector, damage)
@@ -4564,9 +4466,9 @@ func _on_timed_attack_resolved(sector: int, quality: String, damage: float, enem
 	_presentation_runtime.pulse_sigil_result_snap(quality, "attack")
 
 	if quality == "perfect":
-		_presentation_controller.on_combat_event(_bg_sprite, "perfect")
-	if _tempo_director.get_family() == COMBAT_FEEL_CONTENT.TEMPO_DECREE and (quality == "perfect" or quality == "good"):
-		_tempo_director.notify_tempo_mastery(COMBAT_FEEL_CONTENT.TEMPO_DECREE, "law_response", {
+		_ui_builder._presentation_controller.on_combat_event(_bg_sprite, "perfect")
+	if _tempo_director.get_family() == _ui_builder.COMBAT_FEEL_CONTENT.TEMPO_DECREE and (quality == "perfect" or quality == "good"):
+		_tempo_director.notify_tempo_mastery(_ui_builder.COMBAT_FEEL_CONTENT.TEMPO_DECREE, "law_response", {
 			"response": "timed_attack",
 			"quality": quality
 		})
@@ -4626,19 +4528,19 @@ func _on_player_parried(sector: int, quality: String, _reflect_damage: float, _h
 	_presentation_runtime.pulse_sigil_result_snap(quality, "parry")
 
 	if quality == "perfect":
-		_presentation_controller.on_combat_event(_bg_sprite, "perfect")
-		_tempo_director.notify_tempo_mastery(COMBAT_FEEL_CONTENT.TEMPO_PUNCTURE, "perfect_parry", {
+		_ui_builder._presentation_controller.on_combat_event(_bg_sprite, "perfect")
+		_tempo_director.notify_tempo_mastery(_ui_builder.COMBAT_FEEL_CONTENT.TEMPO_PUNCTURE, "perfect_parry", {
 			"beat_quality": bq
 		})
-	if _tempo_director.get_family() == COMBAT_FEEL_CONTENT.TEMPO_DECREE and (quality == "perfect" or quality == "good"):
-		_tempo_director.notify_tempo_mastery(COMBAT_FEEL_CONTENT.TEMPO_DECREE, "law_response", {
+	if _tempo_director.get_family() == _ui_builder.COMBAT_FEEL_CONTENT.TEMPO_DECREE and (quality == "perfect" or quality == "good"):
+		_tempo_director.notify_tempo_mastery(_ui_builder.COMBAT_FEEL_CONTENT.TEMPO_DECREE, "law_response", {
 			"response": "parry",
 			"quality": quality
 		})
 
 
 func _on_player_dodged(from_sector: int, to_sector: int, _heading: Vector2) -> void:
-	if _tempo_director.get_family() == COMBAT_FEEL_CONTENT.TEMPO_NONE:
+	if _tempo_director.get_family() == _ui_builder.COMBAT_FEEL_CONTENT.TEMPO_NONE:
 		_tempo_director.kill_tempo_recovery_tween()
 		_tempo_director.apply_tempo_time_scale(_base_time_scale)
 	_show_feedback("DODGE", Color(0.65, 0.85, 1.0, 1.0), 0.28)
@@ -4657,8 +4559,8 @@ func _on_player_dodged(from_sector: int, to_sector: int, _heading: Vector2) -> v
 		_show_beat_feedback("SLIP", Color(0.55, 0.75, 0.92, 1.0))
 	if _performance_reward_director != null and is_instance_valid(_performance_reward_director) and _performance_reward_director.has_method("notify_dodge_timing_quality"):
 		_performance_reward_director.call("notify_dodge_timing_quality", from_sector, to_sector, bq)
-	if _tempo_director.get_family() == COMBAT_FEEL_CONTENT.TEMPO_DECREE:
-		_tempo_director.notify_tempo_mastery(COMBAT_FEEL_CONTENT.TEMPO_DECREE, "law_response", {
+	if _tempo_director.get_family() == _ui_builder.COMBAT_FEEL_CONTENT.TEMPO_DECREE:
+		_tempo_director.notify_tempo_mastery(_ui_builder.COMBAT_FEEL_CONTENT.TEMPO_DECREE, "law_response", {
 			"response": "dodge",
 			"quality": bq
 		})
@@ -4723,9 +4625,9 @@ func _on_combo_broken(_lost: int) -> void:
 
 
 func _on_run_growth_changed(level: int, current_exp: float, exp_to_next: float) -> void:
-	if _hud_presenter == null:
+	if _ui_builder._hud_presenter == null:
 		return
-	_hud_presenter.refresh_after_run_growth_exp(
+	_ui_builder._hud_presenter.refresh_after_run_growth_exp(
 		RunGrowth,
 		level,
 		current_exp,
@@ -4753,29 +4655,29 @@ func _on_run_growth_level_resolved(result: Dictionary) -> void:
 		EventBus.emit_signal("screen_flash", Color(0.12, 0.12, 0.14, 0.70), 0.15)
 		
 		_show_feedback("%s EVOLVED" % readout_label.to_upper(), Color(0.92, 0.22, 0.22, 1.0), 1.2)
-		_quig_anchor_label.text = _hud_presenter.compact_hud_copy("%s - %s" % [readout_label, summary], 34)
-		_quig_anchor_label.visible = true
+		_ui_builder._quig_anchor_label.text = _ui_builder._hud_presenter.compact_hud_copy("%s - %s" % [readout_label, summary], 34)
+		_ui_builder._quig_anchor_label.visible = true
 		_refresh_quig_ui_state()
 		
 		if _quig_tween != null:
 			_quig_tween.kill()
 			
 		_quig_tween = create_tween()
-		_quig_tween.tween_interval(COMBAT_FEEL_CONTENT.TENDENCY_ANCHOR_HOLD_TIME * 1.5)
-		_quig_tween.tween_property(_quig_anchor_label, "modulate:a", 0.0, COMBAT_FEEL_CONTENT.TENDENCY_ANCHOR_FADE_TIME)
+		_quig_tween.tween_interval(_ui_builder.COMBAT_FEEL_CONTENT.TENDENCY_ANCHOR_HOLD_TIME * 1.5)
+		_quig_tween.tween_property(_ui_builder._quig_anchor_label, "modulate:a", 0.0, _ui_builder.COMBAT_FEEL_CONTENT.TENDENCY_ANCHOR_FADE_TIME)
 		_quig_tween.tween_callback(func() -> void:
-			_quig_anchor_label.visible = false
-			_quig_anchor_label.modulate.a = 1.0
+			_ui_builder._quig_anchor_label.visible = false
+			_ui_builder._quig_anchor_label.modulate.a = 1.0
 			_refresh_quig_ui_state()
 		)
 
 	var snapshot: Dictionary = result.get("snapshot", {})
 	if not snapshot.is_empty():
-		_hud_presenter.refresh_hp(
+		_ui_builder._hud_presenter.refresh_hp(
 			float(snapshot.get("player_hp", PlayerState.hp)),
 			float(snapshot.get("player_max_hp", PlayerState.max_hp))
 		)
-		_hud_presenter.refresh_stats(
+		_ui_builder._hud_presenter.refresh_stats(
 			float(snapshot.get("attack_damage", GameState.get_attack_damage())),
 			float(snapshot.get("player_defense", PlayerState.defense))
 		)
@@ -4797,19 +4699,19 @@ func _on_tendency_growth_resolved(tendency_id: String, title: String, summary: S
 	_show_feedback(title, color, 0.42)
 	_surge_window_tendency = tendency_id
 	_surge_window_timer = 4.0
-	_quig_anchor_label.text = _hud_presenter.compact_hud_copy(summary, 34)
-	_quig_anchor_label.visible = true
+	_ui_builder._quig_anchor_label.text = _ui_builder._hud_presenter.compact_hud_copy(summary, 34)
+	_ui_builder._quig_anchor_label.visible = true
 	_refresh_quig_ui_state()
 	
 	if _quig_tween != null:
 		_quig_tween.kill()
 	
 	_quig_tween = create_tween()
-	_quig_tween.tween_interval(COMBAT_FEEL_CONTENT.TENDENCY_ANCHOR_HOLD_TIME)
-	_quig_tween.tween_property(_quig_anchor_label, "modulate:a", 0.0, COMBAT_FEEL_CONTENT.TENDENCY_ANCHOR_FADE_TIME)
+	_quig_tween.tween_interval(_ui_builder.COMBAT_FEEL_CONTENT.TENDENCY_ANCHOR_HOLD_TIME)
+	_quig_tween.tween_property(_ui_builder._quig_anchor_label, "modulate:a", 0.0, _ui_builder.COMBAT_FEEL_CONTENT.TENDENCY_ANCHOR_FADE_TIME)
 	_quig_tween.tween_callback(func() -> void:
-		_quig_anchor_label.visible = false
-		_quig_anchor_label.modulate.a = 1.0
+		_ui_builder._quig_anchor_label.visible = false
+		_ui_builder._quig_anchor_label.modulate.a = 1.0
 		_refresh_quig_ui_state()
 	)
 
@@ -4817,41 +4719,41 @@ func _on_tendency_growth_resolved(tendency_id: String, title: String, summary: S
 func _tick_hud_sprite_animation(delta: float) -> void:
 	if _has_active_quig_ui():
 		_quig_anim_accum += delta
-		if _quig_anim_accum >= COMBAT_FEEL_CONTENT.QUIG_FRAME_DURATION:
-			_quig_anim_accum = fmod(_quig_anim_accum, COMBAT_FEEL_CONTENT.QUIG_FRAME_DURATION)
-			_quig_anim_frame = (_quig_anim_frame + 1) % COMBAT_FEEL_CONTENT.QUIG_FRAME_COUNT
-			_apply_strip_frame(_quig_anchor_sprite, COMBAT_FEEL_CONTENT.QUIG_FRAME_SIZE, _quig_anim_frame)
-			_apply_strip_frame(_reward_quig_sprite, COMBAT_FEEL_CONTENT.QUIG_FRAME_SIZE, _quig_anim_frame)
+		if _quig_anim_accum >= _ui_builder.COMBAT_FEEL_CONTENT.QUIG_FRAME_DURATION:
+			_quig_anim_accum = fmod(_quig_anim_accum, _ui_builder.COMBAT_FEEL_CONTENT.QUIG_FRAME_DURATION)
+			_quig_anim_frame = (_quig_anim_frame + 1) % _ui_builder.COMBAT_FEEL_CONTENT.QUIG_FRAME_COUNT
+			_apply_strip_frame(_ui_builder._quig_anchor_sprite, _ui_builder.COMBAT_FEEL_CONTENT.QUIG_FRAME_SIZE, _quig_anim_frame)
+			_apply_strip_frame(_ui_builder._reward_quig_sprite, _ui_builder.COMBAT_FEEL_CONTENT.QUIG_FRAME_SIZE, _quig_anim_frame)
 	else:
 		if _quig_anim_frame != 0:
 			_quig_anim_frame = 0
-			_apply_strip_frame(_quig_anchor_sprite, COMBAT_FEEL_CONTENT.QUIG_FRAME_SIZE, 0)
-			_apply_strip_frame(_reward_quig_sprite, COMBAT_FEEL_CONTENT.QUIG_FRAME_SIZE, 0)
+			_apply_strip_frame(_ui_builder._quig_anchor_sprite, _ui_builder.COMBAT_FEEL_CONTENT.QUIG_FRAME_SIZE, 0)
+			_apply_strip_frame(_ui_builder._reward_quig_sprite, _ui_builder.COMBAT_FEEL_CONTENT.QUIG_FRAME_SIZE, 0)
 		_quig_anim_accum = 0.0
 
-	if _dna_shell != null and _dna_shell.visible and _dna_emblem != null:
+	if _ui_builder._dna_shell != null and _ui_builder._dna_shell.visible and _ui_builder._dna_emblem != null:
 		_dna_anim_accum += delta
-		if _dna_anim_accum >= COMBAT_FEEL_CONTENT.DNA_FRAME_DURATION:
-			_dna_anim_accum = fmod(_dna_anim_accum, COMBAT_FEEL_CONTENT.DNA_FRAME_DURATION)
-			_dna_anim_frame = (_dna_anim_frame + 1) % COMBAT_FEEL_CONTENT.DNA_FRAME_COUNT
-			_apply_strip_frame(_dna_emblem, COMBAT_FEEL_CONTENT.DNA_FRAME_SIZE, _dna_anim_frame)
+		if _dna_anim_accum >= _ui_builder.COMBAT_FEEL_CONTENT.DNA_FRAME_DURATION:
+			_dna_anim_accum = fmod(_dna_anim_accum, _ui_builder.COMBAT_FEEL_CONTENT.DNA_FRAME_DURATION)
+			_dna_anim_frame = (_dna_anim_frame + 1) % _ui_builder.COMBAT_FEEL_CONTENT.DNA_FRAME_COUNT
+			_apply_strip_frame(_ui_builder._dna_emblem, _ui_builder.COMBAT_FEEL_CONTENT.DNA_FRAME_SIZE, _dna_anim_frame)
 	else:
 		if _dna_anim_frame != 0:
 			_dna_anim_frame = 0
-			_apply_strip_frame(_dna_emblem, COMBAT_FEEL_CONTENT.DNA_FRAME_SIZE, 0)
+			_apply_strip_frame(_ui_builder._dna_emblem, _ui_builder.COMBAT_FEEL_CONTENT.DNA_FRAME_SIZE, 0)
 		_dna_anim_accum = 0.0
 
 
 func _tick_bonded_creature_animation(delta: float) -> void:
-	if _bonded_creature_sprite == null or not _bonded_creature_sprite.visible:
+	if _ui_builder._bonded_creature_sprite == null or not _ui_builder._bonded_creature_sprite.visible:
 		return
-	var frame_count: int = _bonded_creature_sprite.hframes * _bonded_creature_sprite.vframes
+	var frame_count: int = _ui_builder._bonded_creature_sprite.hframes * _ui_builder._bonded_creature_sprite.vframes
 	if frame_count <= 1:
 		return
 	_bonded_creature_anim_accum += delta
 	if _bonded_creature_anim_accum >= BOND_REMNANT_IDLE_FRAME_DURATION:
 		_bonded_creature_anim_accum = fmod(_bonded_creature_anim_accum, BOND_REMNANT_IDLE_FRAME_DURATION)
-		_bonded_creature_sprite.frame = (_bonded_creature_sprite.frame + 1) % frame_count
+		_ui_builder._bonded_creature_sprite.frame = (_ui_builder._bonded_creature_sprite.frame + 1) % frame_count
 
 
 func _apply_strip_frame(target: TextureRect, frame_size: Vector2i, frame: int) -> void:
@@ -4867,33 +4769,33 @@ func _apply_strip_frame(target: TextureRect, frame_size: Vector2i, frame: int) -
 
 
 func _has_active_quig_ui() -> bool:
-	var anchor_live: bool = _quig_anchor_label != null and _quig_anchor_label.visible and not _quig_anchor_label.text.is_empty()
-	var reward_live: bool = _reward_overlay != null and _reward_overlay.visible and _reward_quig_label != null and not _reward_quig_label.text.is_empty()
+	var anchor_live: bool = _ui_builder._quig_anchor_label != null and _ui_builder._quig_anchor_label.visible and not _ui_builder._quig_anchor_label.text.is_empty()
+	var reward_live: bool = _ui_builder._reward_overlay != null and _ui_builder._reward_overlay.visible and _ui_builder._reward_quig_label != null and not _ui_builder._reward_quig_label.text.is_empty()
 	return anchor_live or reward_live
 
 
 func _refresh_quig_ui_state() -> void:
-	var anchor_live: bool = _quig_anchor_label != null and _quig_anchor_label.visible and not _quig_anchor_label.text.is_empty()
-	if _quig_shell != null:
-		_quig_shell.visible = anchor_live
-	if _quig_anchor_sprite != null:
-		_quig_anchor_sprite.visible = anchor_live
+	var anchor_live: bool = _ui_builder._quig_anchor_label != null and _ui_builder._quig_anchor_label.visible and not _ui_builder._quig_anchor_label.text.is_empty()
+	if _ui_builder._quig_shell != null:
+		_ui_builder._quig_shell.visible = anchor_live
+	if _ui_builder._quig_anchor_sprite != null:
+		_ui_builder._quig_anchor_sprite.visible = anchor_live
 		if anchor_live:
-			_quig_anchor_sprite.modulate = _quig_anchor_label.modulate
+			_ui_builder._quig_anchor_sprite.modulate = _ui_builder._quig_anchor_label.modulate
 
-	var reward_live: bool = _reward_overlay != null and _reward_overlay.visible and _reward_quig_label != null and not _reward_quig_label.text.is_empty()
-	if _reward_quig_sprite != null:
-		_reward_quig_sprite.visible = reward_live
+	var reward_live: bool = _ui_builder._reward_overlay != null and _ui_builder._reward_overlay.visible and _ui_builder._reward_quig_label != null and not _ui_builder._reward_quig_label.text.is_empty()
+	if _ui_builder._reward_quig_sprite != null:
+		_ui_builder._reward_quig_sprite.visible = reward_live
 
 
 func _on_vessel_shifted(class_data: Dictionary) -> void:
 	if class_data.is_empty():
 		return
-	if _presentation_controller == null or not is_instance_valid(_presentation_controller):
+	if _ui_builder._presentation_controller == null or not is_instance_valid(_ui_builder._presentation_controller):
 		return
 
 	var vibe_color: Color = class_data.get("vibe_color", Color.WHITE)
-	_presentation_controller.refresh_vessel_vibe(class_data, _timing_rings_cache)
+	_ui_builder._presentation_controller.refresh_vessel_vibe(class_data, _ui_builder._timing_rings_cache)
 	
 	# Visual feedback
 	EventBus.screen_flash.emit(vibe_color.lerp(Color.WHITE, 0.4), 0.1)
@@ -4918,13 +4820,13 @@ func _on_creature_bonded(creature_data: Dictionary) -> void:
 
 
 func _on_support_charge_changed(current: float, maximum: float, active_species_id: String) -> void:
-	_hud_presenter.refresh_support(current, maximum, active_species_id, RunGrowth)
+	_ui_builder._hud_presenter.refresh_support(current, maximum, active_species_id, RunGrowth)
 	_refresh_bonded_creature_render(active_species_id)
 	_refresh_run_build_readout()
 
 
 func _refresh_bonded_creature_render(active_species_id: String = "") -> void:
-	if _bonded_creature_sprite == null or zone_manager == null:
+	if _ui_builder._bonded_creature_sprite == null or zone_manager == null:
 		return
 
 	var species_id: String = active_species_id
@@ -4933,11 +4835,11 @@ func _refresh_bonded_creature_render(active_species_id: String = "") -> void:
 
 	if species_id.is_empty():
 		_bonded_creature_species = ""
-		_bonded_creature_sprite.visible = false
-		_bonded_creature_sprite.texture = null
-		_bonded_creature_sprite.hframes = 1
-		_bonded_creature_sprite.vframes = 1
-		_bonded_creature_sprite.frame = 0
+		_ui_builder._bonded_creature_sprite.visible = false
+		_ui_builder._bonded_creature_sprite.texture = null
+		_ui_builder._bonded_creature_sprite.hframes = 1
+		_ui_builder._bonded_creature_sprite.vframes = 1
+		_ui_builder._bonded_creature_sprite.frame = 0
 		_bonded_creature_anim_accum = 0.0
 		return
 
@@ -4945,11 +4847,11 @@ func _refresh_bonded_creature_render(active_species_id: String = "") -> void:
 		# Ashclaw's live combat body is BondedCompanion; this legacy support sprite
 		# is only visual and has no target/attack wiring, so do not duplicate it.
 		_bonded_creature_species = ""
-		_bonded_creature_sprite.visible = false
-		_bonded_creature_sprite.texture = null
-		_bonded_creature_sprite.hframes = 1
-		_bonded_creature_sprite.vframes = 1
-		_bonded_creature_sprite.frame = 0
+		_ui_builder._bonded_creature_sprite.visible = false
+		_ui_builder._bonded_creature_sprite.texture = null
+		_ui_builder._bonded_creature_sprite.hframes = 1
+		_ui_builder._bonded_creature_sprite.vframes = 1
+		_ui_builder._bonded_creature_sprite.frame = 0
 		_bonded_creature_anim_accum = 0.0
 		return
 
@@ -4965,11 +4867,11 @@ func _refresh_bonded_creature_render(active_species_id: String = "") -> void:
 			sprite_path = remnant_fallback_path
 	if sprite_path.is_empty() or not ResourceLoader.exists(sprite_path):
 		_bonded_creature_species = species_id
-		_bonded_creature_sprite.visible = false
-		_bonded_creature_sprite.texture = null
-		_bonded_creature_sprite.hframes = 1
-		_bonded_creature_sprite.vframes = 1
-		_bonded_creature_sprite.frame = 0
+		_ui_builder._bonded_creature_sprite.visible = false
+		_ui_builder._bonded_creature_sprite.texture = null
+		_ui_builder._bonded_creature_sprite.hframes = 1
+		_ui_builder._bonded_creature_sprite.vframes = 1
+		_ui_builder._bonded_creature_sprite.frame = 0
 		_bonded_creature_anim_accum = 0.0
 		return
 
@@ -4977,11 +4879,11 @@ func _refresh_bonded_creature_render(active_species_id: String = "") -> void:
 		var old_stage: String = _bonded_creature_species.split("_")[-1] if not _bonded_creature_species.is_empty() else ""
 		var render_tex: Texture2D = load(sprite_path) as Texture2D
 		if render_tex == null:
-			_bonded_creature_sprite.visible = false
-			_bonded_creature_sprite.texture = null
-			_bonded_creature_sprite.hframes = 1
-			_bonded_creature_sprite.vframes = 1
-			_bonded_creature_sprite.frame = 0
+			_ui_builder._bonded_creature_sprite.visible = false
+			_ui_builder._bonded_creature_sprite.texture = null
+			_ui_builder._bonded_creature_sprite.hframes = 1
+			_ui_builder._bonded_creature_sprite.vframes = 1
+			_ui_builder._bonded_creature_sprite.frame = 0
 			_bonded_creature_anim_accum = 0.0
 			return
 		
@@ -4991,19 +4893,19 @@ func _refresh_bonded_creature_render(active_species_id: String = "") -> void:
 			_trigger_creature_evolution_fx(species_id, growth_stage)
 
 		_bonded_creature_species = portrait_key
-		_bonded_creature_sprite.texture = render_tex
+		_ui_builder._bonded_creature_sprite.texture = render_tex
 		
 		# Auto-detect hframes for animation strips (assuming square frames)
 		var h_frames: int = clampi(int(float(render_tex.get_width()) / render_tex.get_height()), 1, 64)
-		_bonded_creature_sprite.hframes = h_frames
-		_bonded_creature_sprite.vframes = 1 # Most creature sprites use one-row animation strips.
+		_ui_builder._bonded_creature_sprite.hframes = h_frames
+		_ui_builder._bonded_creature_sprite.vframes = 1 # Most creature sprites use one-row animation strips.
 		
 		# Legacy handling for old bond_remnant grid if path still matches
 		if species_id == "bond_remnant" and growth_stage == "baby" and sprite_path.ends_with("bond_remnant_idle.png") and h_frames < 6:
-			_bonded_creature_sprite.hframes = BOND_REMNANT_IDLE_HFRAMES
-			_bonded_creature_sprite.vframes = BOND_REMNANT_IDLE_VFRAMES
+			_ui_builder._bonded_creature_sprite.hframes = BOND_REMNANT_IDLE_HFRAMES
+			_ui_builder._bonded_creature_sprite.vframes = BOND_REMNANT_IDLE_VFRAMES
 		
-		_bonded_creature_sprite.frame = 0
+		_ui_builder._bonded_creature_sprite.frame = 0
 		_bonded_creature_anim_accum = 0.0
 
 	var render_config: Dictionary = COMBAT_CONTENT.get_creature_combat_render(species_id)
@@ -5011,11 +4913,11 @@ func _refresh_bonded_creature_render(active_species_id: String = "") -> void:
 	var render_scale: float = float(render_config.get("scale", 0.052))
 	var render_modulate: Color = render_config.get("modulate", Color(0.90, 0.89, 0.86, 0.86))
 	var render_z: int = int(render_config.get("z_index", 5))
-	_bonded_creature_sprite.position = _lane_player_pos() + world_offset
-	_bonded_creature_sprite.scale = Vector2.ONE * render_scale
-	_bonded_creature_sprite.modulate = render_modulate
-	_bonded_creature_sprite.z_index = render_z
-	_bonded_creature_sprite.visible = true
+	_ui_builder._bonded_creature_sprite.position = _lane_player_pos() + world_offset
+	_ui_builder._bonded_creature_sprite.scale = Vector2.ONE * render_scale
+	_ui_builder._bonded_creature_sprite.modulate = render_modulate
+	_ui_builder._bonded_creature_sprite.z_index = render_z
+	_ui_builder._bonded_creature_sprite.visible = true
 
 
 func _apply_song_phase_cadence(phase: Dictionary, spawn_mult: float = 1.0) -> void:
@@ -5084,12 +4986,12 @@ func _build_music_progression_state() -> Dictionary:
 
 
 func _estimate_player_skill_expression() -> float:
-	if combat_meter == null or not is_instance_valid(combat_meter):
+	if _ui_builder.combat_meter == null or not is_instance_valid(_ui_builder.combat_meter):
 		return 0.5
-	var combo_norm: float = clampf(float(combat_meter.get("combo_count")) / 24.0, 0.0, 1.0)
-	var phrase_norm: float = clampf(float(combat_meter.get("phrase_count")) / 8.0, 0.0, 1.0)
+	var combo_norm: float = clampf(float(_ui_builder.combat_meter.get("combo_count")) / 24.0, 0.0, 1.0)
+	var phrase_norm: float = clampf(float(_ui_builder.combat_meter.get("phrase_count")) / 8.0, 0.0, 1.0)
 	var tier_value: float = 0.20
-	match combat_meter.get_current_tier():
+	match _ui_builder.combat_meter.get_current_tier():
 			"hunting":
 				tier_value = 0.40
 			"rampage":
@@ -5141,17 +5043,17 @@ func _trigger_creature_evolution_fx(species_id: String, stage: String) -> void:
 	EventBus.emit_signal("screen_flash", flash_color, 0.25)
 	EventBus.emit_signal("screen_shake", shake_power, 0.4)
 	
-	if _bonded_creature_sprite:
-		var base_scale: float = _bonded_creature_sprite.scale.x
+	if _ui_builder._bonded_creature_sprite:
+		var base_scale: float = _ui_builder._bonded_creature_sprite.scale.x
 		var tween = create_tween().set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_ELASTIC)
-		_bonded_creature_sprite.scale = Vector2.ZERO
-		tween.tween_property(_bonded_creature_sprite, "scale", Vector2(base_scale, base_scale), 0.8)
+		_ui_builder._bonded_creature_sprite.scale = Vector2.ZERO
+		tween.tween_property(_ui_builder._bonded_creature_sprite, "scale", Vector2(base_scale, base_scale), 0.8)
 		
 		# Energy pulse from creature
 		var pulse := Sprite2D.new()
-		pulse.texture = _bonded_creature_sprite.texture
-		pulse.position = _bonded_creature_sprite.position
-		pulse.scale = _bonded_creature_sprite.scale
+		pulse.texture = _ui_builder._bonded_creature_sprite.texture
+		pulse.position = _ui_builder._bonded_creature_sprite.position
+		pulse.scale = _ui_builder._bonded_creature_sprite.scale
 		pulse.modulate = flash_color
 		pulse.modulate.a = 0.6
 		add_child(pulse)
@@ -5223,7 +5125,7 @@ func _get_mastery_window() -> String:
 	# Returns the current phrase-depth tier for support mastery branching.
 	# Phrase count accumulates through consecutive quality (good/perfect) actions.
 	# "flow_state" = 8+ actions; "in_pocket" = 5+; "" = below threshold (no enhancement).
-	var count: int = int(combat_meter.get("phrase_count"))
+	var count: int = int(_ui_builder.combat_meter.get("phrase_count"))
 	if count >= 8:
 		return "flow_state"
 	if count >= 5:
@@ -5244,7 +5146,7 @@ func _get_current_cadence_window() -> String:
 
 func _on_bonded_support_triggered(species_id: String, sector: int, effect_id: String) -> void:
 	var lane: int = sector
-	var combo_mult: float = combat_meter.damage_multiplier()
+	var combo_mult: float = _ui_builder.combat_meter.damage_multiplier()
 	var active_creature: Dictionary = GameState.get_active_bonded_creature()
 	@warning_ignore("static_called_on_instance")
 	var bond_mult: float = GameState.get_bond_level_mult(int(active_creature.get("bond_level", 1)))
@@ -5290,11 +5192,11 @@ func _on_bonded_support_triggered(species_id: String, sector: int, effect_id: St
 			"bond_surge": surge_mult > 1.0,
 			"is_hollow_active": str(active_creature.get("species_id", "")) == "bond_remnant",
 			"zone_manager": zone_manager,
-			"combat_meter": combat_meter,
+			"_ui_builder.combat_meter": _ui_builder.combat_meter,
 			"game_state": GameState
 		}
 		
-		ctx["collar_mod"] = _support_resolver.apply_collar_logic(ctx, GameState.get_equipped_collar(), combat_meter)
+		ctx["collar_mod"] = _support_resolver.apply_collar_logic(ctx, GameState.get_equipped_collar(), _ui_builder.combat_meter)
 		
 		if ctx["collar_mod"].has("redirected_lane"):
 			support_enemy_id = _get_enemy_id_for_lane(int(ctx.get("lane", lane)))
@@ -5480,21 +5382,21 @@ func _spawn_support_intervention(species_id: String, lane: int, tint: Color) -> 
 
 
 func _on_quig_narrative_triggered(text: String, duration: float) -> void:
-	if _quig_anchor_label == null:
+	if _ui_builder._quig_anchor_label == null:
 		return
 
-	_quig_anchor_label.text = _hud_presenter.compact_hud_copy(text, 58)
-	_quig_anchor_label.visible = true
+	_ui_builder._quig_anchor_label.text = _ui_builder._hud_presenter.compact_hud_copy(text, 58)
+	_ui_builder._quig_anchor_label.visible = true
 	_refresh_quig_ui_state()	
 	if _quig_tween != null:
 		_quig_tween.kill()
 	
 	_quig_tween = create_tween()
 	_quig_tween.tween_interval(duration)
-	_quig_tween.tween_property(_quig_anchor_label, "modulate:a", 0.0, COMBAT_FEEL_CONTENT.TENDENCY_ANCHOR_FADE_TIME)
+	_quig_tween.tween_property(_ui_builder._quig_anchor_label, "modulate:a", 0.0, _ui_builder.COMBAT_FEEL_CONTENT.TENDENCY_ANCHOR_FADE_TIME)
 	_quig_tween.finished.connect(func():
-		if _quig_anchor_label != null:
-			_quig_anchor_label.visible = false
-			_quig_anchor_label.modulate.a = 1.0
+		if _ui_builder._quig_anchor_label != null:
+			_ui_builder._quig_anchor_label.visible = false
+			_ui_builder._quig_anchor_label.modulate.a = 1.0
 			_refresh_quig_ui_state()
 	)

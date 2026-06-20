@@ -54,7 +54,7 @@ var _jitter_intensity: float = 0.0
 
 func _ready() -> void:
 	_sync_selection_index()
-	_archive_trait_list = GameState.archive_traits
+	_archive_trait_list = CreatureState.archive_traits
 	UI_STYLE.apply_mythical_entrance(self)
 
 	_translation_jitter = Node2D.new()
@@ -90,11 +90,11 @@ func _process(delta: float) -> void:
 
 func _sync_selection_index() -> void:
 	_selected_index = -1
-	if GameState.active_lair_creature_id.is_empty():
+	if CreatureState.active_lair_creature_id.is_empty():
 		return
-	var lair: Array = GameState.lair_roster
+	var lair: Array = CreatureState.lair_roster
 	for i in range(lair.size()):
-		if String(lair[i].get("species_id", "")) == GameState.active_lair_creature_id:
+		if String(lair[i].get("species_id", "")) == CreatureState.active_lair_creature_id:
 			_selected_index = i
 			_page_start = int(floor(float(i) / float(MAX_LAIR_DISPLAY))) * MAX_LAIR_DISPLAY
 			return
@@ -116,7 +116,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 		return
 
-	var lair: Array = GameState.lair_roster
+	var lair: Array = CreatureState.lair_roster
 	var display_count: int = min(lair.size() - _page_start, MAX_LAIR_DISPLAY)
 
 	var index: int = -1
@@ -150,7 +150,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if key_event.keycode == KEY_BRACKETLEFT and not _archive_mode:
 		if _page_start > 0:
 			_page_start = maxi(0, _page_start - MAX_LAIR_DISPLAY)
-			_build_creature_list(_ui_layer, GameState.lair_roster)
+			_build_creature_list(_ui_layer, CreatureState.lair_roster)
 			_refresh_bottom_bar()
 			get_viewport().set_input_as_handled()
 		return
@@ -158,7 +158,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if key_event.keycode == KEY_BRACKETRIGHT and not _archive_mode:
 		if _page_start + MAX_LAIR_DISPLAY < lair.size():
 			_page_start += MAX_LAIR_DISPLAY
-			_build_creature_list(_ui_layer, GameState.lair_roster)
+			_build_creature_list(_ui_layer, CreatureState.lair_roster)
 			_refresh_bottom_bar()
 			get_viewport().set_input_as_handled()
 		return
@@ -178,7 +178,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				var tween := create_tween()
 				tween.tween_property(self, "_jitter_intensity", 0.05, 0.8).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
 				_refresh_active_support_panel()
-				_build_creature_list(_ui_layer, GameState.lair_roster)
+				_build_creature_list(_ui_layer, CreatureState.lair_roster)
 			else:
 				_play_feedback(_splice_status_line(sid, tid, Dictionary(lair[_selected_index])))
 			get_viewport().set_input_as_handled()
@@ -262,7 +262,7 @@ func _update_breathing(t: float) -> void:
 
 
 func _refresh_lair_after_progression() -> void:
-	_build_creature_list(_ui_layer, GameState.lair_roster)
+	_build_creature_list(_ui_layer, CreatureState.lair_roster)
 	_refresh_active_support_panel()
 	_refresh_bottom_bar()
 	_jitter_intensity = 4.0
@@ -375,7 +375,7 @@ func _build_ui() -> void:
 	sub.add_theme_font_size_override("font_size", 18)
 	_ui_layer.add_child(sub)
 
-	var lair: Array = GameState.lair_roster
+	var lair: Array = CreatureState.lair_roster
 	if lair.is_empty():
 		_build_empty_state(_ui_layer)
 		_clear_hub_refs()
@@ -956,7 +956,7 @@ func _refresh_bottom_bar() -> void:
 	if not is_instance_valid(_bottom_hint):
 		return
 	
-	var lair: Array = GameState.lair_roster
+	var lair: Array = CreatureState.lair_roster
 	var count: int = min(lair.size(), MAX_LAIR_DISPLAY)
 	var hint_text: String
 	if count == 0:
@@ -978,11 +978,11 @@ func _refresh_card_highlights() -> void:
 		if not is_instance_valid(_creature_cards[i]):
 			continue
 		var global_index: int = _card_global_indices[i] if i < _card_global_indices.size() else i
-		var lair: Array = GameState.lair_roster
+		var lair: Array = CreatureState.lair_roster
 		var species_id: String = ""
 		if global_index >= 0 and global_index < lair.size():
 			species_id = String(lair[global_index].get("species_id", ""))
-		var is_selected: bool = GameState.active_lair_creature_ids.has(species_id)
+		var is_selected: bool = CreatureState.active_lair_creature_ids.has(species_id)
 
 		if is_selected:
 			UI_STYLE.apply_shell_style(_creature_cards[i], "mm_apex")
@@ -1002,7 +1002,7 @@ func _refresh_card_highlights() -> void:
 func _refresh_active_support_panel() -> void:
 	if _hub_solo_label == null and not _archive_mode:
 		return
-	var lair: Array = GameState.lair_roster
+	var lair: Array = CreatureState.lair_roster
 	var has: bool = _selected_index >= 0 and _selected_index < lair.size()
 	
 	if not _archive_mode:
@@ -1186,7 +1186,7 @@ func _lair_selected_creature_detail(species_id: String, creature: Dictionary) ->
 	var lines: Array[String] = []
 	var resonance: Dictionary = GameState.get_current_resonance_perk()
 	var resonance_name: String = str(resonance.get("display_name", "Unclaimed Resonance"))
-	var current_fate: String = GameState.world_dominant_fate.replace("_", " ").capitalize()
+	var current_fate: String = WorldFateState.dominant_fate.replace("_", " ").capitalize()
 	lines.append(PRESENTATION_TEXT.LAIR_ACTION_TETHER_HINT)
 	lines.append("Resonance  |  %s (%s)" % [resonance_name, current_fate])
 	var creature_level: int = int(creature.get("creature_level", 1))

@@ -226,7 +226,7 @@ func clear_combat_gains() -> void:
 	_gains_this_combat.clear()
 	tendencies.clear_points()
 	_refresh_primary_combat_stats(0.0)
-	var region_mod: Dictionary = GameState.active_region.get("modifier", {})
+	var region_mod: Dictionary = RunState.active_region.get("modifier", {})
 	if region_mod.get("type", "") == "starting_support_charge":
 		support_charge = clamp(float(region_mod.get("value", 0.0)), 0.0, GROWTH_CONTENT.SUPPORT_MAX)
 	_encounter_style_tiers_awarded.clear()

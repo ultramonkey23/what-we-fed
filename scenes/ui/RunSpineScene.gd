@@ -622,7 +622,7 @@ func _compose_run_prep_body() -> String:
 		for creature in CreatureState.roster:
 			var sid: String = str(creature.get("species_id", ""))
 			var bl: int = int(creature.get("bond_level", 1))
-			var active_mark: String = "  |  support" if GameState.active_lair_creature_ids.has(sid) else ""
+			var active_mark: String = "  |  support" if CreatureState.active_lair_creature_ids.has(sid) else ""
 			bond_lines.append("%s  |  bond L%d%s" % [_creature_display_name(sid), bl, active_mark])
 	blocks.append(_compose_run_prep_section("BONDED SEQUENCES", bond_lines))
 
@@ -648,10 +648,10 @@ func _compose_run_prep_body() -> String:
 	blocks.append(_compose_run_prep_section("LINEAGE DNA", dna_lines))
 
 	var mut_lines: Array[String] = []
-	if GameState.active_mutations.is_empty():
+	if RewardState.active_mutations.is_empty():
 		mut_lines.append("no mutations yet")
 	else:
-		for mut in GameState.active_mutations:
+		for mut in RewardState.active_mutations:
 			var mid: String = str(mut.get("id", "mutation"))
 			var charges: int = int(mut.get("current_charges", 0))
 			var effect: Dictionary = mut.get("effect", {})
@@ -661,17 +661,17 @@ func _compose_run_prep_body() -> String:
 	blocks.append(_compose_run_prep_section("INNER WORK", mut_lines))
 
 	var digest: Array[String] = []
-	if GameState.absorbed_types.is_empty():
+	if RewardState.absorbed_types.is_empty():
 		digest.append("none logged")
 	else:
-		var cap: int = min(GameState.absorbed_types.size(), 6)
+		var cap: int = min(RewardState.absorbed_types.size(), 6)
 		for j in range(cap):
-			var absorbed: Dictionary = GameState.absorbed_types[j]
+			var absorbed: Dictionary = RewardState.absorbed_types[j]
 			digest.append("%s from %s" % [
 				str(absorbed.get("eat_type", "?")),
 				_creature_display_name(str(absorbed.get("source_species_id", "")))
 			])
-		var more_count: int = GameState.absorbed_types.size() - cap
+		var more_count: int = RewardState.absorbed_types.size() - cap
 		if more_count > 0:
 			digest.append("… +%d earlier" % more_count)
 	blocks.append(_compose_run_prep_section("DIGESTIONS", digest))
@@ -901,9 +901,9 @@ func _reward_title_from_id(reward_id: String) -> String:
 
 func _rebuild_management_sections() -> void:
 	var sections: Array[Dictionary] = []
-	var loot: Dictionary = GameState.reward_loot_slots
-	var artifacts: Dictionary = GameState.reward_artifact_slots
-	var consumables: Dictionary = GameState.reward_consumable_slots
+	var loot: Dictionary = RewardState.loot_slots
+	var artifacts: Dictionary = RewardState.artifact_slots
+	var consumables: Dictionary = RewardState.consumable_slots
 	sections.append(_build_management_section("Loot offense", "loot", "offense", Array(loot.get("offense", []))))
 	sections.append(_build_management_section("Loot defense", "loot", "defense", Array(loot.get("defense", []))))
 	sections.append(_build_management_section("Loot utility", "loot", "utility", Array(loot.get("utility", []))))

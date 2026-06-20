@@ -3,7 +3,7 @@ extends RefCounted
 const COMBAT_DATA = preload("res://data/CombatContent.gd")
 
 # Per-region song phase definitions.
-# CombatScene._start_song_run() selects from here based on GameState.active_region.id.
+# CombatScene._start_song_run() selects from here based on RunState.active_region.id.
 #
 # Three identities:
 #   feeding_hollow — predatory baseline; kill-tempo, flesh-forward, escalating bond_reaper density

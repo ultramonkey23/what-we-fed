@@ -272,7 +272,7 @@ const QUIG_REACTIVE_LINES := {
 static func title_subtitle() -> String:
 	if GameState.is_intro_bond_choice_pending():
 		return TITLE_SUBTITLE_FIRST_ADMITTANCE
-	var bonded_count: int = GameState.lair_roster.size()
+	var bonded_count: int = CreatureState.lair_roster.size()
 	if bonded_count <= 0:
 		return TITLE_SUBTITLE_ARCHIVE_EMPTY
 	return TITLE_SUBTITLE_RETURNING % bonded_count
@@ -281,7 +281,7 @@ static func title_subtitle() -> String:
 static func title_prompt() -> String:
 	if GameState.is_intro_bond_choice_pending():
 		return TITLE_PROMPT_FIRST_ADMITTANCE
-	if GameState.lair_roster.is_empty():
+	if CreatureState.lair_roster.is_empty():
 		return TITLE_PROMPT_ARCHIVE_EMPTY
 	return TITLE_PROMPT_RETURNING
 

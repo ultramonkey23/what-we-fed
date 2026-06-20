@@ -44,8 +44,8 @@ func _build_ui() -> void:
 	canvas.add_child(header)
 	
 	var subtitle = Label.new()
-	var current = GameState.current_encounter_index + 1
-	var total = GameState.encounters_before_boss
+	var current = RunState.current_encounter_index + 1
+	var total = RunState.encounters_before_boss
 	subtitle.text = "TRANSLATION DEPTH: %d / %d" % [current, total]
 	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	subtitle.size = Vector2(1280.0, 30.0)

@@ -61,7 +61,7 @@ Owned by `systems/SovereignDamageCalculator.gd`. Stats compound and interact acr
 
 ### Direct (not compound) stat→combat seams
 These are simple aliases, not compound interactions; intentionally NOT routed through the calculator.
-- `stat_endurance` (Lung) → max stamina pool. `CombatMeter.stamina_max` returns `GameState.stat_endurance` directly.
+- `stat_endurance` (Lung) → max stamina pool. `CombatMeter.stamina_max` returns `PlayerState.stat_endurance` directly.
 - `stat_intelligence` (Eye) → support charge gain mult. `RunGrowth._gain_support_charge` multiplies by `stat_intelligence` directly.
 
 ## Next Steps

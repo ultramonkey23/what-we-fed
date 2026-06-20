@@ -55,13 +55,13 @@ func initialize_run(region: String, dev_harness_request: Dictionary = {}) -> voi
 	
 	var song_duration: float = _resolve_song_duration()
 	regular_level_windows = RUN_PACING_CONTENT.build_regular_level_windows(region_id, song_duration)
-	if is_new_run or GameState.regular_level_playlist.is_empty():
-		GameState.regular_level_playlist = SONG_COMBAT_PROFILE_CONTENT.get_playlist_for_region(RUN_PACING_CONTENT.REGULAR_LEVEL_COUNT, region_id, _song_rng)
-		if GameState.regular_level_playlist.is_empty():
-			GameState.regular_level_playlist = [active_song_data.duplicate(true)]
+	if is_new_run or RunState.regular_level_playlist.is_empty():
+		RunState.regular_level_playlist = SONG_COMBAT_PROFILE_CONTENT.get_playlist_for_region(RUN_PACING_CONTENT.REGULAR_LEVEL_COUNT, region_id, _song_rng)
+		if RunState.regular_level_playlist.is_empty():
+			RunState.regular_level_playlist = [active_song_data.duplicate(true)]
 	
-	regular_level_index = clampi(int(dev_harness_request.get("regular_level_index", GameState.current_encounter_index)), 0, max(GameState.regular_level_playlist.size() - 1, 0))
-	var level_count: int = GameState.regular_level_playlist.size()
+	regular_level_index = clampi(int(dev_harness_request.get("regular_level_index", RunState.current_encounter_index)), 0, max(RunState.regular_level_playlist.size() - 1, 0))
+	var level_count: int = RunState.regular_level_playlist.size()
 	
 	if RunState.path_plan.is_empty() or RunState.path_plan.size() != level_count:
 		RunState.path_plan = PATH_RUN_PLAN.build_plan(region_id, level_count)
@@ -83,7 +83,7 @@ func start_next_level(reset_hp: bool = false) -> Dictionary:
 
 func start_level(level_idx: int, _reset_hp: bool = false) -> Dictionary:
 	in_void = false
-	if level_idx < 0 or level_idx >= GameState.regular_level_playlist.size():
+	if level_idx < 0 or level_idx >= RunState.regular_level_playlist.size():
 		return {"is_boss_trigger": true}
 
 	regular_level_index = level_idx
@@ -173,8 +173,8 @@ func _resolve_song_duration() -> float:
 	return stream_duration if stream_duration > 0.0 else RUN_PACING_CONTENT.MAX_REGULAR_LEVEL_DURATION_SECONDS
 
 func _get_song_for_level(level_idx: int) -> Dictionary:
-	if level_idx >= 0 and level_idx < GameState.regular_level_playlist.size():
-		return Dictionary(GameState.regular_level_playlist[level_idx]).duplicate(true)
+	if level_idx >= 0 and level_idx < RunState.regular_level_playlist.size():
+		return Dictionary(RunState.regular_level_playlist[level_idx]).duplicate(true)
 	return AUDIO_CONTENT.get_region_main_run_song(region_id)
 
 func _build_level_windows_for_song(song_data: Dictionary) -> Array:

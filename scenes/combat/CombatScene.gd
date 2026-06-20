@@ -391,7 +391,7 @@ func _setup_bonded_companions() -> void:
 		if child.name.begins_with("BondedCompanion_"):
 			child.queue_free()
 			
-	for creature in GameState.roster:
+	for creature in CreatureState.roster:
 		var species_id: String = String(creature.get("species_id", ""))
 		if species_id.is_empty(): continue
 		_ensure_bonded_companion(species_id)
@@ -647,8 +647,8 @@ func _refresh_reward_overlay_resolution(choice_id: String, creature_data: Dictio
 					_ui_builder._reward_creature_portrait.texture = port_tex
 		"eat":
 			var absorbed_entry: Dictionary = {}
-			if not GameState.absorbed_types.is_empty():
-				absorbed_entry = Dictionary(GameState.absorbed_types[GameState.absorbed_types.size() - 1]).duplicate(true)
+			if not RewardState.absorbed_types.is_empty():
+				absorbed_entry = Dictionary(RewardState.absorbed_types[RewardState.absorbed_types.size() - 1]).duplicate(true)
 			_ui_builder._reward_creature_tag_label.text = _ui_builder.PRESENTATION_TEXT.REWARD_TAG_EATEN
 			_ui_builder._reward_title_label.text = "%s consumed." % creature_name
 			_ui_builder._reward_body_label.text = _ui_builder.PRESENTATION_TEXT.eat_result_body()
@@ -1685,7 +1685,7 @@ func _start_song_run() -> void:
 	_clear_mastery_context_cache()
 	_last_applied_hunt_pressure_step = -1
 
-	_run_director.initialize_run(str(GameState.active_region.get("id", "feeding_hollow")), _dev_harness_request)
+	_run_director.initialize_run(str(RunState.active_region.get("id", "feeding_hollow")), _dev_harness_request)
 	_active_song_data = _run_director.get_active_song_data()
 	_active_song_profile = _run_director.get_active_song_profile()
 	_active_song_map = _run_director.get_active_song_map()
@@ -2108,8 +2108,8 @@ func _apply_event_effect(effect: Dictionary) -> void:
 		"fate_shift":
 			var fate_id = str(effect.get("fate_id", ""))
 			var amount = float(effect.get("amount", 0.0))
-			if GameState.world_fate_channels.has(fate_id):
-				GameState.world_fate_channels[fate_id] = clampf(GameState.world_fate_channels[fate_id] + amount, 0.0, 1.0)
+			if WorldFateState.channels.has(fate_id):
+				WorldFateState.channels[fate_id] = clampf(WorldFateState.channels[fate_id] + amount, 0.0, 1.0)
 				# Trigger re-dominance check if GameState has it
 				GameState._resolve_world_fate_dominance()
 		"hp_restore":
@@ -2479,7 +2479,7 @@ func _trigger_boss_final_movement() -> void:
 	# The live boss handoff is a direct encounter payload, not a queued run step.
 	var boss_encounter: Dictionary
 	if _should_use_dev_generated_boss_encounter():
-		_region_id = str(GameState.active_region.get("id", "feeding_hollow"))
+		_region_id = str(RunState.active_region.get("id", "feeding_hollow"))
 		boss_encounter = _build_dev_generated_boss_encounter()
 	else:
 		boss_encounter = ENCOUNTER_IDENTITY_RUNTIME.build_live_boss_encounter()
@@ -2812,7 +2812,7 @@ func _start_run_engagement(is_new_run: bool) -> void:
 		get_tree().change_scene_to_file("res://scenes/ui/IntroBondChoiceScene.tscn")
 		return
 
-	_run_director.initialize_run(str(GameState.active_region.get("id", "feeding_hollow")), _dev_harness_request)
+	_run_director.initialize_run(str(RunState.active_region.get("id", "feeding_hollow")), _dev_harness_request)
 
 	_run_finished = false
 	_is_boss_encounter = false
@@ -2874,11 +2874,11 @@ func _apply_dev_harness_pre_run_state() -> void:
 		if not bonded_creature.is_empty():
 			bonded_creature["bond_level"] = max(int(_dev_harness_request.get("support_bond_level", 2)), 1)
 			bonded_creature["bond_order"] = 1
-			GameState.roster = [bonded_creature]
+			CreatureState.roster = [bonded_creature]
 
 	var dna_seed: Dictionary = _dev_harness_request.get("dna_seed", {})
 	if not dna_seed.is_empty():
-		GameState.dna_by_species = dna_seed.duplicate(true)
+		CreatureState.dna_by_species = dna_seed.duplicate(true)
 
 	var absorbed_species_ids: Array = _dev_harness_request.get("absorbed_species_ids", [])
 	for species_id in absorbed_species_ids:
@@ -3088,7 +3088,7 @@ func _should_use_dev_generated_boss_encounter() -> bool:
 
 
 func _build_dev_generated_boss_encounter() -> Dictionary:
-	var region_id: String = str(GameState.active_region.get("id", "feeding_hollow"))
+	var region_id: String = str(RunState.active_region.get("id", "feeding_hollow"))
 	var script_res: Resource = load(ENCOUNTER_GENERATOR_SCRIPT_PATH)
 	if script_res == null or not (script_res is GDScript):
 		push_error("CombatScene: EncounterGenerator script missing; using authored boss.")
@@ -3446,7 +3446,7 @@ func _advance_to_next_stage() -> void:
 		)
 		if can_present_run_spine:
 			_pending_upgrades.clear()
-			_run_spine_surface.present_level_completion(_pending_upgrades, RunGrowth, GameState.boss_ready)
+			_run_spine_surface.present_level_completion(_pending_upgrades, RunGrowth, RunState.boss_ready)
 			if not _try_present_predation_after_run_spine():
 				_try_present_path_choice_after_run_spine()
 			_show_feedback("STAGE COMPLETE", Color(0.85, 0.95, 0.75, 1.0), 0.52)

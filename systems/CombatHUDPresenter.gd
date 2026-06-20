@@ -574,7 +574,7 @@ func refresh_support(current: float, maximum: float, active_species_id: String, 
 			if not active_creature.is_empty():
 				var primary_type: String = String(active_creature.get("primary_type", ""))
 				if not primary_type.is_empty():
-					for eaten in GameState.absorbed_types:
+					for eaten in RewardState.absorbed_types:
 						if String(eaten.get("type", "")) == primary_type:
 							synergy_active = true
 							break
@@ -684,7 +684,7 @@ func refresh_run_build(run_growth: Node) -> void:
 		_dna_route_label.text = RunGrowth.get_dna_routing_label()
 
 	if _run_build_shell != null:
-		var has_build: bool = not GameState.absorbed_types.is_empty() or not GameState.active_mutations.is_empty()
+		var has_build: bool = not RewardState.absorbed_types.is_empty() or not RewardState.active_mutations.is_empty()
 		_run_build_shell.color = Color(0.08, 0.08, 0.10, 0.60) if has_build else Color(0.07, 0.07, 0.09, 0.50)
 	
 	refresh_power_level(run_growth)
@@ -994,12 +994,12 @@ func _join_compact_tokens(tokens: Array[String]) -> String:
 
 
 func _format_absorbed_bonus_summary() -> String:
-	if GameState.absorbed_types.is_empty():
+	if RewardState.absorbed_types.is_empty():
 		return "--"
 	var chips: Array[String] = []
-	var visible_count: int = min(2, GameState.absorbed_types.size())
+	var visible_count: int = min(2, RewardState.absorbed_types.size())
 	for i in range(visible_count):
-		var entry: Dictionary = GameState.absorbed_types[i]
+		var entry: Dictionary = RewardState.absorbed_types[i]
 		var species_id: String = String(entry.get("source_species_id", ""))
 		var creature_name: String = species_id
 		if not species_id.is_empty():
@@ -1019,19 +1019,19 @@ func _format_absorbed_bonus_summary() -> String:
 		else:
 			var damage_bonus: int = int(round(float(entry.get("damage_bonus", 0.0))))
 			chips.append("[%s+%d]" % [short_name, damage_bonus])
-	var hidden_count: int = GameState.absorbed_types.size() - visible_count
+	var hidden_count: int = RewardState.absorbed_types.size() - visible_count
 	if hidden_count > 0:
 		chips.append("+%d" % hidden_count)
 	return _join_compact_tokens(chips)
 
 
 func _format_mutation_summary() -> String:
-	if GameState.active_mutations.is_empty():
+	if RewardState.active_mutations.is_empty():
 		return "--"
 	var chips: Array[String] = []
 	var visible_count: int = 0
-	for i in range(GameState.active_mutations.size()):
-		var entry: Dictionary = GameState.active_mutations[i]
+	for i in range(RewardState.active_mutations.size()):
+		var entry: Dictionary = RewardState.active_mutations[i]
 		var charges: int = int(entry.get("current_charges", 0))
 		if charges <= 0:
 			continue

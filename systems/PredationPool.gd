@@ -67,7 +67,7 @@ static func build_offers(max_offers: int = 3) -> Array[Dictionary]:
 		return out.slice(0, max_offers)
 
 	# 2) Stitch eaten work — restore mutation charges using that species' DNA trail.
-	for mut in GameState.active_mutations:
+	for mut in RewardState.active_mutations:
 		var mid: String = String(mut.get("id", ""))
 		if mid.is_empty():
 			continue
@@ -195,7 +195,7 @@ static func apply_choice(choice: Dictionary, run_growth: Node) -> bool:
 				return false
 			GameState.spend_dna(sid, cost)
 			var cap2: int = 0
-			for m in GameState.active_mutations:
+			for m in RewardState.active_mutations:
 				if String(m.get("id", "")) != mid:
 					continue
 				var eff: Dictionary = m.get("effect", {})

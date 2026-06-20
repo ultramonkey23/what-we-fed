@@ -40,7 +40,7 @@ func _ready() -> void:
 	_can_input = true
 
 func _sync_selection_from_gamestate() -> void:
-	var current_id: String = String(GameState.active_region.get("id", ""))
+	var current_id: String = String(RunState.active_region.get("id", ""))
 	if current_id.is_empty():
 		_selected_index = 0
 		_align_page_to_selection()

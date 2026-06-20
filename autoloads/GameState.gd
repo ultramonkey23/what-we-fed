@@ -49,199 +49,9 @@ func increment_meta_limit_breakers(achievement_id: String = "") -> void:
 	EventBus.emit_signal("limit_breaker_triggered", achievement_id)
 
 
-# --- DEPRECATED API PROXIES --- 
-# These proxies are deprecated. Call the modular Autoloads directly (e.g., PlayerState, RunState).
-# DEPRECATED
-var run_number: int:
-	get: return run.run_number
-	set(v): run.run_number = v
-# DEPRECATED
-var run_in_progress: bool:
-	get: return run.run_in_progress
-	set(v): run.run_in_progress = v
-# DEPRECATED
-var player_hp: float:
-	get: return player.hp
-	set(v): player.hp = v
-# DEPRECATED
-var player_max_hp: float:
-	get: return player.max_hp
-	set(v): player.max_hp = v
-# DEPRECATED
-var player_base_damage: float:
-	get: return player.base_damage
-	set(v): player.base_damage = v
-# DEPRECATED
-var player_defense: float:
-	get: return player.defense
-	set(v): player.defense = v
-
-# Ecosystem Stats Proxies
-# DEPRECATED
-var stat_vitality: float:
-	get: return player.stat_vitality
-	set(v): player.stat_vitality = v
-# DEPRECATED
-var stat_power: float:
-	get: return player.stat_power
-	set(v): player.stat_power = v
-# DEPRECATED
-var stat_carapace: float:
-	get: return player.stat_carapace
-	set(v): player.stat_carapace = v
-# DEPRECATED
-var stat_endurance: float:
-	get: return player.stat_endurance
-	set(v): player.stat_endurance = v
-# DEPRECATED
-var stat_swiftness: float:
-	get: return player.stat_swiftness
-	set(v): player.stat_swiftness = v
-# DEPRECATED
-var stat_luck: float:
-	get: return player.stat_luck
-	set(v): player.stat_luck = v
-# DEPRECATED
-var stat_potential: float:
-	get: return player.stat_potential
-	set(v): player.stat_potential = v
-# DEPRECATED
-var stat_intelligence: float:
-	get: return player.stat_intelligence
-	set(v): player.stat_intelligence = v
-# DEPRECATED
-var stat_adaptability: float:
-	get: return player.stat_adaptability
-	set(v): player.stat_adaptability = v
-
-# DEPRECATED
-var player_bleed_stacks: int:
-	get: return player.bleed_stacks
-	set(v): player.bleed_stacks = v
-
-# DEPRECATED
-var is_in_combat: bool:
-	get: return run.is_in_combat
-	set(v): run.is_in_combat = v
-
-# DEPRECATED
-var reward_loot_slots: Dictionary:
-	get: return rewards.loot_slots
-	set(v): rewards.loot_slots = v
-# DEPRECATED
-var reward_artifact_slots: Dictionary:
-	get: return rewards.artifact_slots
-	set(v): rewards.artifact_slots = v
-# DEPRECATED
-var reward_consumable_slots: Dictionary:
-	get: return rewards.consumable_slots
-	set(v): rewards.consumable_slots = v
-
-# DEPRECATED
-var reward_bond_streak: int:
-	get: return rewards.bond_streak
-	set(v): rewards.bond_streak = v
-# DEPRECATED
-var reward_eat_streak: int:
-	get: return rewards.eat_streak
-	set(v): rewards.eat_streak = v
-# DEPRECATED
-var reward_bond_total: int:
-	get: return rewards.bond_total
-	set(v): rewards.bond_total = v
-# DEPRECATED
-var reward_eat_total: int:
-	get: return rewards.eat_total
-	set(v): rewards.eat_total = v
-
-# DEPRECATED
-var absorbed_types: Array[Dictionary]:
-	get: return rewards.absorbed_types
-	set(v): rewards.absorbed_types = v
-# DEPRECATED
-var active_mutations: Array[Dictionary]:
-	get: return rewards.active_mutations
-	set(v): rewards.active_mutations = v
-
-# DEPRECATED
-var last_beat_quality: String:
-	get: return run.last_beat_quality
-	set(v): run.last_beat_quality = v
-
-# DEPRECATED
-var dna_by_species: Dictionary:
-	get: return creatures.dna_by_species
-	set(v): creatures.dna_by_species = v
-# DEPRECATED
-var archive_traits: Array[String]:
-	get: return creatures.archive_traits
-	set(v): creatures.archive_traits = v
-# DEPRECATED
-var predation_debt: Dictionary:
-	get: return creatures.predation_debt
-	set(v): creatures.predation_debt = v
-# DEPRECATED
-var roster: Array[Dictionary]:
-	get: return creatures.roster
-	set(v): creatures.roster = v
-# DEPRECATED
-var lair_roster: Array[Dictionary]:
-	get: return creatures.lair_roster
-	set(v): creatures.lair_roster = v
-# DEPRECATED
-var active_lair_creature_id: String:
-	get: return creatures.active_lair_creature_id
-	set(v): creatures.active_lair_creature_id = v
-# DEPRECATED
-var active_lair_creature_ids: Array[String]:
-	get: return creatures.active_lair_creature_ids
-	set(v): creatures.active_lair_creature_ids = v
-# DEPRECATED
-var active_region: Dictionary:
-	get: return run.active_region
-	set(v): run.active_region = v
-# DEPRECATED
-var run_path_plan: Array[Dictionary]:
-	get: return run.path_plan
-	set(v): run.path_plan = v
-# DEPRECATED
-var run_path_chosen_ids: PackedStringArray:
-	get: return run.path_chosen_ids
-	set(v): run.path_chosen_ids = v
-# DEPRECATED
-var growth_choice_intersection_payload: Dictionary:
-	get: return run.growth_choice_intersection_payload
-	set(v): run.growth_choice_intersection_payload = v
-
-# DEPRECATED
-var current_encounter_index: int:
-	get: return run.current_encounter_index
-	set(v): run.current_encounter_index = v
-# DEPRECATED
-var encounters_before_boss: int:
-	get: return run.encounters_before_boss
-	set(v): run.encounters_before_boss = v
-# DEPRECATED
-var boss_ready: bool:
-	get: return run.boss_ready
-	set(v): run.boss_ready = v
-# DEPRECATED
-var selected_difficulty_key: String:
-	get: return run.selected_difficulty_key
-	set(v): run.selected_difficulty_key = v
-# DEPRECATED
-var world_state_key: String:
-	get: return run.world_state_key
-	set(v): run.world_state_key = v
-# DEPRECATED
-var regular_level_playlist: Array:
-	get: return run.regular_level_playlist
-	set(v): run.regular_level_playlist = v
-
-
 func calculate_encounters_before_boss(diff_key: String = "", ws_key: String = "") -> int:
-	var dk = diff_key if not diff_key.is_empty() else selected_difficulty_key
-	var wk = ws_key if not ws_key.is_empty() else world_state_key
+	var dk = diff_key if not diff_key.is_empty() else run.selected_difficulty_key
+	var wk = ws_key if not ws_key.is_empty() else run.world_state_key
 	
 	var base := 9
 	match dk:
@@ -260,44 +70,27 @@ func calculate_encounters_before_boss(diff_key: String = "", ws_key: String = ""
 
 
 func get_run_level_count() -> int:
-	return current_encounter_index
+	return run.current_encounter_index
 
 
 func start_new_run() -> void:
-	run_number += 1
+	run.run_number += 1
 	reset_run_state()
-	run_in_progress = true
-	encounters_before_boss = calculate_encounters_before_boss()
-	EventBus.emit_signal("run_started", run_number)
+	run.run_in_progress = true
+	run.encounters_before_boss = calculate_encounters_before_boss()
+	EventBus.emit_signal("run_started", run.run_number)
 
 
 func advance_run_loop() -> void:
-	current_encounter_index += 1
-	if current_encounter_index >= encounters_before_boss:
-		boss_ready = true
+	run.current_encounter_index += 1
+	if run.current_encounter_index >= run.encounters_before_boss:
+		run.boss_ready = true
 
 
 func get_next_run_scene_path() -> String:
 	# Sequence: COMBAT -> TRANSLATION -> SPINE (via CombatScene Overlay) -> COMBAT
 	return "res://scenes/ui/TranslationScene.tscn"
 
-
-# DEPRECATED
-var world_fate_channels: Dictionary:
-	get: return world_fate.channels
-	set(v): world_fate.channels = v
-# DEPRECATED
-var world_dominant_fate: String:
-	get: return world_fate.dominant_fate
-	set(v): world_fate.dominant_fate = v
-# DEPRECATED
-var world_stain_fates: PackedStringArray:
-	get: return world_fate.stain_fates
-	set(v): world_fate.stain_fates = v
-# DEPRECATED
-var world_fate_last_snapshot: Dictionary:
-	get: return world_fate.last_snapshot
-	set(v): world_fate.last_snapshot = v
 
 # Constants (Moved to appropriate sub-states where needed, but kept here for easy access)
 const WORLD_FATE_IDS = WorldFateState.WORLD_FATE_IDS
@@ -318,34 +111,6 @@ const DEFENSE_DAMAGE_REDUCTION_PER_POINT = PlayerState.DEFENSE_DAMAGE_REDUCTION_
 const DEFENSE_DAMAGE_REDUCTION_CAP = PlayerState.DEFENSE_DAMAGE_REDUCTION_CAP
 const COMBINED_DAMAGE_REDUCTION_CAP: float = 0.45
 
-# Internal state
-# DEPRECATED
-var _bond_order_counter: int:
-	get: return creatures._bond_order_counter
-	set(v): creatures._bond_order_counter = v
-
-# DEPRECATED
-var _world_run_bond_events: int:
-	get: return world_fate.bond_events
-	set(v): world_fate.bond_events = v
-# DEPRECATED
-var _world_run_eat_events: int:
-	get: return world_fate.eat_events
-	set(v): world_fate.eat_events = v
-# DEPRECATED
-var _world_pending_boss_events: Array[Dictionary]:
-	get: return world_fate.pending_boss_events
-	set(v): world_fate.pending_boss_events = v
-# DEPRECATED
-var _world_run_tempo_counts: Dictionary:
-	get: return world_fate.tempo_counts
-	set(v): world_fate.tempo_counts = v
-# DEPRECATED
-var _world_run_tempo_events: Array[Dictionary]:
-	get: return world_fate.tempo_events
-	set(v): world_fate.tempo_events = v
-
-
 func _ready() -> void:
 	if not EventBus.creature_bonded.is_connected(_on_creature_bonded_for_world):
 		EventBus.creature_bonded.connect(_on_creature_bonded_for_world)
@@ -365,11 +130,11 @@ func _exit_tree() -> void:
 
 
 func _on_combat_started(_enemy_data: Array) -> void:
-	is_in_combat = true
+	run.is_in_combat = true
 
 
 func _on_combat_ended(_victory: bool) -> void:
-	is_in_combat = false
+	run.is_in_combat = false
 
 
 func _process(delta: float) -> void:
@@ -426,7 +191,7 @@ func is_species_bonded(species_id: String) -> bool:
 
 
 func get_bonded_creature(species_id: String) -> Dictionary:
-	for creature in roster:
+	for creature in creatures.roster:
 		if String(creature.get("species_id", "")) == species_id:
 			return creature.duplicate(true)
 	return {}
@@ -434,24 +199,24 @@ func get_bonded_creature(species_id: String) -> Dictionary:
 
 func add_bonded_creature(creature_data: Dictionary) -> Dictionary:
 	var species_id: String = String(creature_data.get("species_id", ""))
-	_bond_order_counter += 1
+	creatures._bond_order_counter += 1
 
 	# Combat bonding no longer levels up the creature permanently.
 	# Lair training is the only path for permanent bond level increases.
-	# We pull the true level from lair_roster if it exists.
+	# We pull the true level from creatures.lair_roster if it exists.
 	var true_level: int = 1
-	for entry in lair_roster:
+	for entry in creatures.lair_roster:
 		if String(entry.get("species_id", "")) == species_id:
 			true_level = int(entry.get("bond_level", 1))
 			break
 	var true_creature_level: int = 1
-	for entry in lair_roster:
+	for entry in creatures.lair_roster:
 		if String(entry.get("species_id", "")) == species_id:
 			true_creature_level = int(entry.get("creature_level", 1))
 			break
 
-	for i in range(roster.size()):
-		var creature: Dictionary = roster[i]
+	for i in range(creatures.roster.size()):
+		var creature: Dictionary = creatures.roster[i]
 		if String(creature.get("species_id", "")) == species_id:
 			# Just sync level and update order; no increment here.
 			creature["bond_level"] = true_level
@@ -459,8 +224,8 @@ func add_bonded_creature(creature_data: Dictionary) -> Dictionary:
 			if true_level >= 5:
 				creature["is_exceptional"] = true
 				creature["variant_id"] = "exceptional_alpha"
-			creature["bond_order"] = _bond_order_counter
-			roster[i] = creature
+			creature["bond_order"] = creatures._bond_order_counter
+			creatures.roster[i] = creature
 			_sync_to_lair(creature)
 			set_active_lair_creature(species_id)
 			return creature
@@ -475,19 +240,19 @@ func add_bonded_creature(creature_data: Dictionary) -> Dictionary:
 	if true_level >= 5:
 		new_creature["is_exceptional"] = true
 		new_creature["variant_id"] = "exceptional_alpha"
-	new_creature["bond_order"] = _bond_order_counter
+	new_creature["bond_order"] = creatures._bond_order_counter
 
-	roster.append(new_creature)
+	creatures.roster.append(new_creature)
 	_sync_to_lair(new_creature)
 	set_active_lair_creature(species_id)
 	return new_creature
 
 
 func set_active_lair_creature(species_id: String) -> void:
-	active_lair_creature_id = species_id
-	active_lair_creature_ids.clear()
+	creatures.active_lair_creature_id = species_id
+	creatures.active_lair_creature_ids.clear()
 	if not species_id.is_empty():
-		active_lair_creature_ids.append(species_id)
+		creatures.active_lair_creature_ids.append(species_id)
 
 
 func toggle_active_lair_creature(species_id: String) -> bool:
@@ -496,7 +261,7 @@ func toggle_active_lair_creature(species_id: String) -> bool:
 	if not is_species_ever_bonded(species_id):
 		return false
 	var slot_count: int = get_support_slot_count()
-	var active_ids: Array[String] = active_lair_creature_ids.duplicate()
+	var active_ids: Array[String] = creatures.active_lair_creature_ids.duplicate()
 	if active_ids.has(species_id):
 		active_ids.erase(species_id)
 	else:
@@ -507,8 +272,8 @@ func toggle_active_lair_creature(species_id: String) -> bool:
 				return false
 		elif not active_ids.has(species_id):
 			active_ids.append(species_id)
-	active_lair_creature_ids = active_ids
-	active_lair_creature_id = active_lair_creature_ids[0] if not active_lair_creature_ids.is_empty() else ""
+	creatures.active_lair_creature_ids = active_ids
+	creatures.active_lair_creature_id = creatures.active_lair_creature_ids[0] if not creatures.active_lair_creature_ids.is_empty() else ""
 	return true
 
 
@@ -526,52 +291,52 @@ func unlock_support_slot() -> bool:
 
 
 func set_active_region(region: Dictionary) -> void:
-	active_region = region.duplicate(true)
+	run.active_region = region.duplicate(true)
 
 
 func _sync_to_lair(creature: Dictionary) -> void:
 	var species_id: String = String(creature.get("species_id", ""))
-	for i in range(lair_roster.size()):
-		if String(lair_roster[i].get("species_id", "")) == species_id:
-			var existing_level: int = int(lair_roster[i].get("bond_level", 1))
+	for i in range(creatures.lair_roster.size()):
+		if String(creatures.lair_roster[i].get("species_id", "")) == species_id:
+			var existing_level: int = int(creatures.lair_roster[i].get("bond_level", 1))
 			var new_level: int = int(creature.get("bond_level", 1))
-			lair_roster[i]["bond_level"] = max(existing_level, new_level)
-			var existing_creature_level: int = int(lair_roster[i].get("creature_level", 1))
+			creatures.lair_roster[i]["bond_level"] = max(existing_level, new_level)
+			var existing_creature_level: int = int(creatures.lair_roster[i].get("creature_level", 1))
 			var incoming_creature_level: int = int(creature.get("creature_level", 1))
-			lair_roster[i]["creature_level"] = max(existing_creature_level, incoming_creature_level)
+			creatures.lair_roster[i]["creature_level"] = max(existing_creature_level, incoming_creature_level)
 			if creature.get("is_exceptional", false):
-				lair_roster[i]["is_exceptional"] = true
-				lair_roster[i]["variant_id"] = String(creature.get("variant_id", ""))
+				creatures.lair_roster[i]["is_exceptional"] = true
+				creatures.lair_roster[i]["variant_id"] = String(creature.get("variant_id", ""))
 			return
 	var lair_entry: Dictionary = creature.duplicate(true)
 	lair_entry.erase("bond_order")
 	if not lair_entry.has("creature_level"):
 		lair_entry["creature_level"] = 1
-	lair_roster.append(lair_entry)
+	creatures.lair_roster.append(lair_entry)
 
 
 func deepen_lair_bond(species_id: String, amount: int = 1) -> Dictionary:
 	if species_id.is_empty() or amount <= 0:
 		return {}
-	for i in range(lair_roster.size()):
-		if String(lair_roster[i].get("species_id", "")) != species_id:
+	for i in range(creatures.lair_roster.size()):
+		if String(creatures.lair_roster[i].get("species_id", "")) != species_id:
 			continue
-		var current_level: int = int(lair_roster[i].get("bond_level", 1))
+		var current_level: int = int(creatures.lair_roster[i].get("bond_level", 1))
 		if current_level >= 5:
 			return {}
 		var next_level: int = mini(current_level + amount, 5)
-		lair_roster[i]["bond_level"] = next_level
+		creatures.lair_roster[i]["bond_level"] = next_level
 		if next_level >= 5:
-			lair_roster[i]["is_exceptional"] = true
-			lair_roster[i]["variant_id"] = String(lair_roster[i].get("variant_id", "exceptional_alpha"))
-		for j in range(roster.size()):
-			if String(roster[j].get("species_id", "")) == species_id:
-				roster[j]["bond_level"] = next_level
-				if bool(lair_roster[i].get("is_exceptional", false)):
-					roster[j]["is_exceptional"] = true
-					roster[j]["variant_id"] = String(lair_roster[i].get("variant_id", ""))
+			creatures.lair_roster[i]["is_exceptional"] = true
+			creatures.lair_roster[i]["variant_id"] = String(creatures.lair_roster[i].get("variant_id", "exceptional_alpha"))
+		for j in range(creatures.roster.size()):
+			if String(creatures.roster[j].get("species_id", "")) == species_id:
+				creatures.roster[j]["bond_level"] = next_level
+				if bool(creatures.lair_roster[i].get("is_exceptional", false)):
+					creatures.roster[j]["is_exceptional"] = true
+					creatures.roster[j]["variant_id"] = String(creatures.lair_roster[i].get("variant_id", ""))
 				break
-		return Dictionary(lair_roster[i]).duplicate(true)
+		return Dictionary(creatures.lair_roster[i]).duplicate(true)
 	return {}
 
 
@@ -581,7 +346,7 @@ func is_species_ever_bonded(species_id: String) -> bool:
 
 func get_total_bond_level() -> int:
 	var total: int = 0
-	for entry in lair_roster:
+	for entry in creatures.lair_roster:
 		total += int(entry.get("bond_level", 1))
 	return total
 
@@ -602,13 +367,13 @@ func get_effective_dna_threshold(species_id: String) -> float:
 	var debt_mult: float = 1.0
 	if not is_species_ever_bonded(species_id):
 		debt_mult += get_creature_predation_debt(species_id) * 0.25
-	return max((base_threshold * debt_mult) / stat_potential, 1.0)
+	return max((base_threshold * debt_mult) / player.stat_potential, 1.0)
 
 
 # --- Stats & Helpers ---
 
 func get_attack_damage() -> float:
-	return player.get_attack_damage(absorbed_types)
+	return player.get_attack_damage(rewards.absorbed_types)
 
 
 func get_defense_damage_reduction() -> float:
@@ -650,8 +415,8 @@ func absorb_creature_type(creature_data: Dictionary) -> Dictionary:
 
 	# Trait Extraction (V2.1 Siralim Upgrade)
 	var trait_id: String = String(creature_data.get("trait_id", ""))
-	if not trait_id.is_empty() and not archive_traits.has(trait_id):
-		archive_traits.append(trait_id)
+	if not trait_id.is_empty() and not creatures.archive_traits.has(trait_id):
+		creatures.archive_traits.append(trait_id)
 		# Signal that a new trait was archived
 		EventBus.emit_signal("proc_feedback_requested", "TRAIT EXTRACTED: " + trait_id.to_upper(), Color(0.85, 0.44, 0.18, 1.0))
 
@@ -670,11 +435,11 @@ func absorb_creature_type(creature_data: Dictionary) -> Dictionary:
 		entry["heal_applied"] = healed
 		entry["damage_bonus"] = 0.0
 	elif eat_type == "max_hp_flat":
-		player_max_hp += value
-		var hp_before: float = player_hp
-		player_hp = min(player_hp + value, player_max_hp)
+		player.max_hp += value
+		var hp_before: float = player.hp
+		player.hp = min(player.hp + value, player.max_hp)
 		entry["max_hp_bonus"] = value
-		entry["heal_applied"] = player_hp - hp_before
+		entry["heal_applied"] = player.hp - hp_before
 		entry["damage_bonus"] = 0.0
 	elif eat_type == "support_charge":
 		entry["support_charge_bonus"] = value
@@ -682,7 +447,7 @@ func absorb_creature_type(creature_data: Dictionary) -> Dictionary:
 	else:
 		entry["damage_bonus"] = value
 
-	absorbed_types.append(entry)
+	rewards.absorbed_types.append(entry)
 	
 	var mutation: Dictionary = creature_data.get("mutation", {})
 	if not mutation.is_empty():
@@ -691,15 +456,15 @@ func absorb_creature_type(creature_data: Dictionary) -> Dictionary:
 		active_entry["current_charges"] = int(effect.get("charges", 0))
 		active_entry["feedback_fired"] = false
 		active_entry["source_species_id"] = species_id
-		active_mutations.append(active_entry)
-		if active_mutations.size() > REWARD_MUTATION_CAP:
-			active_mutations.pop_front()
+		rewards.active_mutations.append(active_entry)
+		if rewards.active_mutations.size() > REWARD_MUTATION_CAP:
+			rewards.active_mutations.pop_front()
 
 	return entry
 
 
 func get_current_resonance_perk() -> Dictionary:
-	return LAIR_RESONANCE.get_resonance_perk(world_dominant_fate)
+	return LAIR_RESONANCE.get_resonance_perk(world_fate.dominant_fate)
 
 
 func get_trait_splicing_cost(_species_id: String = "") -> float:
@@ -718,11 +483,11 @@ func get_ascension_status(species_id: String) -> Dictionary:
 		"cost": cost,
 		"current_dna": current_dna,
 		"required_fate": affinity,
-		"current_fate": world_dominant_fate,
+		"current_fate": world_fate.dominant_fate,
 		"mastery": mastery,
 		"reason": "No bonded sequence found."
 	}
-	for creature in lair_roster:
+	for creature in creatures.lair_roster:
 		if String(creature.get("species_id", "")) != species_id:
 			continue
 		var bond: int = int(creature.get("bond_level", 1))
@@ -737,7 +502,7 @@ func get_ascension_status(species_id: String) -> Dictionary:
 		if current_dna < cost:
 			status["reason"] = "Need %.0f more DNA." % (cost - current_dna)
 			return status
-		if world_dominant_fate != affinity:
+		if world_fate.dominant_fate != affinity:
 			status["reason"] = "World Resonance must align with %s." % affinity.replace("_", " ").capitalize()
 			return status
 		status["can_ascend"] = true
@@ -751,19 +516,19 @@ func splice_trait_to_creature(species_id: String, trait_id: String) -> bool:
 	
 	if not has_dna_for(species_id, cost): return false
 	
-	for i in range(lair_roster.size()):
-		if String(lair_roster[i].get("species_id", "")) == species_id:
-			var spliced: Array = lair_roster[i].get("spliced_traits", [])
+	for i in range(creatures.lair_roster.size()):
+		if String(creatures.lair_roster[i].get("species_id", "")) == species_id:
+			var spliced: Array = creatures.lair_roster[i].get("spliced_traits", [])
 			if spliced.has(trait_id): return false
 			
 			spend_dna(species_id, cost)
 			spliced.append(trait_id)
-			lair_roster[i]["spliced_traits"] = spliced
+			creatures.lair_roster[i]["spliced_traits"] = spliced
 			
-			# If this is the active creature, update the active roster too
-			for j in range(roster.size()):
-				if String(roster[j].get("species_id", "")) == species_id:
-					roster[j]["spliced_traits"] = spliced
+			# If this is the active creature, update the active creatures.roster too
+			for j in range(creatures.roster.size()):
+				if String(creatures.roster[j].get("species_id", "")) == species_id:
+					creatures.roster[j]["spliced_traits"] = spliced
 					break
 			return true
 	return false
@@ -775,42 +540,42 @@ func request_ascension(species_id: String) -> bool:
 	
 	# World Fate Alignment Check
 	var affinity: String = LAIR_RESONANCE.get_species_affinity(species_id)
-	if world_dominant_fate != affinity:
+	if world_fate.dominant_fate != affinity:
 		# Cannot ascend if world resonance does not match affinity
 		return false
 	
-	for i in range(lair_roster.size()):
-		if String(lair_roster[i].get("species_id", "")) == species_id:
-			var bond: int = int(lair_roster[i].get("bond_level", 1))
+	for i in range(creatures.lair_roster.size()):
+		if String(creatures.lair_roster[i].get("species_id", "")) == species_id:
+			var bond: int = int(creatures.lair_roster[i].get("bond_level", 1))
 			if bond < 5: return false # Must be max bond to ascend
-			if bool(lair_roster[i].get("is_ascended", false)): return false
+			if bool(creatures.lair_roster[i].get("is_ascended", false)): return false
 			
 			spend_dna(species_id, cost)
-			lair_roster[i]["is_ascended"] = true
-			lair_roster[i]["is_exceptional"] = true # Ascended are always exceptional
-			lair_roster[i]["variant_id"] = "ascended_sovereign"
+			creatures.lair_roster[i]["is_ascended"] = true
+			creatures.lair_roster[i]["is_exceptional"] = true # Ascended are always exceptional
+			creatures.lair_roster[i]["variant_id"] = "ascended_sovereign"
 			
 			# Mastery Trait Integration
 			var mastery: Dictionary = LAIR_RESONANCE.get_mastery_trait(species_id)
-			lair_roster[i]["mastery_trait_id"] = String(mastery.get("id", ""))
+			creatures.lair_roster[i]["mastery_trait_id"] = String(mastery.get("id", ""))
 			
-			# If this is the active creature, update the active roster too
-			for j in range(roster.size()):
-				if String(roster[j].get("species_id", "")) == species_id:
-					roster[j]["is_ascended"] = true
-					roster[j]["is_exceptional"] = true
-					roster[j]["variant_id"] = "ascended_sovereign"
-					roster[j]["mastery_trait_id"] = String(mastery.get("id", ""))
+			# If this is the active creature, update the active creatures.roster too
+			for j in range(creatures.roster.size()):
+				if String(creatures.roster[j].get("species_id", "")) == species_id:
+					creatures.roster[j]["is_ascended"] = true
+					creatures.roster[j]["is_exceptional"] = true
+					creatures.roster[j]["variant_id"] = "ascended_sovereign"
+					creatures.roster[j]["mastery_trait_id"] = String(mastery.get("id", ""))
 					break
 			
-			EventBus.emit_signal("creature_ascended", {"species_id": species_id, "fate_id": world_dominant_fate})
+			EventBus.emit_signal("creature_ascended", {"species_id": species_id, "fate_id": world_fate.dominant_fate})
 			return true
 	return false
 
 
 func get_active_mutations_of_type(effect_type: String) -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
-	for mut in active_mutations:
+	for mut in rewards.active_mutations:
 		var effect: Dictionary = mut.get("effect", {})
 		if String(effect.get("type", "")) == effect_type:
 			result.append(mut)
@@ -818,31 +583,31 @@ func get_active_mutations_of_type(effect_type: String) -> Array[Dictionary]:
 
 
 func consume_mutation_charge(mutation_id: String, amount: int = 1) -> void:
-	for i in range(active_mutations.size()):
-		if String(active_mutations[i].get("id", "")) == mutation_id:
-			var charges: int = int(active_mutations[i].get("current_charges", 0))
+	for i in range(rewards.active_mutations.size()):
+		if String(rewards.active_mutations[i].get("id", "")) == mutation_id:
+			var charges: int = int(rewards.active_mutations[i].get("current_charges", 0))
 			if charges > 0:
-				active_mutations[i]["current_charges"] = max(0, charges - amount)
+				rewards.active_mutations[i]["current_charges"] = max(0, charges - amount)
 				return
 
 
 func restore_mutation_charges(mutation_id: String, amount: int) -> void:
 	if mutation_id.is_empty() or amount <= 0: return
-	for i in range(active_mutations.size()):
-		if String(active_mutations[i].get("id", "")) != mutation_id: continue
-		var effect: Dictionary = active_mutations[i].get("effect", {})
+	for i in range(rewards.active_mutations.size()):
+		if String(rewards.active_mutations[i].get("id", "")) != mutation_id: continue
+		var effect: Dictionary = rewards.active_mutations[i].get("effect", {})
 		var cap: int = int(effect.get("charges", 0))
-		var cur: int = int(active_mutations[i].get("current_charges", 0))
+		var cur: int = int(rewards.active_mutations[i].get("current_charges", 0))
 		var next_charges: int = cur + amount
 		if cap > 0: next_charges = mini(next_charges, cap)
-		active_mutations[i]["current_charges"] = next_charges
+		rewards.active_mutations[i]["current_charges"] = next_charges
 		return
 
 
 func set_mutation_flag(mutation_id: String, flag: String, value: bool) -> void:
-	for i in range(active_mutations.size()):
-		if String(active_mutations[i].get("id", "")) == mutation_id:
-			active_mutations[i][flag] = value
+	for i in range(rewards.active_mutations.size()):
+		if String(rewards.active_mutations[i].get("id", "")) == mutation_id:
+			rewards.active_mutations[i][flag] = value
 			return
 
 
@@ -902,7 +667,7 @@ func get_reward_ecology_slot_alerts() -> Array[String]:
 # --- Beat Logic ---
 
 func set_last_beat_quality(quality: String) -> void:
-	last_beat_quality = quality
+	run.last_beat_quality = quality
 
 
 func is_beat_active() -> bool:
@@ -915,7 +680,7 @@ func get_active_bonded_creature() -> Dictionary:
 	var best_creature: Dictionary = {}
 	var best_bond: int = -1
 	var best_order: int = -1
-	for creature in roster:
+	for creature in creatures.roster:
 		var bond_level: int = int(creature.get("bond_level", 0))
 		var bond_order: int = int(creature.get("bond_order", 0))
 		if bond_level > best_bond:
@@ -938,7 +703,7 @@ func get_dna(species_id: String) -> float:
 
 func grant_creature_exp(species_id: String, amount: float) -> int:
 	var cap: int = get_creature_level_cap(species_id)
-	return creatures.grant_creature_exp(species_id, amount, stat_potential, cap)
+	return creatures.grant_creature_exp(species_id, amount, player.stat_potential, cap)
 
 
 func spend_dna(species_id: String, amount: float) -> void:
@@ -998,11 +763,11 @@ func get_collar_inventory() -> Array[Dictionary]:
 
 
 func set_growth_choice_intersection_payload(payload: Dictionary) -> void:
-	growth_choice_intersection_payload = payload.duplicate(true)
+	run.growth_choice_intersection_payload = payload.duplicate(true)
 
 
 func clear_growth_choice_intersection_payload() -> void:
-	growth_choice_intersection_payload.clear()
+	run.growth_choice_intersection_payload.clear()
 
 
 # --- Ranch Logic ---
@@ -1012,7 +777,7 @@ func get_lair_training_cost(species_id: String) -> int:
 
 
 func get_lair_bond_rite_cost(species_id: String) -> int:
-	for entry in lair_roster:
+	for entry in creatures.lair_roster:
 		if String(entry.get("species_id", "")) == species_id:
 			var bond: int = int(entry.get("bond_level", 1))
 			return bond * 100
@@ -1020,7 +785,7 @@ func get_lair_bond_rite_cost(species_id: String) -> int:
 
 
 func get_creature_level_cost(species_id: String) -> int:
-	for entry in lair_roster:
+	for entry in creatures.lair_roster:
 		if String(entry.get("species_id", "")) == species_id:
 			var creature_level: int = int(entry.get("creature_level", 1))
 			if creature_level >= get_creature_level_cap(species_id):
@@ -1030,7 +795,7 @@ func get_creature_level_cost(species_id: String) -> int:
 
 
 func get_lair_release_refund(species_id: String) -> int:
-	for entry in lair_roster:
+	for entry in creatures.lair_roster:
 		if String(entry.get("species_id", "")) == species_id:
 			var bond: int = int(entry.get("bond_level", 1))
 			return (bond - 1) * 50 + 100
@@ -1054,17 +819,17 @@ func calibrate_lair_creature(species_id: String) -> bool:
 	var cost: int = get_creature_level_cost(species_id)
 	if cost <= 0: return false
 	if not has_dna_for(species_id, float(cost)): return false
-	for i in range(lair_roster.size()):
-		if String(lair_roster[i].get("species_id", "")) != species_id:
+	for i in range(creatures.lair_roster.size()):
+		if String(creatures.lair_roster[i].get("species_id", "")) != species_id:
 			continue
 		var cap: int = get_creature_level_cap(species_id)
-		var current_level: int = int(lair_roster[i].get("creature_level", 1))
+		var current_level: int = int(creatures.lair_roster[i].get("creature_level", 1))
 		if current_level >= cap:
 			return false
 		var next_level: int = mini(current_level + 1, cap)
 		spend_dna(species_id, float(cost))
-		lair_roster[i]["creature_level"] = next_level
-		lair_roster[i]["creature_exp_to_next"] = creatures.get_creature_exp_threshold(next_level)
+		creatures.lair_roster[i]["creature_level"] = next_level
+		creatures.lair_roster[i]["creature_exp_to_next"] = creatures.get_creature_exp_threshold(next_level)
 		_sync_creature_level_to_roster(species_id, next_level)
 		EventBus.emit_signal("proc_feedback_requested", "CALIBRATION DEEPENED", Color(0.72, 0.88, 1.0, 1.0))
 		return true
@@ -1072,23 +837,23 @@ func calibrate_lair_creature(species_id: String) -> bool:
 
 
 func _sync_creature_level_to_roster(species_id: String, creature_level: int) -> void:
-	for i in range(roster.size()):
-		if String(roster[i].get("species_id", "")) == species_id:
-			roster[i]["creature_level"] = creature_level
-			roster[i]["creature_exp_to_next"] = creatures.get_creature_exp_threshold(creature_level)
+	for i in range(creatures.roster.size()):
+		if String(creatures.roster[i].get("species_id", "")) == species_id:
+			creatures.roster[i]["creature_level"] = creature_level
+			creatures.roster[i]["creature_exp_to_next"] = creatures.get_creature_exp_threshold(creature_level)
 			return
 
 
 func release_lair_creature(species_id: String) -> void:
 	var refund: int = get_lair_release_refund(species_id)
 	add_dna(species_id, float(refund))
-	for i in range(lair_roster.size()):
-		if String(lair_roster[i].get("species_id", "")) == species_id:
-			lair_roster.remove_at(i)
+	for i in range(creatures.lair_roster.size()):
+		if String(creatures.lair_roster[i].get("species_id", "")) == species_id:
+			creatures.lair_roster.remove_at(i)
 			break
-	if active_lair_creature_id == species_id:
-		active_lair_creature_id = ""
-	active_lair_creature_ids.erase(species_id)
+	if creatures.active_lair_creature_id == species_id:
+		creatures.active_lair_creature_id = ""
+	creatures.active_lair_creature_ids.erase(species_id)
 	creatures.ensure_active_lair_creatures(get_support_slot_count())
 
 
@@ -1135,7 +900,7 @@ func reset_run_state() -> void:
 	# applies its specific stat package, scaled by meta-potential.
 	var meta_pot: float = player.stat_potential
 	
-	for entry in lair_roster:
+	for entry in creatures.lair_roster:
 		var species: String = String(entry.get("species_id", ""))
 		var level: int = int(entry.get("bond_level", 1))
 		var bonus_mult: float = float(level) * meta_pot
@@ -1152,13 +917,13 @@ func reset_run_state() -> void:
 	player.stat_carapace = max(player.stat_carapace, 0.0)
 	
 	var hp_bonus: float = 0.0
-	var modifier: Dictionary = active_region.get("modifier", {})
+	var modifier: Dictionary = run.active_region.get("modifier", {})
 	match modifier.get("type", ""):
-		"attack_bonus": player_base_damage += float(modifier.get("value", 0.0))
+		"attack_bonus": player.base_damage += float(modifier.get("value", 0.0))
 		"max_hp_bonus": hp_bonus = float(modifier.get("value", 0.0))
-	
+
 	player.recalculate_max_hp(hp_bonus)
-	player_hp = player_max_hp
+	player.hp = player.max_hp
 	player.base_damage = player.stat_power
 	player.defense = player.stat_carapace
 
@@ -1169,19 +934,19 @@ func reset_run_state() -> void:
 
 func register_world_boss_outcome(outcome_id: String, payload: Dictionary = {}) -> void:
 	if outcome_id.is_empty(): return
-	_world_pending_boss_events.append({"id": outcome_id, "payload": payload.duplicate(true)})
+	world_fate.pending_boss_events.append({"id": outcome_id, "payload": payload.duplicate(true)})
 	EventBus.emit_signal("boss_outcome_resolved", outcome_id, payload.duplicate(true))
 
 
 func register_tempo_event(family: String, event_id: String, payload: Dictionary = {}) -> void:
 	var family_id: String = family.to_lower()
 	if family_id != "puncture" and family_id != "void" and family_id != "decree": return
-	_world_run_tempo_counts[family_id] = int(_world_run_tempo_counts.get(family_id, 0)) + 1
-	if _world_run_tempo_events.size() >= 24: _world_run_tempo_events.pop_front()
-	_world_run_tempo_events.append({
+	world_fate.tempo_counts[family_id] = int(world_fate.tempo_counts.get(family_id, 0)) + 1
+	if world_fate.tempo_events.size() >= 24: world_fate.tempo_events.pop_front()
+	world_fate.tempo_events.append({
 		"family": family_id,
 		"event_id": event_id,
-		"run_number": run_number,
+		"run.run_number": run.run_number,
 		"payload": payload.duplicate(true)
 	})
 
@@ -1194,16 +959,16 @@ func resolve_world_fate_for_run(run_result: Dictionary) -> Dictionary:
 	var deltas: Dictionary = _build_world_fate_run_deltas(run_result)
 	_apply_world_fate_deltas(deltas)
 	_resolve_world_fate_dominance()
-	world_fate_last_snapshot = _build_world_fate_snapshot(run_result, deltas)
+	world_fate.last_snapshot = _build_world_fate_snapshot(run_result, deltas)
 	_world_reset_run_trackers()
-	EventBus.emit_signal("world_fate_changed", world_fate_last_snapshot.duplicate(true))
-	return world_fate_last_snapshot.duplicate(true)
+	EventBus.emit_signal("world_fate_changed", world_fate.last_snapshot.duplicate(true))
+	return world_fate.last_snapshot.duplicate(true)
 
 
 func get_world_fate_snapshot() -> Dictionary:
-	if world_fate_last_snapshot.is_empty():
+	if world_fate.last_snapshot.is_empty():
 		return _build_world_fate_snapshot({}, {})
-	return world_fate_last_snapshot.duplicate(true)
+	return world_fate.last_snapshot.duplicate(true)
 
 
 func get_world_presentation_tags() -> Dictionary:
@@ -1228,31 +993,31 @@ func _build_world_fate_run_deltas(run_result: Dictionary) -> Dictionary:
 	deltas["mythic_hopeful"] += bond_signal * 0.12
 	deltas["sterile_technocratic"] += max(cadence_signal - bond_signal, 0.0) * 0.05
 
-	var total_choices: int = maxi(_world_run_bond_events + _world_run_eat_events, 1)
-	var bond_eat_bias: float = float(_world_run_bond_events - _world_run_eat_events) / float(total_choices)
+	var total_choices: int = maxi(world_fate.bond_events + world_fate.eat_events, 1)
+	var bond_eat_bias: float = float(world_fate.bond_events - world_fate.eat_events) / float(total_choices)
 	if bond_eat_bias >= 0.0: deltas["mythic_hopeful"] += bond_eat_bias * 0.16
 	else: deltas["predatory_brutal"] += -bond_eat_bias * 0.16
 
-	if _world_run_bond_events > 0 and _world_run_eat_events > 0 and absf(bond_eat_bias) <= 0.25:
+	if world_fate.bond_events > 0 and world_fate.eat_events > 0 and absf(bond_eat_bias) <= 0.25:
 		deltas["haunted_ritual"] += 0.09
-	if _world_run_bond_events > 0 and _world_run_eat_events > 0 and cadence_signal >= 0.45 and absf(bond_eat_bias) <= 0.35:
+	if world_fate.bond_events > 0 and world_fate.eat_events > 0 and cadence_signal >= 0.45 and absf(bond_eat_bias) <= 0.35:
 		deltas["sterile_technocratic"] += 0.08
-	if _world_run_eat_events >= 3 and _world_run_bond_events == 0:
+	if world_fate.eat_events >= 3 and world_fate.bond_events == 0:
 		deltas["predatory_brutal"] += 0.07
-	if _world_run_bond_events >= 2 and _world_run_eat_events == 0:
+	if world_fate.bond_events >= 2 and world_fate.eat_events == 0:
 		deltas["mythic_hopeful"] += 0.06
 
-	for boss_event in _world_pending_boss_events:
+	for boss_event in world_fate.pending_boss_events:
 		var outcome_id: String = String(boss_event.get("id", ""))
 		var boss_delta: Dictionary = _world_boss_outcome_delta(outcome_id)
 		for fate_id in WORLD_FATE_IDS:
 			deltas[fate_id] += float(boss_delta.get(fate_id, 0.0))
 
 	if not bool(run_result.get("victory", true)): deltas["haunted_ritual"] += 0.03
-	var run_count: int = int(run_result.get("run_number", run_number))
+	var run_count: int = int(run_result.get("run.run_number", run.run_number))
 	var run_pressure: float = clampf(float(maxi(run_count - 1, 0)) / 12.0, 0.0, 1.0)
-	if world_dominant_fate != "unclaimed" and world_fate_channels.has(world_dominant_fate):
-		deltas[world_dominant_fate] += 0.05 * run_pressure
+	if world_fate.dominant_fate != "unclaimed" and world_fate.channels.has(world_fate.dominant_fate):
+		deltas[world_fate.dominant_fate] += 0.05 * run_pressure
 	if run_count <= 2: deltas["mythic_hopeful"] += 0.02
 	for fate_id in WORLD_FATE_IDS: deltas[fate_id] = clampf(deltas[fate_id], 0.0, WORLD_FATE_DELTA_CAP_PER_RUN)
 	return deltas
@@ -1260,48 +1025,48 @@ func _build_world_fate_run_deltas(run_result: Dictionary) -> Dictionary:
 
 func _apply_world_fate_deltas(deltas: Dictionary) -> void:
 	for fate_id in WORLD_FATE_IDS:
-		var current: float = float(world_fate_channels.get(fate_id, 0.0))
+		var current: float = float(world_fate.channels.get(fate_id, 0.0))
 		current = max(current - WORLD_FATE_DECAY_PER_RUN, 0.0)
 		current = clampf(current + float(deltas.get(fate_id, 0.0)), 0.0, 1.0)
-		world_fate_channels[fate_id] = current
+		world_fate.channels[fate_id] = current
 
 
 func _resolve_world_fate_dominance() -> void:
-	var old_fate: String = world_dominant_fate
+	var old_fate: String = world_fate.dominant_fate
 	var ranked: Array[Dictionary] = _world_sorted_fates_by_score()
 	if ranked.is_empty():
-		world_dominant_fate = "unclaimed"
-		world_stain_fates = PackedStringArray()
+		world_fate.dominant_fate = "unclaimed"
+		world_fate.stain_fates = PackedStringArray()
 	else:
 		var candidate_id: String = String(ranked[0].get("id", ""))
 		var candidate_score: float = float(ranked[0].get("score", 0.0))
 		if candidate_score < WORLD_FATE_PRIMARY_MIN:
-			world_dominant_fate = "unclaimed"
+			world_fate.dominant_fate = "unclaimed"
 		else:
-			if world_dominant_fate == "unclaimed" or not world_fate_channels.has(world_dominant_fate):
-				world_dominant_fate = candidate_id
+			if world_fate.dominant_fate == "unclaimed" or not world_fate.channels.has(world_fate.dominant_fate):
+				world_fate.dominant_fate = candidate_id
 			else:
-				var current_score: float = float(world_fate_channels.get(world_dominant_fate, 0.0))
-				if candidate_id == world_dominant_fate or candidate_score >= current_score + WORLD_FATE_SWITCH_MARGIN:
-					world_dominant_fate = candidate_id
+				var current_score: float = float(world_fate.channels.get(world_fate.dominant_fate, 0.0))
+				if candidate_id == world_fate.dominant_fate or candidate_score >= current_score + WORLD_FATE_SWITCH_MARGIN:
+					world_fate.dominant_fate = candidate_id
 	
-	if old_fate != world_dominant_fate:
-		EventBus.emit_signal("world_fate_shifted", world_dominant_fate, old_fate)
+	if old_fate != world_fate.dominant_fate:
+		EventBus.emit_signal("world_fate_shifted", world_fate.dominant_fate, old_fate)
 	
 	var next_stains: PackedStringArray = PackedStringArray()
 	for row in ranked:
 		var fate_id: String = String(row.get("id", ""))
-		if fate_id == world_dominant_fate: continue
+		if fate_id == world_fate.dominant_fate: continue
 		if float(row.get("score", 0.0)) < WORLD_FATE_STAIN_THRESHOLD: continue
 		next_stains.append(fate_id)
 		if next_stains.size() >= 2: break
-	world_stain_fates = next_stains
+	world_fate.stain_fates = next_stains
 
 
 func _world_sorted_fates_by_score() -> Array[Dictionary]:
 	var ranked: Array[Dictionary] = []
 	for fate_id in WORLD_FATE_IDS:
-		ranked.append({"id": fate_id, "score": float(world_fate_channels.get(fate_id, 0.0))})
+		ranked.append({"id": fate_id, "score": float(world_fate.channels.get(fate_id, 0.0))})
 	ranked.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
 		return float(a.get("score", 0.0)) > float(b.get("score", 0.0))
 	)
@@ -1343,10 +1108,10 @@ func _world_zeroed_channels() -> Dictionary:
 
 func _build_world_fate_snapshot(run_result: Dictionary, deltas: Dictionary) -> Dictionary:
 	return {
-		"run_number": int(run_result.get("run_number", run_number)),
-		"dominant_fate": world_dominant_fate,
-		"stain_fates": Array(world_stain_fates),
-		"channels": world_fate_channels.duplicate(true),
+		"run.run_number": int(run_result.get("run.run_number", run.run_number)),
+		"dominant_fate": world_fate.dominant_fate,
+		"stain_fates": Array(world_fate.stain_fates),
+		"channels": world_fate.channels.duplicate(true),
 		"run_deltas": deltas.duplicate(true),
 		"tempo_seed": get_run_tempo_snapshot(),
 		"presentation": _world_presentation_tags()
@@ -1376,10 +1141,10 @@ func _world_presentation_tags() -> Dictionary:
 			"quig_tone": "first_hunger", "boss_mood": "untaken_apex"
 		}
 	}
-	var primary: Dictionary = Dictionary(fate_map.get(world_dominant_fate, fate_map.get("unclaimed", {})))
+	var primary: Dictionary = Dictionary(fate_map.get(world_fate.dominant_fate, fate_map.get("unclaimed", {})))
 	return {
-		"dominant_fate": world_dominant_fate,
-		"stain_fates": Array(world_stain_fates),
+		"dominant_fate": world_fate.dominant_fate,
+		"stain_fates": Array(world_fate.stain_fates),
 		"background_bias": String(primary.get("background_bias", "uneasy_wonder")),
 		"route_tone": String(primary.get("route_tone", "uneasy_wonder")),
 		"lair_tone": String(primary.get("lair_tone", "wild_sanctum")),
@@ -1393,8 +1158,8 @@ func _world_reset_run_trackers() -> void:
 
 
 func _on_creature_bonded_for_world(_creature_data: Dictionary) -> void:
-	_world_run_bond_events += 1
+	world_fate.bond_events += 1
 
 
 func _on_creature_eaten_for_world(_creature_data: Dictionary) -> void:
-	_world_run_eat_events += 1
+	world_fate.eat_events += 1

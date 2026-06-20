@@ -32,7 +32,7 @@ func _ready() -> void:
 
 
 func present() -> void:
-	var payload: Dictionary = GameState.growth_choice_intersection_payload
+	var payload: Dictionary = RunState.growth_choice_intersection_payload
 	if payload.is_empty():
 		hide_surface()
 		return

@@ -7,7 +7,7 @@ Entrypoint for Claude Code. **Read the Trinity first**, then route by archetype.
 2. [docs/ai/AI_ARCHITECTURE_LEDGER.md](docs/ai/AI_ARCHITECTURE_LEDGER.md) — architecture boundaries  
 3. [docs/ai/CURRENT_PULSE.md](docs/ai/CURRENT_PULSE.md) — compact **active** current truth  
 
-Then [ARCHETYPES.md](docs/ai/ARCHETYPES.md) for your lane. Historical deep handoff (optional): [archive … SOVEREIGN_HANDOFF.md](docs/ai/archive_legacy/truth_history/SOVEREIGN_HANDOFF.md).
+Then [ARCHETYPES.md](docs/ai/ARCHETYPES.md) for your lane.
 
 ## Project soul (Black Signal)
 - **Living Codex** identity; **LEGENDARY PIXEL FABLE INK** art (PS1 JRPG / GBA fantasy readability).  

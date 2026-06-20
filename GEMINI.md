@@ -7,7 +7,7 @@ Repo-scanning and contradiction-sweeping specialist. **Read the Trinity first.**
 2. [docs/ai/AI_ARCHITECTURE_LEDGER.md](docs/ai/AI_ARCHITECTURE_LEDGER.md)  
 3. [docs/ai/CURRENT_PULSE.md](docs/ai/CURRENT_PULSE.md) — compact **active** current truth  
 
-Then [ARCHETYPES.md](docs/ai/ARCHETYPES.md), [REPO_TRUTH_PROTOCOL.md](docs/ai/REPO_TRUTH_PROTOCOL.md), [REPORT_CONTRACT.md](docs/ai/REPORT_CONTRACT.md). Deep historical handoff (optional): [archive … SOVEREIGN_HANDOFF.md](docs/ai/archive_legacy/truth_history/SOVEREIGN_HANDOFF.md).
+Then [ARCHETYPES.md](docs/ai/ARCHETYPES.md), [REPO_TRUTH_PROTOCOL.md](docs/ai/REPO_TRUTH_PROTOCOL.md), [REPORT_CONTRACT.md](docs/ai/REPORT_CONTRACT.md).
 
 ## Authority order
 1. Creator / locked core intent  

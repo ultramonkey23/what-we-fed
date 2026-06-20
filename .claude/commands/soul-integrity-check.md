@@ -38,7 +38,4 @@ Fix before the next implementation task.
 Note as remaining risk. Create evolution proposal if the stale term is in an active
 agent entrypoint you can correct without approval.
 
-## Archived docs
-`docs/ai/archive_legacy/` is excluded — old terms there are intentionally ignored.
-
 See `docs/ai/LIVING_COMMAND_LOOP.md` for what can be updated directly vs. proposals.

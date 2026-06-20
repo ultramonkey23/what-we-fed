@@ -72,9 +72,8 @@ Dev harness:
 - `scenes/dev/DebugBootScene.gd`: preset selector for fast combat-state boot
 - `autoloads/DevHarness.gd`: inert request holder consumed only by explicit harness runs
 
-Demo-only (not in live combat graph):
-- `examples/demo_encounter_stack/*.gd`: procedural encounter + mutation demo used by `examples/NewSystemsDemo.gd` only; `CombatScene` uses `EncounterIdentityRuntime` + `CombatContent` instead.
-- Debug harness preset `generated_boss` (`debug_generated_boss_encounter` on `DevHarness` request): `CombatScene` runtime-loads `EncounterGenerator` and normalizes via `systems/GeneratedEncounterAdapter.gd` into `_load_encounter_payload` (authored boss remains default).
+Debug harness only:
+- `examples/demo_encounter_stack/EncounterGenerator.gd`: procedural encounter generator. `CombatScene` runtime-loads it for the `debug_generated_boss_encounter` preset (via `DevHarness`) and normalizes through `systems/GeneratedEncounterAdapter.gd` into `_load_encounter_payload`. The authored boss remains default; live combat uses `EncounterIdentityRuntime` + `CombatContent`.
 
 Repo-local state:
 - `.godot-cli/logs/`: Godot logs for run, smoke, validate, import, editor

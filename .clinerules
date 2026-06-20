@@ -3,11 +3,11 @@
 **Read the Trinity first:** `docs/ai/SOVEREIGN_CORE.md`, `docs/ai/AI_ARCHITECTURE_LEDGER.md`, `docs/ai/CURRENT_PULSE.md` (active current truth). Then `docs/ai/ARCHETYPES.md` for lane routing.
 
 ## Authority
-1. Creator authority.  
-2. Current repo truth.  
-3. Current live-build truth.  
-4. Evolving spine.  
-5. Older canon / source docs (including `docs/ai/archive_legacy/`).
+1. Creator authority.
+2. Current repo truth.
+3. Current live-build truth.
+4. Evolving spine.
+5. Older canon / source docs in `docs/`.
 
 ## Required behavior
 - Inspect real files before patching; one bounded move.  

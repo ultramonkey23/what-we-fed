@@ -65,11 +65,5 @@ Compact active context for WHAT WE FED agents. Use this before loading massive h
 - **Input System Expansion (2026-05-06):** Controller support added. `project.godot` now has full joypad bindings: A/B/X/Y for attack/parry/dodge/support, LB+RB for ultimate, Left Stick for all `mod_*` movement. Tutorial strings in `PresentationTextContent.gd` use tokens (`[ATTACK]`, `[PARRY]`, `[DODGE]`, `[SUPPORT]`, `[ULTIMATE]`, `[MOVE]`) resolved at emit time. `systems/InputHelper.gd` (new) is the static device-detection helper. `systems/QuigNarrativeSystem.gd` gained `trigger_tutorial_line(subcategory)` + `_resolve_tokens()` + `_input()` for device tracking. No combat logic was changed.
 - **Reward Depth Payoffs (2026-05-12):** Style-based DNA multiplier (up to 2.5x at Sovereign) and Clean Encounter bonus (+45 progress) implemented. Added `dna_multiplier()` to `CombatMeter.gd`, updated `_process_dna_award` in `CombatScene.gd`, and added hitless victory payoff in `PerformanceRewardDirector.gd`.
 
-## Historical ledger status
-Phase 1 documentation prune (2026-05-04) **moved** the long repo truth ledger and related truth snapshots into archive (not deleted):
-
-- `docs/ai/archive_legacy/truth_history/CURRENT_REPO_TRUTH_LEDGER.md`
-- `docs/ai/archive_legacy/truth_history/CURRENT_TRUTH_SNAPSHOT.md`
-- `docs/ai/archive_legacy/truth_history/SOVEREIGN_HANDOFF.md`
-
-Treat **`docs/ai/CURRENT_PULSE.md`** (this file) plus **`docs/ai/AI_ARCHITECTURE_LEDGER.md`** as the default quick context. Use `docs/ai/AI_ARCHITECTURE_LEDGER.md` for architecture boundaries and `docs/ai/evolution_proposals/README.md` for proposed changes.
+## Ledger surface
+Treat **`docs/ai/CURRENT_PULSE.md`** (this file) plus **`docs/ai/AI_ARCHITECTURE_LEDGER.md`** as the default quick context. Use `docs/ai/AI_ARCHITECTURE_LEDGER.md` for architecture boundaries and `docs/ai/evolution_proposals/README.md` for proposed changes. The 2026-05-04 `archive_legacy/` snapshot was retired on 2026-06-19 — we are beyond demo stage and shipping in stages.

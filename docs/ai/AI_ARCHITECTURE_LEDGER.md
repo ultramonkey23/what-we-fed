@@ -94,11 +94,9 @@ safety. The doctrine name is ZoneManager. No agent should describe LaneManager.g
 ## Known Documentation Risks
 - The repo contains hundreds of markdown files, including legacy and archived plans.
 - Authority rules are repeated across multiple entrypoints.
-- `docs/ai/archive_legacy/truth_history/CURRENT_REPO_TRUTH_LEDGER.md` is too large for active context; kept archived, not deleted (Phase 1 prune, 2026-05-04).
 - Engineering rules are fragmented across AI, validation, Godot, and workflow docs.
 - Duplicate docs and worktrees can confuse agents.
 - Some historical docs contain superseded base-style terms.
-- Archived docs may describe deferred or rejected systems as if current.
 
 ## Living Command Loop Rule
 Every substantial implementation or multi-step report must include the Self-Upgrade

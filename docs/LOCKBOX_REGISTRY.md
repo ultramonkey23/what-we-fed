@@ -288,7 +288,7 @@ Command Center should not rely on stale memory. A truth ledger lets future promp
 LOCKED FOR LATER unless missing.
 
 ### Repo truth dependency:
-Verify whether `docs/ai/archive_legacy/truth_history/CURRENT_REPO_TRUTH_LEDGER.md` or equivalent exists.
+`docs/ai/CURRENT_PULSE.md` is the active compact-truth surface; `docs/ai/AI_ARCHITECTURE_LEDGER.md` is the architecture boundary map.
 
 ### Risk:
 A stale ledger could become worse than no ledger.

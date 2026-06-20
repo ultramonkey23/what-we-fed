@@ -41,3 +41,21 @@ This was a documentation-only foundation pass. It did not modify gameplay code, 
 **Remaining Phase 2+ decisions:** Broad lockbox export / full registry consolidation; Kaiju ascension canon (`docs/THE_HOLLOW_EGG_KAIJU_ASCENSION_CANON.md`) and related scope; any future migration of absent `*_V1.md` plan files when they exist in-tree; optional further entrypoint/cursor-rule deduplication beyond Phase 1 scope.
 
 **Validation note:** Documentation and tooling path updates only. No gameplay code, scenes, assets, import settings, EventBus, autoloads, combat, rhythm, economy, visual, player, enemy, or background systems modified.
+
+---
+
+## 2026-06-19 — archive_legacy retirement + dead-systems prune
+
+**Status:** Accepted (we are beyond demo stage; staged release posture).
+
+**Files retired:**
+- `systems/MutationSynergySystem.gd` + `.uid` — fully unreferenced; mutation IDs did not match `data/CombatContent.gd`.
+- `systems/EncounterOptimizer.gd` + `.uid` — fully unreferenced; `_initialize_pools` was a no-op and pools had no release path.
+- `examples/NewSystemsDemo.gd` + `.uid`, `examples/demo_encounter_stack/CombatSystemIntegration.gd` + `.uid`, `examples/demo_encounter_stack/MutationTracker.gd` + `.uid` — orphan demo entries; `EncounterGenerator.gd` retained for the live `debug_generated_boss_encounter` harness preset.
+- `docs/archive_legacy/` (whole directory) and `docs/ai/archive_legacy/` (whole directory, including `truth_history/`, `agents/`, `plans_v1_v2/`, `ROLE_PACKS/`).
+- `docs/UPGRADE_IMPLEMENTATION_GUIDE.md` — referenced only the deleted demo stack.
+- `tools/generate_snapshot.bat` and `docs/ai/workflows/SNAPSHOT_GENERATOR.md` — wrote to the deleted archive_legacy/truth_history path.
+
+**Entrypoints and tooling pointer-pruned:** `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, `.clinerules`, `.claude/commands/soul-integrity-check.md`, `tools/ai/check_soul_integrity.py`, `docs/LOCKBOX_REGISTRY.md`, `docs/ai/REPO_TRUTH_PROTOCOL.md`, `docs/ai/AI_ARCHITECTURE_LEDGER.md`, `docs/ai/SIGNAL_MAP.md`, `REPO_SYSTEM_MAP.md` — all archive_legacy and deleted-demo references removed; compact-active-truth flow (CURRENT_PULSE + AI_ARCHITECTURE_LEDGER) is now the only sanctioned ledger surface.
+
+**Validation note:** `smoke_project.bat` SMOKE OK, `validate_project.bat` VALIDATE OK + DATA VALIDATION OK. The only gameplay code touch in this pass was the prior `SovereignDamageCalculator` + `CombatScene` HP-marker cache (committed separately as `12cf0b1`).

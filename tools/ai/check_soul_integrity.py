@@ -2,7 +2,6 @@
 """
 check_soul_integrity.py — WHAT WE FED Soul Integrity Scanner
 Scans active AI docs and agent entrypoints for stale doctrine and generic drift.
-Ignores docs/ai/archive_legacy/.
 
 Usage:
   python tools/ai/check_soul_integrity.py [repo_root]
@@ -35,9 +34,7 @@ SCAN_ROOTS = [
     ".github",
 ]
 
-IGNORE_PATHS = [
-    "docs/ai/archive_legacy",
-]
+IGNORE_PATHS: list[str] = []
 
 # Patterns that must NOT appear in active AI context (warn/fail)
 FORBIDDEN_PATTERNS: list[tuple[str, str, str, str]] = [
@@ -241,14 +238,6 @@ def main(argv: list[str]) -> int:
     if not all_forbidden and not missing_required:
         print("[soul-integrity] PASS — no drift detected in active AI context.")
         return 0
-
-    # Archived docs note
-    archive_path = repo_root / "docs" / "ai" / "archive_legacy"
-    if archive_path.exists():
-        print(
-            "\nNOTE: docs/ai/archive_legacy/ was excluded. "
-            "Archived docs may contain old terms and are intentionally ignored."
-        )
 
     if fail:
         print("\n[soul-integrity] FAIL — hard violations in active context.")

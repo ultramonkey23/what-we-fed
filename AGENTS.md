@@ -20,7 +20,7 @@ For visual/UI/VFX work, produce evidence under `_visual_proofs/[task_name]/`.
 Architecture, canon, or doctrine changes go through [docs/ai/evolution_proposals/README.md](docs/ai/evolution_proposals/README.md) — do not silently rewrite canon.
 
 ## Combat HUD (orientation)
-HUD layout largely in `CombatScene.gd`; refresh/presenter binding in `CombatHUDPresenter.gd`. Extra HUD handoff detail (archived): [SOVEREIGN_HANDOFF.md — Combat HUD presenter](docs/ai/archive_legacy/truth_history/SOVEREIGN_HANDOFF.md#combat-hud-presenter-living-boundary).
+HUD layout largely in `CombatScene.gd`; refresh/presenter binding in `CombatHUDPresenter.gd`.
 
 ## Reporting & validation
 - End implementation turns with the **Auditor's Report** per [REPORT_CONTRACT.md](docs/ai/REPORT_CONTRACT.md).  

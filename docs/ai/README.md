@@ -13,5 +13,3 @@ The Sovereign Core architecture.
 - [GDSCRIPT_ENGINEERING_RULES.md](GDSCRIPT_ENGINEERING_RULES.md)
 - [SIGNAL_MAP.md](SIGNAL_MAP.md)
 - [PROTECTED_SYSTEMS.md](PROTECTED_SYSTEMS.md)
-
-*Refer to the /archive_legacy directory for superseded documentation.*

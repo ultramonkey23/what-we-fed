@@ -34,7 +34,7 @@ static func build_offers(max_offers: int = 3) -> Array[Dictionary]:
 	var act: Dictionary = GameState.get_active_bonded_creature()
 	if not act.is_empty():
 		deepen_order.append(act)
-	for creature in GameState.roster:
+	for creature in CreatureState.roster:
 		var rid: String = String(creature.get("species_id", ""))
 		if not act.is_empty() and rid == String(act.get("species_id", "")):
 			continue
@@ -127,7 +127,7 @@ static func build_offers(max_offers: int = 3) -> Array[Dictionary]:
 	# 4) Flesh tithe — convert stored DNA into body (no bond required on that species).
 	var best_sid: String = ""
 	var best_amt: float = -1.0
-	for k in GameState.dna_by_species.keys():
+	for k in CreatureState.dna_by_species.keys():
 		var sid3: String = String(k)
 		var amt: float = GameState.get_dna(sid3)
 		if amt > best_amt:
@@ -182,7 +182,7 @@ static func apply_choice(choice: Dictionary, run_growth: Node) -> bool:
 			return true
 		KIND_TITHE:
 			GameState.spend_dna(sid, cost)
-			var heal: float = GameState.player_max_hp * 0.22
+			var heal: float = PlayerState.max_hp * 0.22
 			GameState.heal_player(heal)
 			return true
 		KIND_SUPPORT:

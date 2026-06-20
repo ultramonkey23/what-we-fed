@@ -1,5 +1,4 @@
-extends RefCounted
-class_name RewardState
+extends Node
 
 const RITUAL_CONTENT = preload("res://data/RitualConsumableContent.gd")
 

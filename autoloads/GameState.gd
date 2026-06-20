@@ -8,11 +8,16 @@ const LAIR_RESONANCE = preload("res://data/LairResonanceContent.gd")
 const COMBAT_DATA_CONTENT = preload("res://data/CombatContent.gd")
 
 # Sub-state Components
-var player := PlayerState.new()
-var creatures := CreatureState.new()
-var rewards := RewardState.new()
-var world_fate := WorldFateState.new()
-var run := RunState.new()
+var player: Node:
+	get: return PlayerState
+var creatures: Node:
+	get: return CreatureState
+var rewards: Node:
+	get: return RewardState
+var world_fate: Node:
+	get: return WorldFateState
+var run: Node:
+	get: return RunState
 
 var collar_inventory: Array[String] = []
 var equipped_collar_id: String = ""
@@ -313,16 +318,7 @@ func _on_combat_ended(_victory: bool) -> void:
 
 
 func _process(delta: float) -> void:
-	if not is_in_combat and run_in_progress:
-		# Flesh (Vitality) Passive Regeneration: 
-		# Every 10 points above 100 base grants 0.5 HP/sec.
-		# Optimization: Tick every 30 frames for non-combat background regen.
-		if Engine.get_process_frames() % 30 == 0:
-			if stat_vitality > 100.0:
-				var regen_rate: float = (stat_vitality - 100.0) / 10.0 * 0.5
-				if regen_rate > 0.0 and player_hp < player_max_hp:
-					# Multiply by 30-frame delta equivalent
-					player_hp = min(player_hp + regen_rate * delta * 30.0, player_max_hp)
+	pass # Moved to PlayerState Autoload
 
 
 # --- Creature Logic ---
@@ -587,20 +583,7 @@ func get_player_bleed_damage_mult() -> float:
 
 
 func get_power_level() -> float:
-	var base: float = 0.0
-	base += stat_vitality * 1.2
-	base += stat_power * 8.0
-	base += stat_carapace * 12.0
-	base += stat_endurance * 2.5
-	var mult: float = 1.0
-	mult += (stat_swiftness - 1.0) * 5.0
-	mult += (stat_luck - 1.0) * 3.0
-	mult += (stat_potential - 1.0) * 12.0
-	mult += (stat_intelligence - 1.0) * 6.0
-	mult += (stat_adaptability - 1.0) * 8.0
-	var final_power: float = base * mult
-	var flicker: float = 1.0 + (randf() * 0.03 - 0.015)
-	return max(final_power * flicker, 0.0)
+	return PlayerState.get_power_level()
 
 
 # --- Rewards & Mutations ---

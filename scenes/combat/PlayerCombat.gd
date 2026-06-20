@@ -1247,7 +1247,7 @@ func _resolve_timed_attack(projectile: ThreatBase, combo_mult: float, quality: S
 
 
 func _resolve_early_attack(target_sector: int) -> void:
-	var armor_chance: float = clamp(GameState.stat_adaptability - 1.0, 0.0, 0.85)
+	var armor_chance: float = clamp(PlayerState.stat_adaptability - 1.0, 0.0, 0.85)
 	if randf() < armor_chance:
 		# Combo Armor triggered: do not call record_bad_timing
 		EventBus.emit_signal("proc_feedback_requested", "FORM ARMOR", Color(0.42, 0.85, 0.72, 1.0))
@@ -1275,7 +1275,7 @@ func _resolve_late_attack(projectile: ThreatBase, target_sector: int) -> void:
 	if target_enemy_id != -1:
 		zone_manager.damage_enemy_by_id(target_enemy_id, punish_damage)
 
-	var armor_chance: float = clamp(GameState.stat_adaptability - 1.0, 0.0, 0.85)
+	var armor_chance: float = clamp(PlayerState.stat_adaptability - 1.0, 0.0, 0.85)
 	if randf() < armor_chance:
 		EventBus.emit_signal("proc_feedback_requested", "FORM ARMOR", Color(0.42, 0.85, 0.72, 1.0))
 	else:
@@ -1392,13 +1392,13 @@ func _take_damage(amount: float, source_sector: int) -> void:
 	# Apply Blood-Ember Vulnerability
 	amount *= GameState.get_player_bleed_damage_mult()
 
-	GameState.player_hp = max(GameState.player_hp - amount, 0.0)
+	PlayerState.hp = max(PlayerState.hp - amount, 0.0)
 	_flash_sprite_color(Color(1.0, 0.25, 0.25, 1.0), 0.18)
 	combat_meter.break_phrase()
 	_clear_mastery_context("damage_taken", source_sector)
 	EventBus.emit_signal("player_took_damage", amount, source_sector)
 
-	if GameState.player_hp <= 0.0:
+	if PlayerState.hp <= 0.0:
 		EventBus.emit_signal("player_died")
 		EventBus.emit_signal("combat_ended", false)
 
@@ -1406,7 +1406,7 @@ func _take_damage(amount: float, source_sector: int) -> void:
 func _sum_bond_passive(passive_type: String) -> float:
 	# Bond-trait expression: bonded creature passives of the given type sum, each scaled by bond level mult.
 	var total: float = 0.0
-	for creature in GameState.roster:
+	for creature in CreatureState.roster:
 		var passive: Dictionary = creature.get("bond_passive", {})
 		if passive.get("type", "") == passive_type:
 			var mult: float = GameState.get_bond_level_mult(int(creature.get("bond_level", 1)))
@@ -1416,7 +1416,7 @@ func _sum_bond_passive(passive_type: String) -> float:
 
 func _get_damage_reduction() -> float:
 	# Live-run defense + bonded damage_reduction_pct passives, capped at COMBINED_DAMAGE_REDUCTION_CAP.
-	var total: float = GameState.get_defense_damage_reduction() + _sum_bond_passive("damage_reduction_pct")
+	var total: float = PlayerState.get_defense_damage_reduction() + _sum_bond_passive("damage_reduction_pct")
 	return min(total, GameState.COMBINED_DAMAGE_REDUCTION_CAP)
 
 

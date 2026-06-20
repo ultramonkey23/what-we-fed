@@ -201,7 +201,7 @@ func _resolve_authorized_strikers() -> Array[int]:
 
 		# Bloodscent: Ashclaw is more aggressive if the player is bleeding.
 		if enemy.get("species_id") == "ashclaw":
-			score += float(GameState.player_bleed_stacks) * 2.0
+			score += float(PlayerState.bleed_stacks) * 2.0
 
 		candidates.append({"id": id, "score": score})
 

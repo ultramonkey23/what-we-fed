@@ -26,7 +26,7 @@ var stamina: float = 100.0
 var stamina_max: float = 100.0:
 	get:
 		# Always fetch from GameState to ensure real-time scaling
-		return GameState.stat_endurance
+		return PlayerState.stat_endurance
 var phrase_count: int = 0  # consecutive quality actions without a break
 
 var _ultimate_announced: bool = false
@@ -51,6 +51,8 @@ func _process(delta: float) -> void:
 	if stamina < stamina_max:
 		stamina = min(stamina + PASSIVE_REGEN_PER_SEC * delta, stamina_max)
 		_emit_stamina_changed()
+	else:
+		set_process(false)
 
 
 func _emit_stamina_changed(force: bool = false) -> void:
@@ -79,6 +81,7 @@ func spend_stamina_for_parry() -> bool:
 
 	stamina = max(stamina - STAMINA_PARRY_COST, 0.0)
 	_emit_stamina_changed(true)
+	set_process(true)
 	return true
 
 
@@ -89,6 +92,7 @@ func spend_stamina_for_dodge() -> bool:
 
 	stamina = max(stamina - STAMINA_DODGE_COST, 0.0)
 	_emit_stamina_changed(true)
+	set_process(true)
 	return true
 
 
@@ -148,6 +152,7 @@ func record_bad_timing() -> void:
 	style_score = max(style_score - 10.0, 0.0)
 	stamina = max(stamina - STAMINA_DAMAGE_TAKEN_LOSS, 0.0)
 	_emit_stamina_changed(true)
+	set_process(true)
 	break_phrase()
 	_emit_meter_state()
 

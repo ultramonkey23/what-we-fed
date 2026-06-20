@@ -23,6 +23,11 @@ var _enemy_shader_material_by_id: Dictionary = {}
 var _enemy_flash_tweens_by_id: Dictionary = {}
 var _readability_stress: float = 0.0
 
+var _vfx_pool: Dictionary = {
+	"sprite": [], "bolt": [], "slash": [], "burst": [],
+	"impact_line": [], "manga_ring": [], "action_lines": [], "ink_splatter": []
+}
+
 var _sigil_overlay_ready: bool = false
 var _input_echo_line: Line2D = null
 var _recovery_arc_line: Line2D = null
@@ -520,13 +525,15 @@ func spawn_attack_silhouette_to_lane(lane: int, color: Color, thickness: float, 
 		return
 		
 	# THE PATH-TRACED STRIKE: Traveling Sprite along the tether
-	var sprite := Sprite2D.new()
-	sprite.texture = load("res://assets/characters/player/combat/player_atkeffect.png")
+	var sprite: Sprite2D = _get_pooled_vfx("sprite", _attack_fx_container, func() -> Node:
+		var s := Sprite2D.new()
+		s.texture = load("res://assets/characters/player/combat/player_atkeffect.png")
+		return s
+	)
 	sprite.modulate = color
 	sprite.modulate.a = 0.8
 	sprite.scale = Vector2.ZERO # Start scale
 	sprite.rotation = (tether.points[1] - tether.points[0]).angle()
-	_attack_fx_container.add_child(sprite)
 	
 	# Animate the sprite sequentially through the points
 	var tween := _attack_fx_container.create_tween()
@@ -541,18 +548,21 @@ func spawn_attack_silhouette_to_lane(lane: int, color: Color, thickness: float, 
 	
 	tween.tween_property(sprite, "modulate:a", 0.0, lifetime)
 	tween.parallel().tween_property(sprite, "scale", Vector2.ZERO, lifetime)
-	tween.tween_callback(sprite.queue_free)
+	tween.tween_callback(func(): _return_vfx(sprite))
 	
 	# Also spawn the Surge Bolt (Line2D) for extra spectacular punch
-	var bolt := Line2D.new()
+	var bolt: Line2D = _get_pooled_vfx("bolt", _attack_fx_container, func() -> Node:
+		var b := Line2D.new()
+		b.joint_mode = Line2D.LINE_JOINT_ROUND
+		return b
+	)
 	bolt.points = tether.points
 	bolt.width = thickness * 1.5
 	bolt.default_color = Color.WHITE
-	bolt.joint_mode = Line2D.LINE_JOINT_ROUND
-	_attack_fx_container.add_child(bolt)
+	bolt.modulate = Color.WHITE
 	var bolt_tween := bolt.create_tween()
 	bolt_tween.tween_property(bolt, "modulate:a", 0.0, lifetime)
-	bolt_tween.tween_callback(bolt.queue_free)
+	bolt_tween.tween_callback(func(): _return_vfx(bolt))
 
 
 func _spawn_fallback_slash(lane: int, color: Color, thickness: float, lifetime: float) -> void:
@@ -562,17 +572,19 @@ func _spawn_fallback_slash(lane: int, color: Color, thickness: float, lifetime: 
 	var dir: Vector2 = (end - _zone_manager.get_player_pos()).normalized()
 	end += dir * 8.0
 	var delta: Vector2 = (end - start)
-	var slash := Polygon2D.new()
+	var slash: Polygon2D = _get_pooled_vfx("slash", _attack_fx_container, func() -> Node:
+		return Polygon2D.new()
+	)
 	slash.color = color
+	slash.modulate = Color.WHITE
 	slash.position = start
 	slash.rotation = delta.angle()
 	slash.scale = Vector2(0.18, 1.0)
 	slash.polygon = PackedVector2Array([Vector2(0, -thickness*0.5), Vector2(delta.length(), -thickness*0.5), Vector2(delta.length(), thickness*0.5), Vector2(0, thickness*0.5)])
-	_attack_fx_container.add_child(slash)
 	var tween := _attack_fx_container.create_tween()
 	tween.tween_property(slash, "scale:x", 1.0, 0.04)
 	tween.parallel().tween_property(slash, "modulate:a", 0.0, lifetime)
-	tween.tween_callback(slash.queue_free)
+	tween.tween_callback(func(): _return_vfx(slash))
 
 
 func apply_impact_profile(profile: Dictionary, lane: int = -1, enemy_id: int = -1) -> void:
@@ -602,8 +614,11 @@ func spawn_enemy_impact_burst(enemy_id: int, color: Color, burst_scale: float, l
 	var marker: Node2D = _get_enemy_marker_root(enemy_id)
 	if marker == null: return
 	var center: Vector2 = _get_enemy_marker_center(marker)
-	var burst := Polygon2D.new()
+	var burst: Polygon2D = _get_pooled_vfx("burst", _attack_fx_container, func() -> Node:
+		return Polygon2D.new()
+	)
 	burst.color = color
+	burst.modulate = Color.WHITE
 	burst.position = center
 	burst.scale = Vector2(0.32, 0.32) * burst_scale
 	var spike_points := PackedVector2Array()
@@ -612,18 +627,20 @@ func spawn_enemy_impact_burst(enemy_id: int, color: Color, burst_scale: float, l
 		var radius: float = 24.0 if i % 2 == 0 else 10.0
 		spike_points.append(Vector2(cos(angle) * radius, sin(angle) * radius))
 	burst.polygon = spike_points
-	_attack_fx_container.add_child(burst)
 	var tween := _attack_fx_container.create_tween()
 	tween.tween_property(burst, "scale", Vector2.ONE * burst_scale, 0.05)
 	tween.parallel().tween_property(burst, "modulate:a", 0.0, lifetime)
-	tween.tween_callback(burst.queue_free)
+	tween.tween_callback(func(): _return_vfx(burst))
 
 
 func spawn_impact_lines(center: Vector2, color: Color, count: int, length: float, lifetime: float) -> void:
 	for i in range(count):
 		var angle: float = (float(i) / count) * TAU + randf_range(-0.28, 0.28)
-		var line := Polygon2D.new()
+		var line: Polygon2D = _get_pooled_vfx("impact_line", _attack_fx_container, func() -> Node:
+			return Polygon2D.new()
+		)
 		line.color = color
+		line.modulate = Color.WHITE
 		line.position = center
 		line.rotation = angle
 		var half_w: float = randf_range(0.6, 1.5)
@@ -635,10 +652,9 @@ func spawn_impact_lines(center: Vector2, color: Color, count: int, length: float
 			Vector2(line_length, half_w * 0.25),
 			Vector2(start_offset, half_w)
 		])
-		_attack_fx_container.add_child(line)
 		var tween := _attack_fx_container.create_tween()
 		tween.tween_property(line, "modulate:a", 0.0, lifetime * randf_range(0.65, 1.0))
-		tween.tween_callback(line.queue_free)
+		tween.tween_callback(func(): _return_vfx(line))
 
 
 func play_combat_sfx(cue_id: String) -> void:
@@ -646,9 +662,10 @@ func play_combat_sfx(cue_id: String) -> void:
 
 
 func _spawn_manga_ring_burst(pos: Vector2, width: float, color: Color) -> void:
-	var ring := Line2D.new()
-	if _battlefield_panel: _battlefield_panel.add_child(ring)
-	else: EventBus.get_parent().add_child(ring)
+	var container_node = _battlefield_panel if _battlefield_panel else EventBus.get_parent()
+	var ring: Line2D = _get_pooled_vfx("manga_ring", container_node, func() -> Node:
+		return Line2D.new()
+	)
 	ring.global_position = pos
 	var pts := PackedVector2Array()
 	for i in range(33):
@@ -658,44 +675,58 @@ func _spawn_manga_ring_burst(pos: Vector2, width: float, color: Color) -> void:
 	ring.closed = true
 	ring.width = width
 	ring.default_color = color
+	ring.modulate = Color.WHITE
 	ring.scale = Vector2.ZERO
 	var tween := ring.create_tween()
 	tween.tween_property(ring, "scale", Vector2.ONE * 2.8, 0.28).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
 	tween.parallel().tween_property(ring, "width", 0.0, 0.28)
 	tween.parallel().tween_property(ring, "modulate:a", 0.0, 0.28)
-	tween.tween_callback(ring.queue_free)
+	tween.tween_callback(func(): _return_vfx(ring))
 	if width > 4.0: _spawn_manga_action_lines(pos, color)
 
 
 func _spawn_manga_action_lines(pos: Vector2, color: Color) -> void:
-	var container := Node2D.new()
-	if _battlefield_panel: _battlefield_panel.add_child(container)
-	else: EventBus.get_parent().add_child(container)
+	var parent_node = _battlefield_panel if _battlefield_panel else EventBus.get_parent()
+	var container: Node2D = _get_pooled_vfx("action_lines", parent_node, func() -> Node:
+		var c := Node2D.new()
+		for i in range(12):
+			c.add_child(Line2D.new())
+		return c
+	)
 	container.global_position = pos
+	var lines = container.get_children()
 	for i in range(12):
-		var line := Line2D.new()
-		container.add_child(line)
+		var line: Line2D = lines[i]
 		var angle := randf() * TAU
 		var length := randf_range(40.0, 180.0)
 		var dir := Vector2(cos(angle), sin(angle))
 		line.points = PackedVector2Array([Vector2.ZERO, dir * length])
 		line.width = randf_range(1.0, 3.5)
 		line.default_color = color
-		line.modulate.a = randf_range(0.6, 1.0)
+		line.modulate = Color(1, 1, 1, randf_range(0.6, 1.0))
 		var twn := line.create_tween()
 		twn.tween_property(line, "points", PackedVector2Array([dir * length * 0.8, dir * (length * 1.4)]), 0.18).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
 		twn.parallel().tween_property(line, "modulate:a", 0.0, 0.18)
-	container.get_tree().create_timer(0.2).timeout.connect(container.queue_free)
+	var c_tween = container.create_tween()
+	c_tween.tween_interval(0.2)
+	c_tween.tween_callback(func(): _return_vfx(container))
 
 
 func _spawn_ink_splatter(pos: Vector2, color: Color) -> void:
-	var container := Node2D.new()
-	if _battlefield_panel: _battlefield_panel.add_child(container)
-	else: EventBus.get_parent().add_child(container)
+	var parent_node = _battlefield_panel if _battlefield_panel else EventBus.get_parent()
+	var container: Node2D = _get_pooled_vfx("ink_splatter", parent_node, func() -> Node:
+		var c := Node2D.new()
+		for i in range(8):
+			c.add_child(Polygon2D.new())
+		return c
+	)
 	container.global_position = pos
+	var blobs = container.get_children()
 	for i in range(8):
-		var blob := Polygon2D.new()
-		container.add_child(blob)
+		var blob: Polygon2D = blobs[i]
+		blob.scale = Vector2.ONE
+		blob.position = Vector2.ZERO
+		blob.modulate = Color.WHITE
 		var pts := PackedVector2Array()
 		var sides := 6 + randi() % 4
 		for j in range(sides): pts.append(Vector2(cos((float(j)/sides)*TAU), sin((float(j)/sides)*TAU)) * randf_range(4.0, 12.0))
@@ -706,7 +737,9 @@ func _spawn_ink_splatter(pos: Vector2, color: Color) -> void:
 		twn.tween_property(blob, "position", target * 0.25, 0.25).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 		twn.parallel().tween_property(blob, "scale", Vector2.ZERO, 0.25).set_delay(0.1)
 		twn.parallel().tween_property(blob, "modulate:a", 0.0, 0.25)
-	container.get_tree().create_timer(0.3).timeout.connect(container.queue_free)
+	var c_tween = container.create_tween()
+	c_tween.tween_interval(0.3)
+	c_tween.tween_callback(func(): _return_vfx(container))
 
 
 func _get_impact_spawn_pos(lane: int, enemy_id: int) -> Vector2:
@@ -777,3 +810,25 @@ func animate_enemy_damage(enemy_id: int, profile: Dictionary = {}) -> void:
 	tween.tween_property(marker, "position", orig_p, 0.05)
 	tween.parallel().tween_property(marker, "scale", orig_s, 0.05)
 	tween.parallel().tween_property(marker, "modulate", orig_m, 0.10)
+
+func _get_pooled_vfx(pool_key: String, container: Node, create_fn: Callable) -> Node:
+	var arr: Array = _vfx_pool[pool_key]
+	for i in range(arr.size() - 1, -1, -1):
+		var n: Node = arr[i]
+		if not is_instance_valid(n):
+			arr.remove_at(i)
+		elif not n.visible:
+			n.visible = true
+			if n.get_parent() != container:
+				if n.get_parent(): n.get_parent().remove_child(n)
+				container.add_child(n)
+			return n
+	var new_node: Node = create_fn.call()
+	container.add_child(new_node)
+	arr.append(new_node)
+	return new_node
+
+func _return_vfx(node: Node) -> void:
+	if is_instance_valid(node):
+		node.visible = false
+

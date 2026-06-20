@@ -20,6 +20,9 @@ var _escalation_window: float = 0.0
 var _cadence_window_rules: Array = DEFAULT_CADENCE_WINDOW_RULES.duplicate(true)
 
 
+var _cached_state: Dictionary = {}
+var _state_dirty: bool = true
+
 func reset() -> void:
 	_bpm = 120.0
 	_section_id = "opening"
@@ -28,7 +31,7 @@ func reset() -> void:
 	_accent_window = 0.0
 	_escalation_window = 0.0
 	_cadence_window_rules = DEFAULT_CADENCE_WINDOW_RULES.duplicate(true)
-
+	_state_dirty = true
 
 func configure(song_profile: Dictionary) -> void:
 	var contract: Dictionary = Dictionary(song_profile.get("conductor_contract", {}))
@@ -37,38 +40,43 @@ func configure(song_profile: Dictionary) -> void:
 		_cadence_window_rules = DEFAULT_CADENCE_WINDOW_RULES.duplicate(true)
 	else:
 		_cadence_window_rules = rules.duplicate(true)
-
+	_state_dirty = true
 
 func set_bpm(bpm: float) -> void:
-	_bpm = maxf(bpm, 1.0)
-
+	if _bpm != maxf(bpm, 1.0):
+		_bpm = maxf(bpm, 1.0)
+		_state_dirty = true
 
 func notify_section(section_id: String, data: Dictionary) -> void:
 	_section_id = section_id
 	_section_intensity = clampf(float(data.get("intensity", 0.0)), 0.0, 1.0)
 	if section_id == "chorus" or section_id == "final":
 		_escalation_window = maxf(_escalation_window, ESCALATION_WINDOW_SECONDS)
-
+	_state_dirty = true
 
 func notify_phrase_marker(count: int) -> void:
 	_phrase_count = maxi(count, 0)
 	if _phrase_count >= 5:
 		_escalation_window = maxf(_escalation_window, 2.2)
-
+	_state_dirty = true
 
 func notify_accent() -> void:
 	_accent_window = ACCENT_WINDOW_SECONDS
 	if _section_intensity >= 0.70 or _phrase_count >= 5:
 		_escalation_window = maxf(_escalation_window, 1.4)
-
+	_state_dirty = true
 
 func process_tick(delta: float) -> void:
+	if _accent_window > 0.0 or _escalation_window > 0.0:
+		_state_dirty = true
 	_accent_window = maxf(_accent_window - delta, 0.0)
 	_escalation_window = maxf(_escalation_window - delta, 0.0)
 
-
 func build_state() -> Dictionary:
-	return {
+	if not _state_dirty and not _cached_state.is_empty():
+		return _cached_state
+		
+	_cached_state = {
 		"tempo_band": _resolve_tempo_band(_bpm),
 		"bpm": _bpm,
 		"phrase_intensity": clampf(float(_phrase_count) / 8.0, 0.0, 1.0),
@@ -79,6 +87,8 @@ func build_state() -> Dictionary:
 		"accent_window": clampf(_accent_window / ACCENT_WINDOW_SECONDS, 0.0, 1.0),
 		"escalation_window": clampf(_escalation_window / ESCALATION_WINDOW_SECONDS, 0.0, 1.0)
 	}
+	_state_dirty = false
+	return _cached_state
 
 
 func _resolve_tempo_band(bpm: float) -> String:

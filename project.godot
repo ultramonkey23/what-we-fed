@@ -25,6 +25,14 @@ VisualAuditAutoload="*res://autoloads/VisualAuditAutoload.gd"
 AchievementDirector="*res://systems/AchievementDirector.gd"
 RunGrowth="*res://systems/RunGrowth.gd"
 RunStats="*res://systems/RunStats.gd"
+CombatBus="*res://autoloads/CombatBus.gd"
+MetaBus="*res://autoloads/MetaBus.gd"
+JuiceBus="*res://autoloads/JuiceBus.gd"
+PlayerState="*res://systems/state/PlayerState.gd"
+RunState="*res://systems/state/RunState.gd"
+CreatureState="*res://systems/state/CreatureState.gd"
+RewardState="*res://systems/state/RewardState.gd"
+WorldFateState="*res://systems/state/WorldFateState.gd"
 
 [display]
 

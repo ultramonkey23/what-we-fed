@@ -41,3 +41,19 @@ func get_exp_threshold(level_value: int) -> float:
 	# RESOLUTION TRUTH: Linear scaling for Level 10,000 ceiling.
 	# Exponential scaling would break float bounds at level 500+.
 	return 100.0 + (float(level_value) * 25.0)
+
+func get_progression_payload() -> Dictionary:
+	var cap: int = GameState.get_codex_level_cap()
+	var is_capped: bool = level >= cap
+	var ratio: float = 0.0 if is_capped else (current_exp / exp_to_next if exp_to_next > 0.0 else 0.0)
+	var bond_mult: float = 1.0 + (GameState.get_total_bond_level() * 0.05)
+	
+	return {
+		"level": level,
+		"current_exp": current_exp,
+		"exp_to_next": exp_to_next,
+		"progress_ratio": ratio,
+		"is_capped": is_capped,
+		"bond_multiplier": bond_mult,
+		"routing_preference": dna_routing_preference
+	}

@@ -149,7 +149,7 @@ func _execute_attack(enemy_id: int) -> void:
 	tween.tween_callback(func(): 
 		if zone_manager and is_instance_valid(zone_manager):
 			# SCALED DAMAGE: Glass Cannon doctrine
-			var base_dmg: float = 5.0 + (GameState.stat_power * 0.22)
+			var base_dmg: float = 5.0 + (PlayerState.stat_power * 0.22)
 			zone_manager.damage_enemy_by_id(enemy_id, base_dmg)
 			
 			# Apply Blood-Ember synergy (Bleed)

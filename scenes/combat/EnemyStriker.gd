@@ -24,7 +24,7 @@ func is_melee() -> bool:
 func compute_projectile_damage(punish_mult: float, pale_active: bool) -> float:
 	var dmg: float = float(enemy.get("damage", 8.0)) * punish_mult
 	if enemy.get("species_id") == "ashclaw":
-		var bleed: int = GameState.player_bleed_stacks
+		var bleed: int = PlayerState.bleed_stacks
 		if bleed > 0:
 			dmg *= 1.0 + 0.10 * float(bleed)
 	if pale_active:
@@ -34,7 +34,7 @@ func compute_projectile_damage(punish_mult: float, pale_active: bool) -> float:
 
 func compute_projectile_speed(base_speed: float) -> float:
 	if enemy.get("species_id") == "ashclaw":
-		var bleed: int = GameState.player_bleed_stacks
+		var bleed: int = PlayerState.bleed_stacks
 		if bleed > 0:
 			return base_speed * (1.0 + 0.15 * float(bleed))
 	return base_speed
@@ -43,7 +43,7 @@ func compute_projectile_speed(base_speed: float) -> float:
 func compute_melee_damage(punish_mult: float) -> float:
 	var dmg: float = float(enemy.get("damage", 14.0)) * punish_mult
 	if enemy.get("species_id") == "ashclaw":
-		var bleed: int = GameState.player_bleed_stacks
+		var bleed: int = PlayerState.bleed_stacks
 		if bleed > 0:
 			dmg *= 1.0 + 0.10 * float(bleed)
 	return dmg
@@ -52,7 +52,7 @@ func compute_melee_damage(punish_mult: float) -> float:
 func compute_approach_speed() -> float:
 	var speed: float = float(enemy.get("approach_speed", 80.0))
 	if enemy.get("species_id") == "ashclaw":
-		var bleed: int = GameState.player_bleed_stacks
+		var bleed: int = PlayerState.bleed_stacks
 		if bleed > 0:
 			speed *= 1.0 + 0.15 * float(bleed)
 	return speed

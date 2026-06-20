@@ -208,20 +208,20 @@ func _on_style_changed(_score: float, tier: String) -> void:
 
 
 func _on_player_bleed_changed(_stacks: int, _max_stacks: int) -> void:
-	refresh_hp(GameState.player_hp, GameState.player_max_hp)
+	refresh_hp(PlayerState.hp, PlayerState.max_hp)
 
 
 func _on_player_health_changed_event(_amount: float) -> void:
 	# Always fetch latest from GameState to ensure accuracy
-	refresh_hp(GameState.player_hp, GameState.player_max_hp)
+	refresh_hp(PlayerState.hp, PlayerState.max_hp)
 
 func _on_player_took_damage_event(_amount: float, _source_sector: int) -> void:
-	refresh_hp(GameState.player_hp, GameState.player_max_hp)
+	refresh_hp(PlayerState.hp, PlayerState.max_hp)
 
 func refresh_hp(hp: float, max_hp: float) -> void:
 	var hp_i: int = int(hp)
 	var max_i: int = int(max_hp)
-	var stacks: int = GameState.player_bleed_stacks
+	var stacks: int = PlayerState.bleed_stacks
 	if hp_i == _cache_hp and max_i == _cache_hp_max and stacks == _cache_hp_bleed:
 		return
 	_cache_hp = hp_i
@@ -265,7 +265,7 @@ func refresh_stamina(current: float, maximum: float) -> void:
 
 
 func refresh_power_level(_run_growth: Node = null) -> void:
-	var power_level: float = GameState.get_power_level()
+	var power_level: float = PlayerState.get_power_level()
 	var aggression_effect: Dictionary = RunGrowth.get_runtime_effect("timed_attack_bonus_damage")
 	var cadence_effect: Dictionary = RunGrowth.get_runtime_effect("good_timed_bonus_damage")
 	power_level *= 1.0 + maxf(float(aggression_effect.get("value", 0.0)), 0.0) + maxf(float(cadence_effect.get("value", 0.0)), 0.0)
@@ -422,7 +422,7 @@ func refresh_primary_hud_snapshot(
 	song_phases: Array,
 	pending_creature: Dictionary
 ) -> void:
-	refresh_hp(GameState.player_hp, GameState.player_max_hp)
+	refresh_hp(PlayerState.hp, PlayerState.max_hp)
 	if run_growth != null and is_instance_valid(run_growth):
 		set_exp_text(int(run_growth.level), float(run_growth.current_exp), float(run_growth.exp_to_next))
 	refresh_progression_readouts(run_growth, song_mode, song_phase_index, song_phases, pending_creature)
@@ -679,7 +679,7 @@ func refresh_run_build(run_growth: Node) -> void:
 	if _atk_value_label != null:
 		_atk_value_label.text = "%.0f" % GameState.get_attack_damage()
 	if _def_value_label != null:
-		_def_value_label.text = "%.0f" % GameState.player_defense
+		_def_value_label.text = "%.0f" % PlayerState.defense
 	if _dna_route_label != null and run_growth != null and is_instance_valid(run_growth):
 		_dna_route_label.text = RunGrowth.get_dna_routing_label()
 
@@ -735,7 +735,7 @@ func refresh_dna_hud(song_mode: bool, song_phase_index: int, song_phases: Array,
 			relevant_species.insert(0, pending_species)
 
 	if relevant_species.is_empty():
-		for species_id in GameState.dna_by_species.keys():
+		for species_id in CreatureState.dna_by_species.keys():
 			var typed: String = String(species_id)
 			if GameState.get_dna(typed) > 0.0:
 				relevant_species.append(typed)

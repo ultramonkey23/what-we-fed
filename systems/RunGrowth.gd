@@ -165,10 +165,10 @@ func get_growth_snapshot() -> Dictionary:
 		"tendency_levels": tendencies.levels.duplicate(),
 		"active_surges": tendencies.active_surges.duplicate(),
 		"mutations_count": mutations.size(),
-		"player_hp": GameState.player_hp,
-		"player_max_hp": GameState.player_max_hp,
+		"player_hp": PlayerState.hp,
+		"player_max_hp": PlayerState.max_hp,
 		"attack_damage": GameState.get_attack_damage(),
-		"player_defense": GameState.player_defense
+		"player_defense": PlayerState.defense
 	}
 
 
@@ -332,9 +332,9 @@ func _on_player_took_damage(amount: float, _source_lane: int) -> void:
 	
 	# Survival passive: once per encounter, ignore hit that would kill
 	var death_guard: float = get_mutation_bonus("ignore_death_hit")
-	if death_guard > 0.0 and amount >= GameState.player_hp and not _encounter_survival_spent:
+	if death_guard > 0.0 and amount >= PlayerState.hp and not _encounter_survival_spent:
 		_encounter_survival_spent = true
-		GameState.player_hp = 1.0
+		PlayerState.hp = 1.0
 		EventBus.proc_feedback_requested.emit("SURVIVAL", Color(0.95, 0.85, 0.40, 1.0))
 		# consume_mutation_charges is NOT called here because it's a passive buff, 
 		# we just use a per-encounter flag.
@@ -387,7 +387,7 @@ func _on_support_activation_requested(sector: int, quality: String) -> void:
 
 
 func _grant_exp(amount: float) -> void:
-	var levels_gained: int = progression.grant_exp(amount, GameState.stat_potential)
+	var levels_gained: int = progression.grant_exp(amount, PlayerState.stat_potential)
 	for i in range(levels_gained):
 		_apply_real_time_growth_pulse()
 	_emit_growth_state()
@@ -412,7 +412,7 @@ func gain_reward_support_charge(amount: float) -> void:
 
 
 func _grant_tendency(id: String, amount: float) -> void:
-	tendencies.grant_points(id, amount, GameState.stat_potential)
+	tendencies.grant_points(id, amount, PlayerState.stat_potential)
 	_emit_growth_state()
 
 
@@ -484,27 +484,27 @@ func _apply_surge_stat_gain(sid: String) -> Dictionary:
 
 	match sid:
 		"stat_vitality": 
-			GameState.stat_vitality += val
+			PlayerState.stat_vitality += val
 			var h: float = _refresh_primary_combat_stats(val)
 			if h > 0.0: EventBus.player_healed.emit(h)
 		"stat_power": 
-			GameState.stat_power += val
+			PlayerState.stat_power += val
 			_refresh_primary_combat_stats(0.0)
 		"stat_carapace": 
-			GameState.stat_carapace += val
+			PlayerState.stat_carapace += val
 			_refresh_primary_combat_stats(0.0)
 		"stat_endurance": 
-			GameState.stat_endurance += val
+			PlayerState.stat_endurance += val
 		"stat_swiftness": 
-			GameState.stat_swiftness += val
+			PlayerState.stat_swiftness += val
 		"stat_luck": 
-			GameState.stat_luck += val
+			PlayerState.stat_luck += val
 		"stat_potential": 
-			GameState.stat_potential += val
+			PlayerState.stat_potential += val
 		"stat_intelligence": 
-			GameState.stat_intelligence += val
+			PlayerState.stat_intelligence += val
 		"stat_adaptability": 
-			GameState.stat_adaptability += val
+			PlayerState.stat_adaptability += val
 		_: return {}
 	return {"type": sid, "applied_value": val, "label": label}
 
@@ -524,7 +524,7 @@ func _apply_level_up_effect(eff: Dictionary, _lvl: int) -> Dictionary:
 
 
 func _refresh_primary_combat_stats(heal_amount: float) -> float:
-	var old_max: float = GameState.player_max_hp
+	var old_max: float = PlayerState.max_hp
 	var bonus_max: float = _level_bonus_max_hp + get_mutation_bonus("max_hp_flat")
 	
 	# SOVEREIGN TRUTH: PlayerState is the single authority for HP math.
@@ -532,11 +532,11 @@ func _refresh_primary_combat_stats(heal_amount: float) -> float:
 	
 	if heal_amount > 0.0:
 		return GameState.heal_player(heal_amount)
-	elif GameState.player_max_hp > old_max:
+	elif PlayerState.max_hp > old_max:
 		# Auto-heal the difference on max HP gain
-		return GameState.heal_player(GameState.player_max_hp - old_max)
+		return GameState.heal_player(PlayerState.max_hp - old_max)
 	
-	GameState.player_defense = GameState.stat_carapace * 2.0 + _level_bonus_defense + get_mutation_bonus("defense_flat")
+	PlayerState.defense = PlayerState.stat_carapace * 2.0 + _level_bonus_defense + get_mutation_bonus("defense_flat")
 	return 0.0
 
 

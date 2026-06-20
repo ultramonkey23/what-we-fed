@@ -18,15 +18,18 @@ const KIND_BOSS := &"boss"
 
 
 var _pool: Array[Sprite2D] = []
+var _tweens: Array[Tween] = []
+var _pool_index: int = 0
 
 func _ready() -> void:
 	z_index = 31
 	_fill_default_textures()
-	for i in range(30):
+	for i in range(100):
 		var spr = Sprite2D.new()
 		spr.visible = false
 		add_child(spr)
 		_pool.append(spr)
+		_tweens.append(null)
 		
 	var host: Node = get_parent()
 	if host != null and host.has_signal("impact_fx_requested"):
@@ -66,12 +69,12 @@ func spawn(kind: StringName, world_pos: Vector2, direction: Vector2, scale_mult:
 
 	var cfg := _config_for_kind(kind)
 	
-	var spr: Sprite2D
-	if _pool.size() > 0:
-		spr = _pool.pop_back()
-	else:
-		spr = Sprite2D.new()
-		add_child(spr)
+	var idx := _pool_index
+	_pool_index = (_pool_index + 1) % _pool.size()
+	
+	var spr: Sprite2D = _pool[idx]
+	if _tweens[idx] != null and _tweens[idx].is_valid():
+		_tweens[idx].kill()
 		
 	spr.visible = true
 	spr.texture = tex
@@ -101,17 +104,13 @@ func spawn(kind: StringName, world_pos: Vector2, direction: Vector2, scale_mult:
 	var hold: float = float(cfg.get("hold", 0.020))
 	var fade_time: float = maxf(float(cfg.get("lifetime", 0.10)) - rise - hold, 0.05)
 	var t := create_tween()
+	_tweens[idx] = t
 	t.tween_property(spr, "modulate:a", cfg.peak_alpha, rise)
 	if hold > 0.0:
 		t.tween_interval(hold)
 	t.tween_property(spr, "modulate:a", 0.0, fade_time)
 	t.parallel().tween_property(spr, "scale", spr.scale * cfg.end_scale_mul, fade_time)
-	t.tween_callback(func(): _recycle_sprite(spr))
-
-
-func _recycle_sprite(spr: Sprite2D) -> void:
-	spr.visible = false
-	_pool.append(spr)
+	t.tween_callback(func(): spr.visible = false)
 
 
 func _texture_for_kind(kind: StringName) -> Texture2D:

@@ -38,11 +38,11 @@ func initialize_run(region: String, dev_harness_request: Dictionary = {}) -> voi
 	in_void = false
 	
 	var is_new_run: bool = false
-	if not GameState.run_in_progress:
-		GameState.run_number += 1
+	if not RunState.run_in_progress:
+		RunState.run_number += 1
 		if GameState.has_method("reset_run_state"):
 			GameState.reset_run_state()
-		GameState.run_in_progress = true
+		RunState.run_in_progress = true
 		is_new_run = true
 
 	_song_rng.randomize()
@@ -69,8 +69,8 @@ func initialize_run(region: String, dev_harness_request: Dictionary = {}) -> voi
 	prepare_path_context_for_level(regular_level_index)
 	
 	if is_new_run:
-		emit_signal("run_started", int(GameState.run_number))
-		EventBus.emit_signal("run_started", int(GameState.run_number))
+		emit_signal("run_started", int(RunState.run_number))
+		EventBus.emit_signal("run_started", int(RunState.run_number))
 	
 	if not EventBus.player_died.is_connected(_on_player_died):
 		EventBus.player_died.connect(_on_player_died)
@@ -98,7 +98,7 @@ func start_level(level_idx: int, _reset_hp: bool = false) -> Dictionary:
 	
 	var encounter_options: Dictionary = Dictionary(active_path_context.get("encounter_options", {})).duplicate(true)
 	var grade_ceiling_id: String = POTENTIAL_GATE.resolve_run_grade_ceiling(
-		int(GameState.run_number),
+		int(RunState.run_number),
 		regular_level_index,
 		bool(encounter_options.get("elite", false))
 	)
@@ -149,7 +149,7 @@ func request_drop(song_conductor: Node) -> void:
 	emit_signal("drop_scheduled", next_drop_time)
 
 func finish_run(success: bool) -> void:
-	GameState.run_in_progress = false
+	RunState.run_in_progress = false
 	emit_signal("run_completed", success)
 	EventBus.emit_signal("run_completed", success)
 

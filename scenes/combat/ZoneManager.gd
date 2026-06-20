@@ -14,7 +14,7 @@ const PROJECTILE_SCENE_PATH: String = "res://scenes/combat/Projectile.tscn"
 const MELEE_APPROACH_SCRIPT_PATH: String = "res://scenes/combat/MeleeApproach.gd"
 const MIN_IMPACT_SEPARATION: float = 0.40
 
-var combat_scene: Node = null
+
 var _fire_director: Node = null
 var _locom_director: Node = null
 
@@ -35,6 +35,7 @@ var _enemy_positions: Dictionary = {} # enemy_id -> Vector2
 var _orbit_angles: Dictionary = {} # enemy_id -> float
 var _orbit_radius_offsets: Dictionary = {} # enemy_id -> float
 var _enemy_visual_offsets: Dictionary = {} # enemy_id -> Vector2, presentation only
+var _lane_occupants: Dictionary = {} # int(lane) -> Array[int(enemy_id)]
 # _orbit_drift_accum and _orbit_speed live in CreatureLocomotionDirector.
 var _next_enemy_id: int = 5000 # For non-song mode or internal spawns
 
@@ -94,10 +95,6 @@ func _cache_enemy_scene(id: int, enemy: Dictionary) -> void:
 
 func start_combat(enemy_data: Array) -> void:
 	# Starts or restarts a combat cycle with dynamic strikers.
-	if combat_scene == null:
-		push_error("LaneManager.combat_scene must be set before start_combat().")
-		return
-
 	if _projectile_scene == null:
 		push_error("LaneManager.load_scene() must be called before start_combat().")
 		return
@@ -111,6 +108,7 @@ func start_combat(enemy_data: Array) -> void:
 	_orbit_angles.clear()
 	_orbit_radius_offsets.clear()
 	_enemy_visual_offsets.clear()
+	_lane_occupants.clear()
 
 	for lane in range(enemy_data.size()):
 		var enemy = enemy_data[lane].duplicate(true)
@@ -119,6 +117,11 @@ func start_combat(enemy_data: Array) -> void:
 		enemy["id"] = id
 		enemy["lane"] = lane # Maintain legacy lane ID for signals
 		_enemies[id] = enemy
+		
+		if not _lane_occupants.has(lane):
+			_lane_occupants[lane] = []
+		_lane_occupants[lane].append(id)
+		
 		_cache_enemy_scene(id, enemy)
 		var so_init := EnemyStriker.new()
 		so_init.setup(enemy, _enemy_projectile_scenes.get(id, _projectile_scene) as PackedScene)
@@ -145,16 +148,14 @@ func _on_song_beat_pulse(_beat_index: int, _intensity: float, _quality: String) 
 
 
 func get_projectile(lane: int) -> Node:
-	# VISUAL LOOKUP ONLY: Pick the most imminent threat in this sector when multiple
-	# strikers share the same legacy lane index (angle→lane quantization).
+	# VISUAL LOOKUP ONLY: Pick the most imminent threat in this sector
 	var best: Node = null
 	var best_eta: float = INF
 	var best_id: int = 999999999
-	for id in _active_projectiles:
-		var striker = _strikers.get(id, {})
-		if int(striker.get("lane", -1)) != lane:
-			continue
-		var projectile = _active_projectiles[id]
+	
+	var occupants: Array = _lane_occupants.get(lane, [])
+	for id in occupants:
+		var projectile = _active_projectiles.get(id)
 		if not is_instance_valid(projectile):
 			continue
 		var eta: float = INF
@@ -187,32 +188,24 @@ func get_projectile_by_id(id: int) -> Node:
 
 
 func get_enemy(lane: int) -> Dictionary:
-	# Lane→enemy lookup. With 8 sectors and possibly multiple residents (striker + orbiter
-	# in the same sector), iterate strikers first (active attackers, closer to player),
-	# then orbiters; within each group iterate by sorted id for deterministic results.
-	# Callers that already hold the enemy id should use get_enemy_by_id(id) instead.
-	var striker_ids: Array = _strikers.keys()
-	striker_ids.sort()
-	for striker_id in striker_ids:
-		if int(_strikers[striker_id].get("lane", -1)) == lane:
-			return _enemies.get(striker_id, {})
-	var orbit_ids: Array = _orbiting_enemy_ids.duplicate()
-	orbit_ids.sort()
-	for orbit_id in orbit_ids:
-		var enemy: Dictionary = _enemies.get(orbit_id, {})
-		if int(enemy.get("lane", -1)) == lane:
-			return enemy
+	var occupants: Array = _lane_occupants.get(lane, [])
+	
+	# Prioritize strikers (active attackers)
+	for id in occupants:
+		if _strikers.has(id):
+			return _enemies.get(id, {})
+			
+	# Fallback to orbiters
+	for id in occupants:
+		if _orbiting_enemy_ids.has(id):
+			return _enemies.get(id, {})
+			
 	return {}
 
 
 func is_lane_empty(lane: int) -> bool:
-	# A sector is empty only when no enemy (striker OR orbiter) currently maps to it.
-	# Strikers-only checks let orbiters silently crowd freshly-spawned threats into the
-	# same sector, producing the visual + targeting drift Cody reported.
-	for id in _enemies:
-		if int(_enemies[id].get("lane", -1)) == lane:
-			return false
-	return true
+	var occupants: Array = _lane_occupants.get(lane, [])
+	return occupants.is_empty()
 
 
 func get_enemy_by_id(id: int) -> Dictionary:
@@ -237,10 +230,11 @@ func alive_striker_count() -> int:
 
 
 func get_player_pos() -> Vector2:
-	if combat_scene != null:
-		var player = combat_scene.get_node_or_null("PlayerCombat")
-		if player != null:
-			return player.global_position
+	var player = get_tree().get_first_node_in_group("player_combat")
+	if player == null:
+		player = get_node_or_null("../PlayerCombat")
+	if player != null:
+		return player.global_position
 	return _sector_layout.center_pos
 
 
@@ -326,6 +320,10 @@ func spawn_enemy_at_angle(angle: float, enemy_data: Dictionary) -> int:
 	# Determine legacy lane index for backward compatibility with older HUD/Signals
 	var lane: int = _sector_layout.get_lane_from_angle(angle)
 	enemy["lane"] = lane
+	
+	if not _lane_occupants.has(lane):
+		_lane_occupants[lane] = []
+	_lane_occupants[lane].append(id)
 	
 	_enemies[id] = enemy
 	_cache_enemy_scene(id, enemy)
@@ -417,6 +415,13 @@ func remove_enemy_spatial(id: int) -> void:
 	_enemy_visual_offsets.erase(id)
 	_enemy_projectile_scenes.erase(id)
 	_striker_objects.erase(id)
+	
+	var enemy = _enemies.get(id, {})
+	if not enemy.is_empty():
+		var lane = int(enemy.get("lane", -1))
+		if _lane_occupants.has(lane):
+			_lane_occupants[lane].erase(id)
+			
 	_enemies.erase(id)
 
 
@@ -445,6 +450,7 @@ func stop() -> void:
 	_orbit_angles.clear()
 	_orbit_radius_offsets.clear()
 	_enemy_visual_offsets.clear()
+	_lane_occupants.clear()
 	_enemy_projectile_scenes.clear()
 	_striker_objects.clear()
 
@@ -540,15 +546,16 @@ func _fire_striker(id: int) -> bool:
 	var projectile_speed: float = striker.compute_projectile_speed(base_speed)
 
 	var section_id: String = ""
-	if combat_scene != null and combat_scene.has_method("get_current_song_section_id"):
-		section_id = String(combat_scene.get_current_song_section_id())
+	var main_scene = get_tree().current_scene
+	if main_scene != null and main_scene.has_method("get_current_song_section_id"):
+		section_id = String(main_scene.call("get_current_song_section_id"))
 	var telegraph_profile: Dictionary = striker.build_telegraph_profile(section_id)
 
 	var player_pos: Vector2 = get_player_pos()
 	var spawn_pos: Vector2 = get_enemy_pos(id)
-	var player_combat: Node2D = null
-	if combat_scene != null:
-		player_combat = combat_scene.get_node_or_null("PlayerCombat") as Node2D
+	var player_combat: Node2D = get_tree().get_first_node_in_group("player_combat") as Node2D
+	if player_combat == null:
+		player_combat = get_node_or_null("../PlayerCombat") as Node2D
 	var aimed_player_pos: Vector2 = _get_projectile_aim_point(player_pos, player_combat)
 	# hit_zone_pos is the point where the projectile enters the player's timing ring.
 	# Aim once at fire time; normal shots commit to this direction after launch.
@@ -557,7 +564,10 @@ func _fire_striker(id: int) -> bool:
 		dir_to_player = Vector2(cos(angle), sin(angle)) * -1.0
 	var hit_zone_pos: Vector2 = aimed_player_pos - dir_to_player * SectorLayout.HIT_ZONE_DISTANCE
 
-	combat_scene.add_child(projectile)
+	if main_scene != null:
+		main_scene.add_child(projectile)
+	else:
+		get_parent().add_child(projectile)
 	
 	projectile.setup(
 		lane,
@@ -576,8 +586,8 @@ func _fire_striker(id: int) -> bool:
 	_active_projectiles[id] = projectile
 
 	# ABSOLUTE SONG SYNC:
-	if _song_mode and combat_scene != null:
-		var conductor: SongConductor = combat_scene.get_song_conductor()
+	if _song_mode and main_scene != null and main_scene.has_method("get_song_conductor"):
+		var conductor: Node = main_scene.call("get_song_conductor")
 		if conductor != null:
 			var travel_time: float = _travel_time_to_hit_zone(projectile_speed)
 			var hit_time: float = conductor.get_song_time() + travel_time
@@ -622,11 +632,15 @@ func _fire_melee_striker(id: int, enemy: Dictionary, angle: float, lane: int) ->
 	var dir_to_player: Vector2 = (player_pos - spawn_pos).normalized()
 	var hit_zone_pos: Vector2 = player_pos - dir_to_player * SectorLayout.HIT_ZONE_DISTANCE
 
-	var player_combat: Node2D = null
-	if combat_scene != null:
-		player_combat = combat_scene.get_node_or_null("PlayerCombat") as Node2D
+	var player_combat: Node2D = get_tree().get_first_node_in_group("player_combat") as Node2D
+	if player_combat == null:
+		player_combat = get_node_or_null("../PlayerCombat") as Node2D
 
-	combat_scene.add_child(melee)
+	var main_scene = get_tree().current_scene
+	if main_scene != null:
+		main_scene.add_child(melee)
+	else:
+		get_parent().add_child(melee)
 
 	melee.setup(
 		lane,

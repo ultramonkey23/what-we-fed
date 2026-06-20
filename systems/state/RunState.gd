@@ -1,5 +1,4 @@
-extends RefCounted
-class_name RunState
+extends Node
 
 var run_number: int = 1
 var run_in_progress: bool = false

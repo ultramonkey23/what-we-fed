@@ -379,7 +379,7 @@ func get_pressure_bias_snapshot() -> Dictionary:
 		1.0
 	)
 	var spawn_mult: float = lerpf(HUNT_PRESSURE_SPAWN_MAX, HUNT_PRESSURE_SPAWN_MIN, pressure_ratio)
-	if _recent_hit_timer > 0.0 or (GameState.has_method("get_hp_percent") and GameState.get_hp_percent() <= 0.35):
+	if _recent_hit_timer > 0.0 or (GameState.has_method("get_hp_percent") and PlayerState.get_hp_percent() <= 0.35):
 		spawn_mult = maxf(spawn_mult, 1.0)
 	return {
 		"momentum": _hunt_momentum,
@@ -483,7 +483,7 @@ func _add_hunt_momentum(amount: float) -> void:
 
 func _resolve_effective_hunt_momentum_ratio() -> float:
 	var effective_momentum: float = _hunt_momentum
-	if GameState.has_method("get_hp_percent") and GameState.get_hp_percent() <= 0.35:
+	if GameState.has_method("get_hp_percent") and PlayerState.get_hp_percent() <= 0.35:
 		effective_momentum = minf(effective_momentum, HUNT_MOMENTUM_LOW_HP_CAP)
 	if _recent_hit_timer > 0.0:
 		effective_momentum = minf(effective_momentum, HUNT_MOMENTUM_RECENT_HIT_CAP)
@@ -610,7 +610,7 @@ func _resolve_level_completion_choice_count(requested_count: int, context: Dicti
 	var growth_level: int = int(context.get("growth_level", 1))
 	var power_level: float = float(context.get("power_level", 0.0))
 	if power_level <= 0.0 and GameState.has_method("get_power_level"):
-		power_level = GameState.get_power_level()
+		power_level = PlayerState.get_power_level()
 
 	var choice_count: int = LEVEL_COMPLETION_MIN_CHOICES
 	if score >= VERDICT_CONTROLLED_SCORE or kills >= 4:
@@ -1129,7 +1129,7 @@ func _on_player_took_damage(_amount: float, _source_sector: int) -> void:
 	var clutch_effect: Dictionary = get_runtime_effect("low_hp_clutch")
 	if not clutch_effect.is_empty() and not _phase_clutch_spent:
 		var hp_threshold: float = float(clutch_effect.get("hp_threshold", 0.45))
-		if GameState.get_hp_percent() <= hp_threshold:
+		if PlayerState.get_hp_percent() <= hp_threshold:
 			_phase_clutch_spent = true
 			var healed: float = GameState.heal_player(float(clutch_effect.get("heal_value", 0.0)))
 			if healed > 0.0:

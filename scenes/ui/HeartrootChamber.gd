@@ -272,7 +272,7 @@ func _input(event: InputEvent) -> void:
 
 func _refresh_ui() -> void:
 	var total_dna := 0.0
-	for species_id in GameState.dna_by_species.keys():
+	for species_id in CreatureState.dna_by_species.keys():
 		total_dna += GameState.get_dna(species_id)
 
 	_dna_info.text = "FED DNA IN ROOT: %d  |  SUPPORT SLOTS %d/4" % [int(total_dna), GameState.get_support_slot_count()]
@@ -304,7 +304,7 @@ func _upgrade_stat(stat_id: String) -> void:
 	var cost := _get_cost(current_level)
 
 	var total_dna := 0.0
-	for species_id in GameState.dna_by_species.keys():
+	for species_id in CreatureState.dna_by_species.keys():
 		total_dna += GameState.get_dna(species_id)
 
 	if total_dna >= float(cost):

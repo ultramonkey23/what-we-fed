@@ -1,5 +1,4 @@
-extends RefCounted
-class_name WorldFateState
+extends Node
 
 const WORLD_FATE_IDS: Array[String] = [
 	"predatory_brutal",

@@ -5,7 +5,7 @@ func _ready() -> void:
 	
 	# Test GameState modularization
 	print("[TEST] Verifying GameState proxies...")
-	GameState.player_hp = 42.0
+	PlayerState.hp = 42.0
 	if GameState.player.hp != 42.0:
 		print("[FAIL] GameState proxy for player_hp failed")
 		get_tree().quit(1)

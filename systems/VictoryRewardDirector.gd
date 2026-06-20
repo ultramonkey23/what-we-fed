@@ -130,6 +130,24 @@ func _check_next_offer() -> void:
 func get_pending_creature() -> Dictionary:
 	return _pending_creature.duplicate(true)
 
+func get_offer_payload() -> Dictionary:
+	if not _is_awaiting_choice or _choice_made or _pending_creature.is_empty():
+		return {}
+		
+	var species_id: String = String(_pending_creature.get("species_id", ""))
+	var bond_cost: float = _get_bond_cost(species_id)
+	
+	return {
+		"creature_data": _pending_creature.duplicate(true),
+		"is_live": _is_live_offer,
+		"is_dna_locked": is_dna_locked(),
+		"timer": _offer_timer,
+		"bond_cost": bond_cost,
+		"eat_yield": EAT_DNA_GAIN,
+		"current_dna": GameState.get_dna(species_id),
+		"can_afford_bond": true if bond_cost <= 0.0 else GameState.has_dna_for(species_id, bond_cost)
+	}
+
 func is_awaiting_choice() -> bool:
 	return _is_awaiting_choice and not _choice_made
 

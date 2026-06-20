@@ -1,5 +1,4 @@
-extends RefCounted
-class_name CreatureState
+extends Node
 
 var roster: Array[Dictionary] = []
 var lair_roster: Array[Dictionary] = []

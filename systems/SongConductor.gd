@@ -45,6 +45,9 @@ var _low_pass_idx: int = -1
 var _accent_threshold: float = 0.5
 var _accent_cooldown: float = 0.0
 
+var _last_computed_song_time: float = -1.0
+var _last_computed_frame: int = -1
+
 
 func _exit_tree() -> void:
 	_stop_and_release_player()
@@ -178,10 +181,19 @@ func stop() -> void:
 func get_song_time() -> float:
 	if _stream_player == null or not is_instance_valid(_stream_player):
 		return 0.0
+		
+	var current_frame: int = Engine.get_process_frames()
+	if current_frame == _last_computed_frame:
+		return _last_computed_song_time
+		
 	var playback_position: float = _stream_player.get_playback_position()
 	if not _running or not _stream_player.playing:
-		return playback_position
-	return playback_position + AudioServer.get_time_since_last_mix()
+		_last_computed_song_time = playback_position
+	else:
+		_last_computed_song_time = playback_position + AudioServer.get_time_since_last_mix()
+		
+	_last_computed_frame = current_frame
+	return _last_computed_song_time
 
 
 func get_song_duration() -> float:
@@ -298,6 +310,10 @@ func _update_section_state(song_time: float) -> void:
 			current_section_id = String(next_section.get("id", ""))
 			current_cadence_window = resolve_cadence_window(current_section_id, current_intensity)
 			section_changed.emit(current_section_id, next_section)
+			
+			if EventBus.has_signal("tempo_state_entered"):
+				EventBus.tempo_state_entered.emit(current_section_id)
+				
 			next_idx += 1
 		else:
 			break
@@ -313,8 +329,14 @@ func _emit_beat_events(song_time: float) -> void:
 	while _last_emitted_beat < current_beat:
 		_last_emitted_beat += 1
 		var quality: String = get_beat_quality()
-		beat_pulse.emit(_last_emitted_beat, quality, clampf(current_intensity, 0.0, 1.0), song_time)
+		var intensity: float = clampf(current_intensity, 0.0, 1.0)
+		beat_pulse.emit(_last_emitted_beat, quality, intensity, song_time)
+		
+		if EventBus.has_signal("song_beat_pulse"):
+			EventBus.song_beat_pulse.emit(_last_emitted_beat, intensity, quality)
 
+
+var _last_bass_poll_msec: int = 0
 
 func _handle_final_movement(song_time: float) -> void:
 	if not _final_triggered and song_time >= _window_end_time:
@@ -327,6 +349,10 @@ func _update_accent_state(delta: float) -> void:
 		_accent_cooldown -= delta
 
 	if is_beat_active() and _accent_cooldown <= 0.0:
+		var now: int = Time.get_ticks_msec()
+		if now - _last_bass_poll_msec < 50:
+			return
+		_last_bass_poll_msec = now
 		var bass: float = get_bass_magnitude()
 		if bass >= _accent_threshold:
 			accent_fired.emit()

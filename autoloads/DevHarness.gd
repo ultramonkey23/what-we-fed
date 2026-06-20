@@ -87,7 +87,7 @@ func _get_avg_pulse() -> float:
 
 func _verify_state_consistency() -> String:
 	if GameState == null: return "STALE: GameState Missing"
-	if GameState.player_hp <= 0 and GameState.run_in_progress:
+	if PlayerState.hp <= 0 and RunState.run_in_progress:
 		return "FRACTURE: Ghost Run Detected (Dead player in active run)"
 	return "STABLE"
 

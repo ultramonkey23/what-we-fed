@@ -575,10 +575,10 @@ func _compose_run_prep_body() -> String:
 	var vessel_lines: Array[String] = []
 
 	var hp_line: String = "Vitals  |  HP %.0f / %.0f  |  ATK %.0f  |  DEF %.0f" % [
-		GameState.player_hp,
-		GameState.player_max_hp,
+		PlayerState.hp,
+		PlayerState.max_hp,
 		GameState.get_attack_damage(),
-		GameState.player_defense
+		PlayerState.defense
 	]
 	vessel_lines.append(hp_line)
 
@@ -616,10 +616,10 @@ func _compose_run_prep_body() -> String:
 	blocks.append(_compose_run_prep_section("BUILD HAND", [_compose_management_digest_block()]))
 
 	var bond_lines: Array[String] = []
-	if GameState.roster.is_empty():
+	if CreatureState.roster.is_empty():
 		bond_lines.append("none yet")
 	else:
-		for creature in GameState.roster:
+		for creature in CreatureState.roster:
 			var sid: String = str(creature.get("species_id", ""))
 			var bl: int = int(creature.get("bond_level", 1))
 			var active_mark: String = "  |  support" if GameState.active_lair_creature_ids.has(sid) else ""
@@ -627,7 +627,7 @@ func _compose_run_prep_body() -> String:
 	blocks.append(_compose_run_prep_section("BONDED SEQUENCES", bond_lines))
 
 	var dna_pairs: Array[Dictionary] = []
-	for species_key in GameState.dna_by_species.keys():
+	for species_key in CreatureState.dna_by_species.keys():
 		var sid2: String = str(species_key)
 		var amt: float = GameState.get_dna(sid2)
 		if amt <= 0.0001:

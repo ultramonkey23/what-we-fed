@@ -70,7 +70,7 @@ func _on_creature_eaten(_creature_data: Dictionary) -> void:
 
 
 func _on_player_took_damage(_amount: float, _source_lane: int) -> void:
-	if GameState.get_hp_percent() < 0.35:
+	if PlayerState.get_hp_percent() < 0.35:
 		# Urgency lines have a very short internal cooldown to ensure they fire.
 		_trigger_line("urgency", "low_hp", 2.0)
 

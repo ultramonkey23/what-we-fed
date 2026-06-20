@@ -1,5 +1,4 @@
-extends RefCounted
-class_name PlayerState
+extends Node
 
 const BASE_MAX_HP: float = 100.0
 const BASE_DAMAGE: float = 15.0
@@ -80,3 +79,35 @@ func get_attack_damage(absorbed_types: Array) -> float:
 
 func get_bleed_vulnerability_multiplier() -> float:
 	return 1.0 + (BLEED_DAMAGE_AMP_PER_STACK * bleed_stacks)
+
+
+func _process(delta: float) -> void:
+	# Flesh (Vitality) Passive Regeneration: 
+	# Every 10 points above 100 base grants 0.5 HP/sec.
+	# Optimization: Tick every 30 frames for non-combat background regen.
+	# Since this is a core mechanic, we check CombatBus/GameState flags.
+	if not GameState.is_in_combat and RunState.run_in_progress:
+		if Engine.get_process_frames() % 30 == 0:
+			if stat_vitality > 100.0:
+				var regen_rate: float = (stat_vitality - 100.0) / 10.0 * 0.5
+				if regen_rate > 0.0 and hp < max_hp:
+					# Multiply by 30-frame delta equivalent
+					hp = min(hp + regen_rate * delta * 30.0, max_hp)
+
+
+func get_power_level() -> float:
+	var base: float = 0.0
+	base += stat_vitality * 1.2
+	base += stat_power * 8.0
+	base += stat_carapace * 12.0
+	base += stat_endurance * 2.5
+	var mult: float = 1.0
+	mult += (stat_swiftness - 1.0) * 5.0
+	mult += (stat_luck - 1.0) * 3.0
+	mult += (stat_potential - 1.0) * 12.0
+	mult += (stat_intelligence - 1.0) * 6.0
+	mult += (stat_adaptability - 1.0) * 8.0
+	var final_power: float = base * mult
+	var flicker: float = 1.0 + (randf() * 0.03 - 0.015)
+	return max(final_power * flicker, 0.0)
+

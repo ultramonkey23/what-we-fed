@@ -18,6 +18,7 @@ var _bond_label: Label = null
 var _eat_label: Label = null
 var _stat_preview_label: Label = null
 var _hint_label: Label = null
+var _silhouette_rect: TextureRect = null
 var _fail_safe_pass_allowed: bool = false
 
 var _choice_locked: bool = false
@@ -46,6 +47,29 @@ func present() -> void:
 	_eat_enabled = bool(payload.get("eat_available", true))
 	if not _bond_enabled and not _eat_enabled:
 		_fail_safe_pass_allowed = true
+
+	var species_id: String = String(creature.get("species_id", ""))
+	var path: String = "res://assets/sprites/silhouettes/" + species_id
+	var bonded: Dictionary = GameState.get_bonded_creature(species_id)
+	var current_level: int = int(bonded.get("bond_level", 0))
+	if current_level >= 3:
+		path += "_adult_silhouette.png"
+	else:
+		path += "_baby_silhouette.png"
+
+	if _silhouette_rect != null:
+		if ResourceLoader.exists(path):
+			_silhouette_rect.texture = load(path)
+			_silhouette_rect.visible = true
+			_silhouette_rect.modulate = Color(1.0, 1.0, 1.0, 0.0)
+			_silhouette_rect.scale = Vector2(0.9, 0.9)
+			_silhouette_rect.pivot_offset = _silhouette_rect.size / 2.0
+			var tween: Tween = create_tween()
+			tween.set_parallel(true)
+			tween.tween_property(_silhouette_rect, "modulate", Color(1.0, 1.0, 1.0, 0.18), 0.3).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+			tween.tween_property(_silhouette_rect, "scale", Vector2.ONE, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		else:
+			_silhouette_rect.visible = false
 
 	_header_label.text = "GROWTH INTERSECTION"
 	_subtitle_label.text = "Bond or consume. Decide what this hunt means."
@@ -111,6 +135,15 @@ func _build_ui() -> void:
 	_panel.size = Vector2(1024.0, 548.0)
 	UI_STYLE.apply_shell_style(_panel, "run_overlay")
 	_canvas.add_child(_panel)
+
+	_silhouette_rect = TextureRect.new()
+	_silhouette_rect.size = Vector2(300.0, 300.0)
+	_silhouette_rect.position = Vector2((1024.0 - 300.0) / 2.0, 120.0)
+	_silhouette_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_silhouette_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_silhouette_rect.modulate = Color(1.0, 1.0, 1.0, 0.18)
+	_silhouette_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_panel.add_child(_silhouette_rect)
 
 	_header_label = Label.new()
 	_header_label.position = Vector2(0.0, 18.0)

@@ -59,13 +59,15 @@ func _setup_visuals() -> void:
 		
 	var render = COMBAT_DATA_CONTENT.get_creature_combat_render(species_id)
 	
-	# DYNAMIC GROWTH SCALING: Size increases with bond level (Age)
-	var bond_level: int = 1
+	# DYNAMIC GROWTH SCALING: Size driven by creature_level (Calibration tier), NOT bond_level.
+	# bond_level = sequence depth / emotional bond → rite power, ascension gate
+	# creature_level = actual form tier → physical size and silhouette
+	var creature_level: int = 1
 	var bonded_data: Dictionary = GameState.get_bonded_creature(species_id)
 	if not bonded_data.is_empty():
-		bond_level = int(bonded_data.get("bond_level", 1))
-	
-	var growth_stage: String = GameState.get_creature_growth_stage(bond_level)
+		creature_level = int(bonded_data.get("creature_level", 1))
+	var _grade_cap: int = GameState.get_creature_level_cap(species_id)
+	var growth_stage: String = GameState.get_creature_growth_stage(creature_level, _grade_cap)
 	var age_scales: Dictionary = render.get("age_scales", {})
 	var base_scale: float = float(age_scales.get(growth_stage, render.get("scale", 0.052)))
 	

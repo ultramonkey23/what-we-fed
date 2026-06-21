@@ -147,9 +147,19 @@ func get_bond_level_mult(bond_level: int) -> float:
 	return 1.0 + max(0, bond_level - 1) * 0.20
 
 
-func get_creature_growth_stage(bond_level: int) -> String:
-	if bond_level <= 1: return "baby"
-	elif bond_level <= 3: return "teen"
+# Growth stage is driven by creature_level (Calibration tier), NOT bond_level.
+# bond_level = emotional sequence depth (rite power, ascension gate)
+# creature_level = actual form/power tier (baby -> teen -> adult -> sovereign)
+# cap = species grade cap (brood:4, mature:6, alpha:8)
+func get_creature_growth_stage(creature_level: int, cap: int = 8) -> String:
+	# baby: bottom quarter of cap (rounds up)
+	# teen: up to ~62% of cap
+	# adult: above that
+	if cap <= 0: cap = 8
+	var baby_threshold: int = maxi(1, ceili(float(cap) * 0.25))
+	var teen_threshold: int = maxi(baby_threshold + 1, ceili(float(cap) * 0.625))
+	if creature_level <= baby_threshold: return "baby"
+	elif creature_level <= teen_threshold: return "teen"
 	return "adult"
 
 

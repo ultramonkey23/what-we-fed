@@ -19,14 +19,14 @@ const CHARGE_MASTERY_ACTION: float = 12.0
 
 const GORGE_MARK_BONUS_CHARGE: float = 15.0
 
-const EXP_KILL: float = 12.0
-const EXP_CREATURE_KILL: float = 8.0
-const EXP_TIMED_ATTACK: float = 2.0
-const EXP_PARRY: float = 3.5
-const EXP_PHRASE_COMPLETE: float = 15.0
-const EXP_EAT: float = 25.0
-const EXP_STYLE_MILESTONE: float = 25.0
-const EXP_ULTIMATE: float = 40.0
+const EXP_KILL: float = 18.0
+const EXP_CREATURE_KILL: float = 20.0
+const EXP_TIMED_ATTACK: float = 3.0
+const EXP_PARRY: float = 5.0
+const EXP_PHRASE_COMPLETE: float = 22.0
+const EXP_EAT: float = 40.0
+const EXP_STYLE_MILESTONE: float = 35.0
+const EXP_ULTIMATE: float = 55.0
 
 const EXP_PER_DNA_POINT: float = 2.0
 const DNA_AGGRESSION_TENDENCY_PER_POINT: float = 0.5

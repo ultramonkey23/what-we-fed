@@ -635,8 +635,9 @@ func refresh_support(current: float, maximum: float, active_species_id: String, 
 
 	if _support_creature_portrait != null:
 		var bonded: Dictionary = GameState.get_active_bonded_creature()
-		var bond_level: int = int(bonded.get("bond_level", 1))
-		var growth_stage: String = GameState.get_creature_growth_stage(bond_level)
+		var _hud_creature_level: int = int(bonded.get("creature_level", 1))
+		var _hud_grade_cap: int = GameState.get_creature_level_cap(active_species_id)
+		var growth_stage: String = GameState.get_creature_growth_stage(_hud_creature_level, _hud_grade_cap)
 		var portrait_key: String = "%s_%s" % [active_species_id, growth_stage]
 
 		if portrait_key != _support_portrait_species:

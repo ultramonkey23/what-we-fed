@@ -639,7 +639,9 @@ func _refresh_reward_overlay_resolution(choice_id: String, creature_data: Dictio
 			_ui_builder._reward_eat_effect_label.text = ""
 			_ui_builder._reward_quig_label.text = _ui_builder.PRESENTATION_TEXT.bond_result_quig(creature_name)
 
-			var new_growth_stage: String = GameState.get_creature_growth_stage(new_bond_level)
+			var _cl_for_portrait: int = int(GameState.get_bonded_creature(species_id).get("creature_level", 1))
+			var _cl_cap_for_portrait: int = GameState.get_creature_level_cap(species_id)
+			var new_growth_stage: String = GameState.get_creature_growth_stage(_cl_for_portrait, _cl_cap_for_portrait)
 			var new_portrait: String = COMBAT_CONTENT.get_creature_art_path(species_id, "support", new_growth_stage)
 			if not new_portrait.is_empty() and ResourceLoader.exists(new_portrait):
 				var port_tex: Texture2D = load(new_portrait) as Texture2D
@@ -4859,8 +4861,9 @@ func _refresh_bonded_creature_render(active_species_id: String = "") -> void:
 		return
 
 	var bonded: Dictionary = GameState.get_active_bonded_creature()
-	var bond_level: int = int(bonded.get("bond_level", 1))
-	var growth_stage: String = GameState.get_creature_growth_stage(bond_level)
+	var _creature_level: int = int(bonded.get("creature_level", 1))
+	var _grade_cap: int = GameState.get_creature_level_cap(species_id)
+	var growth_stage: String = GameState.get_creature_growth_stage(_creature_level, _grade_cap)
 	var portrait_key: String = "%s_%s" % [species_id, growth_stage]
 
 	var sprite_path: String = COMBAT_CONTENT.get_creature_art_path(species_id, "battlefield", growth_stage)
@@ -5371,8 +5374,9 @@ func _clear_song_enemy_tracking() -> void:
 
 func _spawn_support_intervention(species_id: String, lane: int, tint: Color) -> void:
 	var bonded: Dictionary = GameState.get_bonded_creature(species_id)
-	var bond_level: int = int(bonded.get("bond_level", 1))
-	var growth_stage: String = GameState.get_creature_growth_stage(bond_level)
+	var _support_creature_level: int = int(bonded.get("creature_level", 1))
+	var _support_grade_cap: int = GameState.get_creature_level_cap(species_id)
+	var growth_stage: String = GameState.get_creature_growth_stage(_support_creature_level, _support_grade_cap)
 	
 	var support_art: String = COMBAT_CONTENT.get_creature_art_path(species_id, "support", growth_stage)
 	if not support_art.is_empty():

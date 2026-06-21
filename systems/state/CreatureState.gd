@@ -34,7 +34,7 @@ func reset_run_state(active_support_slots: int = 1) -> void:
 
 
 func get_creature_exp_threshold(level_value: int) -> float:
-	return 100.0 + (float(level_value) * 25.0)
+	return 60.0 + (float(level_value) * 18.0)
 
 
 func grant_creature_exp(species_id: String, amount: float, potential: float, cap: int) -> int:

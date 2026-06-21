@@ -4,7 +4,7 @@ class_name ProgressionManager
 const GROWTH_CONTENT = preload("res://data/RunGrowthContent.gd")
 
 const BOND_LEVEL_EXP_MULT: float = 0.10
-const EXP_THRESHOLD_PER_LEVEL: float = 20.0
+const EXP_THRESHOLD_PER_LEVEL: float = 12.0
 
 var level: int = 1
 var current_exp: float = 0.0

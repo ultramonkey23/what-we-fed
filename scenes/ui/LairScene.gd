@@ -858,7 +858,8 @@ func _build_creature_card(canvas: CanvasLayer, creature: Dictionary, index: int,
 	var potential_label: String = _get_potential_label_for_species(species_id)
 	
 	var is_ascended: bool = bool(creature.get("is_ascended", false))
-	var growth_stage: String = GameState.get_creature_growth_stage(bond_level).to_upper()
+	var _cap: int = GameState.get_creature_level_cap(species_id)
+	var growth_stage: String = GameState.get_creature_growth_stage(creature_level, _cap).to_upper()
 	var stage_name: String = "SOVEREIGN" if is_ascended else (growth_stage + " FORM")
 	
 	var bl_label: Label = Label.new()
@@ -1077,14 +1078,18 @@ func _refresh_active_support_panel() -> void:
 		var is_ascended = bool(c.get("is_ascended", false))
 		var bond_text: String = "Sequence %d %s · Potential %s\n" % [bond_level, "[ASCENDED]" if is_ascended else "", pot]
 		
-		# DNA EVOLUTION MATRIX (Digimon Silhouette concept)
+		# DNA EVOLUTION MATRIX: Form progression tracks creature_level vs grade cap
+		var _clvl: int = int(c.get("creature_level", 1))
+		var _ccap: int = GameState.get_creature_level_cap(species_id)
+		var _baby_thresh: int = maxi(1, ceili(float(_ccap) * 0.25))
+		var _teen_thresh: int = maxi(_baby_thresh + 1, ceili(float(_ccap) * 0.625))
 		var evo_line: String = "Evo: [BABY]"
-		if bond_level >= 2:
+		if _clvl > _baby_thresh:
 			evo_line += " -> [TEEN]"
 		else:
 			evo_line += " -> [TEEN: ░░░░░░]"
 			
-		if bond_level >= 4:
+		if _clvl > _teen_thresh:
 			evo_line += " -> [ADULT]"
 		else:
 			evo_line += " -> [ADULT: ░░░░░░]"

@@ -51,8 +51,11 @@ func present() -> void:
 	var species_id: String = String(creature.get("species_id", ""))
 	var path: String = "res://assets/sprites/silhouettes/" + species_id
 	var bonded: Dictionary = GameState.get_bonded_creature(species_id)
-	var current_level: int = int(bonded.get("bond_level", 0))
-	if current_level >= 3:
+	var creature_level: int = int(bonded.get("creature_level", 1))
+	var grade_cap: int = GameState.get_creature_level_cap(species_id)
+	# Adult silhouette once past teen threshold (>62% of grade cap)
+	var teen_thresh: int = maxi(2, ceili(float(grade_cap) * 0.625))
+	if creature_level > teen_thresh:
 		path += "_adult_silhouette.png"
 	else:
 		path += "_baby_silhouette.png"

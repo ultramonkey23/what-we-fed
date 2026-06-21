@@ -34,6 +34,8 @@ var meta_support_slots: int = 1
 var meta_fang_level: int = 0
 var meta_nerve_level: int = 0
 var meta_bond_level: int = 0
+var meta_run_streak: int = 0      # Consecutive successful runs
+var meta_best_streak: int = 0     # All-time best streak
 
 const CREATURE_LEVEL_MAX_BY_GRADE: Dictionary = {
 	"brood": 4,
@@ -890,11 +892,78 @@ func reset_profile_progression_state() -> void:
 	equipped_collar_id = ""
 	meta_limit_breakers = 0
 	meta_support_slots = 1
+	meta_run_streak = 0
+	meta_best_streak = 0
 	creatures.reset_profile_progression()
 	player.reset_to_base()
 	rewards.reset_run_state()
 	run.reset_profile_progression()
 	world_fate.reset_profile_progression()
+
+
+func increment_run_streak() -> void:
+	meta_run_streak += 1
+	if meta_run_streak > meta_best_streak:
+		meta_best_streak = meta_run_streak
+
+
+func break_run_streak() -> void:
+	meta_run_streak = 0
+
+
+func save_profile(slot: int = 0) -> bool:
+	var data: Dictionary = {
+		"version": "2.0",
+		"timestamp": Time.get_unix_time_from_system(),
+		"meta_tutorial_completed": meta_tutorial_completed,
+		"meta_limit_breakers": meta_limit_breakers,
+		"meta_support_slots": meta_support_slots,
+		"meta_fang_level": meta_fang_level,
+		"meta_nerve_level": meta_nerve_level,
+		"meta_bond_level": meta_bond_level,
+		"meta_run_streak": meta_run_streak,
+		"meta_best_streak": meta_best_streak,
+		"intro_bond_selected_species_id": intro_bond_selected_species_id,
+		"intro_bond_choice_completed": intro_bond_choice_completed
+	}
+	var path: String = "user://profile_slot_%d.json" % slot
+	var file = FileAccess.open(path, FileAccess.WRITE)
+	if file == null:
+		push_error("GameState.save_profile: could not open %s" % path)
+		return false
+	file.store_string(JSON.stringify(data, "\t"))
+	file.close()
+	return true
+
+
+func load_profile(slot: int = 0) -> bool:
+	var path: String = "user://profile_slot_%d.json" % slot
+	if not FileAccess.file_exists(path):
+		return false
+	var file = FileAccess.open(path, FileAccess.READ)
+	if file == null:
+		push_error("GameState.load_profile: could not open %s" % path)
+		return false
+	var raw: String = file.get_as_text()
+	file.close()
+	var parsed = JSON.new()
+	if parsed.parse(raw) != OK:
+		push_error("GameState.load_profile: JSON parse failed")
+		return false
+	var d: Dictionary = Dictionary(parsed.data)
+	meta_tutorial_completed = bool(d.get("meta_tutorial_completed", false))
+	meta_limit_breakers    = int(d.get("meta_limit_breakers", 0))
+	meta_support_slots     = int(d.get("meta_support_slots", 1))
+	meta_fang_level        = int(d.get("meta_fang_level", 0))
+	meta_nerve_level       = int(d.get("meta_nerve_level", 0))
+	meta_bond_level        = int(d.get("meta_bond_level", 0))
+	meta_run_streak        = int(d.get("meta_run_streak", 0))
+	meta_best_streak       = int(d.get("meta_best_streak", 0))
+	intro_bond_selected_species_id = String(d.get("intro_bond_selected_species_id", ""))
+	intro_bond_choice_completed    = bool(d.get("intro_bond_choice_completed", false))
+	if intro_bond_choice_completed:
+		intro_bond_choice_required = true
+	return true
 
 
 func reset_run_state() -> void:

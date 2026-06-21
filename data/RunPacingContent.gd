@@ -5,6 +5,30 @@ extends RefCounted
 const MAX_REGULAR_LEVEL_DURATION_SECONDS: float = 120.0
 const REGULAR_LEVEL_COUNT: int = 3
 
+# Cross-biome song-section escalation curve.
+# Maps a song section name to its difficulty expression profile.
+# Merged from LevelStructure concept: pressure should rise with the musical arc.
+# Consumed by encounter systems to tighten cadence and push max threat counts
+# without relying on raw stat inflation.
+const SONG_SECTION_ESCALATION: Dictionary = {
+	"intro":       {"difficulty_mult": 0.80, "max_threats_bonus": 0, "reward_tier": "common"},
+	"verse":       {"difficulty_mult": 1.00, "max_threats_bonus": 0, "reward_tier": "common"},
+	"verse_1":     {"difficulty_mult": 1.00, "max_threats_bonus": 0, "reward_tier": "common"},
+	"verse_2":     {"difficulty_mult": 1.30, "max_threats_bonus": 0, "reward_tier": "uncommon"},
+	"pre_chorus":  {"difficulty_mult": 1.20, "max_threats_bonus": 0, "reward_tier": "uncommon"},
+	"pre_chorus_1":{"difficulty_mult": 1.20, "max_threats_bonus": 0, "reward_tier": "uncommon"},
+	"pre_chorus_2":{"difficulty_mult": 1.50, "max_threats_bonus": 1, "reward_tier": "rare"},
+	"chorus":      {"difficulty_mult": 1.40, "max_threats_bonus": 1, "reward_tier": "uncommon"},
+	"chorus_1":    {"difficulty_mult": 1.40, "max_threats_bonus": 1, "reward_tier": "uncommon"},
+	"chorus_2":    {"difficulty_mult": 1.70, "max_threats_bonus": 1, "reward_tier": "rare"},
+	"rising":      {"difficulty_mult": 1.25, "max_threats_bonus": 0, "reward_tier": "uncommon"},
+	"bridge":      {"difficulty_mult": 1.60, "max_threats_bonus": 1, "reward_tier": "rare"},
+	"breakdown":   {"difficulty_mult": 1.50, "max_threats_bonus": 1, "reward_tier": "rare"},
+	"final_chorus":{"difficulty_mult": 1.80, "max_threats_bonus": 2, "reward_tier": "epic"},
+	"final":       {"difficulty_mult": 2.00, "max_threats_bonus": 2, "reward_tier": "epic"},
+	"full_song":   {"difficulty_mult": 2.00, "max_threats_bonus": 2, "reward_tier": "legendary"}
+}
+
 # Shared five-phase arc used per regular level.
 const LEVEL_PHASE_START_FRACTIONS: Array[float] = [0.0, 0.20, 0.45, 0.68, 0.84]
 
@@ -244,3 +268,9 @@ static func build_regular_level_windows(region_id: String, song_duration: float)
 			"duration": max(end_time - start_time, min_level_duration)
 		})
 	return built
+
+
+static func get_song_section_escalation(section_id: String) -> Dictionary:
+	if SONG_SECTION_ESCALATION.has(section_id):
+		return Dictionary(SONG_SECTION_ESCALATION[section_id]).duplicate(true)
+	return {"difficulty_mult": 1.0, "max_threats_bonus": 0, "reward_tier": "common"}

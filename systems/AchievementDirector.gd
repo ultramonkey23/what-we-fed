@@ -23,8 +23,11 @@ func _on_run_started(_run_number: int) -> void:
 
 func _on_run_completed(success: bool) -> void:
 	if not success:
+		GameState.break_run_streak()
 		return
-		
+
+	GameState.increment_run_streak()
+
 	# Check milestones via RunStats (if available) or by querying active systems.
 	# We rely on the authoritative RunStats data.
 	var run_stats = get_tree().root.find_child("RunStats", true, false)
@@ -32,7 +35,7 @@ func _on_run_completed(success: bool) -> void:
 		# Fallback: check if it's an autoload
 		if get_tree().root.has_node("RunStats"):
 			run_stats = get_tree().root.get_node("RunStats")
-			
+
 	if run_stats != null:
 		_check_end_of_run_milestones(run_stats)
 

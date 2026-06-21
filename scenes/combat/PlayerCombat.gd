@@ -1330,7 +1330,7 @@ func _resolve_timed_attack(projectile: ThreatBase, combo_mult: float, quality: S
 		if quality == "perfect" and _is_trait_spliced("venomous_sting_v22"):
 			zone_manager.apply_status_by_id(target_enemy_id, "venom")
 
-	if quality == "perfect" and target_sector == 2 and _is_trait_spliced("ashclaw_cleave"):
+	if quality == "perfect" and _is_trait_spliced("ashclaw_cleave"):
 		_apply_ashclaw_cleave(target_sector, timed_damage)
 
 	if quality == "perfect" and _is_trait_spliced("prism_shifter_echo"):

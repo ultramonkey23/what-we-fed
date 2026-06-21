@@ -18,7 +18,7 @@ const AUTO_CAPTURE_COOLDOWN_SECONDS: float = 0.75
 var _last_auto_capture_msec: int = 0
 var _last_support_species_id: String = "unknown"
 var _last_support_effect_id: String = "unknown"
-var _last_support_lane: int = -1
+var _last_support_sector: int = -1
 var _last_damage_lane: int = -1
 
 
@@ -241,7 +241,7 @@ func _lane_metadata(zone_manager: Node, player_combat: Node2D, context: Dictiona
 	return {
 		"active": active_lane,
 		"source": int(context.get("source_lane", context.get("lane", _last_damage_lane))),
-		"support": int(context.get("lane", _last_support_lane)),
+		"support": int(context.get("sector", _last_support_sector)),
 		"cardinal_positions": cardinal_positions
 	}
 

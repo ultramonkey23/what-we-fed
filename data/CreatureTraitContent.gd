@@ -7,7 +7,7 @@ const TRAITS: Dictionary = {
 	"ashclaw_cleave": {
 		"id": "ashclaw_cleave",
 		"display_name": "Ashclaw Cleave",
-		"description": "Perfect hits on the center lane trigger a blood-soaked shockwave in adjacent lanes.",
+		"description": "Perfect hits on the targeted sector trigger a blood-soaked shockwave in adjacent sectors.",
 		"genre_affinity": "punk",
 		"synergy_bonus": "Triggers 'System Breach' if paired with a Funk trait: Shockwaves also slow enemy movement."
 	},

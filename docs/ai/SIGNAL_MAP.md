@@ -9,79 +9,90 @@ Dynamic signal names or indirect connections may be missed.
 When editing signal contracts, verify against source code and validation.
 
 ## Summary
-- **Generated:** 2026-04-25T16:32:05Z
-- **Scan root:** `C:\Users\harin\OneDrive\Desktop\gamesdevs\What We Fed\what-we-fed`
-- **Files scanned:** 111
-- **Signals declared (EventBus):** 61
-- **Emitters found:** 187
-- **Consumers / connects found:** 125
-- **Disconnect references found:** 68
+- **Generated:** 2026-06-21T06:22:25Z
+- **Scan root:** `C:\Users\harin\gamesdevs\What We Fed\what-we-fed`
+- **Files scanned:** 130
+- **Signals declared (EventBus):** 72
+- **Emitters found:** 218
+- **Consumers / connects found:** 138
+- **Disconnect references found:** 101
 
 ## EventBus Signals
 
 | Signal | Declared In | Emitters | Consumers / Connects | Disconnect References | Confidence | Notes |
 |---|---|---|---|---|---|---|
-| `attack_timing_early_resolved` | `autoloads/EventBus.gd:23` | `scenes/combat/PlayerCombat.gd:859` | `scenes/combat/CombatScene.gd:3225` | `scenes/combat/CombatScene.gd:408` | HIGH | lane: int |
-| `bonded_support_triggered` | `autoloads/EventBus.gd:113` | `systems/RunGrowth.gd:411` | `scenes/combat/CombatScene.gd:3240`<br>`systems/PerformanceRewardDirector.gd:422`<br>`systems/RunGrowth.gd:75`<br>`systems/RunStats.gd:44` | `scenes/combat/CombatScene.gd:434`<br>`systems/PerformanceRewardDirector.gd:447`<br>`systems/RunStats.gd:66` | HIGH | species_id: String, lane: int, effect_id: String |
-| `boss_outcome_resolved` | `autoloads/EventBus.gd:117` | `autoloads/GameState.gd:747` | — | — | MEDIUM | outcome_id: String, payload: Dictionary |
-| `capture_offered` | `autoloads/EventBus.gd:79` | `scenes/combat/CombatScene.gd:810`<br>`scenes/combat/CombatScene.gd:824`<br>`scenes/combat/CombatScene.gd:3553` | — | — | MEDIUM | creature_data: Dictionary |
-| `combat_ended` | `autoloads/EventBus.gd:7` | `scenes/combat/ZoneManager.gd:420`<br>`scenes/combat/PlayerCombat.gd:985` | `autoloads/GameState.gd:199`<br>`scenes/combat/CombatScene.gd:3211`<br>`systems/QuigNarrativeSystem.gd:28` | `scenes/combat/CombatScene.gd:378` | HIGH | victory: bool |
-| `combat_input_resolved` | `autoloads/EventBus.gd:29` | `scenes/combat/PlayerCombat.gd:358` | `scenes/combat/CombatScene.gd:3228` | `scenes/combat/CombatScene.gd:414` | HIGH | action: String, lane: int, accepted: bool, buffered: bool, reason: String, state: String, cooldowns: Dictionary |
-| `combat_started` | `autoloads/EventBus.gd:5` | `scenes/combat/ZoneManager.gd:166` | `autoloads/GameState.gd:197`<br>`systems/CombatHUDPresenter.gd:122`<br>`systems/PerformanceRewardDirector.gd:412`<br>`systems/RunGrowth.gd:53` | `systems/PerformanceRewardDirector.gd:437` | HIGH | enemy_data: Array |
-| `combo_broken` | `autoloads/EventBus.gd:57` | `systems/CombatMeter.gd:127`<br>`systems/CombatMeter.gd:158` | `scenes/combat/CombatScene.gd:3230`<br>`scenes/ui/CombatPerformanceHUD.gd:83` | `scenes/combat/CombatScene.gd:418` | HIGH | lost: int |
-| `combo_changed` | `autoloads/EventBus.gd:55` | `systems/CombatMeter.gd:38`<br>`systems/CombatMeter.gd:239` | `scenes/combat/CombatScene.gd:3204`<br>`scenes/combat/PlayerCombat.gd:397`<br>`scenes/ui/CombatPerformanceHUD.gd:80`<br>`systems/RunGrowth.gd:61` | `scenes/combat/CombatScene.gd:364` | HIGH | count: int, tier: String |
-| `creature_ascended` | `autoloads/EventBus.gd:89` | `autoloads/GameState.gd:488` | `systems/QuigNarrativeSystem.gd:30` | — | HIGH | data: Dictionary |
-| `creature_bonded` | `autoloads/EventBus.gd:83` | `systems/VictoryRewardDirector.gd:73` | `autoloads/GameState.gd:193`<br>`scenes/combat/CombatScene.gd:3238`<br>`systems/QuigNarrativeSystem.gd:22`<br>`systems/RunGrowth.gd:67`<br>`systems/RunStats.gd:47`<br>`systems/VesselModifierDirector.gd:66` | `autoloads/GameState.gd:204`<br>`scenes/combat/CombatScene.gd:430`<br>`systems/RunStats.gd:72` | HIGH | creature_data: Dictionary |
-| `creature_eaten` | `autoloads/EventBus.gd:87` | `systems/VictoryRewardDirector.gd:78` | `autoloads/GameState.gd:195`<br>`systems/PerformanceRewardDirector.gd:420`<br>`systems/QuigNarrativeSystem.gd:23`<br>`systems/RunGrowth.gd:69`<br>`systems/RunStats.gd:48`<br>…+1 | `autoloads/GameState.gd:206`<br>`systems/PerformanceRewardDirector.gd:445`<br>`systems/RunStats.gd:74` | HIGH | creature_data: Dictionary |
-| `dna_gained` | `autoloads/EventBus.gd:91` | `scenes/combat/CombatScene.gd:5751` | `scenes/combat/CombatScene.gd:3241`<br>`systems/RunStats.gd:49` | `scenes/combat/CombatScene.gd:436`<br>`systems/RunStats.gd:76` | HIGH | species_id: String, amount: float, total: float |
-| `dna_lock_denied` | `autoloads/EventBus.gd:81` | `systems/VictoryRewardDirector.gd:63` | `scenes/combat/CombatScene.gd:3214` | `scenes/combat/CombatScene.gd:384` | HIGH | species_id: String, current: float, required: float |
-| `dna_resonated` | `autoloads/EventBus.gd:93` | `scenes/combat/CombatScene.gd:5715`<br>`scenes/combat/CombatScene.gd:5762`<br>`scenes/combat/CombatScene.gd:5771`<br>`scenes/combat/CombatScene.gd:6302` | `scenes/combat/CombatScene.gd:3221` | `scenes/combat/CombatScene.gd:398` | HIGH | color: Color, intensity: float |
-| `dna_routing_changed` | `autoloads/EventBus.gd:111` | `systems/RunGrowth.gd:435` | `scenes/combat/CombatScene.gd:3239` | `scenes/combat/CombatScene.gd:432` | HIGH | route_id: String, label: String |
-| `enemy_damaged` | `autoloads/EventBus.gd:43` | `scenes/combat/ZoneManager.gd:372` | `scenes/combat/CombatScene.gd:3212`<br>`systems/QuigNarrativeSystem.gd:27`<br>`systems/RunStats.gd:40` | `scenes/combat/CombatScene.gd:380`<br>`systems/RunStats.gd:58` | HIGH | enemy_id: int, damage: float |
-| `enemy_defeated` | `autoloads/EventBus.gd:45` | `scenes/combat/ZoneManager.gd:400` | `scenes/combat/CombatScene.gd:3213`<br>`systems/PerformanceRewardDirector.gd:402`<br>`systems/RunGrowth.gd:55`<br>`systems/RunStats.gd:39` | `scenes/combat/CombatScene.gd:382`<br>`systems/PerformanceRewardDirector.gd:427`<br>`systems/RunStats.gd:56` | HIGH | enemy_id: int |
-| `enemy_status_applied` | `autoloads/EventBus.gd:47` | `scenes/combat/ZoneManager.gd:394`<br>`scenes/combat/ZoneManager.gd:550` | `scenes/combat/CombatScene.gd:3243`<br>`systems/RunGrowth.gd:71` | `scenes/combat/CombatScene.gd:440` | HIGH | lane: int, status_id: String, params: Dictionary |
-| `enemy_status_applied_requested` | `autoloads/EventBus.gd:51` | `systems/RunGrowth.gd:300` | `scenes/combat/CombatScene.gd:3217` | — | HIGH | lane: int, status_id: String, params: Dictionary |
-| `enemy_status_cleared` | `autoloads/EventBus.gd:49` | `scenes/combat/ZoneManager.gd:197`<br>`scenes/combat/ZoneManager.gd:381`<br>`scenes/combat/ZoneManager.gd:395`<br>`scenes/combat/ZoneManager.gd:398`<br>`scenes/combat/ZoneManager.gd:504`<br>`scenes/combat/ZoneManager.gd:645` | `scenes/combat/CombatScene.gd:3244` | `scenes/combat/CombatScene.gd:442` | HIGH | lane: int |
-| `mastery_context_updated` | `autoloads/EventBus.gd:115` | `scenes/combat/PlayerCombat.gd:478`<br>`scenes/combat/PlayerCombat.gd:490` | `scenes/combat/CombatScene.gd:3242` | `scenes/combat/CombatScene.gd:438` | HIGH | data: Dictionary |
-| `phrase_milestone` | `autoloads/EventBus.gd:73` | `systems/CombatMeter.gd:186`<br>`systems/CombatMeter.gd:189` | `scenes/combat/CombatScene.gd:3245`<br>`systems/PerformanceRewardDirector.gd:414` | `scenes/combat/CombatScene.gd:444`<br>`systems/PerformanceRewardDirector.gd:439` | HIGH | count: int |
-| `play_sfx` | `autoloads/EventBus.gd:141` | `scenes/combat/CombatScene.gd:5425`<br>`scenes/combat/CombatScene.gd:6291`<br>`scenes/combat/PlayerCombat.gd:919`<br>`systems/CombatPresentationRuntime.gd:601`<br>`systems/VesselModifierDirector.gd:141`<br>`systems/VesselModifierDirector.gd:147`<br>…+1 | `systems/CombatAudioPlayer.gd:10` | `systems/CombatAudioPlayer.gd:15` | HIGH | cue_id: String |
-| `player_attacked` | `autoloads/EventBus.gd:19` | `scenes/combat/PlayerCombat.gd:771`<br>`scenes/combat/PlayerCombat.gd:830`<br>`scenes/combat/PlayerCombat.gd:890`<br>`scenes/combat/PlayerCombat.gd:926` | `scenes/combat/CombatScene.gd:3223`<br>`systems/CombatHUDPresenter.gd:126` | `scenes/combat/CombatScene.gd:404` | HIGH | lane: int, damage: float, was_timed: bool |
-| `player_died` | `autoloads/EventBus.gd:35` | `scenes/combat/PlayerCombat.gd:984` | — | — | MEDIUM |  |
-| `player_dodged` | `autoloads/EventBus.gd:27` | `scenes/combat/PlayerCombat.gd:690` | `scenes/combat/CombatScene.gd:3227`<br>`systems/PerformanceRewardDirector.gd:410`<br>`systems/RunGrowth.gd:73`<br>`systems/VesselModifierDirector.gd:64` | `scenes/combat/CombatScene.gd:412`<br>`systems/PerformanceRewardDirector.gd:435` | HIGH | from_lane: int, to_lane: int |
-| `player_healed` | `autoloads/EventBus.gd:37` | `scenes/combat/CombatScene.gd:497`<br>`scenes/combat/CombatScene.gd:5695`<br>`scenes/combat/CombatScene.gd:6728`<br>`scenes/combat/PlayerCombat.gd:971`<br>`systems/PerformanceRewardDirector.gd:1006`<br>`systems/PerformanceRewardDirector.gd:1019`<br>…+12 | `scenes/combat/CombatScene.gd:3208` | `scenes/combat/CombatScene.gd:372` | HIGH | amount: float |
-| `player_no_stamina` | `autoloads/EventBus.gd:39` | `scenes/combat/PlayerCombat.gd:337`<br>`scenes/combat/PlayerCombat.gd:589`<br>`systems/CombatMeter.gd:60`<br>`systems/CombatMeter.gd:70` | `scenes/combat/CombatScene.gd:3229` | `scenes/combat/CombatScene.gd:416` | HIGH |  |
-| `player_parried` | `autoloads/EventBus.gd:25` | `scenes/combat/PlayerCombat.gd:652` | `scenes/combat/CombatScene.gd:3226`<br>`systems/PerformanceRewardDirector.gd:406`<br>`systems/QuigNarrativeSystem.gd:20`<br>`systems/RunGrowth.gd:59`<br>`systems/RunStats.gd:42`<br>…+1 | `scenes/combat/CombatScene.gd:410`<br>`systems/PerformanceRewardDirector.gd:431`<br>`systems/RunStats.gd:62` | HIGH | lane: int, quality: String, reflect_damage: float |
-| `player_teleported` | `autoloads/EventBus.gd:17` | `scenes/combat/PlayerCombat.gd:543`<br>`scenes/combat/PlayerCombat.gd:682`<br>`scenes/combat/PlayerCombat.gd:1314` | `scenes/combat/CombatScene.gd:3231`<br>`systems/CombatHUDPresenter.gd:124` | `scenes/combat/CombatScene.gd:420` | HIGH | from_lane: int, to_lane: int |
-| `player_took_damage` | `autoloads/EventBus.gd:33` | `scenes/combat/PlayerCombat.gd:979` | `scenes/combat/CombatScene.gd:3207`<br>`systems/PerformanceRewardDirector.gd:408`<br>`systems/QuigNarrativeSystem.gd:24`<br>`systems/RunGrowth.gd:65`<br>`systems/RunStats.gd:46` | `scenes/combat/CombatScene.gd:370`<br>`systems/PerformanceRewardDirector.gd:433`<br>`systems/RunStats.gd:70` | HIGH | amount: float, source_lane: int |
-| `proc_feedback_requested` | `autoloads/EventBus.gd:143` | `autoloads/GameState.gd:380`<br>`autoloads/GameState.gd:649`<br>`scenes/combat/ZoneManager.gd:185`<br>`scenes/combat/PlayerCombat.gd:339`<br>`scenes/combat/PlayerCombat.gd:344`<br>…+8 | `scenes/combat/CombatScene.gd:3215` | — | HIGH | text: String, color: Color |
-| `projectile_fired` | `autoloads/EventBus.gd:11` | `scenes/combat/ZoneManager.gd:691`<br>`scenes/combat/ZoneManager.gd:725` | `scenes/combat/PlayerCombat.gd:394` | `scenes/combat/PlayerCombat.gd:126` | HIGH | lane: int, enemy_id: int |
-| `projectile_missed` | `autoloads/EventBus.gd:13` | `scenes/combat/ZoneManager.gd:883` | — | — | MEDIUM | lane: int, damage: float |
-| `quig_narrative_triggered` | `autoloads/EventBus.gd:127` | `systems/QuigNarrativeSystem.gd:108` | `scenes/combat/CombatScene.gd:3247` | `scenes/combat/CombatScene.gd:448` | HIGH | text: String, duration: float |
-| `run_completed` | `autoloads/EventBus.gd:99` | `scenes/combat/CombatScene.gd:4994`<br>`systems/CombatRunDirector.gd:154` | — | — | MEDIUM | success: bool |
-| `run_growth_changed` | `autoloads/EventBus.gd:101` | `systems/RunGrowth.gd:433` | `scenes/combat/CombatScene.gd:3234`<br>`scenes/ui/CombatPerformanceHUD.gd:84` | `scenes/combat/CombatScene.gd:422` | HIGH | level: int, current_exp: float, exp_to_next: float |
-| `run_growth_level_resolved` | `autoloads/EventBus.gd:103` | `systems/RunGrowth.gd:478` | `scenes/combat/CombatScene.gd:3235`<br>`scenes/ui/CombatPerformanceHUD.gd:85` | `scenes/combat/CombatScene.gd:424` | HIGH | result: Dictionary |
-| `run_started` | `autoloads/EventBus.gd:97` | `systems/CombatRunDirector.gd:68` | `systems/RunGrowth.gd:51`<br>`systems/RunStats.gd:38` | `systems/RunStats.gd:54` | HIGH | run_number: int |
-| `screen_flash` | `autoloads/EventBus.gd:131` | `scenes/combat/CombatScene.gd:4127`<br>`scenes/combat/CombatScene.gd:4268`<br>`scenes/combat/CombatScene.gd:4828`<br>`scenes/combat/CombatScene.gd:4869`<br>`scenes/combat/CombatScene.gd:4872`<br>`scenes/combat/CombatScene.gd:5058`<br>…+38 | `scenes/combat/CombatScene.gd:3218` | `scenes/combat/CombatScene.gd:388` | HIGH | color: Color, duration: float |
-| `screen_shake` | `autoloads/EventBus.gd:129` | `scenes/combat/CombatScene.gd:4128`<br>`scenes/combat/CombatScene.gd:4829`<br>`scenes/combat/CombatScene.gd:5059`<br>`scenes/combat/CombatScene.gd:5113`<br>`scenes/combat/CombatScene.gd:5121`<br>`scenes/combat/CombatScene.gd:6519`<br>…+4 | `scenes/combat/CombatScene.gd:3219` | `scenes/combat/CombatScene.gd:390` | HIGH | intensity: float, duration: float |
-| `slow_motion` | `autoloads/EventBus.gd:133` | `scenes/combat/CombatScene.gd:6290`<br>`scenes/combat/PlayerCombat.gd:474`<br>`systems/CombatPresentationRuntime.gd:567` | `scenes/combat/CombatScene.gd:3222` | `scenes/combat/CombatScene.gd:402` | HIGH | scale: float, duration: float |
-| `song_beat_pulse` | `autoloads/EventBus.gd:135` | `scenes/combat/CombatScene.gd:1418` | `scenes/combat/CombatScene.gd:3233`<br>`scenes/combat/ZoneManager.gd:164`<br>`scenes/combat/PlayerCombat.gd:400`<br>`scenes/ui/CombatPerformanceHUD.gd:86` | `scenes/combat/CombatScene.gd:394` | HIGH | beat_index: int, intensity: float, quality: String |
-| `sovereign_reached` | `autoloads/EventBus.gd:63` | `systems/CombatMeter.gd:243` | `systems/QuigNarrativeSystem.gd:25` | — | HIGH |  |
-| `sovereign_threshold_reached` | `autoloads/EventBus.gd:65` | `scenes/combat/CombatScene.gd:5569` | `systems/QuigNarrativeSystem.gd:26` | — | HIGH | threshold: float |
-| `stamina_changed` | `autoloads/EventBus.gd:61` | `systems/CombatMeter.gd:37`<br>`systems/CombatMeter.gd:47`<br>`systems/CombatMeter.gd:64`<br>`systems/CombatMeter.gd:74`<br>`systems/CombatMeter.gd:132`<br>`systems/CombatMeter.gd:217` | `scenes/combat/CombatScene.gd:3206` | `scenes/combat/CombatScene.gd:368` | HIGH | current: float, maximum: float |
-| `style_changed` | `autoloads/EventBus.gd:59` | `systems/CombatMeter.gd:39`<br>`systems/CombatMeter.gd:240` | `scenes/combat/CombatScene.gd:3205` | `scenes/combat/CombatScene.gd:366` | HIGH | score: float, tier: String |
-| `support_charge_changed` | `autoloads/EventBus.gd:109` | `systems/RunGrowth.gd:434` | `scenes/combat/CombatScene.gd:3237` | `scenes/combat/CombatScene.gd:428` | HIGH | current: float, maximum: float, active_species_id: String |
-| `tempo_state_entered` | `autoloads/EventBus.gd:123` | `systems/CombatRunDirector.gd:131` | `systems/QuigNarrativeSystem.gd:19` | — | HIGH | state_id: String |
-| `tendency_growth_resolved` | `autoloads/EventBus.gd:107` | `systems/RunGrowth.gd:479` | `scenes/combat/CombatScene.gd:3236`<br>`systems/RunStats.gd:45` | `scenes/combat/CombatScene.gd:426`<br>`systems/RunStats.gd:68` | HIGH | tendency_id: String, title: String, summary: String |
-| `tier_changed` | `autoloads/EventBus.gd:75` | `systems/CombatMeter.gd:236` | `scenes/combat/CombatScene.gd:3246`<br>`systems/PerformanceRewardDirector.gd:416` | `scenes/combat/CombatScene.gd:446`<br>`systems/PerformanceRewardDirector.gd:441` | HIGH | new_tier: String, old_tier: String |
-| `timed_attack_resolved` | `autoloads/EventBus.gd:21` | `scenes/combat/PlayerCombat.gd:831` | `scenes/combat/CombatScene.gd:3224`<br>`systems/EncounterEscalationDirector.gd:83`<br>`systems/PerformanceRewardDirector.gd:404`<br>`systems/QuigNarrativeSystem.gd:21`<br>`systems/RunGrowth.gd:57`<br>`systems/RunStats.gd:41`<br>…+1 | `scenes/combat/CombatScene.gd:406`<br>`systems/PerformanceRewardDirector.gd:429`<br>`systems/RunStats.gd:60` | HIGH | lane: int, quality: String, damage: float |
-| `timing_ring_pressed` | `autoloads/EventBus.gd:137` | `scenes/combat/PlayerCombat.gd:218`<br>`scenes/combat/PlayerCombat.gd:279`<br>`scenes/combat/PlayerCombat.gd:309` | `scenes/combat/CombatScene.gd:3232` | `scenes/combat/CombatScene.gd:392` | HIGH | lane: int |
-| `ui_shake` | `autoloads/EventBus.gd:139` | `scenes/ui/CombatPerformanceHUD.gd:438`<br>`systems/CombatHUDPresenter.gd:180`<br>`systems/CombatPresentationRuntime.gd:563` | `scenes/combat/CombatScene.gd:3220` | `scenes/combat/CombatScene.gd:396` | HIGH | intensity: float, duration: float |
-| `ultimate_available` | `autoloads/EventBus.gd:67` | `systems/CombatMeter.gd:248` | `scenes/combat/CombatScene.gd:3209`<br>`scenes/ui/CombatPerformanceHUD.gd:81` | `scenes/combat/CombatScene.gd:374` | HIGH |  |
-| `ultimate_fired` | `autoloads/EventBus.gd:69` | `systems/CombatMeter.gd:88` | `scenes/combat/CombatScene.gd:3210`<br>`scenes/ui/CombatPerformanceHUD.gd:82`<br>`systems/PerformanceRewardDirector.gd:418`<br>`systems/RunGrowth.gd:63`<br>`systems/RunStats.gd:43` | `scenes/combat/CombatScene.gd:376`<br>`systems/PerformanceRewardDirector.gd:443`<br>`systems/RunStats.gd:64` | HIGH | power: float |
-| `ultimate_power_granted` | `autoloads/EventBus.gd:71` | `systems/RunGrowth.gd:282` | `scenes/combat/CombatScene.gd:3216` | — | HIGH | amount: float |
-| `vessel_shifted` | `autoloads/EventBus.gd:85` | `systems/VesselModifierDirector.gd:82` | `scenes/combat/CombatScene.gd:3124` | — | HIGH | class_data: Dictionary |
-| `world_fate_changed` | `autoloads/EventBus.gd:119` | `autoloads/GameState.gd:773` | — | — | MEDIUM | snapshot: Dictionary |
-| `world_fate_shifted` | `autoloads/EventBus.gd:105` | `autoloads/GameState.gd:863` | `systems/QuigNarrativeSystem.gd:29` | — | HIGH | new_fate_id: String, old_fate_id: String |
+| `attack_timing_early_resolved` | `autoloads/EventBus.gd:33` | `scenes/combat/PlayerCombat.gd:1373` | `scenes/combat/CombatScene.gd:1616` | `scenes/combat/CombatScene.gd:305` | HIGH | sector: int |
+| `bonded_support_triggered` | `autoloads/EventBus.gd:137` | `systems/RunGrowth.gd:383` | `scenes/combat/CombatScene.gd:1634`<br>`systems/PerformanceRewardDirector.gd:421`<br>`systems/RunStats.gd:69` | `scenes/combat/CombatScene.gd:331`<br>`systems/PerformanceRewardDirector.gd:446`<br>`systems/RunStats.gd:98` | HIGH | species_id: String, sector: int, effect_id: String |
+| `boss_outcome_resolved` | `autoloads/EventBus.gd:15` | `autoloads/GameState.gd:944` | `systems/AchievementDirector.gd:17` | — | HIGH | victory: bool, data: Dictionary |
+| `boss_phase_transitioned` | `autoloads/EventBus.gd:17` | — | — | — | LOW | phase_index: int |
+| `capture_offered` | `autoloads/EventBus.gd:113` | `scenes/combat/CombatScene.gd:722`<br>`scenes/combat/CombatScene.gd:733`<br>`scenes/combat/CombatScene.gd:2040` | — | — | MEDIUM | creature_data: Dictionary |
+| `combat_ended` | `autoloads/EventBus.gd:7` | `scenes/combat/PlayerCombat.gd:1528`<br>`systems/CombatLifecycleDirector.gd:34` | `autoloads/GameState.gd:122`<br>`scenes/combat/CombatScene.gd:1602`<br>`systems/PerformanceRewardDirector.gd:411`<br>`systems/QuigNarrativeSystem.gd:34` | `scenes/combat/CombatScene.gd:262` | HIGH | victory: bool |
+| `combat_input_resolved` | `autoloads/EventBus.gd:29` | `scenes/combat/PlayerCombat.gd:395` | `autoloads/DevHarness.gd:35`<br>`scenes/combat/CombatScene.gd:1619` | `scenes/combat/CombatScene.gd:311` | HIGH | action: String, sector: int, accepted: bool, buffered: bool, reason: String, state: String, cooldowns: Dictionary |
+| `combat_started` | `autoloads/EventBus.gd:5` | `scenes/combat/ZoneManager.gd:145` | `autoloads/GameState.gd:120`<br>`systems/CombatHUDPresenter.gd:185`<br>`systems/PerformanceRewardDirector.gd:409`<br>`systems/RunGrowth.gd:55`<br>`systems/RunStats.gd:57` | `systems/CombatHUDPresenter.gd:210`<br>`systems/PerformanceRewardDirector.gd:436`<br>`systems/RunGrowth.gd:80`<br>`systems/RunStats.gd:86` | HIGH | enemy_data: Array |
+| `combo_broken` | `autoloads/EventBus.gd:71` | `systems/CombatMeter.gd:149`<br>`systems/CombatMeter.gd:195` | `scenes/combat/CombatScene.gd:1621`<br>`scenes/ui/CombatPerformanceHUD.gd:83` | `scenes/combat/CombatScene.gd:315` | HIGH | combo_count: int |
+| `combo_changed` | `autoloads/EventBus.gd:69` | `systems/CombatMeter.gd:44`<br>`systems/CombatMeter.gd:278` | `scenes/combat/CombatScene.gd:1597`<br>`scenes/combat/PlayerCombat.gd:433`<br>`scenes/ui/CombatPerformanceHUD.gd:80` | `scenes/combat/CombatScene.gd:252`<br>`scenes/combat/PlayerCombat.gd:149` | HIGH | count: int, tier: String |
+| `creature_ascended` | `autoloads/EventBus.gd:115` | `autoloads/GameState.gd:571` | `systems/QuigNarrativeSystem.gd:36` | — | HIGH | data: Dictionary |
+| `creature_bonded` | `autoloads/EventBus.gd:109` | `scenes/ui/IntroBondChoiceScene.gd:73`<br>`systems/VictoryRewardDirector.gd:81` | `autoloads/GameState.gd:116`<br>`scenes/combat/CombatScene.gd:1632`<br>`systems/QuigNarrativeSystem.gd:28`<br>`systems/RunGrowth.gd:69`<br>`systems/RunStats.gd:75` | `autoloads/GameState.gd:127`<br>`scenes/combat/CombatScene.gd:327`<br>`systems/RunGrowth.gd:94`<br>`systems/RunStats.gd:104` | HIGH | creature_data: Dictionary |
+| `creature_eaten` | `autoloads/EventBus.gd:111` | `systems/VictoryRewardDirector.gd:91` | `autoloads/GameState.gd:118`<br>`systems/PerformanceRewardDirector.gd:419`<br>`systems/QuigNarrativeSystem.gd:29`<br>`systems/RunGrowth.gd:71`<br>`systems/RunStats.gd:77` | `autoloads/GameState.gd:129`<br>`systems/PerformanceRewardDirector.gd:444`<br>`systems/RunGrowth.gd:96`<br>`systems/RunStats.gd:106` | HIGH | creature_data: Dictionary |
+| `creature_exp_changed` | `autoloads/EventBus.gd:127` | `systems/state/CreatureState.gd:77` | — | — | MEDIUM | species_id: String, current_exp: float, exp_to_next: float |
+| `creature_leveled_up` | `autoloads/EventBus.gd:129` | `systems/state/CreatureState.gd:79` | — | — | MEDIUM | species_id: String, new_level: int |
+| `dna_gained` | `autoloads/EventBus.gd:131` | `scenes/combat/CombatScene.gd:4244` | `scenes/combat/CombatScene.gd:1635`<br>`systems/RunStats.gd:79` | `scenes/combat/CombatScene.gd:333`<br>`systems/RunStats.gd:108` | HIGH | species_id: String, amount: float, total: float |
+| `dna_lock_denied` | `autoloads/EventBus.gd:141` | `systems/VictoryRewardDirector.gd:68` | `scenes/combat/CombatScene.gd:1606` | `scenes/combat/CombatScene.gd:268` | HIGH | species_id: String, current: float, required: float |
+| `dna_resonated` | `autoloads/EventBus.gd:93` | `scenes/combat/CombatScene.gd:3921`<br>`scenes/combat/CombatScene.gd:4258`<br>`scenes/combat/CombatScene.gd:4268`<br>`scenes/combat/CombatScene.gd:4818` | `scenes/combat/CombatScene.gd:1613` | `scenes/combat/CombatScene.gd:291` | HIGH | species_id: String, amount: float |
+| `dna_routing_changed` | `autoloads/EventBus.gd:133` | `systems/RunGrowth.gd:566` | `scenes/combat/CombatScene.gd:1633` | `scenes/combat/CombatScene.gd:329` | HIGH | route_id: String, label: String |
+| `enemy_attack_telegraph_cancelled` | `autoloads/EventBus.gd:65` | `scenes/combat/PlayerCombat.gd:231`<br>`systems/CombatFireDirector.gd:149` | `scenes/combat/CombatScene.gd:1627` | `scenes/combat/CombatScene.gd:297` | HIGH | enemy_id: int |
+| `enemy_attack_telegraphed` | `autoloads/EventBus.gd:63` | `scenes/combat/ZoneManager.gd:267` | `scenes/combat/CombatScene.gd:1626` | `scenes/combat/CombatScene.gd:295` | HIGH | enemy_id: int, sector: int, world_pos: Vector2, windup: float |
+| `enemy_bleed_changed` | `autoloads/EventBus.gd:59` | `systems/StatusDirector.gd:60` | — | — | MEDIUM | enemy_id: int, stacks: int, max_stacks: int |
+| `enemy_damaged` | `autoloads/EventBus.gd:49` | `scenes/combat/ZoneManager.gd:396` | `scenes/combat/CombatScene.gd:1603`<br>`systems/RunStats.gd:61` | `scenes/combat/CombatScene.gd:264`<br>`systems/RunStats.gd:90` | HIGH | enemy_id: int, damage: float |
+| `enemy_defeated` | `autoloads/EventBus.gd:51` | `systems/CombatLifecycleDirector.gd:21` | `scenes/combat/CombatScene.gd:1604`<br>`scenes/combat/CombatScene.gd:1605`<br>`systems/PerformanceRewardDirector.gd:399`<br>`systems/RunGrowth.gd:57`<br>`systems/RunStats.gd:59` | `scenes/combat/CombatScene.gd:266`<br>`systems/PerformanceRewardDirector.gd:426`<br>`systems/RunGrowth.gd:82`<br>`systems/RunStats.gd:88` | HIGH | enemy_id: int |
+| `enemy_ruptured` | `autoloads/EventBus.gd:61` | `systems/SupportEffectResolver.gd:72`<br>`systems/VesselModifierDirector.gd:187` | — | — | MEDIUM | enemy_id: int, total_damage: float |
+| `enemy_status_applied` | `autoloads/EventBus.gd:53` | `systems/StatusDirector.gd:65`<br>`systems/StatusDirector.gd:100` | `scenes/combat/CombatScene.gd:1638` | `scenes/combat/CombatScene.gd:337` | HIGH | enemy_id: int, status_id: String, params: Dictionary |
+| `enemy_status_applied_requested` | `autoloads/EventBus.gd:57` | — | `scenes/combat/CombatScene.gd:1609` | `scenes/combat/CombatScene.gd:275` | MEDIUM | enemy_id: int, status_id: String, params: Dictionary |
+| `enemy_status_cleared` | `autoloads/EventBus.gd:55` | `systems/StatusDirector.gd:71`<br>`systems/StatusDirector.gd:79`<br>`systems/StatusDirector.gd:90`<br>`systems/StatusDirector.gd:101`<br>`systems/StatusDirector.gd:104`<br>`systems/StatusDirector.gd:115`<br>…+2 | `scenes/combat/CombatScene.gd:1639` | `scenes/combat/CombatScene.gd:339` | HIGH | enemy_id: int |
+| `impact_burst_requested` | `autoloads/EventBus.gd:101` | `scenes/combat/PlayerCombat.gd:1254` | `scenes/combat/CombatScene.gd:1637` | — | HIGH | profile: Dictionary, sector: int, enemy_id: int |
+| `limit_breaker_triggered` | `autoloads/EventBus.gd:107` | `autoloads/GameState.gd:49` | — | — | MEDIUM | achievement_id: String |
+| `mastery_context_updated` | `autoloads/EventBus.gd:145` | `scenes/combat/PlayerCombat.gd:601`<br>`scenes/combat/PlayerCombat.gd:613` | `scenes/combat/CombatScene.gd:1636` | `scenes/combat/CombatScene.gd:335` | HIGH | mastery_data: Dictionary |
+| `phrase_milestone` | `autoloads/EventBus.gd:73` | `systems/CombatMeter.gd:223`<br>`systems/CombatMeter.gd:226` | `scenes/combat/CombatScene.gd:1640`<br>`systems/PerformanceRewardDirector.gd:413`<br>`systems/RunGrowth.gd:59` | `scenes/combat/CombatScene.gd:341`<br>`systems/PerformanceRewardDirector.gd:438`<br>`systems/RunGrowth.gd:84` | HIGH | count: int |
+| `play_sfx` | `autoloads/EventBus.gd:87` | `scenes/combat/BondedCompanion.gd:158`<br>`scenes/combat/CombatScene.gd:3853`<br>`scenes/combat/CombatScene.gd:4806`<br>`scenes/combat/PlayerCombat.gd:1449`<br>`systems/CombatPresentationRuntime.gd:661`<br>`systems/VesselModifierDirector.gd:157`<br>…+2 | `systems/CombatAudioPlayer.gd:10` | `systems/CombatAudioPlayer.gd:15` | HIGH | sfx_id: String |
+| `player_attacked` | `autoloads/EventBus.gd:21` | `scenes/combat/PlayerCombat.gd:1258`<br>`scenes/combat/PlayerCombat.gd:1344`<br>`scenes/combat/PlayerCombat.gd:1420`<br>`scenes/combat/PlayerCombat.gd:1458` | `scenes/combat/CombatScene.gd:1614`<br>`systems/CombatHUDPresenter.gd:189` | `scenes/combat/CombatScene.gd:301`<br>`systems/CombatHUDPresenter.gd:214` | HIGH | sector: int, damage: float, was_timed: bool, heading: Vector2 |
+| `player_bleed_changed` | `autoloads/EventBus.gd:45` | `autoloads/GameState.gd:393`<br>`autoloads/GameState.gd:398` | `systems/CombatHUDPresenter.gd:199` | `systems/CombatHUDPresenter.gd:224` | HIGH | stacks: int, max_stacks: int |
+| `player_died` | `autoloads/EventBus.gd:39` | `scenes/combat/PlayerCombat.gd:1527` | `systems/CombatRunDirector.gd:75` | — | HIGH |  |
+| `player_dodged` | `autoloads/EventBus.gd:25` | `scenes/combat/PlayerCombat.gd:1109` | `scenes/combat/CombatScene.gd:1618`<br>`systems/PerformanceRewardDirector.gd:407`<br>`systems/TutorialDirector.gd:27`<br>`systems/VesselModifierDirector.gd:86` | `scenes/combat/CombatScene.gd:309`<br>`systems/PerformanceRewardDirector.gd:434`<br>`systems/TutorialDirector.gd:68` | HIGH | from_sector: int, to_sector: int, heading: Vector2 |
+| `player_healed` | `autoloads/EventBus.gd:41` | `scenes/combat/CombatScene.gd:443`<br>`scenes/combat/CombatScene.gd:4191`<br>`scenes/combat/CombatScene.gd:5216`<br>`scenes/combat/PlayerCombat.gd:1239`<br>`scenes/combat/PlayerCombat.gd:1508`<br>`systems/PerformanceRewardDirector.gd:1059`<br>…+8 | `scenes/combat/CombatScene.gd:1599`<br>`systems/CombatHUDPresenter.gd:195` | `scenes/combat/CombatScene.gd:256`<br>`systems/CombatHUDPresenter.gd:220` | HIGH | amount: float |
+| `player_no_stamina` | `autoloads/EventBus.gd:43` | `scenes/combat/PlayerCombat.gd:383`<br>`scenes/combat/PlayerCombat.gd:992`<br>`systems/CombatMeter.gd:79`<br>`systems/CombatMeter.gd:90` | `scenes/combat/CombatScene.gd:1620` | `scenes/combat/CombatScene.gd:313` | HIGH |  |
+| `player_parried` | `autoloads/EventBus.gd:23` | `scenes/combat/PlayerCombat.gd:1068` | `autoloads/CombatFeedbackDirector.gd:29`<br>`scenes/combat/CombatScene.gd:1617`<br>`systems/PerformanceRewardDirector.gd:403`<br>`systems/QuigNarrativeSystem.gd:26`<br>`systems/RunGrowth.gd:63`<br>`systems/RunStats.gd:65`<br>…+2 | `scenes/combat/CombatScene.gd:307`<br>`systems/PerformanceRewardDirector.gd:430`<br>`systems/RunGrowth.gd:88`<br>`systems/RunStats.gd:94`<br>`systems/TutorialDirector.gd:66` | HIGH | sector: int, quality: String, reflect_damage: float, heading: Vector2 |
+| `player_teleported` | `autoloads/EventBus.gd:27` | — | `scenes/combat/CombatScene.gd:1622`<br>`systems/CombatHUDPresenter.gd:187` | `scenes/combat/CombatScene.gd:317`<br>`systems/CombatHUDPresenter.gd:212` | MEDIUM | from_sector: int, to_sector: int |
+| `player_took_damage` | `autoloads/EventBus.gd:37` | `scenes/combat/PlayerCombat.gd:1524` | `autoloads/CombatFeedbackDirector.gd:27`<br>`scenes/combat/BondedCompanion.gd:32`<br>`scenes/combat/CombatScene.gd:1598`<br>`systems/CombatHUDPresenter.gd:197`<br>`systems/PerformanceRewardDirector.gd:405`<br>`systems/QuigNarrativeSystem.gd:30`<br>…+3 | `scenes/combat/BondedCompanion.gd:37`<br>`scenes/combat/CombatScene.gd:254`<br>`systems/CombatHUDPresenter.gd:222`<br>`systems/PerformanceRewardDirector.gd:432`<br>`systems/RunGrowth.gd:92`<br>`systems/RunStats.gd:102`<br>…+1 | HIGH | amount: float, source_sector: int |
+| `proc_feedback_requested` | `autoloads/EventBus.gd:99` | `autoloads/GameState.gd:48`<br>`autoloads/GameState.gd:421`<br>`autoloads/GameState.gd:743`<br>`autoloads/GameState.gd:840`<br>`scenes/combat/PlayerCombat.gd:219`<br>`scenes/combat/PlayerCombat.gd:223`<br>…+24 | `scenes/combat/CombatScene.gd:1607` | `scenes/combat/CombatScene.gd:272` | HIGH | text: String, color: Color |
+| `projectile_fired` | `autoloads/EventBus.gd:95` | `scenes/combat/ZoneManager.gd:605`<br>`scenes/combat/ZoneManager.gd:670` | `scenes/combat/CombatScene.gd:1625`<br>`scenes/combat/PlayerCombat.gd:430`<br>`systems/TutorialDirector.gd:23` | `scenes/combat/CombatScene.gd:293`<br>`scenes/combat/PlayerCombat.gd:147`<br>`systems/TutorialDirector.gd:64` | HIGH | sector: int, enemy_id: int |
+| `projectile_missed` | `autoloads/EventBus.gd:97` | `scenes/combat/ZoneManager.gd:756` | — | — | MEDIUM | sector: int, damage: float |
+| `quig_narrative_triggered` | `autoloads/EventBus.gd:147` | `systems/QuigNarrativeSystem.gd:107`<br>`systems/QuigNarrativeSystem.gd:120` | `scenes/combat/CombatScene.gd:1642` | `scenes/combat/CombatScene.gd:345` | HIGH | text: String, duration: float |
+| `run_completed` | `autoloads/EventBus.gd:105` | `scenes/combat/CombatScene.gd:3484`<br>`systems/CombatRunDirector.gd:153` | `systems/AchievementDirector.gd:16` | — | HIGH | victory: bool |
+| `run_growth_changed` | `autoloads/EventBus.gd:121` | `systems/RunGrowth.gd:558` | `scenes/combat/CombatScene.gd:1628`<br>`scenes/ui/CombatPerformanceHUD.gd:84` | `scenes/combat/CombatScene.gd:319` | HIGH | level: int, current_exp: float, exp_to_next: float |
+| `run_growth_level_resolved` | `autoloads/EventBus.gd:123` | `systems/RunGrowth.gd:433` | `scenes/combat/CombatScene.gd:1629`<br>`scenes/ui/CombatPerformanceHUD.gd:85` | `scenes/combat/CombatScene.gd:321` | HIGH | result: Dictionary |
+| `run_started` | `autoloads/EventBus.gd:9` | `autoloads/GameState.gd:81`<br>`systems/CombatRunDirector.gd:72` | `systems/AchievementDirector.gd:15`<br>`systems/RunGrowth.gd:53`<br>`systems/RunStats.gd:55` | `systems/RunGrowth.gd:78`<br>`systems/RunStats.gd:84` | HIGH | run_number: int |
+| `screen_flash` | `autoloads/EventBus.gd:79` | `autoloads/CombatFeedbackDirector.gd:42`<br>`autoloads/CombatFeedbackDirector.gd:45`<br>`autoloads/CombatFeedbackDirector.gd:52`<br>`autoloads/CombatFeedbackDirector.gd:60`<br>`autoloads/CombatFeedbackDirector.gd:63`<br>`autoloads/CombatFeedbackDirector.gd:68`<br>…+44 | `scenes/combat/CombatScene.gd:1610` | `scenes/combat/CombatScene.gd:281` | HIGH | color: Color, duration: float |
+| `screen_shake` | `autoloads/EventBus.gd:81` | `autoloads/CombatFeedbackDirector.gd:71`<br>`scenes/combat/CombatScene.gd:2605`<br>`scenes/combat/CombatScene.gd:3314`<br>`scenes/combat/CombatScene.gd:3546`<br>`scenes/combat/CombatScene.gd:3600`<br>`scenes/combat/CombatScene.gd:3608`<br>…+5 | `scenes/combat/CombatScene.gd:1611` | `scenes/combat/CombatScene.gd:283` | HIGH | intensity: float, duration: float |
+| `slow_motion` | `autoloads/EventBus.gd:85` | `autoloads/CombatFeedbackDirector.gd:75`<br>`scenes/combat/CombatScene.gd:4805`<br>`scenes/combat/PlayerCombat.gd:597` | `systems/TimeDistortionDirector.gd:28` | `systems/TimeDistortionDirector.gd:84` | HIGH | scale: float, duration: float |
+| `song_beat_pulse` | `autoloads/EventBus.gd:91` | `scenes/combat/CombatScene.gd:1073`<br>`systems/SongConductor.gd:336` | `autoloads/DevHarness.gd:37`<br>`scenes/combat/CombatScene.gd:1624`<br>`scenes/combat/PlayerCombat.gd:436`<br>`scenes/combat/ZoneManager.gd:143`<br>`scenes/ui/CombatPerformanceHUD.gd:86` | `scenes/combat/CombatScene.gd:287`<br>`scenes/combat/PlayerCombat.gd:151` | HIGH | beat_index: int, intensity: float, quality: String |
+| `sovereign_reached` | `autoloads/EventBus.gd:13` | `systems/CombatMeter.gd:286` | `systems/QuigNarrativeSystem.gd:32` | — | HIGH |  |
+| `sovereign_threshold_reached` | `autoloads/EventBus.gd:11` | `scenes/combat/CombatScene.gd:4026` | `systems/QuigNarrativeSystem.gd:33` | — | HIGH | ratio: float |
+| `stamina_changed` | `autoloads/EventBus.gd:151` | `systems/CombatMeter.gd:66` | `systems/CombatHUDPresenter.gd:191` | `systems/CombatHUDPresenter.gd:216` | HIGH | current: float, maximum: float |
+| `style_changed` | `autoloads/EventBus.gd:153` | `systems/CombatMeter.gd:45`<br>`systems/CombatMeter.gd:283` | `systems/CombatHUDPresenter.gd:193` | `systems/CombatHUDPresenter.gd:218` | HIGH | score: float, tier: String |
+| `support_charge_changed` | `autoloads/EventBus.gd:135` | `systems/RunGrowth.gd:562` | `scenes/combat/CombatScene.gd:1631` | `scenes/combat/CombatScene.gd:325` | HIGH | current: float, maximum: float, active_species_id: String |
+| `support_manual_activation_requested` | `autoloads/EventBus.gd:139` | `scenes/combat/PlayerCombat.gd:1124` | `systems/RunGrowth.gd:73` | `systems/RunGrowth.gd:98` | HIGH | sector: int, quality: String |
+| `tempo_state_entered` | `autoloads/EventBus.gd:149` | `systems/CombatRunDirector.gd:130`<br>`systems/SongConductor.gd:315` | `systems/QuigNarrativeSystem.gd:25` | — | HIGH | state_id: String |
+| `tendency_growth_resolved` | `autoloads/EventBus.gd:125` | `systems/RunGrowth.gd:434` | `scenes/combat/CombatScene.gd:1630`<br>`systems/RunStats.gd:71` | `scenes/combat/CombatScene.gd:323`<br>`systems/RunStats.gd:100` | HIGH | tendency_id: String, title: String, summary: String |
+| `tier_changed` | `autoloads/EventBus.gd:75` | `systems/CombatMeter.gd:273` | `scenes/combat/CombatScene.gd:1641`<br>`systems/PerformanceRewardDirector.gd:415` | `scenes/combat/CombatScene.gd:343`<br>`systems/PerformanceRewardDirector.gd:440` | HIGH | new_tier: String, old_tier: String |
+| `timed_attack_resolved` | `autoloads/EventBus.gd:31` | `scenes/combat/PlayerCombat.gd:1345` | `autoloads/CombatFeedbackDirector.gd:25`<br>`scenes/combat/CombatScene.gd:1615`<br>`systems/EncounterEscalationDirector.gd:83`<br>`systems/PerformanceRewardDirector.gd:401`<br>`systems/QuigNarrativeSystem.gd:27`<br>`systems/RunGrowth.gd:61`<br>…+2 | `scenes/combat/CombatScene.gd:303`<br>`systems/EncounterEscalationDirector.gd:89`<br>`systems/PerformanceRewardDirector.gd:428`<br>`systems/RunGrowth.gd:86`<br>`systems/RunStats.gd:92` | HIGH | sector: int, quality: String, damage: float, enemy_id: int |
+| `timing_ring_pressed` | `autoloads/EventBus.gd:89` | `scenes/combat/PlayerCombat.gd:285`<br>`scenes/combat/PlayerCombat.gd:321`<br>`scenes/combat/PlayerCombat.gd:355` | `scenes/combat/CombatScene.gd:1623` | `scenes/combat/CombatScene.gd:285` | HIGH | sector: int |
+| `ui_shake` | `autoloads/EventBus.gd:83` | `scenes/combat/BondedCompanion.gd:159`<br>`scenes/ui/CombatPerformanceHUD.gd:442`<br>`systems/CombatHUDPresenter.gd:344`<br>`systems/CombatPresentationRuntime.gd:599` | `scenes/combat/CombatScene.gd:1612` | `scenes/combat/CombatScene.gd:289` | HIGH | intensity: float, duration: float |
+| `ultimate_available` | `autoloads/EventBus.gd:155` | `systems/CombatMeter.gd:291` | `scenes/combat/CombatScene.gd:1600`<br>`scenes/ui/CombatPerformanceHUD.gd:81` | `scenes/combat/CombatScene.gd:258` | HIGH |  |
+| `ultimate_fired` | `autoloads/EventBus.gd:157` | `systems/CombatMeter.gd:109` | `autoloads/CombatFeedbackDirector.gd:31`<br>`scenes/combat/CombatScene.gd:1601`<br>`scenes/ui/CombatPerformanceHUD.gd:82`<br>`systems/PerformanceRewardDirector.gd:417`<br>`systems/RunGrowth.gd:65`<br>`systems/RunStats.gd:67` | `scenes/combat/CombatScene.gd:260`<br>`systems/PerformanceRewardDirector.gd:442`<br>`systems/RunGrowth.gd:90`<br>`systems/RunStats.gd:96` | HIGH | power: float |
+| `ultimate_power_granted` | `autoloads/EventBus.gd:159` | — | `scenes/combat/CombatScene.gd:1608` | `scenes/combat/CombatScene.gd:277` | MEDIUM | amount: float |
+| `vessel_shifted` | `autoloads/EventBus.gd:143` | `systems/VesselModifierDirector.gd:99` | `scenes/combat/CombatScene.gd:1522` | `scenes/combat/CombatScene.gd:270` | HIGH | class_data: Dictionary |
+| `world_fate_changed` | `autoloads/EventBus.gd:119` | `autoloads/GameState.gd:970` | — | — | MEDIUM | fate_snapshot: Dictionary |
+| `world_fate_shifted` | `autoloads/EventBus.gd:117` | `autoloads/GameState.gd:1060` | `systems/QuigNarrativeSystem.gd:35` | — | HIGH | new_fate_id: String, old_fate_id: String |
 
 ## Non-EventBus Signal References
 
@@ -89,78 +100,77 @@ Signal declarations found outside the EventBus autoload.
 
 | Signal | File | Line | Params |
 |---|---|---|---|
-| `accent_fired` | `systems/SongConductor.gd` | 8 | () |
-| `beat_pulse` | `systems/SongConductor.gd` | 6 | (beat_index: int, quality: String, intensity: float, song_time: float) |
-| `choice_resolved` | `systems/VictoryRewardDirector.gd` | 11 | (choice_id: String, creature_data: Dictionary) |
-| `continue_requested` | `scenes/ui/RunSpineScene.gd` | 5 | (advance_to_boss: bool) |
+| `accent_fired` | `systems/SongConductor.gd` | 9 | () |
+| `beat_pulse` | `systems/SongConductor.gd` | 7 | (beat_index: int, quality: String, intensity: float, song_time: float) |
+| `choice_resolved` | `systems/VictoryRewardDirector.gd` | 13 | (choice_id: String, creature_data: Dictionary) |
+| `continue_requested` | `scenes/ui/RunSpineScene.gd` | 6 | (advance_to_boss: bool) |
 | `drop_scheduled` | `systems/CombatRunDirector.gd` | 18 | (target_time: float) |
 | `ecology_state_changed` | `systems/EncounterEscalationDirector.gd` | 14 | (snapshot) |
 | `encounter_generated` | `examples/demo_encounter_stack/EncounterGenerator.gd` | 10 | (encounter_data: Dictionary) |
-| `enemy_contact` | `scenes/combat/MeleeApproach.gd` | 10 | (melee) |
-| `enemy_contact` | `scenes/combat/Projectile.gd` | 8 | (projectile) |
-| `event_completed` | `scenes/ui/EventScene.gd` | 3 | (outcome_payload: Dictionary) |
+| `enemy_contact` | `scenes/combat/ThreatBase.gd` | 11 | (threat: ThreatBase) |
+| `event_completed` | `scenes/ui/EventScene.gd` | 4 | (outcome_payload: Dictionary) |
 | `feedback_requested` | `systems/EncounterEscalationDirector.gd` | 13 | (text, color, duration) |
-| `feedback_requested` | `systems/SupportEffectResolver.gd` | 10 | (text, color, duration) |
-| `final_movement_reached` | `systems/SongConductor.gd` | 7 | () |
-| `flash_requested` | `systems/SupportEffectResolver.gd` | 11 | (color, duration) |
-| `growth_choice_selected` | `scenes/ui/GrowthChoiceIntersection.gd` | 3 | (choice_id: String) |
-| `heal_requested` | `systems/SupportEffectResolver.gd` | 13 | (amount) |
-| `highlight_ring_requested` | `systems/SupportEffectResolver.gd` | 16 | (lane, color, duration) |
+| `feedback_requested` | `systems/SupportEffectResolver.gd` | 11 | (text, color, duration) |
+| `final_movement_reached` | `systems/SongConductor.gd` | 8 | () |
+| `flash_requested` | `systems/SupportEffectResolver.gd` | 12 | (color, duration) |
+| `growth_choice_selected` | `scenes/ui/GrowthChoiceIntersection.gd` | 4 | (choice_id: String) |
+| `heal_requested` | `systems/SupportEffectResolver.gd` | 14 | (amount) |
+| `highlight_ring_requested` | `systems/SupportEffectResolver.gd` | 17 | (sector, color, duration) |
 | `impact_fx_requested` | `scenes/combat/CombatScene.gd` | 3 | (kind: StringName, world_pos: Vector2, direction: Vector2, scale_mult: float) |
-| `intervention_requested` | `systems/SupportEffectResolver.gd` | 12 | (species_id, lane, tint) |
+| `intervention_requested` | `systems/SupportEffectResolver.gd` | 13 | (species_id, sector, tint) |
 | `level_completed` | `systems/CombatRunDirector.gd` | 16 | (level_index: int) |
 | `level_started` | `systems/CombatRunDirector.gd` | 15 | (level_index: int, level_data: Dictionary) |
-| `management_action_requested` | `scenes/ui/RunSpineScene.gd` | 7 | (action_id: String, payload: Dictionary) |
-| `offer_ended` | `systems/PerformanceRewardDirector.gd` | 70 | () |
-| `offer_ended` | `systems/VictoryRewardDirector.gd` | 10 | () |
-| `offer_started` | `systems/PerformanceRewardDirector.gd` | 69 | (reward_data: Dictionary) |
-| `offer_started` | `systems/VictoryRewardDirector.gd` | 9 | (creature_data: Dictionary, is_live: bool, is_dna_locked: bool, timer: float) |
-| `path_node_selected` | `scenes/ui/RunSpineScene.gd` | 6 | (node_id: String) |
+| `management_action_requested` | `scenes/ui/RunSpineScene.gd` | 8 | (action_id: String, payload: Dictionary) |
+| `offer_ended` | `systems/PerformanceRewardDirector.gd` | 72 | () |
+| `offer_ended` | `systems/VictoryRewardDirector.gd` | 12 | () |
+| `offer_started` | `systems/PerformanceRewardDirector.gd` | 71 | (reward_data: Dictionary) |
+| `offer_started` | `systems/VictoryRewardDirector.gd` | 11 | (creature_data: Dictionary, is_live: bool, is_dna_locked: bool, timer: float) |
+| `path_node_selected` | `scenes/ui/RunSpineScene.gd` | 7 | (node_id: String) |
 | `phase_changed` | `systems/EncounterEscalationDirector.gd` | 11 | (index, phase_data) |
-| `player_contact` | `scenes/combat/MeleeApproach.gd` | 8 | (melee) |
-| `player_contact` | `scenes/combat/Projectile.gd` | 7 | (projectile) |
-| `predation_selected` | `scenes/ui/RunSpineScene.gd` | 4 | (index: int) |
-| `pressure_bias_changed` | `systems/PerformanceRewardDirector.gd` | 73 | (snapshot: Dictionary) |
-| `proc_feedback` | `systems/PerformanceRewardDirector.gd` | 72 | (text: String, color: Color) |
-| `queue_updated` | `systems/VictoryRewardDirector.gd` | 12 | (size: int) |
-| `reached_hit_zone` | `scenes/combat/MeleeApproach.gd` | 7 | (melee) |
-| `reached_hit_zone` | `scenes/combat/Projectile.gd` | 6 | (projectile) |
-| `resolved` | `scenes/combat/MeleeApproach.gd` | 11 | (melee, result: String) |
-| `resolved` | `scenes/combat/Projectile.gd` | 9 | (projectile, result: String) |
-| `reward_claimed` | `systems/PerformanceRewardDirector.gd` | 71 | (reward_data: Dictionary, source: String) |
+| `player_contact` | `scenes/combat/ThreatBase.gd` | 9 | (threat: ThreatBase) |
+| `predation_selected` | `scenes/ui/RunSpineScene.gd` | 5 | (index: int) |
+| `pressure_bias_changed` | `systems/PerformanceRewardDirector.gd` | 75 | (snapshot: Dictionary) |
+| `proc_feedback` | `systems/PerformanceRewardDirector.gd` | 74 | (text: String, color: Color) |
+| `queue_updated` | `systems/VictoryRewardDirector.gd` | 14 | (size: int) |
+| `reached_hit_zone` | `scenes/combat/ThreatBase.gd` | 8 | (threat: ThreatBase) |
+| `resolved` | `scenes/combat/ThreatBase.gd` | 12 | (threat: ThreatBase, result: String) |
+| `reward_claimed` | `systems/PerformanceRewardDirector.gd` | 73 | (reward_data: Dictionary, source: String) |
 | `run_completed` | `systems/CombatRunDirector.gd` | 19 | (success: bool) |
 | `run_started` | `systems/CombatRunDirector.gd` | 14 | (run_number: int) |
 | `score_changed` | `systems/RunStats.gd` | 18 | (score: int) |
-| `section_changed` | `systems/SongConductor.gd` | 5 | (section_id: String, data: Dictionary) |
-| `song_started` | `systems/SongConductor.gd` | 3 | (song_state: Dictionary) |
-| `spawn_requested` | `systems/EncounterEscalationDirector.gd` | 12 | (lane, enemy_data) |
-| `stamina_requested` | `systems/SupportEffectResolver.gd` | 14 | (amount) |
-| `state_changed` | `systems/PerformanceRewardDirector.gd` | 68 | () |
-| `support_charge_requested` | `systems/SupportEffectResolver.gd` | 15 | (amount) |
-| `transport_state_changed` | `systems/SongConductor.gd` | 4 | (is_running: bool, song_time: float) |
-| `upgrade_selected` | `scenes/ui/RunSpineScene.gd` | 3 | (index: int) |
+| `section_changed` | `systems/SongConductor.gd` | 6 | (section_id: String, data: Dictionary) |
+| `song_started` | `systems/SongConductor.gd` | 4 | (song_state: Dictionary) |
+| `spawn_requested` | `systems/EncounterEscalationDirector.gd` | 12 | (angle, enemy_data) |
+| `stamina_requested` | `systems/SupportEffectResolver.gd` | 15 | (amount) |
+| `state_changed` | `systems/PerformanceRewardDirector.gd` | 70 | () |
+| `support_charge_requested` | `systems/SupportEffectResolver.gd` | 16 | (amount) |
+| `transport_state_changed` | `systems/SongConductor.gd` | 5 | (is_running: bool, song_time: float) |
+| `upgrade_selected` | `scenes/ui/RunSpineScene.gd` | 4 | (index: int) |
 | `void_entered` | `systems/CombatRunDirector.gd` | 17 | () |
 
 ## Fragile Signal Contracts
 
-- **`bonded_support_triggered`** — 4 consumers (high fan-out). Changes affect many systems.
-- **`boss_outcome_resolved`** — 1 emitter(s), no consumers found. Signal may go unheard.
 - **`capture_offered`** — 3 emitter(s), no consumers found. Signal may go unheard.
 - **`combat_ended`** — 4 consumers (high fan-out). Changes affect many systems.
 - **`combat_started`** — 5 consumers (high fan-out). Changes affect many systems.
-- **`combo_changed`** — 4 consumers (high fan-out). Changes affect many systems.
-- **`creature_bonded`** — 6 consumers (high fan-out). Changes affect many systems.
-- **`creature_eaten`** — 7 consumers (high fan-out). Changes affect many systems.
+- **`creature_bonded`** — 5 consumers (high fan-out). Changes affect many systems.
+- **`creature_eaten`** — 5 consumers (high fan-out). Changes affect many systems.
+- **`creature_exp_changed`** — 1 emitter(s), no consumers found. Signal may go unheard.
+- **`creature_leveled_up`** — 1 emitter(s), no consumers found. Signal may go unheard.
+- **`enemy_bleed_changed`** — 1 emitter(s), no consumers found. Signal may go unheard.
 - **`enemy_defeated`** — 5 consumers (high fan-out). Changes affect many systems.
-- **`player_died`** — 1 emitter(s), no consumers found. Signal may go unheard.
+- **`enemy_ruptured`** — 2 emitter(s), no consumers found. Signal may go unheard.
+- **`enemy_status_applied_requested`** — 1 consumer(s), no emitters found. Consumer may never fire.
+- **`limit_breaker_triggered`** — 1 emitter(s), no consumers found. Signal may go unheard.
 - **`player_dodged`** — 4 consumers (high fan-out). Changes affect many systems.
-- **`player_parried`** — 7 consumers (high fan-out). Changes affect many systems.
-- **`player_took_damage`** — 5 consumers (high fan-out). Changes affect many systems.
+- **`player_parried`** — 8 consumers (high fan-out). Changes affect many systems.
+- **`player_teleported`** — 2 consumer(s), no emitters found. Consumer may never fire.
+- **`player_took_damage`** — 9 consumers (high fan-out). Changes affect many systems.
 - **`projectile_missed`** — 1 emitter(s), no consumers found. Signal may go unheard.
-- **`run_completed`** — 2 emitter(s), no consumers found. Signal may go unheard.
-- **`song_beat_pulse`** — 4 consumers (high fan-out). Changes affect many systems.
-- **`timed_attack_resolved`** — 7 consumers (high fan-out). Changes affect many systems.
+- **`song_beat_pulse`** — 5 consumers (high fan-out). Changes affect many systems.
+- **`timed_attack_resolved`** — 8 consumers (high fan-out). Changes affect many systems.
 - **`ultimate_fired`** — 6 consumers (high fan-out). Changes affect many systems.
+- **`ultimate_power_granted`** — 1 consumer(s), no emitters found. Consumer may never fire.
 - **`world_fate_changed`** — 1 emitter(s), no consumers found. Signal may go unheard.
 
 ## Curated Notes

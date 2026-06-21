@@ -3,3 +3,7 @@
 /android/
 /.godot-cli/
 .aider*
+
+# Python compiled files
+__pycache__/
+*.pyc

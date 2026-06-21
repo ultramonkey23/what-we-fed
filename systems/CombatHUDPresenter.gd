@@ -151,7 +151,7 @@ func bind_nodes(nodes: Dictionary) -> void:
 	# DNA HUD cluster
 	_dna_shell = nodes.get("dna_shell")
 	_dna_emblem = nodes.get("dna_emblem")
-	_dna_slot_labels = nodes.get("dna_slot_labels", [] as Array[Label])
+	_dna_slot_labels.assign(nodes.get("dna_slot_labels", []))
 	# Boss bar cluster
 	_boss_hp_shell = nodes.get("boss_hp_shell")
 	_boss_hp_bar = nodes.get("boss_hp_bar")

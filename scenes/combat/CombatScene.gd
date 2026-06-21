@@ -1360,7 +1360,7 @@ func _setup_visuals() -> void:
 	var refs: Dictionary = _ui_builder._presentation_controller.setup_visuals(
 		self,
 		background,
-		_ui_builder.flash_overlay,
+		$FlashOverlay,
 		_bg_sprite,
 		_battlefield_panel
 	)
@@ -1502,7 +1502,7 @@ func _setup_performance_rewards() -> void:
 	add_child(_performance_reward_director)
 
 	if _performance_reward_director.has_method("bind_runtime"):
-		_performance_reward_director.call("bind_runtime", _ui_builder.combat_meter, RunGrowth, RunStats)
+		_performance_reward_director.call("bind_runtime", $CombatMeter, RunGrowth, RunStats)
 		_performance_reward_director.set("offers_enabled", false)
 		if _performance_reward_director.has_method("sync_from_reward_state"):
 			_performance_reward_director.call("sync_from_reward_state")
@@ -1656,7 +1656,7 @@ func _setup_zone_manager() -> void:
 func _setup_player_combat() -> void:
 	# Keep player silhouette above timing sigil visuals for readability.
 	player_combat.z_index = 25
-	player_combat.setup(zone_manager, _ui_builder.combat_meter)
+	player_combat.setup(zone_manager, $CombatMeter)
 
 
 func _start_song_run() -> void:
@@ -4080,10 +4080,13 @@ func _spawn_damage_number(enemy_id: int, damage: float) -> void:
 		damage_color = Color(0.76, 0.70, 0.62, 0.82)
 
 	var start_pos: Vector2 = root.position + Vector2(8.0, -24.0 if font_size >= 25 else -18.0)
-	var lbl: Label
-	if _damage_number_pool.size() > 0:
-		lbl = _damage_number_pool.pop_back()
-	else:
+	var lbl: Label = null
+	while _damage_number_pool.size() > 0:
+		var candidate = _damage_number_pool.pop_back()
+		if is_instance_valid(candidate):
+			lbl = candidate
+			break
+	if lbl == null:
 		lbl = Label.new()
 		_enemy_marker_container.add_child(lbl)
 	

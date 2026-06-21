@@ -125,9 +125,10 @@ var IMPACT_FX_RUNTIME_SCENE: PackedScene:
 	get: return scene.IMPACT_FX_RUNTIME_SCENE
 
 func build_all() -> void:
+	ui_layer = scene.get_node("UI")
+	_ensure_hud_root()
+	_setup_ui()
 	_build_dna_shell()
-	_build_hud_containers()
-	_build_meter_shell()
 	_build_quig_anchor()
 	_build_song_hud()
 	_create_attack_fx_container()
@@ -138,8 +139,6 @@ func build_all() -> void:
 	_create_timing_circle_container()
 	_create_title_cards()
 	_create_upgrade_overlay()
-	_ensure_hud_root()
-	_setup_ui()
 
 func _ensure_hud_root() -> void:
 	if _hud_root != null and is_instance_valid(_hud_root):

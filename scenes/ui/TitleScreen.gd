@@ -19,7 +19,10 @@ func _ready() -> void:
 	UI_STYLE.apply_mythical_entrance(self)
 	# Defer enabling start-input slightly so any key held during scene transition
 	# does not immediately launch the run before the title has rendered.
-	await get_tree().create_timer(0.15).timeout
+	# Use frame waits instead of SceneTreeTimer to avoid shutdown-time timer leaks
+	# during headless validation/smoke runs.
+	await get_tree().process_frame
+	await get_tree().process_frame
 	_can_start = true
 
 func _unhandled_input(event: InputEvent) -> void:

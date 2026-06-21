@@ -13,6 +13,12 @@ The tone is **Kinetic Surrealism**. It is **Stylish, Detached, and Meta-Systemic
 - **Death Metal (The Apex)**: The raw, blast-beat aggression of death metal defines the most dangerous, high-intensity "Apex" encounters. It is the music of pure systemic domination.
 - **Underground Rap (The Steady)**: The lyrical precision and rhythmic swagger of underground rap drive the methodical, precision-focused "Steady" phases. It is the music of clinical systemic analysis.
 
+## Core Influence Vectors (Thematic Pillars)
+- **Solo Leveling (System-Lit Progression)**: The Vessel is a low-rank anomaly that undergoes a "systemic awakening" inside Intrusions. The Interface Wound tracks performance, ranks choices, and rejects invalid inputs with cold, gamified precision (rejections, telemetry, warning screens). The ultimate goal is to "Arise" as a Sovereign.
+- **Digimon (Chimeric Partner Bonds)**: Evolve and sync with companion lineages using harvested DNA. Evolve companions through silhouettes (Baby -> Teen -> Adult) based on tendencies they witness from the player (violence, parry frequency, rhythm).
+- **My Hero Academia (Ability/Quirk Grafting)**: Devour a lineage to absorb its biological quirk (absorbed traits) directly into the Vessel, changing gameplay physics parameters (reach, recovery speed, target limits) instead of flat stat increases.
+- **Ben 10 (Omnitrix Slot Matrix)**: Assign up to three partner lineages to the Slot Matrix in the Lair, letting the player summon and bind different forms dynamically during an intrusion.
+
 ---
 
 # 1. The Real Player Fantasy: The Personalized Predator

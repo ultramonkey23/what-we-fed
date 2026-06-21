@@ -99,6 +99,12 @@ var chain_bypass_available: bool = false
 var chain_bypass_timer: float = 0.0
 var combat_enabled: bool = true
 
+# --- Spliced Traits State Variables (Creator Influences) ---
+var _iron_shaper_beat_counter: int = 0
+var _iron_shaper_shield_active: bool = false
+var _prism_shifter_echo_active: bool = false
+var _hollow_heart_surge_beats_remaining: int = 0
+
 # Free Movement Tuning
 const MOVEMENT_SPEED: float = 240.0
 const MOVE_ACCELERATION: float = 1200.0
@@ -184,6 +190,48 @@ func _process(delta: float) -> void:
 			chain_bypass_timer = 0.0
 
 
+func _is_trait_spliced(trait_id: String) -> bool:
+	var active_creature: Dictionary = GameState.get_active_bonded_creature()
+	if not active_creature.is_empty():
+		var spliced: Array = Array(active_creature.get("spliced_traits", []))
+		if spliced.has(trait_id):
+			return true
+	for creature in CreatureState.roster:
+		var spliced: Array = Array(creature.get("spliced_traits", []))
+		if spliced.has(trait_id):
+			return true
+	return false
+
+
+func _apply_ashclaw_cleave(sector: int, base_damage: float) -> void:
+	if zone_manager == null:
+		return
+	var adjacent_1: int = posmod(sector - 1, zone_manager.THREAT_COUNT)
+	var adjacent_2: int = posmod(sector + 1, zone_manager.THREAT_COUNT)
+	var splash_damage: float = base_damage * 0.3
+	
+	var enemies: Dictionary = zone_manager.get_all_enemies()
+	for id in enemies.keys():
+		var enemy: Dictionary = enemies[id]
+		var enemy_lane: int = int(enemy.get("lane", -1))
+		if enemy_lane == adjacent_1 or enemy_lane == adjacent_2:
+			zone_manager.damage_enemy_by_id(id, splash_damage)
+			EventBus.emit_signal("proc_feedback_requested", "CLEAVE", Color(1.0, 0.25, 0.25, 1.0))
+
+
+func _trigger_static_weaver_pulse(sector: int) -> void:
+	EventBus.emit_signal("proc_feedback_requested", "STATIC PULSE", Color(0.4, 0.7, 1.0, 1.0))
+	EventBus.emit_signal("screen_flash", Color(0.4, 0.7, 1.0, 0.08), 0.08)
+	if zone_manager != null:
+		var enemies: Dictionary = zone_manager.get_all_enemies()
+		for id in enemies.keys():
+			var enemy: Dictionary = enemies[id]
+			var enemy_lane: int = int(enemy.get("lane", -1))
+			if enemy_lane == sector:
+				EventBus.emit_signal("enemy_attack_telegraph_cancelled", id)
+				zone_manager.damage_enemy_by_id(id, 2.0)
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	var action_type: String = _get_combat_action_from_event(event)
 	if action_type.is_empty():
@@ -229,6 +277,10 @@ func _set_active_focus_sector(sector: int, show_ring_feedback: bool = true) -> v
 	if active_focus_sector == sector:
 		return
 	active_focus_sector = sector
+	
+	if _is_trait_spliced("static_weaver_pulse"):
+		_trigger_static_weaver_pulse(active_focus_sector)
+
 	if show_ring_feedback:
 		EventBus.emit_signal("timing_ring_pressed", active_focus_sector)
 
@@ -244,6 +296,8 @@ func _get_combat_action_from_event(event: InputEvent) -> String:
 		return "ultimate"
 	if event.is_action_pressed("action_support"):
 		return "support"
+	if event.is_action_pressed("toggle_dna_route"):
+		return "cycle_support"
 	return ""
 
 
@@ -282,6 +336,9 @@ func _handle_combat_action(action_type: String) -> bool:
 		"ultimate":
 			_emit_input_report(action_type, current_aim_dir, true, false, "accepted")
 			_try_ultimate()
+		"cycle_support":
+			_emit_input_report(action_type, current_aim_dir, true, false, "accepted")
+			_cycle_support_companion()
 		_:
 			_emit_input_report(action_type, current_aim_dir, false, false, "unknown_action")
 			return false
@@ -854,6 +911,12 @@ func _grant_chain_bypass() -> void:
 
 func _lock_action(duration: float, state: String) -> void:
 	var nerve_mult: float = SOVEREIGN_DAMAGE_CALCULATOR.get_action_recovery_mult()
+	
+	if state == "dodge" and _is_trait_spliced("void_leech_drain"):
+		duration *= 1.25
+	elif state == "idle_attack" and _hollow_heart_surge_beats_remaining > 0:
+		duration *= 0.5
+		
 	action_lock_timer = max(duration * nerve_mult, 0.0)
 	current_action_state = state
 	
@@ -1061,10 +1124,34 @@ func _try_support_activation(target_sector: int) -> void:
 	EventBus.support_manual_activation_requested.emit(target_sector, beat)
 	
 	if beat == "perfect":
-		_flash_sprite_color(Color(1.0, 1.0, 1.0, 1.0), 0.12)
+		_flash_sprite_color(Color(1.0, 1.0, 1.2, 1.0), 0.12)
 		_lock_action(PERFECT_ATTACK_RECOVERY, "support")
 	else:
 		_lock_action(TIMED_ATTACK_RECOVERY, "support")
+
+
+func _cycle_support_companion() -> void:
+	var active_ids: Array = CreatureState.active_lair_creature_ids
+	if active_ids.size() <= 1:
+		EventBus.emit_signal("proc_feedback_requested", "MATRIX LOCKED", Color(1.0, 0.45, 0.45, 1.0))
+		return
+		
+	var cur_id: String = CreatureState.active_lair_creature_id
+	var cur_idx: int = active_ids.find(cur_id)
+	var next_idx: int = (cur_idx + 1) % active_ids.size()
+	var next_id: String = String(active_ids[next_idx])
+	
+	CreatureState.active_lair_creature_id = next_id
+	
+	var next_creature: Dictionary = GameState.get_bonded_creature(next_id)
+	var display_name: String = String(next_creature.get("display_name", next_id)).to_upper()
+	
+	EventBus.emit_signal("proc_feedback_requested", "SYNCING: " + display_name, Color(0.4, 0.8, 1.0, 1.0))
+	EventBus.emit_signal("screen_flash", Color(0.4, 0.8, 1.0, 0.12), 0.10)
+	
+	if RunGrowth.has_method("_emit_support_state"):
+		RunGrowth._emit_support_state()
+
 
 func _play_dodge_state_radial(target_pos: Vector2) -> void:
 	_apply_sprite_facing()
@@ -1135,10 +1222,22 @@ func _try_ultimate() -> void:
 func _idle_attack_on_target(target_data: Dictionary, combo_mult: float) -> void:
 	var target_sector: int = int(target_data.get("lane", -1))
 	var idle_damage: float = SOVEREIGN_DAMAGE_CALCULATOR.get_idle_attack_damage(combo_mult)
+	
+	if _prism_shifter_echo_active:
+		_prism_shifter_echo_active = false
+		idle_damage *= 1.5
+		EventBus.emit_signal("proc_feedback_requested", "ECHO DISCHARGE", Color(0.8, 0.9, 1.0, 1.0))
+
 	var enemy_id: int = int(target_data.get("ref", -1))
 	
 	if enemy_id != -1:
 		zone_manager.damage_enemy_by_id(enemy_id, idle_damage)
+		
+		if _is_trait_spliced("void_leech_drain"):
+			var heal_amt: float = idle_damage * 0.05
+			PlayerState.hp = minf(PlayerState.hp + heal_amt, PlayerState.max_hp)
+			EventBus.emit_signal("player_healed", heal_amt)
+
 		# Trigger spectacular feedback using the newly optimized runtime
 		var impact_profile: Dictionary = {
 			"shake_intensity": 1.15,
@@ -1212,6 +1311,12 @@ func _resolve_timed_attack(projectile: ThreatBase, combo_mult: float, quality: S
 		_sum_bond_passive("timed_damage_flat"),
 		mutation_bonus
 	)
+	
+	if _prism_shifter_echo_active:
+		_prism_shifter_echo_active = false
+		timed_damage *= 1.5
+		EventBus.emit_signal("proc_feedback_requested", "ECHO DISCHARGE", Color(0.8, 0.9, 1.0, 1.0))
+
 	var recovery: float = TIMED_ATTACK_RECOVERY
 
 	var target_sector: int = projectile.lane
@@ -1221,6 +1326,16 @@ func _resolve_timed_attack(projectile: ThreatBase, combo_mult: float, quality: S
 	
 	if target_enemy_id != -1:
 		zone_manager.damage_enemy_by_id(target_enemy_id, timed_damage)
+		
+		if quality == "perfect" and _is_trait_spliced("venomous_sting_v22"):
+			zone_manager.apply_status_by_id(target_enemy_id, "venom")
+
+	if quality == "perfect" and target_sector == 2 and _is_trait_spliced("ashclaw_cleave"):
+		_apply_ashclaw_cleave(target_sector, timed_damage)
+
+	if quality == "perfect" and _is_trait_spliced("prism_shifter_echo"):
+		_prism_shifter_echo_active = true
+		EventBus.emit_signal("proc_feedback_requested", "ECHO CHARGED", Color(0.8, 0.9, 1.0, 1.0))
 
 	combat_meter.record_timed_attack()
 	combat_meter.record_phrase_action(quality)
@@ -1359,12 +1474,22 @@ func _play_counter_warp_state() -> void:
 
 
 func _take_damage(amount: float, source_sector: int) -> void:
+	if _iron_shaper_shield_active:
+		_iron_shaper_shield_active = false
+		EventBus.emit_signal("proc_feedback_requested", "SHIELD ABSORBED", Color(0.7, 0.8, 1.0, 1.0))
+		EventBus.emit_signal("screen_flash", Color(0.7, 0.8, 1.0, 0.15), 0.1)
+		return
+
 	if dodge_invuln_timer > 0.0:
 		EventBus.emit_signal("proc_feedback_requested", "DODGED", Color(0.24, 0.78, 1.0, 1.0))
 		return
 
 	_play_hit_state(source_sector)
 	_show_hurt_image()
+
+	if _is_trait_spliced("hollow_heart_surge"):
+		_hollow_heart_surge_beats_remaining = 3
+		EventBus.emit_signal("proc_feedback_requested", "EMOTIONAL SURGE", Color(1.0, 0.3, 0.3, 1.0))
 
 	var surge_dr: float = 0.0
 	var effect: Dictionary = Dictionary(RunGrowth.get_runtime_effect("guard_damage_reduction"))
@@ -1605,6 +1730,17 @@ func _on_song_beat_pulse(_beat_index: int, intensity: float, _quality: String) -
 	var base_vel = mat.initial_velocity_max
 	tween.parallel().tween_property(mat, "initial_velocity_max", base_vel * 1.4, 0.05)
 	tween.tween_property(mat, "initial_velocity_max", base_vel, 0.15)
+
+	if _is_trait_spliced("iron_shaper_plating"):
+		_iron_shaper_beat_counter += 1
+		if _iron_shaper_beat_counter >= 4:
+			_iron_shaper_beat_counter = 0
+			if not _iron_shaper_shield_active:
+				_iron_shaper_shield_active = true
+				EventBus.emit_signal("proc_feedback_requested", "SHIELD READY", Color(0.7, 0.8, 1.0, 1.0))
+
+	if _hollow_heart_surge_beats_remaining > 0:
+		_hollow_heart_surge_beats_remaining -= 1
 
 
 func _on_combo_changed(_count: int, tier: String) -> void:

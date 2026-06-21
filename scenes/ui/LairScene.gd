@@ -33,6 +33,7 @@ var _hub_name: Label
 var _hub_identity: Label
 var _hub_support: Label
 var _hub_bond_pot: Label
+var _hub_grafted: Label
 var _hub_dna_stat: Label
 var _hub_detail_scroll: ScrollContainer
 var _hub_detail_box: VBoxContainer
@@ -190,6 +191,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			if GameState.calibrate_lair_creature(species_id):
 				_play_feedback("CALIBRATION DEEPENED")
 				_refresh_lair_after_progression()
+				_jitter_intensity = 5.0
 			else:
 				_play_feedback(_calibration_status_line(species_id, Dictionary(lair[_selected_index])))
 			get_viewport().set_input_as_handled()
@@ -201,6 +203,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			if GameState.request_lair_bond_rite(species_id):
 				_play_feedback("SEQUENCE RITE SEALED")
 				_refresh_lair_after_progression()
+				_jitter_intensity = 9.0
 			else:
 				_play_feedback(_bond_rite_status_line(species_id, Dictionary(lair[_selected_index])))
 			get_viewport().set_input_as_handled()
@@ -212,6 +215,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			if GameState.request_ascension(species_id):
 				_play_feedback("SOVEREIGN REWRITE COMPLETE")
 				_refresh_lair_after_progression()
+				_jitter_intensity = 16.0
 			else:
 				_play_feedback(_ascension_status_line(species_id))
 			get_viewport().set_input_as_handled()
@@ -402,6 +406,7 @@ func _clear_hub_refs() -> void:
 	_hub_identity = null
 	_hub_support = null
 	_hub_bond_pot = null
+	_hub_grafted = null
 	_hub_dna_stat = null
 	_hub_detail_scroll = null
 	_hub_detail_box = null
@@ -585,6 +590,13 @@ func _build_den_sidebar(canvas: CanvasLayer, lair: Array) -> void:
 		UI_STYLE.apply_label(_hub_bond_pot, "mm_stat_secondary")
 		_hub_bond_pot.add_theme_font_size_override("font_size", 16)
 		_hub_detail_box.add_child(_hub_bond_pot)
+
+		_hub_grafted = Label.new()
+		_hub_grafted.custom_minimum_size = Vector2(SIDEBAR_W - 52.0, 48.0)
+		_hub_grafted.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		UI_STYLE.apply_label(_hub_grafted, "mm_stat_secondary")
+		_hub_grafted.add_theme_font_size_override("font_size", 15)
+		_hub_detail_box.add_child(_hub_grafted)
 
 	_lair_action_primary = Label.new()
 	_lair_action_primary.position = Vector2(SIDEBAR_X + 18.0, 508.0)
@@ -844,8 +856,14 @@ func _build_creature_card(canvas: CanvasLayer, creature: Dictionary, index: int,
 	var creature_level: int = int(creature.get("creature_level", 1))
 	var level_stats: Dictionary = GameState.get_creature_level_stats_readout(species_id, creature_level)
 	var potential_label: String = _get_potential_label_for_species(species_id)
+	
+	var is_ascended: bool = bool(creature.get("is_ascended", false))
+	var growth_stage: String = GameState.get_creature_growth_stage(bond_level).to_upper()
+	var stage_name: String = "SOVEREIGN" if is_ascended else (growth_stage + " FORM")
+	
 	var bl_label: Label = Label.new()
-	bl_label.text = "Sequence %d  ·  Calibration %d/%d  ·  Potential %s" % [
+	bl_label.text = "[%s]  Sequence %d  ·  Calibration %d/%d  ·  Potential %s" % [
+		stage_name,
 		bond_level,
 		creature_level,
 		int(level_stats.get("cap", creature_level)),
@@ -1012,6 +1030,8 @@ func _refresh_active_support_panel() -> void:
 		_hub_dna_stat.visible = has
 		_hub_support.visible = has
 		_hub_bond_pot.visible = has
+		if _hub_grafted != null:
+			_hub_grafted.visible = has
 	
 	_lair_action_primary.visible = has
 	_lair_action_status.visible = has
@@ -1056,6 +1076,25 @@ func _refresh_active_support_panel() -> void:
 		
 		var is_ascended = bool(c.get("is_ascended", false))
 		var bond_text: String = "Sequence %d %s · Potential %s\n" % [bond_level, "[ASCENDED]" if is_ascended else "", pot]
+		
+		# DNA EVOLUTION MATRIX (Digimon Silhouette concept)
+		var evo_line: String = "Evo: [BABY]"
+		if bond_level >= 2:
+			evo_line += " -> [TEEN]"
+		else:
+			evo_line += " -> [TEEN: ░░░░░░]"
+			
+		if bond_level >= 4:
+			evo_line += " -> [ADULT]"
+		else:
+			evo_line += " -> [ADULT: ░░░░░░]"
+			
+		if is_ascended:
+			evo_line += " -> [SOVEREIGN]"
+		else:
+			evo_line += " -> [SOVEREIGN: ░░░░░░]"
+		bond_text += evo_line + "\n"
+		
 		bond_text += "Rite +%d%% · Calibration +%d%%\n" % [cur_pct, handling_pct]
 		if not bool(level_stats.get("is_max", false)):
 			bond_text += "Next calibration +%d%%" % next_handling_pct
@@ -1069,6 +1108,21 @@ func _refresh_active_support_panel() -> void:
 		
 		_hub_bond_pot.text = bond_text
 		_fit_label_to_bounds(_hub_bond_pot)
+		
+		var spliced: Array = Array(c.get("spliced_traits", []))
+		var grafted_text: String = "GRAFTED QUIRKS:\n"
+		if not spliced.is_empty():
+			var trait_names: Array = []
+			for t_id in spliced:
+				var t_data = CREATURE_TRAITS.get_trait(t_id)
+				var t_name: String = String(t_data.get("display_name", t_id))
+				trait_names.append("- " + t_name)
+			grafted_text += "\n".join(trait_names)
+		else:
+			grafted_text += "- [EMPTY MATRIX SLOT]"
+		
+		_hub_grafted.text = grafted_text
+		_fit_label_to_bounds(_hub_grafted)
 	
 	var player_dna_actual = GameState.get_dna(species_id)
 	if _archive_mode:

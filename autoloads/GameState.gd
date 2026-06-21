@@ -677,6 +677,12 @@ func is_beat_active() -> bool:
 # --- DNA & Roster ---
 
 func get_active_bonded_creature() -> Dictionary:
+	var active_id: String = creatures.active_lair_creature_id
+	if not active_id.is_empty():
+		for creature in creatures.roster:
+			if String(creature.get("species_id", "")) == active_id:
+				return creature
+	
 	var best_creature: Dictionary = {}
 	var best_bond: int = -1
 	var best_order: int = -1

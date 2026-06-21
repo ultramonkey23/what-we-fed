@@ -354,19 +354,27 @@ func evaluate_proximity_timing(attacker_pos: Vector2) -> String:
 
 
 func _process_incoming_song_synced(delta: float) -> void:
+	var speed_modifier: float = 1.0
+	if player_ref != null and is_instance_valid(player_ref) and player_ref.has_method("_is_trait_spliced"):
+		if player_ref._is_trait_spliced("swamp_drifter_slow"):
+			var focus_sector = player_ref.get_active_focus_sector()
+			if focus_sector != 2 and focus_sector != 6:
+				speed_modifier = 0.85
+
 	if conductor_ref != null and target_beat_time > 0.0:
 		# ABSOLUTE SONG SYNC: 
 		# Move the projectile based on the current song position vs its fire/target time.
 		var song_now: float = conductor_ref.get_song_time()
 		var total_flight_duration: float = target_beat_time - fire_song_time
 		if total_flight_duration > 0.0:
+			total_flight_duration /= speed_modifier
 			progress = (song_now - fire_song_time) / total_flight_duration
 		else:
 			progress = 1.0
 	else:
 		# Fallback to speed-based delta movement if not in song mode or missing conductor.
 		if _total_distance > 0.0:
-			progress += (speed * delta) / _total_distance
+			progress += (speed * speed_modifier * delta) / _total_distance
 		else:
 			progress = 1.0
 

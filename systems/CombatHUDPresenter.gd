@@ -76,6 +76,12 @@ var _boss_state_label: Label
 var _song_timer_label: Label
 var _song_phase_label: Label
 
+# --- Solo Leveling warning alerts ---
+var _system_alert_label: Label = null
+var _system_alert_tween: Tween = null
+var _last_hp_alert_time_ms: int = 0
+var _last_bleed_alert_time_ms: int = 0
+
 # ── HUD value caches (skip label rewrites when value didn't change) ───────────
 var _cache_hp: int = -1
 var _cache_hp_max: int = -1
@@ -161,6 +167,20 @@ func bind_nodes(nodes: Dictionary) -> void:
 	_song_timer_label = nodes.get("song_timer_label")
 	_song_phase_label = nodes.get("song_phase_label")
 
+	# Dynamic warning banner creation
+	if _combo_label != null and _combo_label.get_parent() != null and _system_alert_label == null:
+		_system_alert_label = Label.new()
+		_system_alert_label.name = "SystemWarningAlertLabel"
+		_system_alert_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_system_alert_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		_system_alert_label.position = Vector2(0.0, 96.0) # top center area
+		_system_alert_label.size = Vector2(1280.0, 40.0)
+		_system_alert_label.visible = false
+		if _ui_style != null:
+			_ui_style.apply_label(_system_alert_label, "mm_choice_consume")
+		_system_alert_label.add_theme_font_size_override("font_size", 20)
+		_combo_label.get_parent().add_child(_system_alert_label)
+
 	if not EventBus.combat_started.is_connected(_on_combat_started):
 		EventBus.combat_started.connect(_on_combat_started)
 	if not EventBus.player_teleported.is_connected(_on_player_teleported):
@@ -183,6 +203,9 @@ func cleanup() -> void:
 	if _beat_feedback_tween != null and is_instance_valid(_beat_feedback_tween):
 		_beat_feedback_tween.kill()
 	_beat_feedback_tween = null
+	if _system_alert_tween != null and is_instance_valid(_system_alert_tween):
+		_system_alert_tween.kill()
+	_system_alert_tween = null
 	if EventBus.combat_started.is_connected(_on_combat_started):
 		EventBus.combat_started.disconnect(_on_combat_started)
 	if EventBus.player_teleported.is_connected(_on_player_teleported):
@@ -227,6 +250,17 @@ func refresh_hp(hp: float, max_hp: float) -> void:
 	_cache_hp = hp_i
 	_cache_hp_max = max_i
 	_cache_hp_bleed = stacks
+
+	if hp_i > 0 and max_i > 0 and float(hp_i) / float(max_i) <= 0.30:
+		var now_ms: int = Time.get_ticks_msec()
+		if now_ms - _last_hp_alert_time_ms > 8000:
+			_last_hp_alert_time_ms = now_ms
+			show_system_alert("Vessel stability critical - low health", Color(1.0, 0.2, 0.2, 1.0), 2.0)
+	elif stacks >= 3:
+		var now_ms: int = Time.get_ticks_msec()
+		if now_ms - _last_bleed_alert_time_ms > 8000:
+			_last_bleed_alert_time_ms = now_ms
+			show_system_alert("Critical bleed - ink leakage detected", Color(1.0, 0.45, 0.2, 1.0), 2.0)
 
 	if _hp_bar != null:
 		_hp_bar.max_value = max_hp
@@ -801,6 +835,7 @@ func setup_boss_bar(total_hp: float, boss_name: String, state_text: String) -> v
 	if _boss_state_label != null:
 		_boss_state_label.text = state_text
 	show_boss_bar()
+	show_system_alert("Apex sovereign presence detected - law rewritten", Color(1.0, 0.1, 0.1, 1.0), 3.0)
 
 
 func update_boss_hp(current: float) -> void:
@@ -1075,3 +1110,23 @@ func _bond_identity_tag(passive_type: String) -> String:
 			return "[RHYTHM]"
 		_:
 			return ""
+
+
+func show_system_alert(text: String, color: Color = Color(1.0, 0.25, 0.25, 1.0), duration: float = 2.0) -> void:
+	if _system_alert_label == null:
+		return
+	if _system_alert_tween != null and is_instance_valid(_system_alert_tween):
+		_system_alert_tween.kill()
+		
+	_system_alert_label.text = "[SYSTEM ALERT: " + text.to_upper() + "]"
+	_system_alert_label.modulate = color
+	_system_alert_label.visible = true
+	_system_alert_label.modulate.a = 1.0
+	
+	_system_alert_tween = _system_alert_label.create_tween()
+	var cycles: int = int(duration * 2.5)
+	for i in range(cycles):
+		_system_alert_tween.tween_property(_system_alert_label, "modulate:a", 0.15, 0.20)
+		_system_alert_tween.tween_property(_system_alert_label, "modulate:a", 1.0, 0.20)
+	_system_alert_tween.tween_property(_system_alert_label, "modulate:a", 0.0, 0.30)
+	_system_alert_tween.tween_callback(func(): _system_alert_label.visible = false)

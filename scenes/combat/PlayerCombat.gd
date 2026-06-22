@@ -370,7 +370,7 @@ func _get_immediate_rejection_reason(action_type: String) -> String:
 		"ultimate":
 			if not combat_meter.is_ultimate_available():
 				return "no_charge"
-		"attack":
+		"attack", "support", "cycle_support":
 			pass
 		_:
 			return "unknown_action"

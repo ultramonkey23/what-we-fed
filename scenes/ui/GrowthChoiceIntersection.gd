@@ -7,6 +7,7 @@ const UI_STYLE = preload("res://systems/UIStyle.gd")
 const COMBAT_DATA = preload("res://data/CombatContent.gd")
 const GROWTH_STATS = preload("res://data/GrowthStats.gd")
 const PRESENTATION_TEXT = preload("res://data/PresentationTextContent.gd")
+const INPUT_HELPER = preload("res://systems/InputHelper.gd")
 
 var _canvas: CanvasLayer = null
 var _panel: ColorRect = null
@@ -26,6 +27,9 @@ var _bond_enabled: bool = true
 var _eat_enabled: bool = true
 var _growth_stats_ref: GrowthStats = GROWTH_STATS.new()
 
+var _current_creature: Dictionary = {}
+var _current_perf: Dictionary = {}
+
 
 func _ready() -> void:
 	_build_ui()
@@ -38,8 +42,8 @@ func present() -> void:
 		hide_surface()
 		return
 
-	var creature: Dictionary = Dictionary(payload.get("creature", {}))
-	var perf: Dictionary = Dictionary(payload.get("performance", {}))
+	_current_creature = Dictionary(payload.get("creature", {}))
+	_current_perf = Dictionary(payload.get("performance", {}))
 	_fail_safe_pass_allowed = bool(payload.get("fail_safe_pass_allowed", false))
 	_choice_locked = false
 
@@ -48,7 +52,7 @@ func present() -> void:
 	if not _bond_enabled and not _eat_enabled:
 		_fail_safe_pass_allowed = true
 
-	var species_id: String = String(creature.get("species_id", ""))
+	var species_id: String = String(_current_creature.get("species_id", ""))
 	var path: String = "res://assets/sprites/silhouettes/" + species_id
 	var bonded: Dictionary = GameState.get_bonded_creature(species_id)
 	var creature_level: int = int(bonded.get("creature_level", 1))
@@ -74,18 +78,24 @@ func present() -> void:
 		else:
 			_silhouette_rect.visible = false
 
-	_header_label.text = "GROWTH INTERSECTION"
-	_subtitle_label.text = "Bond or consume. Decide what this hunt means."
-	_summary_label.text = _build_summary_text(perf)
-	_creature_label.text = _build_creature_line(creature)
-	_bond_label.text = _build_bond_line(creature)
-	_eat_label.text = _build_eat_line(creature)
-	_stat_preview_label.text = _build_stat_preview(creature)
-	_hint_label.text = _build_hint_text()
+	_refresh_ui_texts()
 
 	visible = true
 	if _canvas != null:
 		_canvas.visible = true
+
+
+func _refresh_ui_texts() -> void:
+	if _current_creature.is_empty():
+		return
+	_header_label.text = "GROWTH INTERSECTION"
+	_subtitle_label.text = "Bond or consume. Decide what this hunt means."
+	_summary_label.text = _build_summary_text(_current_perf)
+	_creature_label.text = _build_creature_line(_current_creature)
+	_bond_label.text = _build_bond_line(_current_creature)
+	_eat_label.text = _build_eat_line(_current_creature)
+	_stat_preview_label.text = _build_stat_preview(_current_creature)
+	_hint_label.text = _build_hint_text()
 
 
 func hide_surface() -> void:
@@ -98,28 +108,56 @@ func hide_surface() -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if not visible or _choice_locked:
 		return
-	if not (event is InputEventKey):
-		return
-	var key_event: InputEventKey = event
-	if not key_event.pressed or key_event.echo:
-		return
 
-	if key_event.keycode == KEY_B and _bond_enabled:
-		_choice_locked = true
-		emit_signal("growth_choice_selected", "bond")
-		get_viewport().set_input_as_handled()
-		return
+	var was_joypad = INPUT_HELPER.is_joypad()
+	INPUT_HELPER.mark_device_from_event(event)
+	if was_joypad != INPUT_HELPER.is_joypad():
+		_refresh_ui_texts()
 
-	if key_event.keycode == KEY_E and _eat_enabled:
-		_choice_locked = true
-		emit_signal("growth_choice_selected", "eat")
-		get_viewport().set_input_as_handled()
-		return
+	if event is InputEventJoypadButton and event.pressed:
+		var joy_btn = event as InputEventJoypadButton
+		
+		# A Button (0) - Bond
+		if joy_btn.button_index == JOY_BUTTON_A and _bond_enabled:
+			_choice_locked = true
+			emit_signal("growth_choice_selected", "bond")
+			get_viewport().set_input_as_handled()
+			return
+			
+		# X Button (2) - Eat
+		if joy_btn.button_index == JOY_BUTTON_X and _eat_enabled:
+			_choice_locked = true
+			emit_signal("growth_choice_selected", "eat")
+			get_viewport().set_input_as_handled()
+			return
+			
+		# B Button (1) - Pass
+		if joy_btn.button_index == JOY_BUTTON_B and _fail_safe_pass_allowed:
+			_choice_locked = true
+			emit_signal("growth_choice_selected", "pass")
+			get_viewport().set_input_as_handled()
+			return
 
-	if key_event.keycode == KEY_N and _fail_safe_pass_allowed:
-		_choice_locked = true
-		emit_signal("growth_choice_selected", "pass")
-		get_viewport().set_input_as_handled()
+	if event is InputEventKey:
+		var key_event = event as InputEventKey
+		if key_event.pressed and not key_event.echo:
+			if key_event.keycode == KEY_B and _bond_enabled:
+				_choice_locked = true
+				emit_signal("growth_choice_selected", "bond")
+				get_viewport().set_input_as_handled()
+				return
+
+			if key_event.keycode == KEY_E and _eat_enabled:
+				_choice_locked = true
+				emit_signal("growth_choice_selected", "eat")
+				get_viewport().set_input_as_handled()
+				return
+
+			if key_event.keycode == KEY_N and _fail_safe_pass_allowed:
+				_choice_locked = true
+				emit_signal("growth_choice_selected", "pass")
+				get_viewport().set_input_as_handled()
+				return
 
 
 func _build_ui() -> void:
@@ -227,7 +265,8 @@ func _build_creature_line(creature: Dictionary) -> String:
 
 
 func _build_bond_line(creature: Dictionary) -> String:
-	var bond_text: String = "BOND [B]\n"
+	var bond_btn: String = "[A BUTTON]" if INPUT_HELPER.is_joypad() else "[B]"
+	var bond_text: String = "BOND " + bond_btn + "\n"
 	var species_id: String = String(creature.get("species_id", ""))
 
 	if not _bond_enabled:
@@ -246,7 +285,8 @@ func _build_bond_line(creature: Dictionary) -> String:
 
 
 func _build_eat_line(creature: Dictionary) -> String:
-	var eat_text: String = "EAT [E]\n"
+	var eat_btn: String = "[X BUTTON]" if INPUT_HELPER.is_joypad() else "[E]"
+	var eat_text: String = "EAT " + eat_btn + "\n"
 	if not _eat_enabled:
 		return eat_text + "Unavailable"
 
@@ -285,10 +325,16 @@ func _build_stat_preview(creature: Dictionary) -> String:
 
 
 func _build_hint_text() -> String:
+	var is_pad: bool = INPUT_HELPER.is_joypad()
+	var btn_bond: String = "A Button" if is_pad else "B"
+	var btn_eat: String = "X Button" if is_pad else "E"
+	var btn_pass: String = "B Button" if is_pad else "N"
+
 	if _bond_enabled and _eat_enabled:
-		return "B - Bond    |    E - Eat"
+		return btn_bond + " - Bond    |    " + btn_eat + " - Eat"
 	if _eat_enabled:
-		return "B locked by DNA    |    E - Eat    |    N - Pass"
+		var bond_lock_label = "A Button locked by DNA" if is_pad else "B locked by DNA"
+		return bond_lock_label + "    |    " + btn_eat + " - Eat    |    " + btn_pass + " - Pass"
 	if _fail_safe_pass_allowed:
-		return "N - Fail-safe pass (no valid DNA spend path)"
+		return btn_pass + " - Fail-safe pass (no valid DNA spend path)"
 	return "Awaiting valid growth choice"

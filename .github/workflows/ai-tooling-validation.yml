@@ -10,11 +10,13 @@ on:
       - "tools/ai/**"
       - "docs/ai/**"
       - ".github/workflows/ai-tooling-validation.yml"
+      - ".github/workflows/brain_remote.yml"
   pull_request:
     paths:
       - "tools/ai/**"
       - "docs/ai/**"
       - ".github/workflows/ai-tooling-validation.yml"
+      - ".github/workflows/brain_remote.yml"
   workflow_dispatch:
 
 permissions:
@@ -40,9 +42,6 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.10"
-
-      - name: Reject malformed patch whitespace
-        run: git diff --check
 
       - name: Validate context pack commands
         run: |

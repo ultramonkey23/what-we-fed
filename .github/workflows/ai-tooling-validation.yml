@@ -1,0 +1,83 @@
+name: AI Tooling Validation
+
+# One ordered validation lane for the context-pack, prompt-lint, and report-score
+# tools. This replaces two workflows that both checked out Python and fired on
+# the same docs/ai changes.
+
+on:
+  push:
+    paths:
+      - "tools/ai/**"
+      - "docs/ai/**"
+      - ".github/workflows/ai-tooling-validation.yml"
+  pull_request:
+    paths:
+      - "tools/ai/**"
+      - "docs/ai/**"
+      - ".github/workflows/ai-tooling-validation.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ai-tooling-validation-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  validate-ai-tools:
+    name: Validate AI context and report tools
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Python 3.10 compatibility floor
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Reject malformed patch whitespace
+        run: git diff --check
+
+      - name: Validate context pack commands
+        run: |
+          set -euo pipefail
+          python tools/ai/build_context_pack.py --help
+          python tools/ai/build_context_pack.py --mode kernel
+          python tools/ai/build_context_pack.py --mode implementation
+          python tools/ai/build_context_pack.py --mode lockbox
+
+      - name: Validate prompt linter help and fixtures
+        shell: bash
+        run: |
+          set -euo pipefail
+          python tools/ai/lint_agent_prompt.py --help
+
+          good="docs/ai/examples/_sample_prompt_good.txt"
+          bad="docs/ai/examples/_sample_prompt_bad.txt"
+          test -f "$good" || { echo "::error::Missing good prompt fixture: $good"; exit 1; }
+          test -f "$bad" || { echo "::error::Missing bad prompt fixture: $bad"; exit 1; }
+
+          set +e
+          python tools/ai/lint_agent_prompt.py "$good"
+          good_status=$?
+          python tools/ai/lint_agent_prompt.py "$bad"
+          bad_status=$?
+          set -e
+
+          if [ "$good_status" -ne 0 ] && [ "$good_status" -ne 1 ]; then
+            echo "::error::Good fixture expected PASS/WARN (0/1), got $good_status."
+            exit 1
+          fi
+          if [ "$bad_status" -ne 2 ]; then
+            echo "::error::Bad fixture expected FAIL (2), got $bad_status."
+            exit 1
+          fi
+
+      - name: Validate report scorer fixtures
+        run: python tools/ai/validate_report_scorer.py

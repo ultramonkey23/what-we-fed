@@ -1,8 +1,8 @@
-name: AI Tooling Validation
+name: AI Doctrine and Report Validation
 
-# One ordered validation lane for the context-pack, prompt-lint, and report-score
-# tools. This replaces two workflows that both checked out Python and fired on
-# the same docs/ai changes.
+# One ordered validation lane for the AI doctrine scanners and report scorer.
+# It replaces two stale workflows whose context-pack and prompt-lint commands no
+# longer exist on the current repository tree.
 
 on:
   push:
@@ -28,7 +28,7 @@ concurrency:
 
 jobs:
   validate-ai-tools:
-    name: Validate AI context and report tools
+    name: Validate active doctrine and report scoring
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -43,40 +43,32 @@ jobs:
         with:
           python-version: "3.10"
 
-      - name: Validate context pack commands
+      - name: Compile current AI validation tools
         run: |
-          set -euo pipefail
-          python tools/ai/build_context_pack.py --help
-          python tools/ai/build_context_pack.py --mode kernel
-          python tools/ai/build_context_pack.py --mode implementation
-          python tools/ai/build_context_pack.py --mode lockbox
+          python -m py_compile \
+            tools/ai/check_soul_integrity.py \
+            tools/ai/check_active_ai_doctrine.py \
+            tools/ai/validate_soul.py \
+            tools/ai/score_agent_report.py \
+            tools/ai/validate_report_scorer.py
 
-      - name: Validate prompt linter help and fixtures
+      - name: Check active AI doctrine
         shell: bash
         run: |
-          set -euo pipefail
-          python tools/ai/lint_agent_prompt.py --help
-
-          good="docs/ai/examples/_sample_prompt_good.txt"
-          bad="docs/ai/examples/_sample_prompt_bad.txt"
-          test -f "$good" || { echo "::error::Missing good prompt fixture: $good"; exit 1; }
-          test -f "$bad" || { echo "::error::Missing bad prompt fixture: $bad"; exit 1; }
-
           set +e
-          python tools/ai/lint_agent_prompt.py "$good"
-          good_status=$?
-          python tools/ai/lint_agent_prompt.py "$bad"
-          bad_status=$?
+          python tools/ai/check_active_ai_doctrine.py
+          status=$?
           set -e
 
-          if [ "$good_status" -ne 0 ] && [ "$good_status" -ne 1 ]; then
-            echo "::error::Good fixture expected PASS/WARN (0/1), got $good_status."
-            exit 1
+          if [ "$status" -eq 0 ]; then
+            exit 0
           fi
-          if [ "$bad_status" -ne 2 ]; then
-            echo "::error::Bad fixture expected FAIL (2), got $bad_status."
-            exit 1
+          if [ "$status" -eq 1 ]; then
+            echo "::warning::Active doctrine checker reported non-fatal drift warnings."
+            exit 0
           fi
+          echo "::error::Active doctrine checker reported hard violations."
+          exit "$status"
 
-      - name: Validate report scorer fixtures
+      - name: Validate report scorer fixture contract
         run: python tools/ai/validate_report_scorer.py

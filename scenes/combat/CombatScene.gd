@@ -4247,7 +4247,7 @@ func _process_dna_award(defeated_enemy: Dictionary) -> void:
 	_show_dna_feedback(dna_species, dna_amount, dna_result)
 
 
-func _show_dna_feedback(species_id: String, _amount: float, result: Dictionary) -> void:
+func _show_dna_feedback(species_id: String, amount: float, result: Dictionary) -> void:
 	var dna_name: String = str(COMBAT_CONTENT.get_creature(species_id).get("display_name", species_id)).to_upper()
 	if bool(result.get("auto_bonded", false)):
 		return
@@ -4261,14 +4261,14 @@ func _show_dna_feedback(species_id: String, _amount: float, result: Dictionary) 
 		else:
 			_show_beat_feedback("%s DNA" % dna_name, dna_color)
 		
-		_show_feedback("+%s DNA" % dna_name, Color(0.62, 0.96, 0.78, 1.0), 0.22)
+		_show_feedback("+%.1f %s DNA" % [amount, dna_name], Color(0.62, 0.96, 0.78, 1.0), 0.22)
 		_maybe_show_dna_pickup_flavor(species_id, result)
 	else:
 		if _region_id == "drowned_cut":
 			_show_beat_feedback("RESONANCE", Color(0.48, 0.88, 0.76, 1.0))
 			EventBus.emit_signal("screen_flash", Color(0.10, 0.38, 0.32, 0.05), 0.05)
 			EventBus.emit_signal("dna_resonated", Color(0.48, 0.88, 0.76), 0.4)
-		_show_feedback("+%s DNA -> EXP" % dna_name, Color(0.96, 0.84, 0.62, 1.0), 0.22)
+		_show_feedback("+%.1f %s DNA -> EXP" % [amount, dna_name], Color(0.96, 0.84, 0.62, 1.0), 0.22)
 		_maybe_show_dna_pickup_flavor(species_id, result)
 
 

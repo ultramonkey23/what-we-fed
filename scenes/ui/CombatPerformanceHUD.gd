@@ -225,6 +225,16 @@ func _on_combo_changed(count: int, tier: String) -> void:
 	if count % 5 == 0 and count > 0:
 		if _panel: _pulse_hud_element(_panel)
 
+	# Readiness follows the combo. An encounter reset zeroes it without a
+	# combo_broken (a reset is not a break), so an unspent ultimate must not
+	# keep reading READY into the next encounter. 20 = CombatMeter.ULTIMATE_THRESHOLD.
+	if _ultimate_ready and count < 20:
+		_ultimate_ready = false
+		if _ultimate_label:
+			_ultimate_label.text = "APEX"
+			_ultimate_label.modulate = Color(1.0, 1.0, 1.0, 1.0)
+		_stop_ultimate_pulse()
+
 
 func _on_ultimate_ready() -> void:
 	_ultimate_ready = true

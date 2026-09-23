@@ -1,5 +1,5 @@
 param(
-    [ValidateSet("run", "validate", "smoke", "editor", "resolve", "debug", "exec", "add-path", "validate-data")]
+    [ValidateSet("run", "validate", "smoke", "editor", "resolve", "debug", "exec", "add-path", "validate-data", "test")]
     [string]$Mode = "run",
     [Parameter(ValueFromRemainingArguments = $true)]
     [string[]]$GodotArgs
@@ -430,6 +430,37 @@ switch ($Mode) {
         $args = @("--path", $repoRoot, "--headless", "-s", "res://tools/validate_data_content.gd", "--log-file", $logFile) + $GodotArgs
         Invoke-Godot -Arguments $args -LogPath $logFile
         Write-Host "DATA VALIDATION OK" -ForegroundColor Green
+    }
+    "test" {
+        # Runs ONE headless regression script (tools/test_*.gd, `extends SceneTree`).
+        # The script's own quit(code) decides pass/fail, but Godot exits 0 on
+        # GDScript parse and runtime errors, so the log is scanned as well:
+        # a test that never ran must not read as a test that passed.
+        if ($GodotArgs.Count -ne 1 -or $GodotArgs[0] -notmatch '^res://tools/test_[A-Za-z0-9_]+\.gd$') {
+            Write-Host "usage: test_project.bat res://tools/test_<name>.gd" -ForegroundColor Red
+            exit 2
+        }
+        $repoRoot = Get-RepoRoot
+        $testScript = $GodotArgs[0]
+        if (-not (Test-Path (Join-Path $repoRoot ($testScript -replace '^res://', '')))) {
+            Write-Host ("TEST FAILED - script not found: {0}" -f $testScript) -ForegroundColor Red
+            exit 1
+        }
+        $testName = [System.IO.Path]::GetFileNameWithoutExtension($testScript)
+        $logFile = Get-DefaultLogFile -ModeName ("test-{0}" -f $testName)
+        $args = @("--path", $repoRoot, "--headless", "-s", $testScript, "--log-file", $logFile)
+        Invoke-Godot -Arguments $args -LogPath $logFile
+
+        $logErrors = Get-GodotLogErrors -LogPath $logFile
+        if ($logErrors.Count -gt 0) {
+            Write-Host ""
+            Write-Host ("TEST FAILED - errors found in test log ({0}):" -f $testScript) -ForegroundColor Red
+            foreach ($line in $logErrors) {
+                Write-Host ("  {0}" -f $line) -ForegroundColor Red
+            }
+            exit 1
+        }
+        Write-Host ("TEST OK {0}" -f $testScript) -ForegroundColor Green
     }
     "validate" {
         $repoRoot = Get-RepoRoot

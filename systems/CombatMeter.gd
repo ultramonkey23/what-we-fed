@@ -191,9 +191,6 @@ func dna_multiplier() -> float:
 
 
 func reset() -> void:
-	if combo_count > 0:
-		EventBus.emit_signal("combo_broken", combo_count)
-
 	combo_count = 0
 	style_score = 0.0
 	phrase_count = 0

@@ -1155,7 +1155,7 @@ func _build_enemy_marker(
 	var enemy_type: String = String(enemy.get("type", ""))
 	var tags_value: Variant = enemy.get("behaviour_tags", [])
 	var is_tagged_elite: bool = tags_value is Array and (tags_value as Array).has("elite")
-	var is_boss_marker: bool = marker_size >= 40.0 or enemy_type == "sovereign"
+	var is_boss_marker: bool = enemy_type == "sovereign" or enemy.get("is_boss", false)
 	var is_elite_marker: bool = is_boss_marker or grade_id == "alpha" or is_tagged_elite
 	var marker_root := Node2D.new()
 	marker_root.name = "Enemy_%d" % enemy_id

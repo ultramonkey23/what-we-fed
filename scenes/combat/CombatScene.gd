@@ -516,10 +516,10 @@ func _ensure_enemy_marker_for_live_enemy(enemy_id: int, enemy_data: Dictionary) 
 		return
 
 	var lane: int = int(enemy_data.get("lane", -1))
-	var marker_size: float = 64.0 if _is_boss_encounter else 42.0
+	var marker_size: float = _enemy_marker_size(enemy_data)
 	var biome: Dictionary = _active_encounter.get("biome", {})
 	var base_color: Color = biome.get("enemy_inactive_color", Color(0.40, 0.20, 0.20, 0.5))
-	var marker_data: Dictionary = _build_enemy_marker(enemy_id, lane, enemy_data, marker_size, base_color)
+	var marker_data: Dictionary = _build_enemy_marker(enemy_id, lane, _enemy_marker_view(enemy_data), marker_size, base_color)
 	var root = marker_data.get("root")
 	if not is_instance_valid(root):
 		return
@@ -2411,7 +2411,8 @@ func _place_song_enemy_data(lane: int, enemy_data: Dictionary) -> void:
 
 	var biome: Dictionary = _active_encounter.get("biome", {})
 	var inactive_color: Color = biome.get("enemy_inactive_color", Color(0.38, 0.18, 0.18, 0.55))
-	var marker_data: Dictionary = _build_enemy_marker(enemy_id, lane, enemy_final, 42.0, inactive_color)
+	var marker_data: Dictionary = _build_enemy_marker(
+		enemy_id, lane, _enemy_marker_view(enemy_final), _enemy_marker_size(enemy_final), inactive_color)
 	
 	if _enemy_marker_container != null and is_instance_valid(_enemy_marker_container):
 		_enemy_marker_container.add_child(marker_data["root"])
@@ -4414,13 +4415,31 @@ func _impact_world_pos_for_enemy(enemy_id: int) -> Vector2:
 
 
 func _enemy_is_elite_for_impact(enemy_id: int) -> bool:
-	var entry: Dictionary = _all_enemies_by_id.get(enemy_id, {})
+	return _enemy_data_is_elite(_all_enemies_by_id.get(enemy_id, {}))
+
+
+func _enemy_data_is_elite(entry: Dictionary) -> bool:
 	if str(entry.get("grade", "")) == "alpha" or str(entry.get("type", "")) == "sovereign":
 		return true
 	var tags: Variant = entry.get("behaviour_tags", [])
 	if tags is Array:
 		return (tags as Array).has("elite")
 	return false
+
+
+## Marker size follows identity: boss 64, elite 50, ordinary 42.
+func _enemy_marker_size(enemy: Dictionary) -> float:
+	if _is_boss_encounter:
+		return 64.0
+	return 50.0 if _enemy_data_is_elite(enemy) else 42.0
+
+
+## The marker builder cannot see the encounter, so boss truth rides on its copy of the enemy.
+func _enemy_marker_view(enemy: Dictionary) -> Dictionary:
+	var view: Dictionary = enemy.duplicate()
+	if _is_boss_encounter:
+		view["is_boss"] = true
+	return view
 
 
 func _on_attack_timing_early_resolved(lane: int) -> void:

@@ -4,10 +4,14 @@ const GROWTH_CONTENT = preload("res://data/RunGrowthContent.gd")
 const COMBAT_DATA = preload("res://data/CombatContent.gd")
 const PRESENTATION_TEXT = preload("res://data/PresentationTextContent.gd")
 
+const ProgressionManagerScript = preload("res://systems/growth/ProgressionManager.gd")
+const TendencyManagerScript = preload("res://systems/growth/TendencyManager.gd")
+const SupportManagerScript = preload("res://systems/growth/SupportManager.gd")
+
 # Modular Managers
-var progression := ProgressionManager.new()
-var tendencies := TendencyManager.new()
-var support := SupportManager.new()
+var progression = ProgressionManagerScript.new()
+var tendencies = TendencyManagerScript.new()
+var support = SupportManagerScript.new()
 
 # API Proxies
 var level: int:

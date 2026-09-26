@@ -1085,6 +1085,7 @@ func _on_timed_attack_resolved(_sector: int, quality: String, _damage: float, _e
 			_add_bonus_progress(PERFECT_STREAK_PROGRESS_BONUS)
 			emit_signal("proc_feedback", "PERFECT FEEDS", Color(0.78, 0.94, 0.62, 1.0))
 	elif quality == "good":
+		_perfect_strike_streak = 0
 		_add_hunt_momentum(HUNT_MOMENTUM_PERFECT_GAIN * 0.45)
 	else:
 		_perfect_strike_streak = 0

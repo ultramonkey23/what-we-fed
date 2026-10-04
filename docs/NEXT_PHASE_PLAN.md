@@ -3,6 +3,8 @@
 ## Immediate goal
 Use the current What We Fed prototype as the implementation base and improve it safely.
 
+**Current-tree clarification (2026-10-04, static inspection; not an implementation order):** `data/RunPacingContent.gd` currently sets `REGULAR_LEVEL_COUNT = 3`, and `systems/CombatRunDirector.gd` uses it to populate the active regular playlist; this corresponds to the historical three-regular-plus-boss vertical slice described by `docs/DEMO_MILESTONE_LADDER.md`. The 9+1 statement below remains the **human-owned design target**, not a proven current gameplay count. `docs/ai/CURRENT_PULSE.md` documents an additional Translation depth denominator risk from the `RunState`/`TranslationScene` consumer chain. Do not rewrite `docs/GAME_SPINE.md` to fit the shorter vertical slice, or silently expand the runnable cadence merely to make a doc match; investigate the intended scope and test at the relevant milestone.
+
 **Run shape (design target):** **9** regular levels (each **under ~2 min** of authored song slice) **+ 1** boss (full song); **menus between** regular levels for reward choice, then inventory/resource management, then the next song.
 
 ## Current Progress (Completed)

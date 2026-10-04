@@ -2,6 +2,14 @@
 
 Compact active context for WHAT WE FED agents. Use this before loading massive historical ledgers.
 
+## Source-checked runtime/canon split (2026-10-04; STATIC ONLY)
+
+Do not promote the **9 regular levels + 1 boss** *design target* in human-owned `docs/GAME_SPINE.md` to a claim about the current runnable count. Current source `data/RunPacingContent.gd` sets `REGULAR_LEVEL_COUNT = 3` and `build_regular_level_windows()` creates three authored windows. `systems/CombatRunDirector.gd` consumes that count to select its live regular-level playlist and `systems/PathRunPlan.gd` constructs the path using the selected count. The demo milestone ladder separately describes a **four-encounter vertical slice** (three regular encounters plus a boss). This is source wiring, **not** a newly executed Godot/run-completion observation.
+
+**Potential counter mismatch that needs a focused real repro, not a canon rewrite:** `systems/state/RunState.gd` defaults `encounters_before_boss = 9`; `autoloads/GameState.gd` can compute 5–15 from difficulty/world fate. `scenes/ui/TranslationScene.gd` prints `TRANSLATION DEPTH: current / RunState.encounters_before_boss` instead of the active playlist's length. Source alone supports an inconsistent-counter *risk*, not proof that this screen appears in today's dominant combat completion path. Trace actual scene transitions and test at the appropriate milestone before modifying runtime or player-facing wording.
+
+**Stage labels:** `docs/DEMO_MILESTONE_LADDER.md` says the vertical slice is playable but *not yet a public demo*. The old 'beyond demo stage; staged release' language in the June evolution log is a historical production/posture statement, not evidence of a public demo-ready build. Do not claim a published demo or infer product readiness from either phrase. This source recheck does not supersede human-owned design canon or the separate player acceptance gate.
+
 ## Current Game State
 - Playable pre-alpha foundation.
 - Current scenes include TitleScreen, LairScene, RouteScene, and CombatScene.
@@ -65,4 +73,4 @@ Compact active context for WHAT WE FED agents. Use this before loading massive h
 - **Reward Depth Payoffs (2026-05-12):** Style-based DNA multiplier (up to 2.5x at Sovereign) and Clean Encounter bonus (+45 progress) implemented. Added `dna_multiplier()` to `CombatMeter.gd`, updated `_process_dna_award` in `CombatScene.gd`, and added hitless victory payoff in `PerformanceRewardDirector.gd`.
 
 ## Ledger surface
-Treat **`docs/ai/CURRENT_PULSE.md`** (this file) plus **`docs/ai/AI_ARCHITECTURE_LEDGER.md`** as the default quick context. Use `docs/ai/AI_ARCHITECTURE_LEDGER.md` for architecture boundaries and `docs/ai/evolution_proposals/README.md` for proposed changes. The 2026-05-04 `archive_legacy/` snapshot was retired on 2026-06-19 — we are beyond demo stage and shipping in stages.
+Treat **`docs/ai/CURRENT_PULSE.md`** (this file) plus **`docs/ai/AI_ARCHITECTURE_LEDGER.md`** as the default quick context. Use `docs/ai/AI_ARCHITECTURE_LEDGER.md` for architecture boundaries and `docs/ai/evolution_proposals/README.md` for proposed changes. The 2026-05-04 `archive_legacy/` snapshot was retired on 2026-06-19. Historical language about staged shipping does **not** supersede the current vertical-slice/demo-readiness distinction above.

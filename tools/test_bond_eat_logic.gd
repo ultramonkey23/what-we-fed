@@ -1,27 +1,34 @@
 extends SceneTree
 
 const COMBAT_DATA = preload("res://data/CombatContent.gd")
-const VICTORY_REWARD_DIRECTOR = preload("res://systems/VictoryRewardDirector.gd")
 
 var _bond_events: int = 0
 var _eat_events: int = 0
 var _deny_events: int = 0
 var _event_bus: Node = null
 var _game_state: Node = null
+var _failures: Array[String] = []
 
 
-func _init() -> void:
-	var event_bus_script = load("res://autoloads/EventBus.gd")
-	var event_bus = event_bus_script.new()
-	event_bus.name = "EventBus"
-	root.add_child(event_bus)
-	_event_bus = event_bus
+func _initialize() -> void:
+	# GameState and VictoryRewardDirector use registered autoload identifiers.
+	# Load the production director after project autoload initialization instead of
+	# creating a second, incomplete autoload graph inside this probe.
+	call_deferred(&"_run")
 
-	var game_state_script = load("res://autoloads/GameState.gd")
-	var game_state = game_state_script.new()
-	game_state.name = "GameState"
-	root.add_child(game_state)
-	_game_state = game_state
+
+func _run() -> void:
+	_event_bus = root.get_node_or_null(^"EventBus")
+	_game_state = root.get_node_or_null(^"GameState")
+	if _event_bus == null or _game_state == null:
+		_failures.append("project EventBus/GameState autoloads were not registered")
+		_finish()
+		return
+	var director_script: GDScript = load("res://systems/VictoryRewardDirector.gd")
+	if director_script == null or not director_script.can_instantiate():
+		_failures.append("VictoryRewardDirector failed to load after autoload initialization")
+		_finish()
+		return
 
 	_event_bus.creature_bonded.connect(func(_creature_data: Dictionary) -> void: _bond_events += 1)
 	_event_bus.creature_eaten.connect(func(_creature_data: Dictionary) -> void: _eat_events += 1)
@@ -29,7 +36,7 @@ func _init() -> void:
 
 	_game_state.reset_profile_progression_state()
 
-	var director = VICTORY_REWARD_DIRECTOR.new()
+	var director: Node = director_script.new()
 	root.add_child(director)
 
 	_verify_first_bond_costs_dna(director)
@@ -37,8 +44,8 @@ func _init() -> void:
 	_verify_locked_first_bond_denies(director)
 	_verify_eat_gains_lineage_and_debt(director)
 
-	print("[SUCCESS] Bond/Eat logic contract passed")
-	quit(0)
+	director.free()
+	_finish()
 
 
 func _verify_first_bond_costs_dna(director: Node) -> void:
@@ -81,12 +88,24 @@ func _verify_eat_gains_lineage_and_debt(director: Node) -> void:
 	_assert(director.resolve_choice("eat"), "eat should resolve without DNA")
 	_assert(is_equal_approx(_game_state.get_dna("hushcoil"), 12.5), "eat should grant lineage DNA")
 	_assert(_game_state.get_creature_predation_debt("hushcoil") == 1, "eating an unbonded species should add predation debt")
-	_assert(_game_state.absorbed_types.size() == 1, "eat should record an absorbed type")
+	var extracted_mutations: Array[Dictionary] = _game_state.get_active_mutations_of_type("pale_on_parry")
+	_assert(extracted_mutations.size() == 1, "eat should register Hushcoil's mutation in the active combat state")
 	_assert(_eat_events == 1, "eat should emit creature_eaten once")
 
 
 func _assert(condition: bool, message: String) -> void:
 	if condition:
 		return
-	push_error("[FAIL] " + message)
+	_failures.append(message)
+
+
+func _finish() -> void:
+	if _game_state != null:
+		_game_state.reset_profile_progression_state()
+	if _failures.is_empty():
+		print("[PASS] production Bond/Eat contract (first bond, re-tether, lock, eat)")
+		quit(0)
+		return
+	for failure: String in _failures:
+		printerr("[FAIL] " + failure)
 	quit(1)

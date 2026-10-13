@@ -7,8 +7,8 @@ MISSION: Prove that a real CombatScene live reward accepts E through its active-
 ROUTING_DECISION: direct Cody continuation; burst-plan `POWER_OVER_RESISTANCE_WRITE_ALLOWED`
 FILES_CHANGED: tools/test_live_reward_choice_flow.gd; receipts/receipt_20261013_live_reward_choice_continuation.md
 START_HEAD: b833c59bf8f9635d25115e3bb0d6f4458f13a4f7
-END_HEAD: c0a37688938af43c83f93c44699d64389c7d1a58
-COMMIT: c0a37688938af43c83f93c44699d64389c7d1a58
+END_HEAD: c0a37684652b024d8aa8f405f25e8043ec6e78e6
+COMMIT: c0a37684652b024d8aa8f405f25e8043ec6e78e6
 COMMIT_CREATED: yes
 PUSH_STATUS: PASS
 REMOTE_MODE: SSH
@@ -34,7 +34,7 @@ The probe observed the intended continuation: the scene reported an `eat` decisi
 
 Agent: Codex
 Date: 2026-10-13
-Branch/commit if available: master / c0a37688938af43c83f93c44699d64389c7d1a58
+Branch/commit if available: master / c0a37684652b024d8aa8f405f25e8043ec6e78e6
 Task type: Integration-proof addition
 
 Files inspected:

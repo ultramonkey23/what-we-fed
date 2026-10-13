@@ -1,0 +1,21 @@
+# Combat spatial contract — live runtime capture
+
+Command body: `debug_harness.bat --audio-driver Dummy` with `WHAT_WE_FED_DEBUG_PRESET=control_focus`, `WHAT_WE_FED_DEBUG_AUTOLAUNCH=1`, and `WHAT_WE_FED_DEBUG_AUTOQUIT_SECONDS=6`.
+
+```text
+Godot Engine v4.6.1.stable.official.14d19694e
+OpenGL API 3.3.0 NVIDIA 596.21 - Compatibility - Using Device: NVIDIA - NVIDIA GeForce RTX 4080 Laptop GPU
+[VISUAL_AUDIT] Autoload initialized. F12 for manual capture.
+[DEBUG_HARNESS] preset=control_focus autolaunch=true
+[DEBUG_HARNESS] launching preset=control_focus
+[DEBUG_HARNESS] combat scene request=OK
+CONTROL_FOCUS_SEQUENCE BEGIN
+[VISUAL_AUDIT] Scheduled background capture for moment: manual_f12
+CONTROL_FOCUS_SEQUENCE N_ATTACK PASS input_lane=0 projectile_cleared=true reason=ok
+CONTROL_FOCUS_SEQUENCE E_PARRY PASS input_lane=2 projectile_cleared=true reason=ok
+CONTROL_FOCUS_SEQUENCE S_DODGE PASS input_lane=1 projectile_cleared=true reason=ok
+CONTROL_FOCUS_SEQUENCE W_ATTACK PASS input_lane=3 projectile_cleared=true reason=ok
+CONTROL_FOCUS_SEQUENCE END
+```
+
+The harness exited with code 0. Godot also reported its existing `ObjectDB instances leaked at exit` warning; this package does not classify that warning as resolved.

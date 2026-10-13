@@ -795,8 +795,10 @@ func _on_melee_player_contact_id(_melee: Node2D, _id: int, _lane: int) -> void:
 
 
 func debug_fire_lane(lane: int) -> bool:
-	if not _fire_director.is_running():
+	if not OS.is_debug_build():
 		return false
+	# Manual harness shots deliberately run after stop() clears the normal song
+	# scheduler. They still use the production projectile and striker path.
 	# Find first striker in this lane
 	for id in _enemy_states:
 		if _enemy_states[id].striker_data.is_empty(): continue

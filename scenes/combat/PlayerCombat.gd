@@ -3,6 +3,7 @@ extends Node2D
 @onready var sprite: ColorRect = $Sprite
 const COMBAT_FEEL_CONTENT = preload("res://data/CombatFeelContent.gd")
 const SOVEREIGN_DAMAGE_CALCULATOR = preload("res://systems/SovereignDamageCalculator.gd")
+const SECTOR_LAYOUT = preload("res://systems/SectorLayout.gd")
 
 # Combat result tuning.
 const GOOD_PARRY_REFLECT_MULT: float = 1.2
@@ -670,6 +671,13 @@ func _get_targets_in_cone() -> Dictionary:
 	# Action-RPG truth: melee starts narrow/short, then grows slowly through stats.
 	var min_dot: float = 0.62
 	var attack_range: float = SOVEREIGN_DAMAGE_CALCULATOR.get_attack_range()
+	# Incoming shots must be eligible across the visible timing ring. This widens
+	# only the response cone for a live projectile; melee enemies still obey the
+	# earned attack_range below.
+	var projectile_intercept_range: float = maxf(
+		attack_range,
+		SECTOR_LAYOUT.HIT_ZONE_DISTANCE + COMBAT_FEEL_CONTENT.RING_OUTER_RADIUS + SOVEREIGN_DAMAGE_CALCULATOR.get_parry_forgiveness_radius_bonus()
+	)
 	var lunge_range: float = SOVEREIGN_DAMAGE_CALCULATOR.get_predatory_lunge_range()
 	var center_pos: Vector2 = zone_manager.get_player_pos()
 
@@ -681,7 +689,7 @@ func _get_targets_in_cone() -> Dictionary:
 		if threat != null and is_instance_valid(threat) and not threat.is_resolved:
 			var to_target: Vector2 = threat.global_position - free_position
 			var dist: float = to_target.length()
-			if dist <= attack_range:
+			if dist <= projectile_intercept_range:
 				var dot: float = _facing_direction.dot(to_target.normalized())
 				if dot >= min_dot:
 					var lane_id: int = threat.lane
@@ -693,7 +701,7 @@ func _get_targets_in_cone() -> Dictionary:
 						"distance": dist,
 						"dot": dot,
 						"pos": threat.global_position,
-						"precision": _target_lock_score(dot, dist, attack_range),
+						"precision": _target_lock_score(dot, dist, projectile_intercept_range),
 						"progress": threat.progress
 					})
 

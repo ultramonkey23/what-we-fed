@@ -205,6 +205,7 @@ var _boss_decree_timeline_active: bool = false
 var _boss_presence_timer: float = 0.0
 var _region_id: String = ""
 var _dev_harness_request: Dictionary = {}
+var _dev_harness_probe_failed: bool = false
 var _active_song_map: Script = TRICKY_SONGMAP
 var _active_song_data: Dictionary = {}
 var _active_song_profile: Dictionary = SONG_COMBAT_PROFILE_CONTENT.get_profile("")
@@ -1656,6 +1657,12 @@ func _setup_zone_manager() -> void:
 
 
 func _setup_player_combat() -> void:
+	# Gameplay and the visual timing sigil share ZoneManager's arena origin.
+	# PlayerCombat enters this scene before CombatScene configures its layout, so
+	# normalize both its transform and free-movement anchor here.
+	var arena_center: Vector2 = zone_manager.get_arena_center()
+	player_combat.global_position = arena_center
+	player_combat.free_position = arena_center
 	# Keep player silhouette above timing sigil visuals for readability.
 	player_combat.z_index = 25
 	player_combat.setup(zone_manager, $CombatMeter)
@@ -2811,8 +2818,12 @@ func _start_run_engagement(is_new_run: bool) -> void:
 		Callable(self, "_clear_mastery_context_cache")
 	)
 
-	if is_new_run and GameState.is_intro_bond_choice_pending():
-		get_tree().change_scene_to_file("res://scenes/ui/IntroBondChoiceScene.tscn")
+	# A fresh player must take the first bond before a normal route, but this
+	# scene is still entering its tree at this point. Defer that handoff so the
+	# scene tree never tries to remove CombatScene from inside its own _ready.
+	# DevHarness has already supplied an explicit, isolated combat state.
+	if is_new_run and _dev_harness_request.is_empty() and GameState.is_intro_bond_choice_pending():
+		call_deferred("_open_intro_bond_choice")
 		return
 
 	_run_director.initialize_run(str(RunState.active_region.get("id", "feeding_hollow")), _dev_harness_request)
@@ -2846,6 +2857,11 @@ func _start_run_engagement(is_new_run: bool) -> void:
 		_start_song_run()
 	else:
 		_continue_song_run()
+
+
+func _open_intro_bond_choice() -> void:
+	if is_inside_tree():
+		get_tree().change_scene_to_file("res://scenes/ui/IntroBondChoiceScene.tscn")
 
 
 func _continue_song_run() -> void:
@@ -2911,7 +2927,7 @@ func _apply_dev_harness_post_boot_state() -> void:
 		await _debug_begin_boss_preview(bool(_dev_harness_request.get("trigger_boss_threshold", false)))
 
 	if bool(_dev_harness_request.get("debug_control_sequence", false)):
-		await _run_dev_harness_control_sequence()
+		_dev_harness_probe_failed = not await _run_dev_harness_control_sequence()
 
 	_schedule_dev_harness_autoquit()
 
@@ -2935,29 +2951,39 @@ func _schedule_dev_harness_autoquit() -> void:
 
 
 func _begin_dev_harness_autoquit() -> void:
+	DEBUG_TRACE.append_agent_event(
+		"debug-harness",
+		"H_AUTOQUIT_FIRED",
+		"CombatScene.gd:_begin_dev_harness_autoquit",
+		"Harness autoquit timer fired; beginning shutdown handoff",
+		{}
+	)
 	DevHarness.clear_request()
-	var shutdown_scene := Node.new()
-	shutdown_scene.name = "DebugHarnessShutdownScene"
-	get_tree().root.add_child(shutdown_scene)
-	if get_tree().current_scene == self:
-		get_tree().current_scene = shutdown_scene
-	queue_free()
-	var quit_timer: SceneTreeTimer = get_tree().create_timer(0.50)
-	quit_timer.timeout.connect(get_tree().quit)
+	# This callback already runs from a live SceneTreeTimer. A second teardown
+	# timer after detaching the active scene can be stranded, leaving headless
+	# probes alive until an external frame cap. Quit directly and leave normal
+	# SceneTree shutdown to release the current combat scene.
+	get_tree().quit(1 if _dev_harness_probe_failed else 0)
 
 
-func _run_dev_harness_control_sequence() -> void:
+func _run_dev_harness_control_sequence() -> bool:
 	if zone_manager == null or player_combat == null:
 		push_warning("CONTROL_FOCUS_SEQUENCE FAIL missing combat runtime")
-		return
+		return false
 
 	print("CONTROL_FOCUS_SEQUENCE BEGIN")
+	var sequence_passed: bool = true
+	# This probe owns its projectile field. Stop the live song and escalation
+	# producers before replacing their enemies, otherwise they can rehydrate a
+	# production threat between a fired lane and the player's response.
+	_song_mode = false
+	_song_paused = true
+	_stop_song_conductor()
+	if _escalation_director != null:
+		_escalation_director.stop()
 	zone_manager.stop()
 	zone_manager.set_song_mode_enabled(false)
 	zone_manager.set_attack_authority_budget(zone_manager.THREAT_COUNT)
-
-	for lane in range(zone_manager.THREAT_COUNT):
-		zone_manager.set_enemy(lane, _build_debug_control_enemy(lane))
 
 	var steps: Array[Dictionary] = [
 		{"lane": 0, "action": "attack", "threshold": 0.99, "label": "N_ATTACK", "expect_projectile_cleared": true},
@@ -2969,41 +2995,52 @@ func _run_dev_harness_control_sequence() -> void:
 	for step in steps:
 		var lane: int = int(step.get("lane", 0))
 		var label: String = str(step.get("label", "STEP"))
+		# Exercise one authored threat at a time so this control probe verifies
+		# the requested lane, not opportunistic retargeting among unrelated foes.
+		zone_manager.stop()
+		zone_manager.set_song_mode_enabled(false)
+		zone_manager.set_attack_authority_budget(zone_manager.THREAT_COUNT)
+		zone_manager.set_enemy(lane, _build_debug_control_enemy(lane))
 		if not _debug_fire_control_lane(lane):
 			print("CONTROL_FOCUS_SEQUENCE %s FAIL fire" % label)
+			sequence_passed = false
 			continue
 
 		var reached: bool = await _debug_wait_for_projectile_progress(lane, float(step.get("threshold", 0.99)), 2.8)
 		if not reached:
 			print("CONTROL_FOCUS_SEQUENCE %s FAIL timing" % label)
+			sequence_passed = false
 			continue
 
 		var action_ok: bool = player_combat.debug_force_focus_and_action(lane, str(step.get("action", "")))
+		var input_lane: int = int(_last_combat_input_report.get("lane", -1))
 		await get_tree().create_timer(0.26).timeout
-		var focused_lane: int = _get_player_focus_sector()
 		var expect_cleared: bool = bool(step.get("expect_projectile_cleared", true))
 		var projectile_cleared: bool = zone_manager.get_projectile(lane) == null
 		if expect_cleared and not projectile_cleared:
 			projectile_cleared = await _debug_wait_for_projectile_clear(lane, 0.35)
-		var step_passed: bool = action_ok and focused_lane == lane and (projectile_cleared or not expect_cleared)
+		var step_passed: bool = action_ok and input_lane == lane and (projectile_cleared or not expect_cleared)
 		var reason: String = ""
 		if not action_ok:
 			reason = "action_rejected"
-		elif focused_lane != lane:
-			reason = "focus_mismatch"
+		elif input_lane != lane:
+			reason = "input_lane_mismatch"
 		elif expect_cleared and not projectile_cleared:
 			reason = "projectile_not_cleared"
 		else:
 			reason = "ok"
-		print("CONTROL_FOCUS_SEQUENCE %s %s focus=%d projectile_cleared=%s reason=%s" % [
+		print("CONTROL_FOCUS_SEQUENCE %s %s input_lane=%d projectile_cleared=%s reason=%s" % [
 			label,
 			"PASS" if step_passed else "FAIL",
-			focused_lane,
+			input_lane,
 			str(projectile_cleared),
 			reason
 		])
+		if not step_passed:
+			sequence_passed = false
 
 	print("CONTROL_FOCUS_SEQUENCE END")
+	return sequence_passed
 
 
 func _build_debug_control_enemy(lane: int) -> Dictionary:

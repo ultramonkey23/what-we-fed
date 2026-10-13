@@ -169,7 +169,12 @@ func _ready() -> void:
 	_build_ui()
 	_apply_env_overrides()
 	_refresh_ui()
-	if _should_autolaunch_from_env():
+	var should_autolaunch: bool = _should_autolaunch_from_env()
+	print("[DEBUG_HARNESS] preset=%s autolaunch=%s" % [
+		OS.get_environment("WHAT_WE_FED_DEBUG_PRESET").strip_edges(),
+		"true" if should_autolaunch else "false"
+	])
+	if should_autolaunch:
 		call_deferred("_launch_selected_preset")
 	await get_tree().create_timer(0.12).timeout
 	_can_input = true
@@ -229,6 +234,7 @@ func _launch_selected_preset() -> void:
 	var preset: Dictionary = PRESETS[_preset_index].duplicate(true)
 	var region: Dictionary = ROUTE_CONTENT.REGIONS[_region_index]
 	var support_species_id: String = _resolve_support_species_id(preset)
+	print("[DEBUG_HARNESS] launching preset=%s" % String(preset.get("id", "unknown")))
 
 	var request: Dictionary = preset.duplicate(true)
 	request["region_id"] = String(region.get("id", "feeding_hollow"))
@@ -240,7 +246,8 @@ func _launch_selected_preset() -> void:
 
 	GameState.set_active_region(region)
 	DevHarness.queue_request(request)
-	get_tree().change_scene_to_file(COMBAT_SCENE_PATH)
+	var scene_change_error: Error = get_tree().change_scene_to_file(COMBAT_SCENE_PATH)
+	print("[DEBUG_HARNESS] combat scene request=%s" % error_string(scene_change_error))
 
 
 func _resolve_support_species_id(preset: Dictionary) -> String:

@@ -1,0 +1,15 @@
+# Live reward-shell readability capture
+
+The `reward_preview` DebugHarness was launched windowed with `WHAT_WE_FED_DEBUG_AUTOLAUNCH=1`, then a native `VisualAuditAutoload` F12 capture was triggered from the active **What We Fed (DEBUG)** window during the live 3.2-second choice window.
+
+```text
+Godot Engine v4.6.1.stable.official.14d19694e
+OpenGL API 3.3.0 NVIDIA 596.21 - Compatibility - Using Device: NVIDIA - NVIDIA GeForce RTX 4080 Laptop GPU
+[VISUAL_AUDIT] Autoload initialized. F12 for manual capture.
+[DEBUG_HARNESS] preset=reward_preview autolaunch=true
+[DEBUG_HARNESS] launching preset=reward_preview
+[DEBUG_HARNESS] combat scene request=OK
+[VISUAL_AUDIT] Scheduled background capture for moment: manual_f12
+```
+
+The after metadata records `res://scenes/combat/CombatScene.tscn`, a 1280×720 viewport, and `png_error: 0`. The debug run exited 0. The existing debug-harness shutdown warnings (`ObjectDB instances leaked at exit` and one resource still in use) were observed and are not treated as resolved by this visual layout repair.

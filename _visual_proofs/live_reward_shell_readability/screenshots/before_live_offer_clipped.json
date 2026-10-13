@@ -1,0 +1,107 @@
+{
+	"audit_id": "2026-10-13_10_55_35_manual_f12",
+	"camera": {
+		"global_position": {
+			"x": 0.0,
+			"y": 0.0
+		},
+		"offset": {
+			"x": 0.0,
+			"y": 0.0
+		},
+		"zoom": {
+			"x": 1.0,
+			"y": 1.0
+		}
+	},
+	"capture_source": "manual_f12",
+	"combat": {
+		"active_lane": 4,
+		"combo_count": 0,
+		"style_score": 0.0,
+		"tier": "stirring"
+	},
+	"event_payload": {
+		"moment_id": "manual_f12"
+	},
+	"game_state": {
+		"active_mutations": [],
+		"available": true,
+		"in_combat": false,
+		"run_number": -1
+	},
+	"image_path": "res://_visual_proofs/live_reward_shell_readability/screenshots/before_live_offer_clipped.png",
+	"lane": {
+		"active": 4,
+		"cardinal_positions": [
+			{
+				"hit_zone": {
+					"x": 640.0,
+					"y": 250.0
+				},
+				"lane": 0,
+				"spawn": {
+					"x": 640.0,
+					"y": 57.6000061035156
+				}
+			},
+			{
+				"hit_zone": {
+					"x": 717.78173828125,
+					"y": 282.21826171875
+				},
+				"lane": 1,
+				"spawn": {
+					"x": 853.8291015625,
+					"y": 146.170913696289
+				}
+			},
+			{
+				"hit_zone": {
+					"x": 750.0,
+					"y": 360.0
+				},
+				"lane": 2,
+				"spawn": {
+					"x": 942.400024414063,
+					"y": 360.0
+				}
+			},
+			{
+				"hit_zone": {
+					"x": 717.78173828125,
+					"y": 437.78173828125
+				},
+				"lane": 3,
+				"spawn": {
+					"x": 853.8291015625,
+					"y": 573.8291015625
+				}
+			}
+		],
+		"source": -1,
+		"support": -1
+	},
+	"metadata_path": "res://_visual_proofs/live_reward_shell_readability/screenshots/before_live_offer_clipped.json",
+	"moment_id": "manual_f12",
+	"png_error": 0,
+	"scene": "res://scenes/combat/CombatScene.tscn",
+	"schema_version": "visual_audit_capture.v3",
+	"song": {
+		"beat_index": 0,
+		"beat_quality": "unknown",
+		"id": "tricky",
+		"intensity": 0.18,
+		"resonance_tier": "ghost",
+		"section_id": "opening"
+	},
+	"support": {
+		"charge": -1.0,
+		"effect_id": "unknown",
+		"species_id": "knellspine"
+	},
+	"viewport": {
+		"height": 720,
+		"width": 1280
+	}
+}

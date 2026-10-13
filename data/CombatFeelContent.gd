@@ -354,8 +354,10 @@ const RIGHT_HUD_LABEL_X: float = RIGHT_HUD_STACK_X + 8.0
 const RIGHT_HUD_VALUE_X: float = RIGHT_HUD_STACK_X + 74.0
 const RIGHT_HUD_ROW_WIDTH: float = 22.0
 const RIGHT_HUD_TEXT_WIDTH: float = 108.0
-const COMPACT_LIVE_REWARD_WIDTH: float = 132.0
-const COMPACT_LIVE_REWARD_HEIGHT: float = 64.0
+# Live offers remain transient combat UI, but must hold the complete choice:
+# creature, context, DNA gate, and the B/E/N response before their timer ends.
+const COMPACT_LIVE_REWARD_WIDTH: float = 224.0
+const COMPACT_LIVE_REWARD_HEIGHT: float = 112.0
 const COMPACT_LIVE_REWARD_ABOVE_FOOTER_GAP: float = 8.0
 const HUD_COMBAT_FEEDBACK_Y: float = 108.0
 const HUD_COMBAT_FEEDBACK_HALF_WIDTH: float = 220.0

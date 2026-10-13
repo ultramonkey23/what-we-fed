@@ -1832,38 +1832,38 @@ func create_live_reward_shell(ui_layer: CanvasLayer) -> Dictionary:
 
 	var reward_body := VBoxContainer.new()
 	reward_body.name = "LiveRewardVBox"
-	reward_body.add_theme_constant_override("separation", 4)
+	reward_body.add_theme_constant_override("separation", 2)
 	reward_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	reward_body.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	live_reward_safe_body.add_child(reward_body)
 
 	var live_reward_title_label := Label.new()
 	live_reward_title_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	live_reward_title_label.custom_minimum_size = Vector2(0.0, 22.0)
+	live_reward_title_label.custom_minimum_size = Vector2(0.0, 20.0)
 	apply_text_role(live_reward_title_label, "subheading")
-	live_reward_title_label.add_theme_font_size_override("font_size", 16)
+	live_reward_title_label.add_theme_font_size_override("font_size", 15)
 	reward_body.add_child(live_reward_title_label)
 
 	var live_reward_body_label := Label.new()
 	live_reward_body_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	live_reward_body_label.custom_minimum_size = Vector2(0.0, 22.0)
+	live_reward_body_label.custom_minimum_size = Vector2(0.0, 30.0)
 	live_reward_body_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	apply_text_role(live_reward_body_label, "body")
-	live_reward_body_label.add_theme_font_size_override("font_size", 13)
+	live_reward_body_label.add_theme_font_size_override("font_size", 12)
 	reward_body.add_child(live_reward_body_label)
 
 	var live_reward_dna_label := Label.new()
 	live_reward_dna_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	live_reward_dna_label.custom_minimum_size = Vector2(0.0, 18.0)
+	live_reward_dna_label.custom_minimum_size = Vector2(0.0, 16.0)
 	apply_text_role(live_reward_dna_label, "hud_meta")
-	live_reward_dna_label.add_theme_font_size_override("font_size", 12)
+	live_reward_dna_label.add_theme_font_size_override("font_size", 11)
 	reward_body.add_child(live_reward_dna_label)
 
 	var live_reward_hint_label := Label.new()
 	live_reward_hint_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	live_reward_hint_label.custom_minimum_size = Vector2(0.0, 18.0)
+	live_reward_hint_label.custom_minimum_size = Vector2(0.0, 16.0)
 	apply_text_role(live_reward_hint_label, "hint")
-	live_reward_hint_label.add_theme_font_size_override("font_size", 12)
+	live_reward_hint_label.add_theme_font_size_override("font_size", 11)
 	reward_body.add_child(live_reward_hint_label)
 
 	return {
@@ -1910,9 +1910,9 @@ func center_performance_offer_shell(live_reward_shell: PanelContainer, performan
 		offer_shell.visible = false
 		return
 	var vp: Vector2 = get_viewport().get_visible_rect().size
-	var sz: Vector2 = COMBAT_FEEL_CONTENT.compact_live_reward_size()
+	var sz: Vector2 = COMBAT_FEEL_CONTENT.compact_performance_offer_size()
 	offer_shell.size = sz
-	offer_shell.global_position = COMBAT_FEEL_CONTENT.compact_live_reward_position_for_viewport(vp)
+	offer_shell.global_position = COMBAT_FEEL_CONTENT.compact_performance_offer_global_position_for_viewport(vp)
 
 
 func enforce_top_left_panel_rect(hud_top_left_panel: Control) -> void:

@@ -7,12 +7,12 @@ MISSION: Prove that a real CombatScene live reward accepts E through its active-
 ROUTING_DECISION: direct Cody continuation; burst-plan `POWER_OVER_RESISTANCE_WRITE_ALLOWED`
 FILES_CHANGED: tools/test_live_reward_choice_flow.gd; receipts/receipt_20261013_live_reward_choice_continuation.md
 START_HEAD: b833c59bf8f9635d25115e3bb0d6f4458f13a4f7
-END_HEAD: pending-project-commit
-COMMIT: pending-finish
-COMMIT_CREATED: pending
-PUSH_STATUS: PENDING
+END_HEAD: c0a37688938af43c83f93c44699d64389c7d1a58
+COMMIT: c0a37688938af43c83f93c44699d64389c7d1a58
+COMMIT_CREATED: yes
+PUSH_STATUS: PASS
 REMOTE_MODE: SSH
-FINAL_STATE: PROJECT_VALIDATED_PENDING_COMMIT
+FINAL_STATE: REMOTE_DURABLE_PASS
 VALIDATION_RESULT: PASS
 RECOMMENDED_NEXT_ACTION: At an appropriate playtest milestone, verify the same B/E/N continuation on a real device/controller without widening the no-pause reward flow.
 
@@ -34,7 +34,7 @@ The probe observed the intended continuation: the scene reported an `eat` decisi
 
 Agent: Codex
 Date: 2026-10-13
-Branch/commit if available: master / pending-project-commit
+Branch/commit if available: master / c0a37688938af43c83f93c44699d64389c7d1a58
 Task type: Integration-proof addition
 
 Files inspected:

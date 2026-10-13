@@ -7,8 +7,12 @@ MISSION: Repair the observed live reward-shell clipping so its existing real-tim
 ROUTING_DECISION: direct Cody continuation; burst-plan `POWER_OVER_RESISTANCE_WRITE_ALLOWED`
 FILES_CHANGED: data/CombatFeelContent.gd; systems/CombatPresentationController.gd; _visual_proofs/live_reward_shell_readability/; receipts/receipt_20261013_live_reward_shell_readability.md
 START_HEAD: abab2f03dcb8bae5a3f4aa8522927cfb5eaf094d
-END_HEAD: pending-finish
-COMMIT: pending-finish
+END_HEAD: 3236675069bdc8392abd2f7d3ed02135447cfae4
+COMMIT: 3236675069bdc8392abd2f7d3ed02135447cfae4
+COMMIT_CREATED: yes
+PUSH_STATUS: PASS
+REMOTE_MODE: SSH
+FINAL_STATE: REMOTE_DURABLE_PASS
 VALIDATION_RESULT: PASS
 RECOMMENDED_NEXT_ACTION: Exercise one live Bond/Eat response through a reward offer and verify that song pressure resumes without hidden choice state or reward-shell residue.
 
@@ -34,7 +38,7 @@ The performance offer is explicitly restored to its own authored compact size an
 
 Agent: Codex (SYMBIOTE visual diagnosis, ALFRED presentation repair, CYBORG runtime proof)
 Date: 2026-10-13
-Branch/commit if available: master / pending-finish
+Branch/commit if available: master / 3236675069bdc8392abd2f7d3ed02135447cfae4
 Task type: Patch
 
 Files inspected:

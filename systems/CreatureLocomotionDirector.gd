@@ -40,6 +40,8 @@ static var LOCOM_PROFILES: Dictionary = {
 	"gruvek":      { "orbit_speed_mult": 0.90, "approach_lean": 0.77, "recoil_push": 0.08, "can_flank": false },
 	"bond_remnant":{ "orbit_speed_mult": 1.00, "approach_lean": 0.78, "recoil_push": 0.06, "can_flank": false },
 	"siltgrip":    { "orbit_speed_mult": 1.10, "approach_lean": 0.75, "recoil_push": 0.07, "can_flank": false },
+	"pale_shelf_precision_stalker":   { "orbit_speed_mult": 1.65, "approach_lean": 0.62, "recoil_push": 0.14, "can_flank": false },
+	"pale_shelf_shardshroud_sentinel":{ "orbit_speed_mult": 0.45, "approach_lean": 1.00, "recoil_push": 0.01, "can_flank": false },
 	# by type (fallback) ─────────────────────────────────────────────────────────────────────────
 	"dreg":        { "orbit_speed_mult": 1.00, "approach_lean": 0.82, "recoil_push": 0.06, "can_flank": false },
 	"bond_reaper": { "orbit_speed_mult": 1.40, "approach_lean": 0.75, "recoil_push": 0.10, "can_flank": false },

@@ -14,10 +14,13 @@ void fragment() {
 	vec2 uv = UV;
 	float offset = chromatic_aberration * (0.25 + corruption_amount);
 	vec4 base = texture(TEXTURE, uv) * COLOR;
+	// Conformal radial dispersion radiating from center
+	vec2 dir = normalize(uv - vec2(0.5) + vec2(1e-4, 0.0));
+	vec2 split = dir * offset;
 	vec3 sample_rgb = vec3(
-		(texture(TEXTURE, uv + vec2(offset, 0.0)) * COLOR).r,
+		(texture(TEXTURE, uv + split) * COLOR).r,
 		base.g,
-		(texture(TEXTURE, uv - vec2(offset, 0.0)) * COLOR).b
+		(texture(TEXTURE, uv - split) * COLOR).b
 	);
 
 	float line_noise = sin((uv.y * 900.0) + TIME * 18.0) * 0.5 + 0.5;

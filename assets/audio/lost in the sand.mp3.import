@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://c0fyhphia2wtd"
+path="res://.godot/imported/lost in the sand.mp3-e6a96b19630a96ea57d0f52c29c93392.mp3str"
+
+[deps]
+
+source_file="res://assets/audio/lost in the sand.mp3"
+dest_files=["res://.godot/imported/lost in the sand.mp3-e6a96b19630a96ea57d0f52c29c93392.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

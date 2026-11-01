@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://bhv17rpqqhrgw"
+path="res://.godot/imported/marching toward obsolecence.mp3-dc8eed5f144e396cc76a3a9eb8d9ab82.mp3str"
+
+[deps]
+
+source_file="res://assets/audio/marching toward obsolecence.mp3"
+dest_files=["res://.godot/imported/marching toward obsolecence.mp3-dc8eed5f144e396cc76a3a9eb8d9ab82.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

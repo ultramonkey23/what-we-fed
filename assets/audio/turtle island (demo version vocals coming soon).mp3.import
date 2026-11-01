@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://c0pnajoawswtd"
+path="res://.godot/imported/turtle island (demo version vocals coming soon).mp3-4d025e85c28c8895ad033d12c5c726f4.mp3str"
+
+[deps]
+
+source_file="res://assets/audio/turtle island (demo version vocals coming soon).mp3"
+dest_files=["res://.godot/imported/turtle island (demo version vocals coming soon).mp3-4d025e85c28c8895ad033d12c5c726f4.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

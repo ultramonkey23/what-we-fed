@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://c61x65l53n7e3"
+path="res://.godot/imported/The Ooze.mp3-5c589c6ba947d7994422a93ba79ab315.mp3str"
+
+[deps]
+
+source_file="res://assets/audio/The Ooze.mp3"
+dest_files=["res://.godot/imported/The Ooze.mp3-5c589c6ba947d7994422a93ba79ab315.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

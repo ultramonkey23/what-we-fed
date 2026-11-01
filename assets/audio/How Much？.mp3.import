@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://b7tkdqomkpwa"
+path="res://.godot/imported/How Much？.mp3-3fdb476aa30a9e52798ab02d578c9e88.mp3str"
+
+[deps]
+
+source_file="res://assets/audio/How Much？.mp3"
+dest_files=["res://.godot/imported/How Much？.mp3-3fdb476aa30a9e52798ab02d578c9e88.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

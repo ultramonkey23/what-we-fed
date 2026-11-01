@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://djj6tuyej3pe2"
+path="res://.godot/imported/Circus of spiders.mp3-3eb67653f7036ab1197c8e39aa17953d.mp3str"
+
+[deps]
+
+source_file="res://assets/audio/Circus of spiders.mp3"
+dest_files=["res://.godot/imported/Circus of spiders.mp3-3eb67653f7036ab1197c8e39aa17953d.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

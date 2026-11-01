@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://dnyejbthji5dv"
+path="res://.godot/imported/Swamps Scare Me.mp3-1d77687b25940b31e570d615dd585ddc.mp3str"
+
+[deps]
+
+source_file="res://assets/audio/Swamps Scare Me.mp3"
+dest_files=["res://.godot/imported/Swamps Scare Me.mp3-1d77687b25940b31e570d615dd585ddc.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

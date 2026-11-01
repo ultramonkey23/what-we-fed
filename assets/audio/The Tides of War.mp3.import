@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://dqs0knm4sysal"
+path="res://.godot/imported/The Tides of War.mp3-f74e3a4bef43f44056ad0d5c59146594.mp3str"
+
+[deps]
+
+source_file="res://assets/audio/The Tides of War.mp3"
+dest_files=["res://.godot/imported/The Tides of War.mp3-f74e3a4bef43f44056ad0d5c59146594.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

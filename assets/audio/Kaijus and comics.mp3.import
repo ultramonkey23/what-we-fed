@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://vj3ek2r0q5rx"
+path="res://.godot/imported/Kaijus and comics.mp3-5ed572d5f79d9ce6a944a18e481fc8a2.mp3str"
+
+[deps]
+
+source_file="res://assets/audio/Kaijus and comics.mp3"
+dest_files=["res://.godot/imported/Kaijus and comics.mp3-5ed572d5f79d9ce6a944a18e481fc8a2.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://42f3c6sfjd0a"
+path="res://.godot/imported/words to myself.mp3-b95e12812f3fcd5d4daf7dccb1a36df0.mp3str"
+
+[deps]
+
+source_file="res://assets/audio/words to myself.mp3"
+dest_files=["res://.godot/imported/words to myself.mp3-b95e12812f3fcd5d4daf7dccb1a36df0.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

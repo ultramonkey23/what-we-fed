@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://c75xoa2crufxv"
+path="res://.godot/imported/March of the black bull.mp3-5336dc7ef994d0a5ec5d111b361c1270.mp3str"
+
+[deps]
+
+source_file="res://assets/audio/March of the black bull.mp3"
+dest_files=["res://.godot/imported/March of the black bull.mp3-5336dc7ef994d0a5ec5d111b361c1270.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

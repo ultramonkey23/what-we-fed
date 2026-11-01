@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://cyl5gk5ru04a6"
+path="res://.godot/imported/Harvest of Green.mp3-894c661261cf16f3ab9644a926ee7e1b.mp3str"
+
+[deps]
+
+source_file="res://assets/audio/Harvest of Green.mp3"
+dest_files=["res://.godot/imported/Harvest of Green.mp3-894c661261cf16f3ab9644a926ee7e1b.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://ts5kavmr6e42"
+path="res://.godot/imported/Memories of no one.mp3-859dd26080cfc44a0b0cf69acf8d6632.mp3str"
+
+[deps]
+
+source_file="res://assets/audio/Memories of no one.mp3"
+dest_files=["res://.godot/imported/Memories of no one.mp3-859dd26080cfc44a0b0cf69acf8d6632.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

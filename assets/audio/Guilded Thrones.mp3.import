@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://dl8raks5dyk1r"
+path="res://.godot/imported/Guilded Thrones.mp3-b03d2193003d0697c919875347b1e5c5.mp3str"
+
+[deps]
+
+source_file="res://assets/audio/Guilded Thrones.mp3"
+dest_files=["res://.godot/imported/Guilded Thrones.mp3-b03d2193003d0697c919875347b1e5c5.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

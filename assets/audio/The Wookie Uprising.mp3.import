@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://dxjx1xnapn1ta"
+path="res://.godot/imported/The Wookie Uprising.mp3-87ea7454b55b03835aa73dd69161950a.mp3str"
+
+[deps]
+
+source_file="res://assets/audio/The Wookie Uprising.mp3"
+dest_files=["res://.godot/imported/The Wookie Uprising.mp3-87ea7454b55b03835aa73dd69161950a.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

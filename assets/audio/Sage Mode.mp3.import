@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://bv1o4h5xfpufv"
+path="res://.godot/imported/Sage Mode.mp3-e5f061c422b19f21aae1ba9939e9fd24.mp3str"
+
+[deps]
+
+source_file="res://assets/audio/Sage Mode.mp3"
+dest_files=["res://.godot/imported/Sage Mode.mp3-e5f061c422b19f21aae1ba9939e9fd24.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

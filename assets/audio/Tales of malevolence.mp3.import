@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://dglx8fohhy7ju"
+path="res://.godot/imported/Tales of malevolence.mp3-0f23bcb48af6f0eeac031c5bc7cf7bf4.mp3str"
+
+[deps]
+
+source_file="res://assets/audio/Tales of malevolence.mp3"
+dest_files=["res://.godot/imported/Tales of malevolence.mp3-0f23bcb48af6f0eeac031c5bc7cf7bf4.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

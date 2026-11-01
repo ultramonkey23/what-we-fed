@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://b50yd3kn7cbje"
+path="res://.godot/imported/my spot in the woods.mp3-624d22ea16fb37ca4cae03f93a1755ea.mp3str"
+
+[deps]
+
+source_file="res://assets/audio/my spot in the woods.mp3"
+dest_files=["res://.godot/imported/my spot in the woods.mp3-624d22ea16fb37ca4cae03f93a1755ea.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

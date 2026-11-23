@@ -568,16 +568,19 @@ func _fire_striker(id: int) -> bool:
 	# Silence Punish consumption happens only now, once the shot is guaranteed
 	# to spawn, so failed scheduling never burns the Glintstalker's punish.
 	var glint_active: bool = striker.consume_glint_punish()
+	# Panic Close consumption (Shardhulk): same guarantee point — a failed
+	# scheduling attempt never burns the close.
+	var shard_active: bool = striker.consume_shard_panic_close()
 	var pale_active: bool = _status_director.consume_pale_fire_pending(id, Callable(self, "_find_lane_for_enemy"))
 
-	var projectile_damage: float = striker.compute_projectile_damage(_punish_damage_mult, pale_active, glint_active)
-	var projectile_speed: float = striker.compute_projectile_speed(base_speed, glint_active)
+	var projectile_damage: float = striker.compute_projectile_damage(_punish_damage_mult, pale_active, glint_active, shard_active)
+	var projectile_speed: float = striker.compute_projectile_speed(base_speed, glint_active, shard_active)
 
 	var section_id: String = ""
 	var main_scene = get_tree().current_scene
 	if main_scene != null and main_scene.has_method("get_current_song_section_id"):
 		section_id = String(main_scene.call("get_current_song_section_id"))
-	var telegraph_profile: Dictionary = striker.build_telegraph_profile(section_id, glint_active)
+	var telegraph_profile: Dictionary = striker.build_telegraph_profile(section_id, glint_active, shard_active)
 
 	var player_pos: Vector2 = get_player_pos()
 	var spawn_pos: Vector2 = get_enemy_pos(id)
@@ -629,6 +632,15 @@ func _fire_striker(id: int) -> bool:
 		# Readability cues consumed by CombatScene (proc feedback banner + screen flash).
 		EventBus.emit_signal("proc_feedback_requested", "THE SILENCE OPENS", Color(0.84, 0.97, 1.0, 1.0))
 		EventBus.emit_signal("screen_flash", Color(0.70, 0.93, 1.0, 0.16), 0.10)
+
+	if shard_active:
+		# Causal marker: only the Panic Close path prints this line.
+		print("[shard_panic_close] enemy=%d species=%s panic_burst=%d damage=%.1f speed=%.1f" % [
+			id, striker.species_id, EnemyStriker.panic_burst_count(), projectile_damage, projectile_speed
+		])
+		# Readability cues: the plate click is the warning (canon).
+		EventBus.emit_signal("proc_feedback_requested", "PLATES CLICK", Color(0.86, 0.94, 0.88, 1.0))
+		EventBus.emit_signal("screen_flash", Color(0.72, 0.84, 0.78, 0.16), 0.10)
 
 	EventBus.emit_signal("projectile_fired", lane, id)
 	return true

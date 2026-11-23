@@ -23,9 +23,32 @@ const GLINT_PROJECTILE_COLOR: Color = Color(0.70, 0.93, 1.0, 1.0)
 const GLINT_ACCENT_COLOR: Color = Color(0.84, 0.97, 1.0, 1.0)
 const GLINT_GLOW_ALPHA: float = 0.22
 
+# ── Panic Close (Shardhulk species identity) ─────────────────────────────────
+# Canon: "A plated weight that expects you to panic. It closes the lane with
+# the cold patience of a glacier." / "Its plates click once before it fires.
+# The click is the only warning." The Shardhulk reads the PLAYER's attack
+# cadence for panic: a burst of rapid pulses (>= SHARD_PANIC_BURST attacks,
+# each within SHARD_PANIC_GAP of the last) is the panic it expects. Its next
+# shot becomes a Lane Close — heavier and glacially slow (it closes the lane
+# instead of chasing a timing window), telegraphed by a raised plate-click
+# warning. One close per panic episode; a pulse after a calm gap starts a
+# fresh count and only a new burst re-arms the close. Distinct from the
+# Glintstalker's silence punish: opposite trigger (panic vs silence) and
+# opposite speed response (slower vs faster).
+const SHARDHULK_SPECIES: String = "pale_shelf_shardshroud_sentinel"
+const SHARD_PANIC_BURST: int = 3
+const SHARD_PANIC_GAP: float = 1.0
+const SHARD_CLOSE_DAMAGE_MULT: float = 1.5
+const SHARD_CLOSE_SPEED_MULT: float = 0.72
+const SHARD_CLOSE_PROJECTILE_COLOR: Color = Color(0.72, 0.84, 0.78, 1.0)
+const SHARD_CLOSE_ACCENT_COLOR: Color = Color(0.86, 0.94, 0.88, 1.0)
+const SHARD_CLOSE_GLOW_ALPHA: float = 0.26
+
 # Shared combat-cadence clock (all strikers read the same player pulse).
 static var _last_player_attack_msec: int = -1
 static var _glint_punish_spent: bool = false
+static var _panic_burst_count: int = 0
+static var _shard_close_spent: bool = false
 
 var enemy: Dictionary = {}
 var projectile_scene: PackedScene = null
@@ -36,6 +59,8 @@ static func mark_combat_start() -> void:
 	# Silence counts from combat start until the player's first pulse.
 	_last_player_attack_msec = Time.get_ticks_msec()
 	_glint_punish_spent = false
+	_panic_burst_count = 0
+	_shard_close_spent = false
 
 
 static func note_player_attack(at_msec: int = -1) -> void:
@@ -43,7 +68,22 @@ static func note_player_attack(at_msec: int = -1) -> void:
 	# count and re-arms the punish for the next widened gap. The -1 sentinel
 	# means "now"; any other value is a literal timestamp (probes backdate into
 	# negative engine-uptime values, so only -1 is special).
-	_last_player_attack_msec = Time.get_ticks_msec() if at_msec == -1 else at_msec
+	var at: int = Time.get_ticks_msec() if at_msec == -1 else at_msec
+	# Panic bookkeeping: pulses inside SHARD_PANIC_GAP accumulate a burst; a
+	# calm-spaced pulse starts a fresh count. Crossing the burst threshold is
+	# a new panic episode and re-arms the close — further spam inside the same
+	# episode does not re-arm it.
+	if _last_player_attack_msec == -1:
+		_panic_burst_count = 1
+	else:
+		var gap: float = maxf(float(at - _last_player_attack_msec) / 1000.0, 0.0)
+		if gap >= SHARD_PANIC_GAP:
+			_panic_burst_count = 1
+		else:
+			_panic_burst_count += 1
+			if _panic_burst_count == SHARD_PANIC_BURST:
+				_shard_close_spent = false
+	_last_player_attack_msec = at
 	_glint_punish_spent = false
 
 
@@ -51,6 +91,10 @@ static func silence_gap() -> float:
 	if _last_player_attack_msec == -1:
 		return 0.0
 	return maxf(float(Time.get_ticks_msec() - _last_player_attack_msec) / 1000.0, 0.0)
+
+
+static func panic_burst_count() -> int:
+	return _panic_burst_count
 
 
 func setup(p_enemy: Dictionary, p_scene: PackedScene) -> void:
@@ -81,7 +125,24 @@ func consume_glint_punish() -> bool:
 	return true
 
 
-func compute_projectile_damage(punish_mult: float, pale_active: bool, glint_active: bool = false) -> float:
+func is_shardhulk() -> bool:
+	return species_id == SHARDHULK_SPECIES
+
+
+func shard_panic_armed() -> bool:
+	return is_shardhulk() and not _shard_close_spent and _panic_burst_count >= SHARD_PANIC_BURST
+
+
+func consume_shard_panic_close() -> bool:
+	# One Lane Close per panic episode. Called only when a shot actually
+	# spawns, so failed scheduling attempts never burn the close.
+	if not shard_panic_armed():
+		return false
+	_shard_close_spent = true
+	return true
+
+
+func compute_projectile_damage(punish_mult: float, pale_active: bool, glint_active: bool = false, shard_active: bool = false) -> float:
 	var dmg: float = float(enemy.get("damage", 8.0)) * punish_mult
 	if species_id == "ashclaw":
 		var bleed: int = PlayerState.bleed_stacks
@@ -91,10 +152,12 @@ func compute_projectile_damage(punish_mult: float, pale_active: bool, glint_acti
 		dmg *= PALE_DAMAGE_MULT
 	if glint_active:
 		dmg *= GLINT_DAMAGE_MULT
+	if shard_active:
+		dmg *= SHARD_CLOSE_DAMAGE_MULT
 	return dmg
 
 
-func compute_projectile_speed(base_speed: float, glint_active: bool = false) -> float:
+func compute_projectile_speed(base_speed: float, glint_active: bool = false, shard_active: bool = false) -> float:
 	var speed: float = base_speed
 	if species_id == "ashclaw":
 		var bleed: int = PlayerState.bleed_stacks
@@ -102,6 +165,8 @@ func compute_projectile_speed(base_speed: float, glint_active: bool = false) -> 
 			speed = base_speed * (1.0 + 0.15 * float(bleed))
 	if glint_active:
 		speed *= GLINT_SPEED_MULT
+	if shard_active:
+		speed *= SHARD_CLOSE_SPEED_MULT
 	return speed
 
 
@@ -123,7 +188,7 @@ func compute_approach_speed() -> float:
 	return speed
 
 
-func build_telegraph_profile(section_id: String, glint_active: bool = false) -> Dictionary:
+func build_telegraph_profile(section_id: String, glint_active: bool = false, shard_active: bool = false) -> Dictionary:
 	var profile: Dictionary = COMBAT_CONTENT.get_enemy_telegraph_profile(enemy)
 	profile["projectile_body_path"] = COMBAT_CONTENT.get_projectile_body_resource_path(enemy)
 	var section_mod: String = COMBAT_CONTENT.get_shot_modifier_for_section(section_id)
@@ -142,4 +207,13 @@ func build_telegraph_profile(section_id: String, glint_active: bool = false) -> 
 		profile["accent_color"] = GLINT_ACCENT_COLOR
 		profile["glow_alpha"] = GLINT_GLOW_ALPHA
 		profile["warning_bias"] = float(profile.get("warning_bias", 1.0)) + 0.35
+	if shard_active:
+		# Lane Close identity: a heavy glacial slab with the plate-click
+		# warning raised ("The click is the only warning"), so the closing
+		# shot reads as distinct pressure before impact.
+		profile["shard_panic_close"] = true
+		profile["projectile_color"] = SHARD_CLOSE_PROJECTILE_COLOR
+		profile["accent_color"] = SHARD_CLOSE_ACCENT_COLOR
+		profile["glow_alpha"] = SHARD_CLOSE_GLOW_ALPHA
+		profile["warning_bias"] = float(profile.get("warning_bias", 1.0)) + 0.45
 	return profile

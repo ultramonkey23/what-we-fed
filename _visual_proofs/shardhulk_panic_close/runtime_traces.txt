@@ -1,0 +1,52 @@
+=== Windowed-mode debug harness (headless log) — control sequence + causal markers ===
+CONTROL_FOCUS_SEQUENCE BEGIN
+CONTROL_FOCUS_SEQUENCE N_ATTACK PASS input_lane=0 projectile_cleared=true reason=ok
+CONTROL_FOCUS_SEQUENCE E_PARRY PASS input_lane=2 projectile_cleared=true reason=ok
+CONTROL_FOCUS_SEQUENCE S_DODGE PASS input_lane=1 projectile_cleared=true reason=ok
+CONTROL_FOCUS_SEQUENCE W_ATTACK PASS input_lane=3 projectile_cleared=true reason=ok
+[glint_punish] enemy=9504 species=pale_shelf_precision_stalker silence_gap=4.41s damage=13.5 speed=537.5
+CONTROL_FOCUS_SEQUENCE GLINT_PUNISH PASS glint_flag=true silence_gap=4.42s
+[shard_panic_close] enemy=9605 species=pale_shelf_shardshroud_sentinel panic_burst=3 damage=15.0 speed=205.9
+CONTROL_FOCUS_SEQUENCE SHARD_PANIC_CLOSE PASS shard_flag=true panic_burst=3
+CONTROL_FOCUS_SEQUENCE END
+
+=== tools/test_shardhulk_panic_close.gd probe output ===
+=== test_shardhulk_panic_close: Shardhulk Panic Close identity ===
+[shard_panic_close] enemy=9303 species=pale_shelf_shardshroud_sentinel panic_burst=3 damage=15.0 speed=205.9
+[shard_panic_close] enemy=9303 species=pale_shelf_shardshroud_sentinel panic_burst=3 damage=15.0 speed=205.9
+[shard_panic_close] enemy=9303 species=pale_shelf_shardshroud_sentinel panic_burst=3 damage=15.0 speed=205.9
+----------------------------------------------------------------
+checks run: 39   failures: 0
+RESULT: PASS
+WARNING: ObjectDB instances leaked at exit (run with --verbose for details).
+   at: cleanup (core/object/object.cpp:2641)
+
+=== tools/test_glint_natural_spawn_presence.gd probe output ===
+=== test_glint_natural_spawn_presence: natural Glintstalker spawn weight ===
+SPAWN_WEIGHT_FACT region=drowned_cut phase=opening pool_size=4 glint_weight=0.00 pool_weight_total=1.22 glint_share=0.00% uniform_pick=0.00% shard_weight=0.00
+SPAWN_WEIGHT_FACT region=drowned_cut phase=rising pool_size=5 glint_weight=0.00 pool_weight_total=1.18 glint_share=0.00% uniform_pick=0.00% shard_weight=0.00
+SPAWN_WEIGHT_FACT region=drowned_cut phase=chorus pool_size=5 glint_weight=0.00 pool_weight_total=1.20 glint_share=0.00% uniform_pick=0.00% shard_weight=0.00
+SPAWN_WEIGHT_FACT region=drowned_cut phase=breakdown pool_size=5 glint_weight=0.00 pool_weight_total=1.18 glint_share=0.00% uniform_pick=0.00% shard_weight=0.00
+SPAWN_WEIGHT_FACT region=drowned_cut phase=final pool_size=6 glint_weight=0.00 pool_weight_total=1.14 glint_share=0.00% uniform_pick=0.00% shard_weight=0.00
+SPAWN_WEIGHT_FACT region=drowned_cut phases_with_glint=0/5
+SPAWN_WEIGHT_FACT region=feeding_hollow phase=opening pool_size=3 glint_weight=0.00 pool_weight_total=1.00 glint_share=0.00% uniform_pick=0.00% shard_weight=0.00
+SPAWN_WEIGHT_FACT region=feeding_hollow phase=rising pool_size=4 glint_weight=0.00 pool_weight_total=1.00 glint_share=0.00% uniform_pick=0.00% shard_weight=0.00
+SPAWN_WEIGHT_FACT region=feeding_hollow phase=chorus pool_size=5 glint_weight=0.00 pool_weight_total=1.00 glint_share=0.00% uniform_pick=0.00% shard_weight=0.00
+SPAWN_WEIGHT_FACT region=feeding_hollow phase=breakdown pool_size=5 glint_weight=0.00 pool_weight_total=1.00 glint_share=0.00% uniform_pick=0.00% shard_weight=0.00
+SPAWN_WEIGHT_FACT region=feeding_hollow phase=final pool_size=5 glint_weight=0.00 pool_weight_total=1.00 glint_share=0.00% uniform_pick=0.00% shard_weight=0.00
+SPAWN_WEIGHT_FACT region=feeding_hollow phases_with_glint=0/5
+SPAWN_WEIGHT_FACT region=pale_shelf phase=opening pool_size=3 glint_weight=0.28 pool_weight_total=1.00 glint_share=28.00% uniform_pick=33.33% shard_weight=0.34
+SPAWN_MONTE_CARLO phase=opening rolls=2000 glint_picks=558 measured=27.90% analytic=28.00%
+SPAWN_WEIGHT_FACT region=pale_shelf phase=rising pool_size=5 glint_weight=0.32 pool_weight_total=1.18 glint_share=27.12% uniform_pick=20.00% shard_weight=0.20
+SPAWN_MONTE_CARLO phase=rising rolls=2000 glint_picks=522 measured=26.10% analytic=27.12%
+SPAWN_WEIGHT_FACT region=pale_shelf phase=chorus pool_size=6 glint_weight=0.26 pool_weight_total=1.20 glint_share=21.67% uniform_pick=16.67% shard_weight=0.24
+SPAWN_MONTE_CARLO phase=chorus rolls=2000 glint_picks=440 measured=22.00% analytic=21.67%
+SPAWN_WEIGHT_FACT region=pale_shelf phase=breakdown pool_size=5 glint_weight=0.00 pool_weight_total=1.18 glint_share=0.00% uniform_pick=0.00% shard_weight=0.24
+SPAWN_WEIGHT_FACT region=pale_shelf phase=final pool_size=6 glint_weight=0.26 pool_weight_total=1.16 glint_share=22.41% uniform_pick=16.67% shard_weight=0.24
+SPAWN_MONTE_CARLO phase=final rolls=2000 glint_picks=450 measured=22.50% analytic=22.41%
+SPAWN_WEIGHT_FACT region=pale_shelf phases_with_glint=4/5
+SPAWN_WEIGHT_FACT total phases_with_glint=4/15 glint_weight_share_all_pools=6.73%
+SPAWN_WEIGHT_FACT total phases_with_shard=5/15
+----------------------------------------------------------------
+checks run: 96   failures: 0
+RESULT: PASS

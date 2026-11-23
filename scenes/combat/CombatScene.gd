@@ -3069,6 +3069,39 @@ func _run_dev_harness_control_sequence() -> bool:
 		if glint_projectile != null and is_instance_valid(glint_projectile):
 			glint_projectile.call("resolve", "debug_reset")
 
+	# Shardhulk Panic Close witness (harness-only): seed a real Shardhulk,
+	# feed the cadence clock a rapid player-attack burst through the real
+	# EventBus wiring, then fire through the production path. The Lane Close
+	# shot must carry its causal telegraph flag.
+	zone_manager.stop()
+	zone_manager.set_song_mode_enabled(false)
+	zone_manager.set_attack_authority_budget(zone_manager.THREAT_COUNT)
+	EnemyStriker.mark_combat_start()
+	zone_manager.set_enemy(5, _build_debug_shard_enemy(5))
+	for _burst_i in 3:
+		EventBus.emit_signal("player_attacked", 0, 1.0, true, Vector2.RIGHT)
+		await get_tree().create_timer(0.12).timeout
+	var shard_label: String = "SHARD_PANIC_CLOSE"
+	if not _debug_fire_control_lane(5):
+		print("CONTROL_FOCUS_SEQUENCE %s FAIL fire" % shard_label)
+		sequence_passed = false
+	else:
+		var shard_projectile: Variant = zone_manager.get_projectile(5)
+		var shard_profile: Dictionary = {}
+		if shard_projectile != null and is_instance_valid(shard_projectile):
+			shard_profile = shard_projectile.get("telegraph_profile")
+		var shard_ok: bool = bool(shard_profile.get("shard_panic_close", false))
+		print("CONTROL_FOCUS_SEQUENCE %s %s shard_flag=%s panic_burst=%d" % [
+			shard_label,
+			"PASS" if shard_ok else "FAIL",
+			str(shard_ok),
+			EnemyStriker.panic_burst_count()
+		])
+		if not shard_ok:
+			sequence_passed = false
+		if shard_projectile != null and is_instance_valid(shard_projectile):
+			shard_projectile.call("resolve", "debug_reset")
+
 	print("CONTROL_FOCUS_SEQUENCE END")
 	return sequence_passed
 
@@ -3104,6 +3137,24 @@ func _build_debug_glint_enemy(lane: int) -> Dictionary:
 		"dna_reward": 0.0,
 		"lane": lane,
 		"projectile_speed": 430.0
+	}
+
+
+func _build_debug_shard_enemy(lane: int) -> Dictionary:
+	# Harness-only Shardhulk seeded from the live species id so the Panic
+	# Close witness runs against the real identity wiring.
+	return {
+		"id": 9600 + lane,
+		"type": "dreg",
+		"species_id": EnemyStriker.SHARDHULK_SPECIES,
+		"display_name": "Control Shardhulk %d" % lane,
+		"hp": 999.0,
+		"max_hp": 999.0,
+		"damage": 10.0,
+		"defense": 2.0,
+		"dna_reward": 0.0,
+		"lane": lane,
+		"projectile_speed": 286.0
 	}
 
 

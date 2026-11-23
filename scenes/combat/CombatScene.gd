@@ -3039,6 +3039,36 @@ func _run_dev_harness_control_sequence() -> bool:
 		if not step_passed:
 			sequence_passed = false
 
+	# Silence Punish witness (harness-only): seed a real Glintstalker, hold no
+	# input for the authored silence gap, then fire through the production path.
+	# The punished shot must carry its causal telegraph flag.
+	zone_manager.stop()
+	zone_manager.set_song_mode_enabled(false)
+	zone_manager.set_attack_authority_budget(zone_manager.THREAT_COUNT)
+	EnemyStriker.mark_combat_start()
+	zone_manager.set_enemy(4, _build_debug_glint_enemy(4))
+	await get_tree().create_timer(EnemyStriker.GLINT_SILENCE_GAP + 0.4).timeout
+	var glint_label: String = "GLINT_PUNISH"
+	if not _debug_fire_control_lane(4):
+		print("CONTROL_FOCUS_SEQUENCE %s FAIL fire" % glint_label)
+		sequence_passed = false
+	else:
+		var glint_projectile: Variant = zone_manager.get_projectile(4)
+		var glint_profile: Dictionary = {}
+		if glint_projectile != null and is_instance_valid(glint_projectile):
+			glint_profile = glint_projectile.get("telegraph_profile")
+		var glint_ok: bool = bool(glint_profile.get("glint_punish", false))
+		print("CONTROL_FOCUS_SEQUENCE %s %s glint_flag=%s silence_gap=%.2fs" % [
+			glint_label,
+			"PASS" if glint_ok else "FAIL",
+			str(glint_ok),
+			EnemyStriker.silence_gap()
+		])
+		if not glint_ok:
+			sequence_passed = false
+		if glint_projectile != null and is_instance_valid(glint_projectile):
+			glint_projectile.call("resolve", "debug_reset")
+
 	print("CONTROL_FOCUS_SEQUENCE END")
 	return sequence_passed
 
@@ -3056,6 +3086,24 @@ func _build_debug_control_enemy(lane: int) -> Dictionary:
 		"dna_reward": 0.0,
 		"lane": lane,
 		"projectile_speed": 265.0
+	}
+
+
+func _build_debug_glint_enemy(lane: int) -> Dictionary:
+	# Harness-only Glintstalker seeded from the live species id so the Silence
+	# Punish witness runs against the real identity wiring.
+	return {
+		"id": 9500 + lane,
+		"type": "dreg",
+		"species_id": EnemyStriker.GLINT_STALKER_SPECIES,
+		"display_name": "Control Glintstalker %d" % lane,
+		"hp": 999.0,
+		"max_hp": 999.0,
+		"damage": 10.0,
+		"defense": 1.0,
+		"dna_reward": 0.0,
+		"lane": lane,
+		"projectile_speed": 430.0
 	}
 
 

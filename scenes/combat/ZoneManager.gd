@@ -50,6 +50,13 @@ func _ready() -> void:
 	_locom_director.name = "CreatureLocomotionDirector"
 	add_child(_locom_director)
 	_locom_director.init(self, _enemy_states)
+	# Glintstalker cadence tracking: the player's pulse resets the silence count.
+	if not EventBus.player_attacked.is_connected(_on_player_attacked_pulse):
+		EventBus.player_attacked.connect(_on_player_attacked_pulse)
+
+
+func _on_player_attacked_pulse(_sector: int, _damage: float, _was_timed: bool, _heading: Vector2) -> void:
+	EnemyStriker.note_player_attack()
 
 
 func setup_layout(viewport_size: Vector2) -> void:
@@ -77,13 +84,22 @@ func load_scene() -> bool:
 	return true
 
 
-func _cache_enemy_scene(id: int, enemy: Dictionary) -> void:
+func _cache_enemy_scene(id: int, enemy: Dictionary) -> PackedScene:
+	# Resolves the enemy's projectile scene (custom or default) and caches it on
+	# the live EnemyState when one exists yet. Returns the resolved scene so
+	# start_combat can hand it to the striker even though the state is created
+	# after this call (a missing-state write used to abort here silently and
+	# leave start_combat strikers with a null projectile scene).
 	var path: String = String(enemy.get("projectile_scene_path", ""))
+	var resolved: PackedScene = _projectile_scene
 	if not path.is_empty() and ResourceLoader.exists(path):
 		var scene := load(path) as PackedScene
-		_enemy_states[id].projectile_scene = scene if scene != null else _projectile_scene
-	else:
-		_enemy_states[id].projectile_scene = _projectile_scene
+		if scene != null:
+			resolved = scene
+	var state: EnemyState = _enemy_states.get(id)
+	if state != null:
+		state.projectile_scene = resolved
+	return resolved
 
 
 func start_combat(enemy_data: Array) -> void:
@@ -98,6 +114,7 @@ func start_combat(enemy_data: Array) -> void:
 	_active_projectiles.clear()
 	_orbiting_enemy_ids.clear()
 	_lane_occupants.clear()
+	EnemyStriker.mark_combat_start()
 
 	for lane in range(enemy_data.size()):
 		var enemy: Dictionary = enemy_data[lane].duplicate(true)
@@ -112,8 +129,7 @@ func start_combat(enemy_data: Array) -> void:
 			_lane_occupants[lane] = []
 		_lane_occupants[lane].append(id)
 
-		_cache_enemy_scene(id, enemy)
-		var enemy_projectile_scene: PackedScene = (_enemy_states[id].projectile_scene if _enemy_states.has(id) else null)
+		var enemy_projectile_scene: PackedScene = _cache_enemy_scene(id, enemy)
 
 		var striker_object := EnemyStriker.new()
 		striker_object.setup(enemy, enemy_projectile_scene)
@@ -549,16 +565,19 @@ func _fire_striker(id: int) -> bool:
 	if projectile == null:
 		return false
 
+	# Silence Punish consumption happens only now, once the shot is guaranteed
+	# to spawn, so failed scheduling never burns the Glintstalker's punish.
+	var glint_active: bool = striker.consume_glint_punish()
 	var pale_active: bool = _status_director.consume_pale_fire_pending(id, Callable(self, "_find_lane_for_enemy"))
 
-	var projectile_damage: float = striker.compute_projectile_damage(_punish_damage_mult, pale_active)
-	var projectile_speed: float = striker.compute_projectile_speed(base_speed)
+	var projectile_damage: float = striker.compute_projectile_damage(_punish_damage_mult, pale_active, glint_active)
+	var projectile_speed: float = striker.compute_projectile_speed(base_speed, glint_active)
 
 	var section_id: String = ""
 	var main_scene = get_tree().current_scene
 	if main_scene != null and main_scene.has_method("get_current_song_section_id"):
 		section_id = String(main_scene.call("get_current_song_section_id"))
-	var telegraph_profile: Dictionary = striker.build_telegraph_profile(section_id)
+	var telegraph_profile: Dictionary = striker.build_telegraph_profile(section_id, glint_active)
 
 	var player_pos: Vector2 = get_player_pos()
 	var spawn_pos: Vector2 = get_enemy_pos(id)
@@ -601,6 +620,15 @@ func _fire_striker(id: int) -> bool:
 			var travel_time: float = _travel_time_to_hit_zone(projectile_speed)
 			var hit_time: float = conductor.get_song_time() + travel_time
 			projectile.set_song_sync(conductor, hit_time)
+
+	if glint_active:
+		# Causal marker: only the Silence Punish path prints this line.
+		print("[glint_punish] enemy=%d species=%s silence_gap=%.2fs damage=%.1f speed=%.1f" % [
+			id, striker.species_id, EnemyStriker.silence_gap(), projectile_damage, projectile_speed
+		])
+		# Readability cues consumed by CombatScene (proc feedback banner + screen flash).
+		EventBus.emit_signal("proc_feedback_requested", "THE SILENCE OPENS", Color(0.84, 0.97, 1.0, 1.0))
+		EventBus.emit_signal("screen_flash", Color(0.70, 0.93, 1.0, 0.16), 0.10)
 
 	EventBus.emit_signal("projectile_fired", lane, id)
 	return true

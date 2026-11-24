@@ -7,8 +7,8 @@ MISSION: Implement the Metrist — species id pale_shelf_offbeat_lector — LIVE
 ROUTING_DECISION: Lab game-brief trajectory PROCEED (MARGINAL_STABILITY, success=0.6452, net=14.34) honored — extended the established species-framework approach (Glintstalker/Shardhulk pattern) rather than restarting it. Mid-mission creator decision: the competing Cadenceleech was CANCELLED ("not both designs just the better one"); the Metrist is the single chosen third species.
 FILES_CHANGED: systems/MetristDirector.gd (+.uid, new); scenes/combat/GhostPulseEcho.gd (+.uid, new); tools/test_metrist_ghost_pulse.gd (+.uid, new); scenes/combat/EnemyStriker.gd; scenes/combat/ZoneManager.gd; scenes/combat/Projectile.gd; scenes/combat/CombatScene.gd; systems/CreatureLocomotionDirector.gd; data/CombatContent.gd; data/RegionSongContent.gd; data/EnemyTemplates.gd; _visual_proofs/metrist_ghost_pulse/ (runtime_traces.txt, windowed_runtime_traces.txt, metrist_ghost_pulse_windowed_20261123.png); receipts/receipt_20261123_metrist_ghost_pulse.md
 START_HEAD: 6552d1cf20217ab3f54985f6265606b21114d126 (mission start; later superseded by 9f3825e/bd93a29 from other workers)
-END_HEAD: pending-commit
-COMMIT: pending-commit
+END_HEAD: 6958d5d21f67f3ff420ecafbc59b0f505be5b024
+COMMIT: 6958d5d21f67f3ff420ecafbc59b0f505be5b024 (feature commit; this receipt pin rides in the follow-up)
 VALIDATION_RESULT: PASS
 RECOMMENDED_NEXT_ACTION: Play one Pale Shelf encounter and teach the Metrist your groove — settle for a few pulses and read the Ghost Pulse echo, then break your cadence and watch the Downbeat slip onto your pulse slot; tune LOCK_JITTER_MAX / the slot geometry from the play report.
 

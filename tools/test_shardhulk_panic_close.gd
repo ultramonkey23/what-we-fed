@@ -95,6 +95,7 @@ func _run() -> void:
 	_check_species_identity_is_specific(zone_manager)
 	_check_player_attacked_wiring(zone_manager)
 	_check_species_is_authored_in_live_data()
+	_check_mutation_one_close_per_episode_and_ordinary_purity(zone_manager)
 
 	_finish()
 
@@ -310,3 +311,46 @@ func _check_species_is_authored_in_live_data() -> void:
 		var shard: Dictionary = creatures[SHARD_SPECIES_ID]
 		_record(String(shard.get("description", "")).length() > 0 and String(shard.get("signal_flavor", "")).length() > 0,
 			"Shardhulk canon fields missing from live data")
+
+
+# MUTATION CONTROL (independent authorship): within ONE panic episode the
+# episode carries exactly one Lane Close. Shot 3 of the same episode must
+# still be an ordinary shard shot, so this fails if the one-close-per-episode
+# bound regresses (two per episode, alternating close/ordinary, ...) or if an
+# unarmed/ordinary shot can carry either species marker, the glacial punish
+# stats, the raised telegraph bias, or the plate-click readability cues.
+func _check_mutation_one_close_per_episode_and_ordinary_purity(zone_manager: Node) -> void:
+	zone_manager.call("start_combat", [_shard_enemy()])
+	_drain_active(zone_manager, SHARD_ENEMY_ID)
+	_fire_panic_burst()
+	_feedback_events.clear()
+	_flash_events = 0
+	_record(bool(zone_manager.call("execute_fire", SHARD_ENEMY_ID)), "episode shot 1 did not spawn")
+	var shot1: Variant = zone_manager.call("get_projectile_by_id", SHARD_ENEMY_ID)
+	_record(shot1 != null and is_instance_valid(shot1), "episode shot 1 missing")
+	if shot1 == null or not is_instance_valid(shot1):
+		return
+	_record(bool(shot1.telegraph_profile.get("shard_panic_close", false)),
+		"episode shot 1 must be the episode's single Lane Close")
+	shot1.call("resolve", "probe_done")
+	_feedback_events.clear()
+	_flash_events = 0
+	for n in [2, 3]:
+		_drain_active(zone_manager, SHARD_ENEMY_ID)
+		_record(bool(zone_manager.call("execute_fire", SHARD_ENEMY_ID)), "episode shot %d did not spawn" % n)
+		var shot: Variant = zone_manager.call("get_projectile_by_id", SHARD_ENEMY_ID)
+		_record(shot != null and is_instance_valid(shot), "episode shot %d missing" % n)
+		if shot == null or not is_instance_valid(shot):
+			continue
+		_record(not bool(shot.telegraph_profile.get("shard_panic_close", false)),
+			"one-close-per-episode bound regressed: episode shot %d carried the close marker" % n)
+		_record(not bool(shot.telegraph_profile.get("glint_punish", false)),
+			"ordinary shot %d carried the Glintstalker marker (identity bleed)" % n)
+		_record(is_equal_approx(float(shot.damage), SHARD_BASE_DAMAGE)
+			and is_equal_approx(float(shot.speed), SHARD_BASE_SPEED),
+			"ordinary shot %d inherited close stats (d=%.2f s=%.2f)" % [n, float(shot.damage), float(shot.speed)])
+		_record(float(shot.telegraph_profile.get("warning_bias", 0.0)) <= 1.2,
+			"ordinary shot %d leaked the raised plate-click warning_bias" % n)
+		_record(_feedback_events.is_empty() and _flash_events == 0,
+			"ordinary shot %d leaked close readability cues" % n)
+		shot.call("resolve", "probe_done")

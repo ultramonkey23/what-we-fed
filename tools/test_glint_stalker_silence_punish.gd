@@ -84,6 +84,7 @@ func _run() -> void:
 	_check_species_identity_is_specific(zone_manager)
 	_check_player_attacked_wiring(zone_manager)
 	_check_species_is_authored_in_live_data()
+	_check_mutation_one_punish_per_episode_and_ordinary_purity(zone_manager)
 
 	_finish()
 
@@ -261,3 +262,44 @@ func _check_species_is_authored_in_live_data() -> void:
 	var profile: Variant = CreatureLocomotionDirector.LOCOM_PROFILES.get(GLINT_SPECIES_ID, {})
 	_record(profile is Dictionary and not (profile as Dictionary).is_empty(),
 		"Glintstalker lost its live locomotion profile (identity seam)")
+
+
+# MUTATION CONTROL (independent authorship): within ONE widened silence gap
+# the episode carries exactly one punish. Shot 3 of the same gap must still be
+# ordinary, so this fails if the one-punish-per-episode bound regresses (two
+# per gap, alternating punish/ordinary, ...) or if an unarmed/ordinary shot
+# can carry the species punish marker, its stats, its raised telegraph bias,
+# or its readability cues.
+func _check_mutation_one_punish_per_episode_and_ordinary_purity(zone_manager: Node) -> void:
+	zone_manager.call("start_combat", [_glint_enemy()])
+	_drain_active(zone_manager, GLINT_ENEMY_ID)
+	_widen_silence(6.0)
+	_feedback_events.clear()
+	_flash_events = 0
+	_record(bool(zone_manager.call("execute_fire", GLINT_ENEMY_ID)), "episode shot 1 did not spawn")
+	var shot1: Variant = zone_manager.call("get_projectile_by_id", GLINT_ENEMY_ID)
+	_record(shot1 != null and is_instance_valid(shot1), "episode shot 1 missing")
+	if shot1 == null or not is_instance_valid(shot1):
+		return
+	_record(bool(shot1.telegraph_profile.get("glint_punish", false)),
+		"episode shot 1 must be the episode's single punish")
+	shot1.call("resolve", "probe_done")
+	_feedback_events.clear()
+	_flash_events = 0
+	for n in [2, 3]:
+		_drain_active(zone_manager, GLINT_ENEMY_ID)
+		_record(bool(zone_manager.call("execute_fire", GLINT_ENEMY_ID)), "episode shot %d did not spawn" % n)
+		var shot: Variant = zone_manager.call("get_projectile_by_id", GLINT_ENEMY_ID)
+		_record(shot != null and is_instance_valid(shot), "episode shot %d missing" % n)
+		if shot == null or not is_instance_valid(shot):
+			continue
+		_record(not bool(shot.telegraph_profile.get("glint_punish", false)),
+			"one-punish-per-episode bound regressed: episode shot %d carried the punish marker" % n)
+		_record(is_equal_approx(float(shot.damage), GLINT_BASE_DAMAGE)
+			and is_equal_approx(float(shot.speed), GLINT_BASE_SPEED),
+			"ordinary shot %d inherited punish stats (d=%.2f s=%.2f)" % [n, float(shot.damage), float(shot.speed)])
+		_record(float(shot.telegraph_profile.get("warning_bias", 0.0)) <= 1.2,
+			"ordinary shot %d leaked the raised punish warning_bias" % n)
+		_record(_feedback_events.is_empty() and _flash_events == 0,
+			"ordinary shot %d leaked punish readability cues" % n)
+		shot.call("resolve", "probe_done")

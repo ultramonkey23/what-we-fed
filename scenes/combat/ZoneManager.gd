@@ -12,7 +12,12 @@ const THREAT_COUNT: int = 8
 
 const PROJECTILE_SCENE_PATH: String = "res://scenes/combat/Projectile.tscn"
 const MELEE_APPROACH_SCRIPT_PATH: String = "res://scenes/combat/MeleeApproach.gd"
+const GHOST_PULSE_SCRIPT_PATH: String = "res://scenes/combat/GhostPulseEcho.gd"
 const MIN_IMPACT_SEPARATION: float = 0.40
+# Ghost Pulse telegraph (Metrist): the echo of the player's own shot ignites
+# just outside the vessel, and stays readable long enough to catch in play.
+const GHOST_PULSE_OFFSET: float = 78.0
+const GHOST_PULSE_VISIBLE_SEC: float = 1.8
 
 
 var _fire_director: Node = null
@@ -22,6 +27,7 @@ var _sector_layout: SectorLayout = null
 
 var _projectile_scene: PackedScene = null
 var _melee_approach_script: Script = null
+var _ghost_pulse_script: Script = null
 var _active_projectiles: Dictionary = {} # enemy_id -> projectile node
 var _enemy_states: Dictionary = {} # id -> EnemyState
 var _orbiting_enemy_ids: Array[int] = []
@@ -56,7 +62,10 @@ func _ready() -> void:
 
 
 func _on_player_attacked_pulse(_sector: int, _damage: float, _was_timed: bool, _heading: Vector2) -> void:
-	EnemyStriker.note_player_attack()
+	# Shared cadence clock for all species' cadence identities. The heading
+	# feeds the Metrist's Ghost Pulse ("an after-image of the player's own
+	# most recent shot").
+	EnemyStriker.note_player_attack(-1, _heading)
 
 
 func setup_layout(viewport_size: Vector2) -> void:
@@ -80,6 +89,11 @@ func load_scene() -> bool:
 		var melee_script: Resource = load(MELEE_APPROACH_SCRIPT_PATH)
 		if melee_script is Script:
 			_melee_approach_script = melee_script as Script
+
+	if ResourceLoader.exists(GHOST_PULSE_SCRIPT_PATH):
+		var ghost_script: Resource = load(GHOST_PULSE_SCRIPT_PATH)
+		if ghost_script is Script:
+			_ghost_pulse_script = ghost_script as Script
 
 	return true
 
@@ -571,6 +585,10 @@ func _fire_striker(id: int) -> bool:
 	# Panic Close consumption (Shardhulk): same guarantee point — a failed
 	# scheduling attempt never burns the close.
 	var shard_active: bool = striker.consume_shard_panic_close()
+	# Downbeat consumption (Metrist): same guarantee point — a failed
+	# scheduling attempt never burns the Downbeat. The Downbeat consumes NO
+	# damage or speed multipliers: its response is timing displacement only.
+	var metrist_active: bool = striker.consume_metrist_downbeat()
 	var pale_active: bool = _status_director.consume_pale_fire_pending(id, Callable(self, "_find_lane_for_enemy"))
 
 	var projectile_damage: float = striker.compute_projectile_damage(_punish_damage_mult, pale_active, glint_active, shard_active)
@@ -580,7 +598,7 @@ func _fire_striker(id: int) -> bool:
 	var main_scene = get_tree().current_scene
 	if main_scene != null and main_scene.has_method("get_current_song_section_id"):
 		section_id = String(main_scene.call("get_current_song_section_id"))
-	var telegraph_profile: Dictionary = striker.build_telegraph_profile(section_id, glint_active, shard_active)
+	var telegraph_profile: Dictionary = striker.build_telegraph_profile(section_id, glint_active, shard_active, metrist_active)
 
 	var player_pos: Vector2 = get_player_pos()
 	var spawn_pos: Vector2 = get_enemy_pos(id)
@@ -624,6 +642,31 @@ func _fire_striker(id: int) -> bool:
 			var hit_time: float = conductor.get_song_time() + travel_time
 			projectile.set_song_sync(conductor, hit_time)
 
+	if metrist_active:
+		# The Downbeat (armed AND locked strike): timing displacement only.
+		# The strike is phased into the empty slot one offbeat past the
+		# player's next predicted pulse; the Ghost Pulse echo telegraphs it
+		# one beat early, in the gap. If the player breaks pattern while the
+		# strike is still in flight, MetristDirector slips it back ONTO the
+		# nearest reachable player pulse slot (trade/parry window).
+		var metrist_now_msec: int = Time.get_ticks_msec()
+		var metrist_plan: Dictionary = MetristDirector.plan_downbeat(
+			metrist_now_msec, int(_travel_time_to_hit_zone(projectile_speed) * 1000.0))
+		if not metrist_plan.is_empty():
+			projectile.set_timing_displacement(float(metrist_plan[MetristDirector.KEY_HOLD_MSEC]) / 1000.0)
+			MetristDirector.register_downbeat(projectile, metrist_plan)
+			_spawn_ghost_pulse(metrist_plan, metrist_now_msec)
+			# Causal marker: only the armed-locked Downbeat path prints this line.
+			print("[metrist_downbeat] enemy=%d species=%s jitter=%.3f slot=offbeat hold=%.2fs landing_msec=%.1f ghost_msec=%.1f" % [
+				id, striker.species_id, MetristDirector.jitter(),
+				float(metrist_plan[MetristDirector.KEY_HOLD_MSEC]) / 1000.0,
+				float(metrist_plan[MetristDirector.KEY_LANDING_MSEC]),
+				float(metrist_plan[MetristDirector.KEY_GHOST_IGNITE_MSEC])
+			])
+			# Readability cues: the Downbeat announces itself once.
+			EventBus.emit_signal("proc_feedback_requested", "THE DOWNBEAT", Color(0.82, 0.90, 1.0, 1.0))
+			EventBus.emit_signal("screen_flash", Color(0.72, 0.84, 1.0, 0.14), 0.10)
+
 	if glint_active:
 		# Causal marker: only the Silence Punish path prints this line.
 		print("[glint_punish] enemy=%d species=%s silence_gap=%.2fs damage=%.1f speed=%.1f" % [
@@ -644,6 +687,31 @@ func _fire_striker(id: int) -> bool:
 
 	EventBus.emit_signal("projectile_fired", lane, id)
 	return true
+
+
+func _spawn_ghost_pulse(plan: Dictionary, now_msec: int) -> void:
+	# "The Ghost Pulse" telegraph: a pale after-image of the player's own most
+	# recent shot, igniting in the empty slot between two beats one beat early
+	# ("the echo fires in the gap, not on the beat"). Pure readability — the
+	# echo never deals damage and never moves.
+	if _ghost_pulse_script == null:
+		return
+	var echo: Node2D = _ghost_pulse_script.new() as Node2D
+	if echo == null:
+		return
+	var main_scene = get_tree().current_scene
+	var parent: Node = main_scene if main_scene != null else get_parent()
+	if parent == null:
+		return
+	parent.add_child(echo)
+	var heading: Vector2 = MetristDirector.last_shot_heading()
+	if heading.length_squared() < 0.01:
+		heading = Vector2.RIGHT
+	echo.position = get_player_pos() + heading.normalized() * GHOST_PULSE_OFFSET
+	var ignite_msec: float = float(plan[MetristDirector.KEY_GHOST_IGNITE_MSEC])
+	var delay_sec: float = maxf(ignite_msec - float(now_msec), 0.0) / 1000.0
+	echo.setup(delay_sec, GHOST_PULSE_VISIBLE_SEC, heading, ignite_msec)
+	MetristDirector.register_ghost(echo)
 
 
 func _get_projectile_aim_point(current_player_pos: Vector2, player_combat: Node2D) -> Vector2:

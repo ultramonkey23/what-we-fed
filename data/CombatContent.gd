@@ -499,6 +499,27 @@ const CREATURES := {
 		},
 		"wrong_detail": "eyes frosted over but somehow focusing on your heat"
 	},
+	"pale_shelf_offbeat_lector": {
+		"species_id": "pale_shelf_offbeat_lector",
+		"display_name": "[P] Metrist",
+		"base_hp": 32.0,
+		"base_damage": 10.0,
+		"base_defense": 1.0,
+		"dna_threshold": 9.0,
+		"description": "[P] It keeps the beat you never meant to teach it. When you settle, the Downbeat comes in the gap.",
+		"signal_flavor": "[P] The echo fires in the gap, not on the beat.",
+		"sprite_path": "res://assets/creatures/pale_shelf/enemies/pale_shelf_precision_stalker.png",
+		"battlefield_sprite_path": "res://assets/creatures/pale_shelf/enemies/pale_shelf_precision_stalker.png",
+		"combat_render": {
+			"scale": 0.053,
+			"age_scales": {"baby": 0.053, "teen": 0.072, "adult": 0.105},
+			"world_offset": Vector2(-108.0, 74.0),
+			"z_index": 5,
+			"modulate": Color(0.88, 0.90, 1.0, 0.90),
+			"marker_modulate": Color(0.88, 0.92, 1.0, 0.94)
+		},
+		"wrong_detail": "its shadow keeps stepping a half-beat behind where the light says it should"
+	},
 	"siltgrip": {
 		"species_id": "siltgrip",
 		"display_name": "Siltgrip",
@@ -613,7 +634,8 @@ const SECTION_SHOT_MODIFIER := {
 const DEFAULT_PROJECTILE_BODY_PATH: String = "res://assets/sprites/projectile_bodies/dreg.png"
 const PROJECTILE_BODY_ALIASES := {
 	"pale_shelf_precision_stalker": "veilskin",
-	"pale_shelf_shardshroud_sentinel": "marrowward"
+	"pale_shelf_shardshroud_sentinel": "marrowward",
+	"pale_shelf_offbeat_lector": "veilskin"
 }
 
 
@@ -815,6 +837,17 @@ const ENEMY_TELEGRAPH_PROFILES := {
 		"warning_bias": 0.96,
 		"ring_thickness_base": 1.4
 	},
+	"pale_shelf_offbeat_lector": {
+		"family": "veil",
+		"species_shot_modifier": "veil",
+		"projectile_color": Color(0.84, 0.88, 1.0, 1.0),
+		"accent_color": Color(0.92, 0.94, 1.0, 1.0),
+		"lane_color": Color(0.66, 0.72, 1.0, 1.0),
+		"marker_color": Color(0.86, 0.90, 1.0, 1.0),
+		"reflected_color": Color(0.50, 0.94, 1.0, 1.0),
+		"warning_bias": 1.10,
+		"ring_thickness_base": 0.95
+	},
 	"siltgrip": {
 		"family": "mass",
 		"species_shot_modifier": "mass",
@@ -904,6 +937,13 @@ const CREATURE_ENCOUNTER_PROFILES := {
 		"dna_reward": 2.75,
 		"marker_modulate": Color(0.84, 0.90, 0.86, 0.96),
 		"encounter_summary": "Lane anchor that waits for panic with the cold patience of a glacier."
+	},
+	"pale_shelf_offbeat_lector": {
+		"projectile_speed": 330.0,
+		"dna_reward": 2.75,
+		"marker_modulate": Color(0.86, 0.90, 1.0, 0.98),
+		"status_flags": {"expose_duration_mult": 0.55},
+		"encounter_summary": "[P] Rhythmic precision that keeps the beat you never meant to teach it."
 	},
 	"siltgrip": {
 		"projectile_speed": 258.0,

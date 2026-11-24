@@ -44,6 +44,21 @@ const SHARD_CLOSE_PROJECTILE_COLOR: Color = Color(0.72, 0.84, 0.78, 1.0)
 const SHARD_CLOSE_ACCENT_COLOR: Color = Color(0.86, 0.94, 0.88, 1.0)
 const SHARD_CLOSE_GLOW_ALPHA: float = 0.26
 
+# ── Downbeat (Metrist species identity) ─────────────────────────────────────
+# Canon [P]: "It keeps the beat you never meant to teach it." The Metrist
+# reads the PLAYER's attack cadence for RHYTHMIC REGULARITY — a low-jitter
+# groove is the comfort it punishes (silence and bursts are irrelevant as
+# triggers). Its response is TIMING DISPLACEMENT only: while locked, the
+# signature strike "the Downbeat" lands one offbeat past the player's pulse
+# (inside the rhythm's own safe gap); when the player breaks pattern, the
+# strike slips ONTO the nearest reachable player pulse slot (readable trade +
+# parry window). Damage and projectile speed are never touched — the
+# SovereignDamageCalculator stays damage authority and the flight speed is
+# fixed. The rhythm lock, slot math and Ghost Pulse telegraph live in
+# systems/MetristDirector.gd (this class only bridges the shared cadence
+# clock and the fire path, per the species-framework pattern).
+const METRIST_SPECIES: String = "pale_shelf_offbeat_lector"
+
 # Shared combat-cadence clock (all strikers read the same player pulse).
 static var _last_player_attack_msec: int = -1
 static var _glint_punish_spent: bool = false
@@ -61,14 +76,17 @@ static func mark_combat_start() -> void:
 	_glint_punish_spent = false
 	_panic_burst_count = 0
 	_shard_close_spent = false
+	MetristDirector.mark_combat_start()
 
 
-static func note_player_attack(at_msec: int = -1) -> void:
+static func note_player_attack(at_msec: int = -1, shot_heading: Vector2 = Vector2.ZERO) -> void:
 	# Called on EventBus.player_attacked. A player pulse resets the silence
 	# count and re-arms the punish for the next widened gap. The -1 sentinel
 	# means "now"; any other value is a literal timestamp (probes backdate into
-	# negative engine-uptime values, so only -1 is special).
+	# negative engine-uptime values, so only -1 is special). The same pulse
+	# feeds the Metrist rhythm engine (shot_heading feeds its Ghost Pulse).
 	var at: int = Time.get_ticks_msec() if at_msec == -1 else at_msec
+	MetristDirector.note_player_attack(at, shot_heading)
 	# Panic bookkeeping: pulses inside SHARD_PANIC_GAP accumulate a burst; a
 	# calm-spaced pulse starts a fresh count. Crossing the burst threshold is
 	# a new panic episode and re-arms the close — further spam inside the same
@@ -142,6 +160,23 @@ func consume_shard_panic_close() -> bool:
 	return true
 
 
+func is_metrist() -> bool:
+	return species_id == METRIST_SPECIES
+
+
+func metrist_downbeat_armed() -> bool:
+	# Armed AND locked: the Downbeat fires only out of an active rhythm lock.
+	return is_metrist() and MetristDirector.downbeat_armed()
+
+
+func consume_metrist_downbeat() -> bool:
+	# One Downbeat per lock. Called only when the shot is guaranteed to spawn,
+	# so failed scheduling attempts never burn the Downbeat.
+	if not metrist_downbeat_armed():
+		return false
+	return MetristDirector.consume_downbeat()
+
+
 func compute_projectile_damage(punish_mult: float, pale_active: bool, glint_active: bool = false, shard_active: bool = false) -> float:
 	var dmg: float = float(enemy.get("damage", 8.0)) * punish_mult
 	if species_id == "ashclaw":
@@ -188,7 +223,7 @@ func compute_approach_speed() -> float:
 	return speed
 
 
-func build_telegraph_profile(section_id: String, glint_active: bool = false, shard_active: bool = false) -> Dictionary:
+func build_telegraph_profile(section_id: String, glint_active: bool = false, shard_active: bool = false, metrist_active: bool = false) -> Dictionary:
 	var profile: Dictionary = COMBAT_CONTENT.get_enemy_telegraph_profile(enemy)
 	profile["projectile_body_path"] = COMBAT_CONTENT.get_projectile_body_resource_path(enemy)
 	var section_mod: String = COMBAT_CONTENT.get_shot_modifier_for_section(section_id)
@@ -216,4 +251,12 @@ func build_telegraph_profile(section_id: String, glint_active: bool = false, sha
 		profile["accent_color"] = SHARD_CLOSE_ACCENT_COLOR
 		profile["glow_alpha"] = SHARD_CLOSE_GLOW_ALPHA
 		profile["warning_bias"] = float(profile.get("warning_bias", 1.0)) + 0.45
+	if metrist_active:
+		# Downbeat identity: timing displacement only — no damage or speed
+		# keys are touched (SovereignDamageCalculator and the base speed path
+		# stay authoritative). The raised warning bias is the same readability
+		# channel the other species use; the Ghost Pulse echo is the signature
+		# telegraph and rides alongside this flag.
+		profile["metrist_downbeat"] = true
+		profile["warning_bias"] = float(profile.get("warning_bias", 1.0)) + 0.30
 	return profile

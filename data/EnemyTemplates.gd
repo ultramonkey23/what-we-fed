@@ -148,6 +148,18 @@ const ENEMY_TEMPLATES := {
 		"spawn_weight": 0.4,
 		"difficulty_tier": 2,
 		"behaviour_tags": ["anchor", "deliberate", "pale_shelf"]
+	},
+	"pale_shelf_offbeat_lector": {
+		"base_hp": 32.0,
+		"base_damage": 10.0,
+		"base_defense": 1.0,
+		"projectile_speed": 330.0,
+		"attack_pattern": "lector_shot",
+		"telegraph_duration": 0.9,
+		"expose_duration": 0.9,
+		"spawn_weight": 0.45,
+		"difficulty_tier": 2,
+		"behaviour_tags": ["rhythmic", "measured", "pale_shelf"]
 	}
 }
 
@@ -173,11 +185,13 @@ const ENCOUNTER_POOLS := {
 		],
 		"medium": [
 			{"template": "pale_shelf_precision_stalker", "weight": 0.6, "lane_preference": "any"},
-			{"template": "pale_shelf_shardshroud_sentinel", "weight": 0.4, "lane_preference": "center"}
+			{"template": "pale_shelf_shardshroud_sentinel", "weight": 0.4, "lane_preference": "center"},
+			{"template": "pale_shelf_offbeat_lector", "weight": 0.35, "lane_preference": "any"}
 		],
 		"hard": [
 			{"template": "pale_shelf_precision_stalker", "weight": 0.45, "lane_preference": "any"},
 			{"template": "pale_shelf_shardshroud_sentinel", "weight": 0.30, "lane_preference": "center"},
+			{"template": "pale_shelf_offbeat_lector", "weight": 0.25, "lane_preference": "any"},
 			{"template": "bond_reaper", "weight": 0.25, "lane_preference": "any"}
 		]
 	},

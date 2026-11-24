@@ -1,0 +1,26 @@
+Godot Engine v4.6.1.stable.official.14d19694e - https://godotengine.org
+OpenGL API 3.3.0 NVIDIA 596.21 - Compatibility - Using Device: NVIDIA - NVIDIA GeForce RTX 4080 Laptop GPU
+
+[SOVEREIGN] Diagnostic Hub v3.0 Initialized.
+[VISUAL_AUDIT] Autoload initialized. F12 for manual capture.
+[DEBUG_HARNESS] preset=control_focus autolaunch=true
+[DEBUG_HARNESS] launching preset=control_focus
+[DEBUG_HARNESS] combat scene request=OK
+CONTROL_FOCUS_SEQUENCE BEGIN
+CONTROL_FOCUS_SEQUENCE N_ATTACK PASS input_lane=0 projectile_cleared=true reason=ok
+CONTROL_FOCUS_SEQUENCE E_PARRY PASS input_lane=2 projectile_cleared=true reason=ok
+CONTROL_FOCUS_SEQUENCE S_DODGE PASS input_lane=1 projectile_cleared=true reason=ok
+CONTROL_FOCUS_SEQUENCE W_ATTACK PASS input_lane=3 projectile_cleared=true reason=ok
+[glint_punish] enemy=9504 species=pale_shelf_precision_stalker silence_gap=4.42s damage=13.5 speed=537.5
+CONTROL_FOCUS_SEQUENCE GLINT_PUNISH PASS glint_flag=true silence_gap=4.42s
+[shard_panic_close] enemy=9605 species=pale_shelf_shardshroud_sentinel panic_burst=3 damage=15.0 speed=205.9
+CONTROL_FOCUS_SEQUENCE SHARD_PANIC_CLOSE PASS shard_flag=true panic_burst=3
+[metrist_downbeat] enemy=9706 species=pale_shelf_offbeat_lector jitter=0.032 slot=offbeat hold=0.27s landing_msec=17714.8 ghost_msec=17360.0
+CONTROL_FOCUS_SEQUENCE METRIST_DOWNBEAT PASS downbeat_flag=true locked=true hold=0.27s jitter=0.032
+GHOST_PULSE_IGNITE scheduled_ignite_msec=17360.0 gap_slot=true
+[metrist_downbeat] enemy=9706 species=pale_shelf_offbeat_lector jitter=0.038 slot=offbeat hold=0.30s landing_msec=22303.6 ghost_msec=21939.8
+CONTROL_FOCUS_SEQUENCE METRIST_SLIP PASS slipped=true locked=false hold_before=0.30s hold_after=0.22s slot=pulse
+GHOST_PULSE_IGNITE scheduled_ignite_msec=21575.9 gap_slot=true
+CONTROL_FOCUS_SEQUENCE END
+WARNING: ObjectDB instances leaked at exit (run with --verbose for details).
+   at: cleanup (core/object/object.cpp:2641)

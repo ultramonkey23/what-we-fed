@@ -3102,6 +3102,97 @@ func _run_dev_harness_control_sequence() -> bool:
 		if shard_projectile != null and is_instance_valid(shard_projectile):
 			shard_projectile.call("resolve", "debug_reset")
 
+	# Metrist Downbeat witness (harness-only): seed a real Metrist, teach it a
+	# steady pulse groove through the REAL EventBus wiring until the rhythm
+	# lock engages, then fire through the production path. The armed locked
+	# strike must be a Downbeat (its [metrist_downbeat] marker prints in the
+	# log) with the Ghost Pulse echo igniting in the gap one beat early.
+	zone_manager.stop()
+	zone_manager.set_song_mode_enabled(false)
+	zone_manager.set_attack_authority_budget(zone_manager.THREAT_COUNT)
+	EnemyStriker.mark_combat_start()
+	zone_manager.set_enemy(6, _build_debug_metrist_enemy(6))
+	for _pulse_i in 6:
+		EventBus.emit_signal("player_attacked", 0, 1.0, true, Vector2.RIGHT)
+		await get_tree().create_timer(0.35).timeout
+	var metrist_label: String = "METRIST_DOWNBEAT"
+	if not _debug_fire_control_lane(6):
+		print("CONTROL_FOCUS_SEQUENCE %s FAIL fire" % metrist_label)
+		sequence_passed = false
+	else:
+		var metrist_projectile: Variant = zone_manager.get_projectile(6)
+		var metrist_profile: Dictionary = {}
+		var hold_sec: float = 0.0
+		if metrist_projectile != null and is_instance_valid(metrist_projectile):
+			metrist_profile = metrist_projectile.get("telegraph_profile")
+			hold_sec = float(metrist_projectile.call("timing_displacement_remaining"))
+		var metrist_ok: bool = bool(metrist_profile.get("metrist_downbeat", false)) \
+			and hold_sec > 0.0 and MetristDirector.is_locked()
+		print("CONTROL_FOCUS_SEQUENCE %s %s downbeat_flag=%s locked=%s hold=%.2fs jitter=%.3f" % [
+			metrist_label,
+			"PASS" if metrist_ok else "FAIL",
+			str(bool(metrist_profile.get("metrist_downbeat", false))),
+			str(MetristDirector.is_locked()),
+			hold_sec,
+			MetristDirector.jitter()
+		])
+		if not metrist_ok:
+			sequence_passed = false
+		# Ghost Pulse visible window (visual proof capture point: the echo
+		# ignites in the gap slot one beat before the Downbeat lands).
+		await get_tree().create_timer(2.0).timeout
+		if metrist_projectile != null and is_instance_valid(metrist_projectile):
+			metrist_projectile.call("resolve", "debug_reset")
+
+	# Metrist pattern-break slip witness (harness-only): a fresh lock, a
+	# second Downbeat, then one rubato pulse — the strike must slip back ONTO
+	# the player's pulse slot (its launch hold visibly retargets).
+	zone_manager.stop()
+	zone_manager.set_song_mode_enabled(false)
+	zone_manager.set_attack_authority_budget(zone_manager.THREAT_COUNT)
+	zone_manager.set_enemy(6, _build_debug_metrist_enemy(6))
+	# One rubato pulse breaks the previous groove and starts a fresh settle.
+	EventBus.emit_signal("player_attacked", 0, 1.0, true, Vector2.LEFT)
+	await get_tree().create_timer(0.35).timeout
+	for _settle_i in 6:
+		EventBus.emit_signal("player_attacked", 0, 1.0, true, Vector2.RIGHT)
+		await get_tree().create_timer(0.35).timeout
+	# The settle pulse fires its strike in the same beat.
+	EventBus.emit_signal("player_attacked", 0, 1.0, true, Vector2.RIGHT)
+	var metrist_slip_label: String = "METRIST_SLIP"
+	if not _debug_fire_control_lane(6):
+		print("CONTROL_FOCUS_SEQUENCE %s FAIL fire" % metrist_slip_label)
+		sequence_passed = false
+	else:
+		var slip_projectile: Variant = zone_manager.get_projectile(6)
+		var hold_before: float = 0.0
+		if slip_projectile != null and is_instance_valid(slip_projectile):
+			hold_before = float(slip_projectile.call("timing_displacement_remaining"))
+		# One rubato pulse 50ms after the settle breaks the pattern in flight.
+		await get_tree().create_timer(0.05).timeout
+		EventBus.emit_signal("player_attacked", 0, 1.0, true, Vector2.LEFT)
+		await get_tree().create_timer(0.06).timeout
+		var hold_after: float = 0.0
+		var slip_plan: Dictionary = MetristDirector.active_plan()
+		if slip_projectile != null and is_instance_valid(slip_projectile):
+			hold_after = float(slip_projectile.call("timing_displacement_remaining"))
+		var slipped: bool = bool(slip_plan.get(&"slipped", false))
+		var slip_ok: bool = slipped and (not MetristDirector.is_locked()) and hold_after < hold_before
+		print("CONTROL_FOCUS_SEQUENCE %s %s slipped=%s locked=%s hold_before=%.2fs hold_after=%.2fs slot=%s" % [
+			metrist_slip_label,
+			"PASS" if slip_ok else "FAIL",
+			str(slipped),
+			str(MetristDirector.is_locked()),
+			hold_before,
+			hold_after,
+			str(slip_plan.get(&"slot", "?"))
+		])
+		if not slip_ok:
+			sequence_passed = false
+		await get_tree().create_timer(1.8).timeout
+		if slip_projectile != null and is_instance_valid(slip_projectile):
+			slip_projectile.call("resolve", "debug_reset")
+
 	print("CONTROL_FOCUS_SEQUENCE END")
 	return sequence_passed
 
@@ -3155,6 +3246,24 @@ func _build_debug_shard_enemy(lane: int) -> Dictionary:
 		"dna_reward": 0.0,
 		"lane": lane,
 		"projectile_speed": 286.0
+	}
+
+
+func _build_debug_metrist_enemy(lane: int) -> Dictionary:
+	# Harness-only Metrist seeded from the live species id so the Downbeat
+	# witness runs against the real identity wiring.
+	return {
+		"id": 9700 + lane,
+		"type": "dreg",
+		"species_id": EnemyStriker.METRIST_SPECIES,
+		"display_name": "Control Metrist %d" % lane,
+		"hp": 999.0,
+		"max_hp": 999.0,
+		"damage": 10.0,
+		"defense": 1.0,
+		"dna_reward": 0.0,
+		"lane": lane,
+		"projectile_speed": 330.0
 	}
 
 

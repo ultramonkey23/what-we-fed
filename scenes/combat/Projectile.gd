@@ -83,6 +83,14 @@ var _trail: Line2D
 var _glow: Polygon2D
 var _total_distance: float = 0.0
 
+# Timing displacement (Metrist "Downbeat"): a pure phase hold at the current
+# position. Travel speed, timing windows, and lane geometry are NEVER touched
+# (timing truth, spatial purity) — the strike simply waits out its displaced
+# slot, then continues at unchanged speed. Inert unless applied, so every
+# other species' shots are completely unaffected.
+var _timing_displacement_remaining: float = 0.0
+var _timing_displacement_held: float = 0.0
+
 
 
 func _ready() -> void:
@@ -165,8 +173,27 @@ func _process(delta: float) -> void:
 
 	if is_reflected:
 		_process_reflected(delta)
-	else:
-		_process_incoming_song_synced(delta)
+		return
+
+	if _timing_displacement_remaining > 0.0:
+		# Displacement hold: freeze the phase clock, never the flight speed.
+		var consumed: float = minf(delta, _timing_displacement_remaining)
+		_timing_displacement_remaining -= consumed
+		_timing_displacement_held += consumed
+		return
+
+	_process_incoming_song_synced(delta)
+
+
+func set_timing_displacement(seconds: float) -> void:
+	# Applied at spawn (the Downbeat's offbeat slot) and re-targeted on a
+	# pattern-break slip (onto the player's pulse slot). May lengthen or
+	# shorten the wait; the flight itself is never scaled either way.
+	_timing_displacement_remaining = maxf(seconds, 0.0)
+
+
+func timing_displacement_remaining() -> float:
+	return _timing_displacement_remaining
 
 
 func setup(
@@ -315,7 +342,7 @@ func time_until_hit_zone() -> float:
 		return -1.0
 
 	var remaining_distance: float = position.distance_to(hit_zone_pos)
-	return max(remaining_distance / speed, 0.0)
+	return _timing_displacement_remaining + max(remaining_distance / speed, 0.0)
 
 
 func time_until_player_contact() -> float:
@@ -323,7 +350,7 @@ func time_until_player_contact() -> float:
 		return -1.0
 
 	var remaining_distance: float = position.distance_to(player_pos)
-	return max(remaining_distance / speed, 0.0)
+	return _timing_displacement_remaining + max(remaining_distance / speed, 0.0)
 
 
 func resolve(result: String) -> void:
@@ -368,7 +395,9 @@ func _process_incoming_song_synced(delta: float) -> void:
 		var total_flight_duration: float = target_beat_time - fire_song_time
 		if total_flight_duration > 0.0:
 			total_flight_duration /= speed_modifier
-			progress = (song_now - fire_song_time) / total_flight_duration
+			# _timing_displacement_held: seconds spent in a Metrist phase hold
+			# do not count as flight time (the flight speed itself is unchanged).
+			progress = (song_now - fire_song_time - _timing_displacement_held) / total_flight_duration
 		else:
 			progress = 1.0
 	else:

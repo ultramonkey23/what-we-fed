@@ -1,0 +1,52 @@
+=== tools/test_metrist_ghost_pulse.gd (headless probe) ===
+Using Godot: C:\Users\harin\Downloads\Godot_v4.6.1-stable_win64.exe\Godot_v4.6.1-stable_win64_console.exe
+Project root: C:\Users\harin\gamesdevs\What We Fed\what-we-fed
+Log file: C:\Users\harin\gamesdevs\What We Fed\what-we-fed\.godot-cli\logs\godot-test-test_metrist_ghost_pulse.log
+Godot Engine v4.6.1.stable.official.14d19694e - https://godotengine.org
+
+[SOVEREIGN] Diagnostic Hub v3.0 Initialized.
+[VISUAL_AUDIT] Autoload initialized. F12 for manual capture.
+=== test_metrist_ghost_pulse: Metrist Downbeat / Ghost Pulse identity ===
+[metrist_downbeat] enemy=9707 species=pale_shelf_offbeat_lector jitter=0.000 slot=offbeat hold=0.41s landing_msec=1737.0 ghost_msec=1337.0
+[metrist_downbeat] enemy=9707 species=pale_shelf_offbeat_lector jitter=0.000 slot=offbeat hold=0.42s landing_msec=1744.0 ghost_msec=1344.0
+[metrist_downbeat] enemy=9707 species=pale_shelf_offbeat_lector jitter=0.000 slot=offbeat hold=0.42s landing_msec=1751.0 ghost_msec=1351.0
+[shard_panic_close] enemy=9909 species=pale_shelf_shardshroud_sentinel panic_burst=7 damage=15.0 speed=205.9
+[metrist_downbeat] enemy=9707 species=pale_shelf_offbeat_lector jitter=0.000 slot=offbeat hold=0.42s landing_msec=1770.0 ghost_msec=1370.0
+SPAWN_WEIGHT_FACT metrist phases_with_metrist=5 metrist_weight_sum=1.14 pool_weight_sum=6.86 share=16.62%
+SPAWN_MONTE_CARLO phase=opening rolls=2000 metrist_picks=365 measured=18.25% analytic=18.03%
+----------------------------------------------------------------
+checks run: 113   failures: 0
+RESULT: PASS
+WARNING: ObjectDB instances leaked at exit (run with --verbose for details).
+   at: cleanup (core/object/object.cpp:2641)
+TEST OK res://tools/test_metrist_ghost_pulse.gd
+
+=== debug_harness.bat --debug-control-sequence (headless runtime) ===
+Using Godot: C:\Users\harin\Downloads\Godot_v4.6.1-stable_win64.exe\Godot_v4.6.1-stable_win64_console.exe
+Project root: C:\Users\harin\gamesdevs\What We Fed\what-we-fed
+Log file: C:\Users\harin\gamesdevs\What We Fed\what-we-fed\.godot-cli\logs\godot-debug-harness.log
+Godot Engine v4.6.1.stable.official.14d19694e - https://godotengine.org
+
+[SOVEREIGN] Diagnostic Hub v3.0 Initialized.
+[VISUAL_AUDIT] Autoload initialized. F12 for manual capture.
+[DEBUG_HARNESS] preset=control_focus autolaunch=true
+[DEBUG_HARNESS] launching preset=control_focus
+[DEBUG_HARNESS] combat scene request=OK
+CONTROL_FOCUS_SEQUENCE BEGIN
+CONTROL_FOCUS_SEQUENCE N_ATTACK PASS input_lane=0 projectile_cleared=true reason=ok
+CONTROL_FOCUS_SEQUENCE E_PARRY PASS input_lane=2 projectile_cleared=true reason=ok
+CONTROL_FOCUS_SEQUENCE S_DODGE PASS input_lane=1 projectile_cleared=true reason=ok
+CONTROL_FOCUS_SEQUENCE W_ATTACK PASS input_lane=3 projectile_cleared=true reason=ok
+[glint_punish] enemy=9504 species=pale_shelf_precision_stalker silence_gap=4.41s damage=13.5 speed=537.5
+CONTROL_FOCUS_SEQUENCE GLINT_PUNISH PASS glint_flag=true silence_gap=4.41s
+[shard_panic_close] enemy=9605 species=pale_shelf_shardshroud_sentinel panic_burst=3 damage=15.0 speed=205.9
+CONTROL_FOCUS_SEQUENCE SHARD_PANIC_CLOSE PASS shard_flag=true panic_burst=3
+[metrist_downbeat] enemy=9706 species=pale_shelf_offbeat_lector jitter=0.007 slot=offbeat hold=0.29s landing_msec=14471.4 ghost_msec=14121.0
+CONTROL_FOCUS_SEQUENCE METRIST_DOWNBEAT PASS downbeat_flag=true locked=true hold=0.29s jitter=0.007
+GHOST_PULSE_IGNITE scheduled_ignite_msec=14121.0 gap_slot=true
+[metrist_downbeat] enemy=9706 species=pale_shelf_offbeat_lector jitter=0.001 slot=offbeat hold=0.29s landing_msec=18947.6 ghost_msec=18595.8
+CONTROL_FOCUS_SEQUENCE METRIST_SLIP PASS slipped=true locked=false hold_before=0.29s hold_after=0.23s slot=pulse
+GHOST_PULSE_IGNITE scheduled_ignite_msec=18243.9 gap_slot=true
+CONTROL_FOCUS_SEQUENCE END
+WARNING: ObjectDB instances leaked at exit (run with --verbose for details).
+   at: cleanup (core/object/object.cpp:2641)

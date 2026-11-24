@@ -120,6 +120,8 @@ func _run() -> void:
 	_check_player_attacked_wiring()
 	_check_species_is_authored_in_live_data()
 	_check_spawn_weight_wiring_is_live()
+	_check_mutation_one_downbeat_per_lock_never_rearms()
+	_check_negative_slip_lands_on_reachable_pulse_slot_timing_only()
 
 	_finish()
 
@@ -760,3 +762,125 @@ func _check_spawn_weight_wiring_is_live() -> void:
 	_record(picks > 0, "production weighted picker never rolled a Metrist in %d seeded draws" % MONTE_CARLO_ROLLS)
 	_record(absf(measured - analytic) <= MONTE_CARLO_TOLERANCE,
 		"measured Metrist spawn share %.2f%% drifted from authored %.2f%%" % [measured * 100.0, analytic * 100.0])
+
+
+# ── E. Independent authorship controls ─────────────────────────────────────
+
+# MUTATION CONTROL (independent authorship): the one-Downbeat-per-lock bound
+# is an EDGE law - the Downbeat is armed only by the unlock -> locked
+# transition and consumed at spawn. A second armed Downbeat must never exist
+# inside one lock (two-per-lock AND alternating both trip here), continuing
+# pulses that keep the lock must never re-arm it, and an unarmed strike must
+# never carry the [metrist_downbeat] marker.
+func _check_mutation_one_downbeat_per_lock_never_rearms() -> void:
+	# Engine layer: re-arm only on the unlock -> locked edge.
+	_reset()
+	_steady_train(7, -500000 + 7 * PULSE_INTERVAL_MSEC)
+	_record(_is_locked() and _downbeat_armed(), "probe setup: lock did not arm")
+	_record(bool(_director_cls.call("consume_downbeat")), "probe setup: armed Downbeat did not consume")
+	# More pulses of the SAME groove: the lock never breaks, so the edge
+	# never fires - a re-arm here is the regression.
+	_steady_train(7, -500000 + 14 * PULSE_INTERVAL_MSEC)
+	_record(_is_locked(), "probe setup: continuing the groove must keep the lock")
+	_record(not _downbeat_armed(), "Downbeat re-armed inside one lock (edge law regressed)")
+	_record(not bool(_director_cls.call("consume_downbeat")), "a second Downbeat armed inside one lock")
+	# Production layer: three shots inside ONE lock - exactly the first is a
+	# Downbeat; the unarmed follow-ups must stay ordinary (marker-free).
+	var zone_manager: Node = root.get_node("ZoneManager")
+	_reset()
+	_start_metrist(zone_manager)
+	_steady_train(7, Time.get_ticks_msec() - PULSE_INTERVAL_MSEC)
+	_record(_is_locked() and _downbeat_armed(), "probe setup: production lock did not arm")
+	for n in [1, 2, 3]:
+		_drain_active(zone_manager, METRIST_ENEMY_ID)
+		_record(bool(zone_manager.call("execute_fire", METRIST_ENEMY_ID)), "lock shot %d did not spawn" % n)
+		var shot: Variant = zone_manager.call("get_projectile_by_id", METRIST_ENEMY_ID)
+		_record(shot != null and is_instance_valid(shot), "lock shot %d missing" % n)
+		if shot == null or not is_instance_valid(shot):
+			continue
+		var marked: bool = bool(shot.telegraph_profile.get("metrist_downbeat", false))
+		if n == 1:
+			_record(marked, "probe setup: the first armed locked strike must carry the marker")
+			_record(float(shot.call("timing_displacement_remaining")) > 0.0,
+				"probe setup: the armed locked strike must carry its hold")
+		else:
+			_record(not _downbeat_armed(),
+				"lock shot %d found a re-armed Downbeat inside one lock" % n)
+			_record(not marked,
+				"unarmed strike %d carried the [metrist_downbeat] marker" % n)
+			_record(float(shot.call("timing_displacement_remaining")) == 0.0,
+				"unarmed strike %d carried a timing displacement" % n)
+		shot.call("resolve", "probe_done")
+	var echo: Node = _director_cls.call("active_ghost")
+	if echo != null and is_instance_valid(echo):
+		echo.call("queue_free")
+
+
+# NEGATIVE CONTROL (independent authorship): the slip counterplay retargets
+# TIME ONLY. When the player's pattern breaks, the strike must land ON a
+# reachable player pulse slot - exactly one of the rhythm slots defined by
+# the pulse timestamps this probe itself sent (never an arbitrary time, never
+# the unslipped offbeat) - reachable at the FIXED flight (never faster), while
+# damage and speed stay byte-identical (SovereignDamageCalculator stays the
+# damage authority; the slip may move when, never what).
+func _check_negative_slip_lands_on_reachable_pulse_slot_timing_only() -> void:
+	var zone_manager: Node = root.get_node("ZoneManager")
+	_reset()
+	_start_metrist(zone_manager)
+	# A steady groove with KNOWN probe pulse times: the rhythm grid below is
+	# derived from the pulses this probe actually sent, independently of the
+	# plan's own anchor.
+	var last_at: int = Time.get_ticks_msec() - PULSE_INTERVAL_MSEC
+	_steady_train(7, last_at)
+	_record(_is_locked() and _downbeat_armed(), "probe setup: lock did not arm")
+	_record(bool(zone_manager.call("execute_fire", METRIST_ENEMY_ID)), "slip negative: Downbeat did not spawn")
+	var projectile: Variant = zone_manager.call("get_projectile_by_id", METRIST_ENEMY_ID)
+	_record(projectile != null and is_instance_valid(projectile), "slip negative: projectile missing")
+	if projectile == null or not is_instance_valid(projectile):
+		return
+	var damage_before: float = float(projectile.get("damage"))
+	var speed_before: float = float(projectile.get("speed"))
+	var hold_before: float = float(projectile.call("timing_displacement_remaining"))
+	var plan_before: Dictionary = _plan()
+	# The pattern breaks while the strike is in flight.
+	_rubato_pulse()
+	var plan: Dictionary = _plan()
+	_record(bool(plan.get("slipped", false)), "slip negative: pattern break did not slip the strike")
+	_record(String(plan.get("slot", "")) == "pulse",
+		"slip negative: slipped slot is %s, not the player's pulse slot" % String(plan.get("slot", "")))
+	var interval: float = float(plan.get("interval_msec", 0.0))
+	var anchor: float = float(plan.get("anchor_msec", 0.0))
+	var landing: float = float(plan.get("landing_msec", 0.0))
+	# NEVER an arbitrary time: the landing sits exactly on the pulse grid
+	# anchored at the probe's own sent pulse timestamps.
+	_record(interval > 0.0 and _on_grid(landing, float(last_at), float(PULSE_INTERVAL_MSEC)),
+		"slip negative: landing %.1f is not on the probe-sent pulse grid (arbitrary time)" % landing)
+	# ...and on the plan's own grid, but OFF the unslipped offbeat: the
+	# retarget moved the landing onto a slot.
+	_record(_on_grid(landing, anchor, interval),
+		"slip negative: landing %.1f is not on the measured rhythm grid" % landing)
+	_record(not is_equal_approx(landing, float(plan_before.get("landing_msec", -1.0))),
+		"slip negative: the pattern break did not move the landing off the offbeat")
+	# Reachable at the fixed flight: never faster than the strike can travel.
+	var hold_after: float = float(projectile.call("timing_displacement_remaining"))
+	var flight_remaining: float = maxf(
+		float(projectile.call("time_until_hit_zone")) - hold_after, 0.0)
+	var earliest_arrival: float = float(Time.get_ticks_msec()) + flight_remaining
+	_record(landing >= earliest_arrival - 50.0,
+		"slip negative: landing %.1f is unreachable (before earliest arrival %.1f)" % [
+			landing, earliest_arrival])
+	# TIMING-ONLY: the slip may move when, never what.
+	var damage_after: float = float(projectile.get("damage"))
+	var speed_after: float = float(projectile.get("speed"))
+	_record(is_equal_approx(damage_after, damage_before) and is_equal_approx(damage_after, BASE_DAMAGE),
+		"slip negative: the retarget changed damage (%.2f -> %.2f) - SovereignDamageCalculator stays the damage authority" % [
+			damage_before, damage_after])
+	_record(is_equal_approx(speed_after, speed_before) and is_equal_approx(speed_after, BASE_SPEED),
+		"slip negative: the retarget changed flight speed (%.1f -> %.1f) - timing displacement only, never speed scaling" % [
+			speed_before, speed_after])
+	_record(not is_equal_approx(hold_before, hold_after),
+		"slip negative: the pattern break left the strike's timing untouched")
+	var echo: Node = _director_cls.call("active_ghost")
+	if echo != null and is_instance_valid(echo):
+		echo.call("queue_free")
+	projectile.call("resolve", "probe_slip")
